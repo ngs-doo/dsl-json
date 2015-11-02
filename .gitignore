@@ -1,0 +1,12 @@
+
+.idea/
+out/
+*.properties
+*.class
+target/
+out/
+*.iml
+
+.classpath
+.project
+.settings
