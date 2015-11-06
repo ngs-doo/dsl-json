@@ -7,6 +7,7 @@
 	<artifactId>dsl-json</artifactId>
 	<name>DSL Platform JSON</name>
 	<description>DSL Platform compatible Java JSON library (https://dsl-platform.com)</description>
+	<url>https://github.com/ngs-doo/dsl-json</url>
 	<packaging>jar</packaging>
 	<version>0.9.0</version>
 
@@ -116,11 +117,6 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.eclipse.jetty</groupId>
-				<artifactId>jetty-maven-plugin</artifactId>
-				<version>9.3.0.v20150612</version>
 			</plugin>
 			<plugin>
 				<groupId>org.sonatype.plugins</groupId>
