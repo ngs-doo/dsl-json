@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Map;
 
 public class NumberConverterTest {
 	@Test
@@ -50,5 +51,27 @@ public class NumberConverterTest {
 
 			sciForm += '0';
 		}
+	}
+
+	@Test
+	public void testGenericNumber() throws IOException {
+		String input = "{\"coordinates\": [{\n" +
+				"      \"x\": 0.7497682823992804,\n" +
+				"      \"y\": 0.11430576315631691,\n" +
+				"      \"z\": 0.8336834710515213,\n" +
+				"      \"id\": \"1804\",\n" +
+				"      \"conf\": {\"1\": [1,true]}\n" +
+				"    },\n" +
+				"    {\n" +
+				"      \"x\": 0.996765457871507,\n" +
+				"      \"y\": 0.7250564959301626,\n" +
+				"      \"z\": 0.4599639911379607,\n" +
+				"      \"id\": \"2546\",\n" +
+				"      \"conf\": {\"1\": [1,true]\n" +
+				"      }\n" +
+				"    }]}";
+		DslJson json = new DslJson();
+		Map result = (Map) json.deserialize(Map.class, input.getBytes(), input.length());
+		Assert.assertNotNull(result);
 	}
 }

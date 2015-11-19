@@ -9,7 +9,7 @@ import java.util.Collection;
 public abstract class NumberConverter {
 
 	private final static int[] Digits = new int[100];
-	private final static double[] POW_10 = new double[16];
+	private final static double[] POW_10 = new double[18];
 	static final JsonReader.ReadObject<Double> DoubleReader = new JsonReader.ReadObject<Double>() {
 		@Override
 		public Double read(JsonReader reader) throws IOException {

@@ -4,8 +4,10 @@ import org.w3c.dom.Element;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.URI;
@@ -16,11 +18,12 @@ import java.util.concurrent.ConcurrentMap;
 public class DslJson<TContext> {
 
 	protected final TContext context;
-	protected final Fallback fallback;
+	protected final Fallback<TContext> fallback;
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
-		Object deserialize(TContext context, Class<?> manifest, byte[] body, final int size) throws IOException;
+
+		Object deserialize(TContext context, Type manifest, byte[] body, final int size) throws IOException;
 	}
 
 	static final JsonReader.ReadObject<Object> ObjectReader = new JsonReader.ReadObject<Object>() {
@@ -45,7 +48,7 @@ public class DslJson<TContext> {
 	};
 
 	public DslJson() {
-		this(null, false, false, false, null);
+		this(null, false, false, false, null, ServiceLoader.load(Configuration.class));
 	}
 
 	public DslJson(
@@ -53,7 +56,8 @@ public class DslJson<TContext> {
 			final boolean androidSpecifics,
 			final boolean javaSpecifics,
 			final boolean jodaTime,
-			final Fallback<TContext> fallback) {
+			final Fallback<TContext> fallback,
+			final Iterable<Configuration> serializers) {
 		this.context = context;
 		this.fallback = fallback;
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
@@ -113,6 +117,12 @@ public class DslJson<TContext> {
 		registerReader(Element.class, XmlConverter.Reader);
 		registerWriter(Element.class, XmlConverter.Writer);
 		registerReader(Number.class, NumberConverter.NumberReader);
+
+		if (serializers != null) {
+			for (Configuration serializer : serializers) {
+				serializer.configure(this);
+			}
+		}
 	}
 
 	static void registerAndroidSpecifics(final DslJson json) {
@@ -158,32 +168,44 @@ public class DslJson<TContext> {
 	private final ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>> jsonObjectReaders =
 			new ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>>();
 
-	private final HashMap<Class<?>, JsonReader.ReadObject<?>> jsonReaders = new HashMap<Class<?>, JsonReader.ReadObject<?>>();
+	private final HashMap<Type, JsonReader.ReadObject<?>> jsonReaders = new HashMap<Type, JsonReader.ReadObject<?>>();
 
 	public <T, S extends T> void registerReader(final Class<T> manifest, final JsonReader.ReadObject<S> reader) {
 		jsonReaders.put(manifest, reader);
 	}
 
-	private final HashMap<Class<?>, JsonWriter.WriteObject<?>> jsonWriters = new HashMap<Class<?>, JsonWriter.WriteObject<?>>();
+	public void registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
+		jsonReaders.put(manifest, reader);
+	}
+
+	private final HashMap<Type, JsonWriter.WriteObject<?>> jsonWriters = new HashMap<Type, JsonWriter.WriteObject<?>>();
 
 	public <T> void registerWriter(final Class<T> manifest, final JsonWriter.WriteObject<T> writer) {
 		writerMap.put(manifest, manifest);
 		jsonWriters.put(manifest, writer);
 	}
 
+	public void registerWriter(final Type manifest, final JsonWriter.WriteObject<?> writer) {
+		jsonWriters.put(manifest, writer);
+	}
+
 	private final ConcurrentMap<Class<?>, Class<?>> writerMap = new ConcurrentHashMap<Class<?>, Class<?>>();
 
-	protected final JsonWriter.WriteObject<?> tryFindWriter(final Class<?> manifest) {
+	protected final JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		Class<?> found = writerMap.get(manifest);
 		if (found != null) {
 			return jsonWriters.get(found);
 		}
+		if (manifest instanceof Class<?> == false) {
+			return null;
+		}
+		Class<?> container = (Class<?>) manifest;
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
-		findAllSignatures(manifest, signatures);
+		findAllSignatures(container, signatures);
 		for (final Class<?> sig : signatures) {
 			final JsonWriter.WriteObject<?> writer = jsonWriters.get(sig);
 			if (writer != null) {
-				writerMap.putIfAbsent(manifest, sig);
+				writerMap.putIfAbsent(container, sig);
 				return writer;
 			}
 		}
@@ -250,6 +272,16 @@ public class DslJson<TContext> {
 					throw new IOException("Expecting 'null' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
 				}
 				return null;
+			case 't':
+				if (!reader.wasTrue()) {
+					throw new IOException("Expecting 'true' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+				}
+				return true;
+			case 'f':
+				if (!reader.wasFalse()) {
+					throw new IOException("Expecting 'false' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+				}
+				return false;
 			case '"':
 				return reader.readString();
 			case '{':
@@ -358,7 +390,37 @@ public class DslJson<TContext> {
 			return null;
 		}
 		final TResult result = (TResult) simpleReader.read(json);
-		if (json.positionInStream() > json.length) {
+		if (json.getCurrentIndex() > json.length()) {
+			throw new IOException("JSON string was not closed with a double quote");
+		}
+		return result;
+	}
+
+	public Object deserialize(
+			final Type manifest,
+			final byte[] body,
+			final int size) throws IOException {
+		if (manifest instanceof Class<?>) {
+			return deserialize((Class<?>) manifest, body, size);
+		}
+		if (isNull(size, body)) {
+			return null;
+		}
+		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		if (simpleReader == null) {
+			if (fallback != null) {
+				return fallback.deserialize(context, manifest, body, size);
+			}
+			throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+					"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
+		}
+		final JsonReader json = new JsonReader<TContext>(body, size, context);
+		json.getNextToken();
+		if (json.wasNull()) {
+			return null;
+		}
+		final Object result = simpleReader.read(json);
+		if (json.getCurrentIndex() > json.length()) {
 			throw new IOException("JSON string was not closed with a double quote");
 		}
 		return result;
@@ -369,15 +431,14 @@ public class DslJson<TContext> {
 		findAllSignatures(manifest, signatures);
 		for (final Class<?> sig : signatures) {
 			if (jsonReaders.containsKey(sig)) {
-				throw new IOException("Unable to find reader for provided type: " + manifest + " and Jackson is not found on classpath.\n" +
-						"Found reader for: " + sig + " so try deserializing into it instead?\n" +
-						"Alternatively, try initializing system with custom JsonSerialization or register specified type using registerReader into " + DslJson.class);
+				throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+						"Found reader for: " + sig + " so try deserializing into that instead?\n" +
+						"Alternatively, try initializing system with custom fallback or register specified type using registerReader into " + getClass());
 			}
 		}
-		throw new IOException("Unable to find reader for provided type: " + manifest + " and Jackson is not found on classpath.\n" +
-				"Try initializing system with custom JsonSerialization or register specified type using registerReader into " + DslJson.class);
+		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
-
 
 	@SuppressWarnings("unchecked")
 	public <TResult> List<TResult> deserializeList(
@@ -410,7 +471,7 @@ public class DslJson<TContext> {
 		if (simpleReader == null) {
 			if (fallback != null) {
 				Object array = Array.newInstance(manifest, 0);
-				TResult[] result = (TResult[])fallback.deserialize(context, array.getClass(), body, size);
+				TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), body, size);
 				if (result == null) {
 					return null;
 				}
@@ -424,6 +485,279 @@ public class DslJson<TContext> {
 		}
 		return json.deserializeNullableCollection(simpleReader);
 	}
+
+	private static final Iterator EmptyIterator = new Iterator() {
+		@Override
+		public boolean hasNext() {
+			return false;
+		}
+
+		@Override
+		public Object next() {
+			return null;
+		}
+	};
+
+	public <TResult> Iterator<TResult> iterateOver(
+			final Class<TResult> manifest,
+			final InputStream stream,
+			final byte[] buffer) throws IOException {
+		int position = JsonStreamReader.readFully(buffer, stream, 0);
+		if (isNull(position, buffer)) {
+			return null;
+		}
+		if (position < buffer.length) {
+			return deserializeList(manifest, buffer, position).iterator();
+		}
+		final JsonReader json = new JsonReader<TContext>(buffer, position, context);
+		if (json.getNextToken() != '[') {
+			if (json.wasNull()) {
+				return null;
+			}
+			throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+		}
+		if (json.getNextToken() == ']') {
+			return EmptyIterator;
+		}
+		if (JsonObject.class.isAssignableFrom(manifest)) {
+			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
+			if (reader != null) {
+				return new StreamWithObjectReader(buffer, reader, json, stream);
+			}
+		}
+		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		if (simpleReader == null) {
+			if (fallback != null) {
+				return new StreamWithFallback(buffer, stream, json, manifest, fallback, context);
+			}
+			showErrorMessage(manifest);
+		}
+		return new StreamWithReader(buffer, simpleReader, json, stream);
+	}
+
+	private static class StreamWithObjectReader<T extends JsonObject> implements Iterator<T> {
+		private final byte[] buffer;
+		private final JsonReader.ReadJsonObject<T> reader;
+		private final JsonReader json;
+		private final InputStream stream;
+
+		private boolean hasNext;
+
+		public StreamWithObjectReader(
+				byte[] buffer,
+				JsonReader.ReadJsonObject<T> reader,
+				JsonReader json,
+				InputStream stream) {
+			this.buffer = buffer;
+			this.reader = reader;
+			this.json = json;
+			this.stream = stream;
+			hasNext = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return hasNext;
+		}
+
+		@Override
+		public T next() {
+			try {
+				byte nextToken = json.last();
+				final T instance;
+				if (nextToken == 'n') {
+					if (json.wasNull()) {
+						instance = null;
+					} else {
+						throw new RuntimeException("Expecting 'null' for collection item. Found: " + (char) json.last());
+					}
+				} else if (nextToken == '{') {
+					json.getNextToken();
+					instance = reader.deserialize(json);
+				} else {
+					throw new IOException("Expecting '{' at position " + json.positionInStream() + ". Found " + (char) nextToken);
+				}
+				hasNext = json.getNextToken() == ',';
+				if (!hasNext && json.last() != ']') {
+					throw new RuntimeException("Expecting ']' for end of collection. Found: " + (char) json.last());
+				}
+				final int current = json.getCurrentIndex();
+				if (current * 2 > buffer.length) {
+					final int len = buffer.length - current;
+					System.arraycopy(buffer, current, buffer, 0, len);
+					int position = JsonStreamReader.readFully(buffer, stream, len);
+					json.reset(position);
+				}
+				json.getNextToken();
+				return instance;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	private static class StreamWithReader<T> implements Iterator<T> {
+		private final byte[] buffer;
+		private final JsonReader.ReadObject<T> reader;
+		private final JsonReader json;
+		private final InputStream stream;
+
+		private boolean hasNext;
+
+		public StreamWithReader(
+				byte[] buffer,
+				JsonReader.ReadObject<T> reader,
+				JsonReader json,
+				InputStream stream) {
+			this.buffer = buffer;
+			this.reader = reader;
+			this.json = json;
+			this.stream = stream;
+			hasNext = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return hasNext;
+		}
+
+		@Override
+		public T next() {
+			try {
+				byte nextToken = json.last();
+				final T instance;
+				if (nextToken == 'n') {
+					if (json.wasNull()) {
+						instance = null;
+					} else {
+						throw new RuntimeException("Expecting 'null' for collection item. Found: " + (char) json.last());
+					}
+				} else {
+					instance = reader.read(json);
+				}
+				hasNext = json.getNextToken() == ',';
+				if (!hasNext && json.last() != ']') {
+					throw new RuntimeException("Expecting ']' for end of collection. Found: " + (char) json.last());
+				}
+				final int current = json.getCurrentIndex();
+				if (current * 2 > buffer.length) {
+					final int len = buffer.length - current;
+					System.arraycopy(buffer, current, buffer, 0, len);
+					int position = JsonStreamReader.readFully(buffer, stream, len);
+					json.reset(position);
+				}
+				json.getNextToken();
+				return instance;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	private static class StreamWithFallback<T, TContext> implements Iterator<T> {
+		private final byte[] buffer;
+		private final InputStream stream;
+		private final JsonReader json;
+		private final Type manifest;
+		private final Fallback<TContext> fallback;
+		private final TContext context;
+
+		private boolean hasNext;
+
+		public StreamWithFallback(
+				byte[] buffer,
+				InputStream stream,
+				JsonReader json,
+				Type manifest,
+				Fallback<TContext> fallback,
+				TContext context) {
+			this.buffer = buffer;
+			this.stream = stream;
+			this.json = json;
+			this.manifest = manifest;
+			this.fallback = fallback;
+			this.context = context;
+			hasNext = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return hasNext;
+		}
+
+		@Override
+		public T next() {
+			try {
+				byte nextToken = json.last();
+				final T instance;
+				if (nextToken == 'n') {
+					if (json.wasNull()) {
+						instance = null;
+					} else {
+						throw new RuntimeException("Expecting 'null' for collection item. Found: " + (char) json.last());
+					}
+				} else {
+					json.skip();
+					instance = (T) fallback.deserialize(context, manifest, buffer, json.getCurrentIndex());
+				}
+				hasNext = json.getNextToken() == ',';
+				if (!hasNext && json.last() != ']') {
+					throw new RuntimeException("Expecting ']' for end of collection. Found: " + (char) json.last());
+				}
+				final int current = json.getCurrentIndex();
+				final int len = buffer.length - current;
+				System.arraycopy(buffer, current, buffer, 0, len);
+				int position = JsonStreamReader.readFully(buffer, stream, len);
+				json.reset(position);
+				json.getNextToken();
+				return instance;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	public <TResult> TResult deserialize(
+			final Class<TResult> manifest,
+			final InputStream stream,
+			final byte[] buffer) throws IOException {
+		if (JsonObject.class.isAssignableFrom(manifest)) {
+			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
+			final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+			if (objectReader != null && json.getNextToken() == '{') {
+				json.getNextToken();
+				return (TResult) objectReader.deserialize(json);
+			}
+		}
+		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		if (simpleReader == null) {
+			if (manifest.isArray()) {
+				final Class<?> elementManifest = manifest.getComponentType();
+				final Iterator<?> iter = iterateOver(elementManifest, stream, buffer);
+				if (iter == null) {
+					return null;
+				}
+				final ArrayList<Object> list = new ArrayList<Object>();
+				while (iter.hasNext()) {
+					list.add(iter.next());
+				}
+				final Object result = Array.newInstance(elementManifest, list.size());
+				for (int i = 0; i < list.size(); i++) {
+					Array.set(result, i, list.get(i));
+				}
+				return (TResult) result;
+			}
+			showErrorMessage(manifest);
+		}
+		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+		json.getNextToken();
+		if (json.wasNull()) {
+			return null;
+		}
+		//TODO: ckeck not closed string
+		return (TResult) simpleReader.read(json);
+	}
+
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {
 		if (array == null) {
@@ -439,6 +773,32 @@ public class DslJson<TContext> {
 				writer.writeNull();
 			}
 			for (int i = 1; i < array.length; i++) {
+				writer.writeByte(JsonWriter.COMMA);
+				item = array[i];
+				if (item != null) {
+					item.serialize(writer, false);
+				} else {
+					writer.writeNull();
+				}
+			}
+		}
+		writer.writeByte(JsonWriter.ARRAY_END);
+	}
+
+	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array, final int len) {
+		if (array == null) {
+			writer.writeNull();
+			return;
+		}
+		writer.writeByte(JsonWriter.ARRAY_START);
+		if (len != 0) {
+			T item = array[0];
+			if (item != null) {
+				item.serialize(writer, false);
+			} else {
+				writer.writeNull();
+			}
+			for (int i = 1; i < len; i++) {
 				writer.writeByte(JsonWriter.COMMA);
 				item = array[i];
 				if (item != null) {
@@ -505,7 +865,7 @@ public class DslJson<TContext> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> boolean serialize(final JsonWriter writer, final Class<?> manifest, final Object value) {
+	public <T> boolean serialize(final JsonWriter writer, final Type manifest, final Object value) {
 		if (value == null) {
 			writer.writeNull();
 			return true;
@@ -523,12 +883,16 @@ public class DslJson<TContext> {
 			simpleWriter.write(writer, value);
 			return true;
 		}
-		if (manifest.isArray()) {
+		Class<?> container = null;
+		if (manifest instanceof Class<?>) {
+			container = (Class<?>) manifest;
+		}
+		if (container != null && container.isArray()) {
 			if (Array.getLength(value) == 0) {
 				writer.writeAscii("[]");
 				return true;
 			}
-			final Class<?> elementManifest = manifest.getComponentType();
+			final Class<?> elementManifest = container.getComponentType();
 			if (elementManifest.isPrimitive()) {
 				if (elementManifest == boolean.class) {
 					BoolConverter.serialize((boolean[]) value, writer);

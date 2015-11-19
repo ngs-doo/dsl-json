@@ -1,11 +1,12 @@
 package com.dslplatform.json;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public final class JsonReader<TContext> {
+public class JsonReader<TContext> {
 
 	private static final boolean[] WHITESPACE = new boolean[256];
 
@@ -23,16 +24,17 @@ public final class JsonReader<TContext> {
 	}
 
 	private int tokenStart;
-	private int currentIndex = 0;
+	protected int currentIndex = 0;
+	private long currentPosition = 0;
 	private byte last = ' ';
 
-	final int length;
+	protected int length;
 	private final char[] tmp;
 
 	public final TContext context;
-	private final byte[] buffer;
+	protected final byte[] buffer;
 
-	private JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context) {
+	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context) {
 		this.tmp = tmp;
 		this.buffer = buffer;
 		this.length = length;
@@ -66,6 +68,16 @@ public final class JsonReader<TContext> {
 		}
 	}
 
+	public int length() {
+		return length;
+	}
+
+	void reset(int newLength) {
+		currentPosition += currentIndex;
+		currentIndex = 0;
+		this.length = newLength;
+	}
+
 	private final static Charset UTF_8 = Charset.forName("UTF-8");
 
 	@Override
@@ -73,14 +85,14 @@ public final class JsonReader<TContext> {
 		return new String(buffer, 0, length, UTF_8);
 	}
 
-	public final byte read() throws IOException {
+	public byte read() throws IOException {
 		if (currentIndex >= length) {
 			throw new IOException("Unexpected end of JSON input");
 		}
 		return last = buffer[currentIndex++];
 	}
 
-	boolean isEndOfStream() {
+	boolean isEndOfStream() throws IOException {
 		return length == currentIndex;
 	}
 
@@ -158,7 +170,7 @@ public final class JsonReader<TContext> {
 		final int startIndex = currentIndex;
 		if (last != '"') {
 			//TODO: count special chars in separate counter
-			throw new IOException("JSON string must start with a double quote at: " + currentIndex);
+			throw new IOException("JSON string must start with a double quote at: " + positionInStream());
 		}
 
 		byte bb = 0;
@@ -178,7 +190,7 @@ public final class JsonReader<TContext> {
 				tmp[i] = (char) bb;
 			}
 		} catch (ArrayIndexOutOfBoundsException ignore) {
-			throw new IOException("JSON string was not closed with a double quote at: " + currentIndex);
+			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
 		}
 		if (ci >= length) {
 			throw new IOException("JSON string was not closed with a double quote at: " + ci);
@@ -375,8 +387,8 @@ public final class JsonReader<TContext> {
 		return last;
 	}
 
-	public final int positionInStream() {
-		return currentIndex;
+	public final long positionInStream() {
+		return currentPosition + currentIndex;
 	}
 
 	public final int fillName() throws IOException {
