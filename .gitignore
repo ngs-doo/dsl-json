@@ -6,7 +6,11 @@ out/
 target/
 out/
 *.iml
+*.jar
 
 .classpath
 .project
 .settings
+
+processor/ExternalSerialization.java
+processor/com.dslplatform.json.Configuration

@@ -493,6 +493,10 @@ public class DslJson<TContext> {
 		}
 
 		@Override
+		public void remove() {
+		}
+
+		@Override
 		public Object next() {
 			return null;
 		}
@@ -561,6 +565,10 @@ public class DslJson<TContext> {
 		}
 
 		@Override
+		public void remove() {
+		}
+
+		@Override
 		public T next() {
 			try {
 				byte nextToken = json.last();
@@ -619,6 +627,10 @@ public class DslJson<TContext> {
 		@Override
 		public boolean hasNext() {
 			return hasNext;
+		}
+
+		@Override
+		public void remove() {
 		}
 
 		@Override
@@ -683,6 +695,10 @@ public class DslJson<TContext> {
 		@Override
 		public boolean hasNext() {
 			return hasNext;
+		}
+
+		@Override
+		public void remove() {
 		}
 
 		@Override
