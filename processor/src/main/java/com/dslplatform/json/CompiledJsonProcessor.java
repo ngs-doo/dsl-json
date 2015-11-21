@@ -16,6 +16,7 @@ import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
+@SupportedOptions({"dsljson.namespace", "dsljson.timeApi"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
 	private static final Map<String, String> SupportedTypes;
@@ -71,10 +72,12 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	static class StructInfo {
 		public final TypeElement element;
 		public final String name;
+		public final boolean isEnum;
 
-		public StructInfo(TypeElement element, String name) {
+		public StructInfo(TypeElement element, String name, boolean isEnum) {
 			this.element = element;
 			this.name = name;
+			this.isEnum = isEnum;
 		}
 	}
 
@@ -85,7 +88,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 		Set<? extends Element> jsonAnnotated = roundEnv.getElementsAnnotatedWith(jsonTypeElement);
 		if (!jsonAnnotated.isEmpty()) {
-			Map<TypeMirror, StructInfo> structs = new HashMap<TypeMirror, StructInfo>();
+			Map<String, StructInfo> structs = new HashMap<String, StructInfo>();
 			StringBuilder dsl = new StringBuilder();
 			dsl.append("module json {\n");
 			for (Element el : jsonAnnotated) {
@@ -103,29 +106,42 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					//TODO: other checks
 				} else {
 					String name = "struct" + structs.size();
-					structs.put(element.asType(), new StructInfo(element, name));
+					structs.put(element.asType().toString(), new StructInfo(element, name, element.getKind() == ElementKind.ENUM));
 				}
 			}
 			for (StructInfo info : structs.values()) {
-				dsl.append("  struct ");
+				if (info.isEnum) {
+					dsl.append("  enum ");
+				} else {
+					dsl.append("  struct ");
+				}
 				dsl.append(info.name);
 				dsl.append(" {\n");
 
-				Map<String, ExecutableElement> properties = getBeanProperties(info.element);
-				for (Map.Entry<String, ExecutableElement> p : properties.entrySet()) {
-					String propertyType = getPropertyType(p.getValue().getReturnType(), structs);
-					if (propertyType != null) {
+				if (info.isEnum) {
+					List<String> constants = getEnumConstants(info.element);
+					for (String c : constants) {
 						dsl.append("    ");
-						dsl.append(propertyType);
-						dsl.append(" ");
-						dsl.append(p.getKey());
+						dsl.append(c);
 						dsl.append(";\n");
-					} else {
-						processingEnv.getMessager().printMessage(
-								Diagnostic.Kind.ERROR,
-								"Specified property type not supported",
-								p.getValue(),
-								getAnnotation(info.element, jsonDeclaredType));
+					}
+				} else {
+					Map<String, ExecutableElement> properties = getBeanProperties(info.element);
+					for (Map.Entry<String, ExecutableElement> p : properties.entrySet()) {
+						String propertyType = getPropertyType(p.getValue().getReturnType(), structs);
+						if (propertyType != null) {
+							dsl.append("    ");
+							dsl.append(propertyType);
+							dsl.append(" ");
+							dsl.append(p.getKey());
+							dsl.append(";\n");
+						} else {
+							processingEnv.getMessager().printMessage(
+									Diagnostic.Kind.ERROR,
+									"Specified property type not supported",
+									p.getValue(),
+									getAnnotation(info.element, jsonDeclaredType));
+						}
 					}
 				}
 
@@ -168,11 +184,22 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private boolean hasEmptyCtor(Element element) {
 		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
 			List<? extends VariableElement> parameters = constructor.getParameters();
-			if (parameters.isEmpty() && constructor.getModifiers().contains(Modifier.PUBLIC)) {
+			if (parameters.isEmpty() && (element.getKind() == ElementKind.ENUM || constructor.getModifiers().contains(Modifier.PUBLIC))) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	private List<String> getEnumConstants(TypeElement element) {
+		List<String> result = new ArrayList<String>();
+		for (VariableElement field : ElementFilter.fieldsIn(element.getEnclosedElements())) {
+			String name = field.getSimpleName().toString();
+			if (field.asType().equals(element.asType())) {
+				result.add(name);
+			}
+		}
+		return result;
 	}
 
 	private Map<String, ExecutableElement> getBeanProperties(TypeElement element) {
@@ -217,7 +244,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return null;
 	}
 
-	private String getPropertyType(TypeMirror type, Map<TypeMirror, StructInfo> structs) {
+	private String getPropertyType(TypeMirror type, Map<String, StructInfo> structs) {
 		String simpleType = SupportedTypes.get(type.toString());
 		if (simpleType != null) {
 			return simpleType;
@@ -228,6 +255,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			if (simpleType != null) {
 				return simpleType + "[]?";
 			}
+			StructInfo item = structs.get(at.getComponentType().toString());
+			if (item != null) {
+				return "json." + item.name + "?[]?";
+			}
 		}
 		if (type.toString().startsWith("java.util.List<")) {
 			String typeName = type.toString().substring("java.util.List<".length(), type.toString().length() - 1);
@@ -235,10 +266,14 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			if (simpleType != null) {
 				return "List<" + simpleType + ">?";
 			}
+			StructInfo item = structs.get(typeName);
+			if (item != null) {
+				return "List<json." + item.name + "?>?";
+			}
 		}
-		StructInfo info = structs.get(type);
+		StructInfo info = structs.get(type.toString());
 		if (info != null) {
-			return "json." + info.name;
+			return "json." + info.name + "?";
 		}
 		return null;
 	}

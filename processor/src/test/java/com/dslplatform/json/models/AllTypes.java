@@ -114,6 +114,14 @@ public class AllTypes {
 		this.propMap = propMap;
 	}
 
+	public ValidType getPropRef() {
+		return propRef;
+	}
+
+	public void setPropRef(ValidType propRef) {
+		this.propRef = propRef;
+	}
+
 	public int[] getPropIntArr() {
 		return propIntArr;
 	}
@@ -218,6 +226,14 @@ public class AllTypes {
 		this.propMapArr = propMapArr;
 	}
 
+	public ValidType[] getPropRefArr() {
+		return propRefArr;
+	}
+
+	public void setPropRefArr(ValidType[] propRefArr) {
+		this.propRefArr = propRefArr;
+	}
+
 	public List<Integer> getPropOptIntList() {
 		return propOptIntList;
 	}
@@ -282,6 +298,14 @@ public class AllTypes {
 		this.propMapList = propMapList;
 	}
 
+	public List<ValidType> getPropRefList() {
+		return propRefList;
+	}
+
+	public void setPropRefList(List<ValidType> propRefList) {
+		this.propRefList = propRefList;
+	}
+
 	private int propInt;
 	private long propLong;
 	private double propDouble;
@@ -295,6 +319,7 @@ public class AllTypes {
 	private BigDecimal propOptDecimal;
 	private UUID propOptUuid;
 	private Map<String, String> propMap;
+	private ValidType propRef;
 
 	private int[] propIntArr;
 	private long[] propLongArr;
@@ -309,6 +334,7 @@ public class AllTypes {
 	private BigDecimal[] propOptDecimalArr;
 	private UUID[] propOptUuidArr;
 	private Map<String, String>[] propMapArr;
+	private ValidType[] propRefArr;
 
 	private List<Integer> propOptIntList;
 	private List<Long> propOptLongList;
@@ -318,4 +344,5 @@ public class AllTypes {
 	private List<BigDecimal> propOptDecimalList;
 	private List<UUID> propOptUuidList;
 	private List<Map<String, String>> propMapList;
+	private List<ValidType> propRefList;
 }

@@ -40,7 +40,13 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testEnum() {
+		assertCompilationSuccessful(compileTestCase(SimpleEnum.class));
+	}
+
+
+	@Test
 	public void coverAllTypes() {
-		assertCompilationSuccessful(compileTestCase(AllTypes.class));
+		assertCompilationSuccessful(compileTestCase(AllTypes.class, ValidType.class));
 	}
 }
