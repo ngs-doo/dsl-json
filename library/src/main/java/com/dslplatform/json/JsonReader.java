@@ -212,15 +212,19 @@ public class JsonReader<TContext> {
 			}
 		}
 		currentIndex = ci;
+
+		return readLargeString(startIndex);
+	}
+
+	protected String readLargeString(final int startIndex) throws IOException {
+
 		if (currentIndex >= length) {
-			throw new IOException("JSON string was not closed with a double quote at: " + ci);
+			throw new IOException("JSON string was not closed with a double quote at: " + currentIndex);
 		}
 
-		// temporary buffer, will resize if need be
 		int soFar = --currentIndex - startIndex;
 		char[] chars = new char[soFar + 256];
 
-		// copy all the ASCII characters so far
 		for (int i = soFar - 1; i >= 0; i--) {
 			chars[i] = (char) buffer[startIndex + i];
 		}
@@ -262,11 +266,10 @@ public class JsonReader<TContext> {
 					case '\\':
 						break;
 					case 'u':
-						bc =
-								(hexToInt(buffer[currentIndex++]) << 12) +
-										(hexToInt(buffer[currentIndex++]) << 8) +
-										(hexToInt(buffer[currentIndex++]) << 4) +
-										hexToInt(buffer[currentIndex++]);
+						bc = (hexToInt(buffer[currentIndex++]) << 12) +
+								(hexToInt(buffer[currentIndex++]) << 8) +
+								(hexToInt(buffer[currentIndex++]) << 4) +
+								hexToInt(buffer[currentIndex++]);
 						break;
 
 					default:
@@ -307,7 +310,7 @@ public class JsonReader<TContext> {
 		throw new IOException("JSON string was not closed with a double quote!");
 	}
 
-	private static int hexToInt(final byte value) throws IOException {
+	protected static int hexToInt(final byte value) throws IOException {
 		if (value >= '0' && value <= '9') return value - 0x30;
 		if (value >= 'A' && value <= 'F') return value - 0x37;
 		if (value >= 'a' && value <= 'f') return value - 0x57;
@@ -498,15 +501,16 @@ public class JsonReader<TContext> {
 		}
 	}
 
-	public final String readNext() throws IOException {
+	public String readNext() throws IOException {
 		final int start = currentIndex - 1;
 		skip();
 		return new String(buffer, start, currentIndex - start - 1, "UTF-8");
 	}
 
-	public final byte[] readBase64() throws IOException {
-		if (last != '"')
+	public byte[] readBase64() throws IOException {
+		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + " at base64 start. Found " + (char) last);
+		}
 		final int start = currentIndex;
 		currentIndex = Base64.findEnd(buffer, start);
 		last = buffer[currentIndex++];

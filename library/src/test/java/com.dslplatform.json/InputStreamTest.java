@@ -24,7 +24,7 @@ public class InputStreamTest {
 		sb.append("]");
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
-		DslJson json = new DslJson();
+		DslJson<Object> json = new DslJson<Object>();
 		Iterator<Map> result = json.iterateOver(Map.class, is, new byte[512]);
 		int total = 0;
 		while (result.hasNext()) {
@@ -86,7 +86,7 @@ public class InputStreamTest {
 		sb.append("]");
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
-		DslJson json = new DslJson();
+		DslJson<Object> json = new DslJson<Object>();
 		Iterator<Obj> result = json.iterateOver(Obj.class, is, new byte[512]);
 		int total = 0;
 		while (result.hasNext()) {
@@ -119,8 +119,24 @@ public class InputStreamTest {
 		sb.append("]}");
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
-		DslJson json = new DslJson();
-		Map result = (Map) json.deserialize(Map.class, is, new byte[1024]);
+		DslJson<Object> json = new DslJson<Object>();
+		Map result = json.deserialize(Map.class, is, new byte[1024]);
 		Assert.assertNotNull(result);
+	}
+
+	@Test
+	public void canReadStringLargerThanBuffer() throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
+		sb.append("\"");
+		for (int i = 0; i < 1000; i++) {
+			sb.append("abcdefghijklmnopq");
+		}
+		sb.append("\"");
+		String largeString = sb.toString();
+		byte[] bytes = largeString.getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		String result = json.deserialize(String.class, is, new byte[512]);
+		Assert.assertEquals(largeString.substring(1 , largeString.length() - 1), result);
 	}
 }

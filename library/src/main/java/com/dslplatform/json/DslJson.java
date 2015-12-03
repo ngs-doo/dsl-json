@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.InetAddress;
@@ -191,7 +193,7 @@ public class DslJson<TContext> {
 
 	private final ConcurrentMap<Class<?>, Class<?>> writerMap = new ConcurrentHashMap<Class<?>, Class<?>>();
 
-	protected final JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
+	protected JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		Class<?> found = writerMap.get(manifest);
 		if (found != null) {
 			return jsonWriters.get(found);
@@ -210,6 +212,10 @@ public class DslJson<TContext> {
 			}
 		}
 		return null;
+	}
+
+	protected JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
+		return jsonReaders.get(manifest);
 	}
 
 	private static void findAllSignatures(final Class<?> manifest, final ArrayList<Class<?>> found) {
@@ -365,7 +371,7 @@ public class DslJson<TContext> {
 				return (TResult) objectReader.deserialize(json);
 			}
 		}
-		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader == null) {
 			if (manifest.isArray()) {
 				final Class<?> elementManifest = manifest.getComponentType();
@@ -373,11 +379,7 @@ public class DslJson<TContext> {
 				if (list == null) {
 					return null;
 				}
-				final Object result = Array.newInstance(elementManifest, list.size());
-				for (int i = 0; i < list.size(); i++) {
-					Array.set(result, i, list.get(i));
-				}
-				return (TResult) result;
+				return (TResult) convertResultToArray(elementManifest, list);
 			}
 			if (fallback != null) {
 				return (TResult) fallback.deserialize(context, manifest, body, size);
@@ -396,6 +398,139 @@ public class DslJson<TContext> {
 		return result;
 	}
 
+	private static Object convertResultToArray(Class<?> elementType, List<?> result) {
+		if (elementType.isPrimitive()) {
+			if (boolean.class.equals(elementType)) {
+				boolean[] array = new boolean[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Boolean) result.get(i);
+				}
+				return array;
+			} else if (int.class.equals(elementType)) {
+				int[] array = new int[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Integer) result.get(i);
+				}
+				return array;
+			} else if (long.class.equals(elementType)) {
+				long[] array = new long[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Long) result.get(i);
+				}
+				return array;
+			} else if (short.class.equals(elementType)) {
+				short[] array = new short[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Short) result.get(i);
+				}
+				return array;
+			} else if (byte.class.equals(elementType)) {
+				byte[] array = new byte[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Byte) result.get(i);
+				}
+				return array;
+			} else if (float.class.equals(elementType)) {
+				float[] array = new float[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Float) result.get(i);
+				}
+				return array;
+			} else if (double.class.equals(elementType)) {
+				double[] array = new double[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Double) result.get(i);
+				}
+				return array;
+			} else if (char.class.equals(elementType)) {
+				char[] array = new char[result.size()];
+				for (int i = 0; i < result.size(); i++) {
+					array[i] = (Character) result.get(i);
+				}
+				return array;
+			}
+		}
+		return result.toArray((Object[]) Array.newInstance(elementType, result.size()));
+	}
+
+	public final boolean canSerialize(final Type manifest) {
+		if (manifest instanceof Class<?>) {
+			final Class<?> content = (Class<?>) manifest;
+			if (JsonObject.class.isAssignableFrom(content)) {
+				return true;
+			}
+			if (JsonObject[].class.isAssignableFrom(content)) {
+				return true;
+			}
+			if (tryFindWriter(manifest) != null) {
+				return true;
+			}
+			if (content.isArray()) {
+				return !content.getComponentType().isArray()
+						&& !Collection.class.isAssignableFrom(content.getComponentType())
+						&& canSerialize(content.getComponentType());
+			}
+		}
+		if (manifest instanceof ParameterizedType) {
+			final ParameterizedType pt = (ParameterizedType) manifest;
+			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+				final Class<?> container = (Class<?>) pt.getRawType();
+				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
+					final Type content = pt.getActualTypeArguments()[0];
+					return content instanceof Class<?> && JsonObject.class.isAssignableFrom((Class<?>) content)
+							|| tryFindWriter(content) != null;
+				}
+			}
+		} else if (manifest instanceof GenericArrayType) {
+			final GenericArrayType gat = (GenericArrayType) manifest;
+			return gat.getGenericComponentType() instanceof Class<?>
+					&& JsonObject.class.isAssignableFrom((Class<?>) gat.getGenericComponentType())
+					|| tryFindWriter(gat.getGenericComponentType()) != null;
+		}
+		return false;
+	}
+
+	public final boolean canDeserialize(final Type manifest) {
+		if (manifest instanceof Class<?>) {
+			final Class<?> objectType = (Class<?>) manifest;
+			if (JsonObject.class.isAssignableFrom(objectType)) {
+				return getObjectReader(objectType) != null;
+			}
+			if (objectType.isArray()) {
+				return !objectType.getComponentType().isArray()
+						&& !Collection.class.isAssignableFrom(objectType.getComponentType())
+						&& canDeserialize(objectType.getComponentType());
+			}
+		}
+		if (tryFindReader(manifest) != null) {
+			return true;
+		}
+		if (manifest instanceof ParameterizedType) {
+			final ParameterizedType pt = (ParameterizedType) manifest;
+			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+				final Class<?> container = (Class<?>) pt.getRawType();
+				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
+					final Type content = pt.getActualTypeArguments()[0];
+					if (tryFindReader(content) != null) {
+						return true;
+					} else if (content instanceof Class<?>) {
+						final Class<?> objectType = (Class<?>) content;
+						return JsonObject.class.isAssignableFrom(objectType) && getObjectReader(objectType) != null;
+					}
+				}
+			}
+		} else if (manifest instanceof GenericArrayType) {
+			final Type content = ((GenericArrayType) manifest).getGenericComponentType();
+			if (tryFindReader(content) != null) {
+				return true;
+			} else if (content instanceof Class<?>) {
+				final Class<?> objectType = (Class<?>) content;
+				return JsonObject.class.isAssignableFrom(objectType) && getObjectReader(objectType) != null;
+			}
+		}
+		return false;
+	}
+
 	public Object deserialize(
 			final Type manifest,
 			final byte[] body,
@@ -406,8 +541,87 @@ public class DslJson<TContext> {
 		if (isNull(size, body)) {
 			return null;
 		}
-		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader == null) {
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+					final Type content = pt.getActualTypeArguments()[0];
+					final Class<?> container = (Class<?>) pt.getRawType();
+					if (container.isArray() || Collection.class.isAssignableFrom(container)) {
+						final JsonReader<TContext> json = new JsonReader<TContext>(body, size, context);
+						if (json.getNextToken() != '[') {
+							if (json.wasNull()) {
+								return null;
+							}
+							throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+						}
+						json.getNextToken();
+						final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
+						if (contentReader != null) {
+							final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
+							if (container.isArray()) {
+								if (content instanceof Class<?>) {
+									return convertResultToArray((Class<?>) content, result);
+								}
+								if (content instanceof ParameterizedType) {
+									final ParameterizedType cpt = (ParameterizedType) content;
+									if (cpt.getRawType() instanceof Class<?>) {
+										return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), result.size()));
+									}
+								}
+								return result.toArray();
+							}
+							return result;
+						} else if (content instanceof Class<?>) {
+							final Class<?> contentType = (Class<?>) content;
+							if (JsonObject.class.isAssignableFrom(contentType)) {
+								final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
+								if (objectReader != null) {
+									final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
+									if (container.isArray()) {
+										return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
+									}
+									return result;
+								}
+							}
+						}
+					}
+				}
+			} else if (manifest instanceof GenericArrayType) {
+				final Type content = ((GenericArrayType) manifest).getGenericComponentType();
+				final JsonReader<TContext> json = new JsonReader<TContext>(body, size, context);
+				if (json.getNextToken() != '[') {
+					if (json.wasNull()) {
+						return null;
+					}
+					throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+				}
+				json.getNextToken();
+				final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
+				if (contentReader != null) {
+					final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
+					if (content instanceof Class<?>) {
+						return convertResultToArray((Class<?>) content, result);
+					}
+					if (content instanceof ParameterizedType) {
+						final ParameterizedType cpt = (ParameterizedType) content;
+						if (cpt.getRawType() instanceof Class<?>) {
+							return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), result.size()));
+						}
+					}
+					return result.toArray();
+				} else if (content instanceof Class<?>) {
+					final Class<?> contentType = (Class<?>) content;
+					if (JsonObject.class.isAssignableFrom(contentType)) {
+						final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
+						if (objectReader != null) {
+							final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
+							return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
+						}
+					}
+				}
+			}
 			if (fallback != null) {
 				return fallback.deserialize(context, manifest, body, size);
 			}
@@ -467,7 +681,7 @@ public class DslJson<TContext> {
 				return (List<TResult>) json.deserializeNullableCollection(reader);
 			}
 		}
-		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader == null) {
 			if (fallback != null) {
 				Object array = Array.newInstance(manifest, 0);
@@ -529,7 +743,7 @@ public class DslJson<TContext> {
 				return new StreamWithObjectReader(buffer, reader, json, stream);
 			}
 		}
-		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader == null) {
 			if (fallback != null) {
 				return new StreamWithFallback(buffer, stream, json, manifest, fallback, context);
@@ -745,7 +959,7 @@ public class DslJson<TContext> {
 				return (TResult) objectReader.deserialize(json);
 			}
 		}
-		final JsonReader.ReadObject<?> simpleReader = jsonReaders.get(manifest);
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader == null) {
 			if (manifest.isArray()) {
 				final Class<?> elementManifest = manifest.getComponentType();
