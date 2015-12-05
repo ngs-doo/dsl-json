@@ -11,6 +11,7 @@
 
 	<modules>
 		<module>library</module>
+		<module>java8</module>
 		<module>processor</module>
 	</modules>
 

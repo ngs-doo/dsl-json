@@ -119,14 +119,14 @@ public abstract class AbstractAnnotationProcessorTest {
          * are annotations, they certainly need to be validated.
          */
 		CompilationTask task = COMPILER.getTask(null, fileManager, diagnosticCollector,
-				Arrays.asList("-proc:only"), null,
+				Collections.singletonList("-proc:only"), null,
 				fileManager.getJavaFileObjectsFromFiles(compilationUnits));
 		task.setProcessors(getProcessors());
 		task.call();
 
 		try {
 			fileManager.close();
-		} catch (IOException exception) {
+		} catch (IOException ignore) {
 		}
 
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics();
@@ -166,9 +166,8 @@ public abstract class AbstractAnnotationProcessorTest {
 		assert (diagnostics != null);
 
 		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
-			assertFalse("Expected no errors", diagnostic.getKind().equals(Kind.ERROR));
+			assertFalse(diagnostic.getMessage(Locale.ENGLISH), diagnostic.getKind().equals(Kind.ERROR));
 		}
-
 	}
 
 	/**

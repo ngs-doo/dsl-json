@@ -14,3 +14,4 @@ out/
 
 processor/ExternalSerialization.java
 processor/com.dslplatform.json.Configuration
+processor/META-INF/services/com.dslplatform.json.Configuration

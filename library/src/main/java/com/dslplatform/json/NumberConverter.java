@@ -101,6 +101,14 @@ public abstract class NumberConverter {
 		buf[pos + 3] = (byte) v2;
 	}
 
+	static void write3(final int number, final byte[] buf, int pos) {
+		final int hi = number / 100;
+		buf[pos] = (byte)(hi + '0');
+		final int pair = Digits[number - hi * 100];
+		buf[pos + 1] = (byte) (pair >> 8);
+		buf[pos + 2] = (byte) pair;
+	}
+
 	static void write2(final int value, final byte[] buf, final int pos) {
 		final int v = Digits[value];
 		buf[pos] = (byte) (v >> 8);
