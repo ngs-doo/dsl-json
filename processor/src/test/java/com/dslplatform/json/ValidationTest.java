@@ -29,6 +29,11 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testNonPublicClass() {
+		assertCompilationReturned(Diagnostic.Kind.ERROR, 3, compileTestCase(NonPublicClass.class));
+	}
+
+	@Test
 	public void testValidPropertyType() {
 		assertCompilationSuccessful(compileTestCase(ValidType.class));
 	}
@@ -94,5 +99,15 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("Set<uuid?> uuid;"));
 		Assert.assertTrue(dsl.contains("json.struct0?[] ref;") || dsl.contains("json.struct1?[] ref;") || dsl.contains("json.struct2?[] ref;"));
 		Assert.assertTrue(dsl.contains("json.struct0 enum;") || dsl.contains("json.struct1 enum;") || dsl.contains("json.struct2 enum;"));
+	}
+
+	@Test
+	public void correctCasing() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ValidType.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("int u;"));
+		Assert.assertTrue(dsl.contains("int URI;"));
 	}
 }

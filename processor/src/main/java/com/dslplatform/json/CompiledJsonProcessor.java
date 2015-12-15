@@ -16,14 +16,27 @@ import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
-@SupportedOptions({"dsljson.namespace", "dsljson.timeApi"})
+@SupportedOptions({"dsljson.namespace"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
 	private static final Map<String, String> SupportedTypes;
 	private static final Map<String, String> SupportedCollections;
-	private static final HashSet<String> JsonIgnore;
-	private static final HashSet<String> NonNullable;
-	private static final HashSet<String> PropertyAlias;
+	private static final Set<String> JsonIgnore;
+	private static final Set<String> NonNullable;
+	private static final Set<String> PropertyAlias;
+	private static final List<IncompatibleTypes> CheckTypes;
+
+	private static class IncompatibleTypes {
+		public final String first;
+		public final String second;
+		public final String description;
+
+		public IncompatibleTypes(String first, String second, String description) {
+			this.first = first;
+			this.second = second;
+			this.description = description;
+		}
+	}
 
 	static {
 		SupportedTypes = new HashMap<String, String>();
@@ -47,9 +60,17 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		SupportedTypes.put("java.util.UUID", "uuid?");
 		SupportedTypes.put("java.util.Map<java.lang.String,java.lang.String>", "map?");
 		SupportedTypes.put("java.net.InetAddress", "ip?");
+		SupportedTypes.put("java.net.URI", "url?");
 		SupportedTypes.put("java.awt.Color", "color?");
 		SupportedTypes.put("java.awt.geom.Rectangle2D", "rectangle?");
+		SupportedTypes.put("java.awt.geom.Point2D", "location?");
+		SupportedTypes.put("java.awt.Point", "point?");
 		SupportedTypes.put("java.awt.image.BufferedImage", "image?");
+		SupportedTypes.put("android.graphics.Rect", "rectangle?");
+		SupportedTypes.put("android.graphics.PointF", "location?");
+		SupportedTypes.put("android.graphics.Point", "point?");
+		SupportedTypes.put("android.graphics.Bitmap", "image?");
+		SupportedTypes.put("org.w3c.dom.Element", "xml?");
 		SupportedCollections = new HashMap<String, String>();
 		SupportedCollections.put("java.util.List<", "List");
 		SupportedCollections.put("java.util.Set<", "Set");
@@ -71,12 +92,22 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		PropertyAlias = new HashSet<String>();
 		PropertyAlias.add("com.fasterxml.jackson.annotation.JsonProperty");
 		PropertyAlias.add("com.google.gson.annotations.SerializedName");
+		CheckTypes = new ArrayList<IncompatibleTypes>();
+		CheckTypes.add(
+				new IncompatibleTypes(
+						"java.time",
+						"org.joda.time",
+						"Both Joda Time and Java Time detected as property types. Only one supported at once."));
+		CheckTypes.add(
+				new IncompatibleTypes(
+						"java.awt",
+						"android.graphics",
+						"Both Java AWT and Android graphics detected as property types. Only one supported at once."));
 	}
 
 	private TypeElement jsonTypeElement;
 	private DeclaredType jsonDeclaredType;
 	private String namespace = "dsl_" + UUID.randomUUID().toString().replace("-", "");
-	private boolean useJodaTime = false;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -88,13 +119,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		if (ns != null && ns.length() > 0) {
 			namespace = ns;
 		}
-		String timeApi = options.get("dsljson.timeApi");
-		if ("joda-time".equals(timeApi)) {
-			useJodaTime = true;
-		}
 	}
 
-	static class StructInfo {
+	private static class StructInfo {
 		public final TypeElement element;
 		public final String name;
 		public final boolean isEnum;
@@ -104,6 +131,12 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			this.name = name;
 			this.isEnum = isEnum;
 		}
+	}
+
+	private static class DslOptions {
+		public boolean useJodaTime;
+		public boolean useAndroid;
+		public String namespace;
 	}
 
 	@Override
@@ -120,7 +153,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				findStructs(structs, el, "CompiledJson requires public no argument constructor");
 			}
 			findRelatedReferences(structs);
-			buildDsl(structs, dsl);
+			DslOptions options = new DslOptions();
+			options.namespace = namespace;
+			buildDsl(structs, dsl, options);
 			dsl.append("}");
 
 			if (dsl.length() < 20) {
@@ -132,7 +167,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 			String fileContent;
 			try {
-				fileContent = AnnotationCompiler.buildExternalJson(fullDsl, namespace, useJodaTime);
+				fileContent = AnnotationCompiler.buildExternalJson(fullDsl, options.namespace, options.useJodaTime);
 			} catch (Exception e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "DSL compilation error\n" + e.getMessage());
 				return false;
@@ -144,7 +179,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				bw.close();
 				FileObject rfo = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", "META-INF/services/com.dslplatform.json.Configuration");
 				bw = new BufferedWriter(rfo.openWriter());
-				bw.write(namespace + ".json.ExternalSerialization");
+				bw.write(options.namespace + ".json.ExternalSerialization");
 				bw.close();
 			} catch (IOException e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving compiled json serialization files");
@@ -153,7 +188,16 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
-	private void buildDsl(Map<String, StructInfo> structs, StringBuilder dsl) {
+	private static class TypeCheck {
+		public boolean hasFirst;
+		public boolean hasSecond;
+	}
+
+	private void buildDsl(Map<String, StructInfo> structs, StringBuilder dsl, DslOptions options) {
+		TypeCheck[] checks = new TypeCheck[CheckTypes.size()];
+		for (int i = 0; i < checks.length; i++) {
+			checks[i] = new TypeCheck();
+		}
 		for (StructInfo info : structs.values()) {
 			if (info.isEnum) {
 				dsl.append("  enum ");
@@ -177,7 +221,27 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 						continue;
 					}
 					String propertyType = getPropertyType(p.getValue(), structs);
+					String returnType = p.getValue().getReturnType().toString();
+					for (int i = 0; i < CheckTypes.size(); i++) {
+						IncompatibleTypes it = CheckTypes.get(i);
+						if (returnType.startsWith(it.first) || returnType.startsWith(it.second)) {
+							TypeCheck tc = checks[i];
+							boolean hasFirst = tc.hasFirst || returnType.startsWith(it.first);
+							boolean hasSecond = tc.hasSecond || returnType.startsWith(it.second);
+							if (hasFirst && hasSecond && !tc.hasFirst && !tc.hasSecond) {
+								processingEnv.getMessager().printMessage(
+										Diagnostic.Kind.ERROR,
+										"Both Joda Time and Java Time detected as property types. Only one supported at once.",
+										p.getValue(),
+										getAnnotation(info.element, jsonDeclaredType));
+							}
+							tc.hasFirst = hasFirst;
+							tc.hasSecond = hasSecond;
+						}
+					}
 					if (propertyType != null) {
+						options.useJodaTime = options.useJodaTime || returnType.startsWith("org.joda.time");
+						options.useAndroid = options.useAndroid || returnType.startsWith("android.graphics");
 						dsl.append("    ");
 						dsl.append(propertyType);
 						dsl.append(" ");
@@ -203,7 +267,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		int total;
 		do {
 			total = structs.size();
-			for (StructInfo info : structs.values()) {
+			List<StructInfo> items = new ArrayList<StructInfo>(structs.values());
+			for (StructInfo info : items) {
 				Map<String, ExecutableElement> properties = getBeanProperties(info.element);
 				for (Map.Entry<String, ExecutableElement> p : properties.entrySet()) {
 					String propertyType = getPropertyType(p.getValue(), structs);
@@ -214,16 +279,14 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					String typeName = returnType.toString();
 					TypeElement el = processingEnv.getElementUtils().getTypeElement(typeName);
 					if (el != null) {
-						findStructs(structs, el, el + " is referenced as property from POJO with CompiledJson annotation.\n" +
-								"Therefore it requires public no argument constructor");
+						findStructs(structs, el, el + " is referenced as property from POJO with CompiledJson annotation.");
 						continue;
 					}
 					if (returnType instanceof ArrayType) {
 						ArrayType at = (ArrayType) returnType;
 						el = processingEnv.getElementUtils().getTypeElement(at.getComponentType().toString());
 						if (el != null) {
-							findStructs(structs, el, el + " is referenced as array property from POJO with CompiledJson annotation.\n" +
-									"Therefore it requires public no argument constructor");
+							findStructs(structs, el, el + " is referenced as array property from POJO with CompiledJson annotation.");
 							continue;
 						}
 					}
@@ -234,8 +297,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 						String elementType = typeName.substring(kv.getKey().length(), typeName.length() - 1);
 						el = processingEnv.getElementUtils().getTypeElement(elementType);
 						if (el != null) {
-							findStructs(structs, el, el + " is referenced as collection property from POJO with CompiledJson annotation.\n" +
-									"Therefore it requires public no argument constructor");
+							findStructs(structs, el, el + " is referenced as collection property from POJO with CompiledJson annotation.");
 							break;
 						}
 					}
@@ -276,7 +338,14 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge,
+					errorMessge + ", therefore it requires public no argument constructor",
+					element,
+					entityAnnotation);
+		} else if (!element.getModifiers().contains(Modifier.PUBLIC)) {
+			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					errorMessge + ", therefore class must be public",
 					element,
 					entityAnnotation);
 			//TODO: other checks
@@ -319,7 +388,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			if (name.length() < 4 || !isAccessible) {
 				continue;
 			}
-			String property = name.substring(3).toUpperCase().equals(name.substring(3))
+			String property = name.substring(3).toUpperCase().equals(name.substring(3)) && name.length() > 4
 					? name.substring(3)
 					: name.substring(3, 4).toLowerCase() + name.substring(4);
 			if (name.startsWith("get")
