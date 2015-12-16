@@ -5,6 +5,8 @@ DSL Platform compatible JSON library for Java and Android.
 
 Java JSON library designed for performance. Built for invasive software composition with DSL Platform compiler.
 
+![JVM serializers benchmark results](https://cloud.githubusercontent.com/assets/551485/11827913/227130e4-a390-11e5-87eb-939c14db938f.png)
+
 ## Distinguishing features
 
  * supports external schema - Domain Specification Language (DSL)
@@ -14,7 +16,7 @@ Java JSON library designed for performance. Built for invasive software composit
  * extensibility - custom types can be registered for serialization/deserialization
  * streaming support - large JSON lists support streaming with minimal memory usage
  * zero-copy operations - converters avoid producing garbage
- * minimal size - runtime dependency wights around 100KB
+ * minimal size - runtime dependency weights around 100KB
  * no runtime overhead - both schema and annotation based POJOs are prepared at compile time
 
 ## Schema based serialization
@@ -175,8 +177,8 @@ For `InputStream` `JsonStreamReader` should be used. For small messages it's bet
 
 ## FAQ
 
- ***Q***: What is `TContext` in `DslJson` and what should I use for it?<br/>
+ ***Q***: What is `TContext` in `DslJson` and what should I use for it?  
  ***A***: Generic `TContext` is used for library specialization. Use `DslJson<Object>` when you don't need it and just provide `null` for it.
  
- ***Q***: Why is DSL JSON faster than others?<br/>
+ ***Q***: Why is DSL JSON faster than others?  
  ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching.
