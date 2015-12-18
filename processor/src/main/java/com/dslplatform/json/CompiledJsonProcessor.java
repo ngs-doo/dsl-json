@@ -133,12 +133,6 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
-	private static class DslOptions {
-		public boolean useJodaTime;
-		public boolean useAndroid;
-		public String namespace;
-	}
-
 	@Override
 	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 		if (roundEnv.processingOver()) {
@@ -153,7 +147,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				findStructs(structs, el, "CompiledJson requires public no argument constructor");
 			}
 			findRelatedReferences(structs);
-			DslOptions options = new DslOptions();
+			AnnotationCompiler.CompileOptions options = new AnnotationCompiler.CompileOptions();
 			options.namespace = namespace;
 			buildDsl(structs, dsl, options);
 			dsl.append("}");
@@ -167,7 +161,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 			String fileContent;
 			try {
-				fileContent = AnnotationCompiler.buildExternalJson(fullDsl, options.namespace, options.useJodaTime);
+				fileContent = AnnotationCompiler.buildExternalJson(fullDsl, options);
 			} catch (Exception e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "DSL compilation error\n" + e.getMessage());
 				return false;
@@ -193,7 +187,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		public boolean hasSecond;
 	}
 
-	private void buildDsl(Map<String, StructInfo> structs, StringBuilder dsl, DslOptions options) {
+	private void buildDsl(Map<String, StructInfo> structs, StringBuilder dsl, AnnotationCompiler.CompileOptions options) {
 		TypeCheck[] checks = new TypeCheck[CheckTypes.size()];
 		for (int i = 0; i < checks.length; i++) {
 			checks[i] = new TypeCheck();
@@ -215,51 +209,90 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append(";\n");
 				}
 			} else {
-				Map<String, ExecutableElement> properties = getBeanProperties(info.element);
-				for (Map.Entry<String, ExecutableElement> p : properties.entrySet()) {
-					if (hasIgnoredProperty(p.getValue())) {
+				Map<String, ExecutableElement> methods = getBeanProperties(info.element);
+				for (Map.Entry<String, ExecutableElement> p : methods.entrySet()) {
+					if (hasIgnoredAnnotation(p.getValue())) {
 						continue;
 					}
-					String propertyType = getPropertyType(p.getValue(), structs);
-					String returnType = p.getValue().getReturnType().toString();
-					for (int i = 0; i < CheckTypes.size(); i++) {
-						IncompatibleTypes it = CheckTypes.get(i);
-						if (returnType.startsWith(it.first) || returnType.startsWith(it.second)) {
-							TypeCheck tc = checks[i];
-							boolean hasFirst = tc.hasFirst || returnType.startsWith(it.first);
-							boolean hasSecond = tc.hasSecond || returnType.startsWith(it.second);
-							if (hasFirst && hasSecond && !tc.hasFirst && !tc.hasSecond) {
-								processingEnv.getMessager().printMessage(
-										Diagnostic.Kind.ERROR,
-										"Both Joda Time and Java Time detected as property types. Only one supported at once.",
-										p.getValue(),
-										getAnnotation(info.element, jsonDeclaredType));
-							}
-							tc.hasFirst = hasFirst;
-							tc.hasSecond = hasSecond;
-						}
+					String dslType = getPropertyType(p.getValue(), p.getValue().getReturnType(), structs);
+					String javaType = p.getValue().getReturnType().toString();
+					processProperty(dsl, options, checks, info, p, dslType, javaType, false);
+				}
+				Map<String, VariableElement> fields = getPublicFields(info.element);
+				for (Map.Entry<String, VariableElement> p : fields.entrySet()) {
+					if (methods.containsKey(p.getKey())) {
+						continue;
 					}
-					if (propertyType != null) {
-						options.useJodaTime = options.useJodaTime || returnType.startsWith("org.joda.time");
-						options.useAndroid = options.useAndroid || returnType.startsWith("android.graphics");
-						dsl.append("    ");
-						dsl.append(propertyType);
-						dsl.append(" ");
-						dsl.append(p.getKey());
-						dsl.append(findNameAlias(p));
-					} else {
-						processingEnv.getMessager().printMessage(
-								Diagnostic.Kind.ERROR,
-								"Specified property type not supported. If you wish to ignore this property,\n" +
-										" use one of the supported JsonIgnore annotations (such as Jackson @JsonIgnore) on getter",
-								p.getValue(),
-								getAnnotation(info.element, jsonDeclaredType));
+					if (hasIgnoredAnnotation(p.getValue())) {
+						continue;
 					}
+					String dslType = getPropertyType(p.getValue(), p.getValue().asType(), structs);
+					String javaType = p.getValue().asType().toString();
+					processProperty(dsl, options, checks, info, p, dslType, javaType, true);
 				}
 			}
 			dsl.append("    external name Java '");
 			dsl.append(info.element.getQualifiedName());
 			dsl.append("';\n  }\n");
+		}
+	}
+
+	private <T extends Element> void processProperty(
+			StringBuilder dsl,
+			AnnotationCompiler.CompileOptions options,
+			TypeCheck[] checks,
+			StructInfo info,
+			Map.Entry<String, T> property,
+			String dslType,
+			String javaType,
+			boolean fieldAccess) {
+		for (int i = 0; i < CheckTypes.size(); i++) {
+			IncompatibleTypes it = CheckTypes.get(i);
+			if (javaType.startsWith(it.first) || javaType.startsWith(it.second)) {
+				TypeCheck tc = checks[i];
+				boolean hasFirst = tc.hasFirst || javaType.startsWith(it.first);
+				boolean hasSecond = tc.hasSecond || javaType.startsWith(it.second);
+				if (hasFirst && hasSecond && !tc.hasFirst && !tc.hasSecond) {
+					processingEnv.getMessager().printMessage(
+							Diagnostic.Kind.ERROR,
+							"Both Joda Time and Java Time detected as property types. Only one supported at once.",
+							property.getValue(),
+							getAnnotation(info.element, jsonDeclaredType));
+				}
+				tc.hasFirst = hasFirst;
+				tc.hasSecond = hasSecond;
+			}
+		}
+		if (dslType != null) {
+			options.useJodaTime = options.useJodaTime || javaType.startsWith("org.joda.time");
+			options.useAndroid = options.useAndroid || javaType.startsWith("android.graphics");
+			dsl.append("    ");
+			dsl.append(dslType);
+			dsl.append(" ");
+			dsl.append(property.getKey());
+			String alias = findNameAlias(property);
+			if (fieldAccess || alias != null) {
+				dsl.append(" {\n");
+				if (fieldAccess) {
+					dsl.append("      simple Java access;\n");
+				}
+				if (alias != null) {
+					dsl.append("      serialization name '");
+					dsl.append(alias);
+					dsl.append("';\n");
+				}
+				dsl.append("    }\n");
+			} else {
+				dsl.append(";\n");
+			}
+		} else {
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified type not supported. If you wish to ignore this property,\n"
+							+ " use one of the supported JsonIgnore annotations (such as Jackson @JsonIgnore) on "
+							+ (fieldAccess ? "field" : "getter"),
+					property.getValue(),
+					getAnnotation(info.element, jsonDeclaredType));
 		}
 	}
 
@@ -271,42 +304,56 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			for (StructInfo info : items) {
 				Map<String, ExecutableElement> properties = getBeanProperties(info.element);
 				for (Map.Entry<String, ExecutableElement> p : properties.entrySet()) {
-					String propertyType = getPropertyType(p.getValue(), structs);
+					String propertyType = getPropertyType(p.getValue(), p.getValue().getReturnType(), structs);
 					if (propertyType != null) {
 						continue;
 					}
-					TypeMirror returnType = p.getValue().getReturnType();
-					String typeName = returnType.toString();
-					TypeElement el = processingEnv.getElementUtils().getTypeElement(typeName);
-					if (el != null) {
-						findStructs(structs, el, el + " is referenced as property from POJO with CompiledJson annotation.");
+					checkRelatedProperty(structs, p.getValue().getReturnType(), "bean property");
+				}
+				Map<String, VariableElement> fields = getPublicFields(info.element);
+				for (Map.Entry<String, VariableElement> f : fields.entrySet()) {
+					if (properties.containsKey(f.getKey())) {
 						continue;
 					}
-					if (returnType instanceof ArrayType) {
-						ArrayType at = (ArrayType) returnType;
-						el = processingEnv.getElementUtils().getTypeElement(at.getComponentType().toString());
-						if (el != null) {
-							findStructs(structs, el, el + " is referenced as array property from POJO with CompiledJson annotation.");
-							continue;
-						}
+					String propertyType = getPropertyType(f.getValue(), f.getValue().asType(), structs);
+					if (propertyType != null) {
+						continue;
 					}
-					for (Map.Entry<String, String> kv : SupportedCollections.entrySet()) {
-						if (!typeName.startsWith(kv.getKey())) {
-							continue;
-						}
-						String elementType = typeName.substring(kv.getKey().length(), typeName.length() - 1);
-						el = processingEnv.getElementUtils().getTypeElement(elementType);
-						if (el != null) {
-							findStructs(structs, el, el + " is referenced as collection property from POJO with CompiledJson annotation.");
-							break;
-						}
-					}
+					checkRelatedProperty(structs, f.getValue().asType(), "field");
 				}
 			}
 		} while (total != structs.size());
 	}
 
-	private static boolean hasIgnoredProperty(ExecutableElement property) {
+	private void checkRelatedProperty(Map<String, StructInfo> structs, TypeMirror returnType, String access) {
+		String typeName = returnType.toString();
+		TypeElement el = processingEnv.getElementUtils().getTypeElement(typeName);
+		if (el != null) {
+			findStructs(structs, el, el + " is referenced as " + access + " from POJO with CompiledJson annotation.");
+			return;
+		}
+		if (returnType instanceof ArrayType) {
+			ArrayType at = (ArrayType) returnType;
+			el = processingEnv.getElementUtils().getTypeElement(at.getComponentType().toString());
+			if (el != null) {
+				findStructs(structs, el, el + " is referenced as array " + access + " from POJO with CompiledJson annotation.");
+				return;
+			}
+		}
+		for (Map.Entry<String, String> kv : SupportedCollections.entrySet()) {
+			if (!typeName.startsWith(kv.getKey())) {
+				continue;
+			}
+			String elementType = typeName.substring(kv.getKey().length(), typeName.length() - 1);
+			el = processingEnv.getElementUtils().getTypeElement(elementType);
+			if (el != null) {
+				findStructs(structs, el, el + " is referenced as collection " + access + " from POJO with CompiledJson annotation.");
+				break;
+			}
+		}
+	}
+
+	private static boolean hasIgnoredAnnotation(Element property) {
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (JsonIgnore.contains(ann.getAnnotationType().toString())) {
 				return true;
@@ -315,18 +362,18 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
-	private static String findNameAlias(Map.Entry<String, ExecutableElement> property) {
+	private static <T extends Element> String findNameAlias(Map.Entry<String, T> property) {
 		for (AnnotationMirror ann : property.getValue().getAnnotationMirrors()) {
 			if (PropertyAlias.contains(ann.getAnnotationType().toString())) {
 				for (ExecutableElement ee : ann.getElementValues().keySet()) {
 					if ("value()".equals(ee.toString())) {
 						AnnotationValue alias = ann.getElementValues().get(ee);
-						return " { serialization name '" + alias.getValue() + "'; }\n";
+						return alias.getValue().toString();
 					}
 				}
 			}
 		}
-		return ";\n";
+		return null;
 	}
 
 	private void findStructs(Map<String, StructInfo> structs, Element el, String errorMessge) {
@@ -346,6 +393,13 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", therefore class must be public",
+					element,
+					entityAnnotation);
+		} else if (element.getNestingKind().isNested() && !element.getModifiers().contains(Modifier.STATIC)) {
+			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					errorMessge + ", therefore class can't be nested member. Only static nested classes class are supported",
 					element,
 					entityAnnotation);
 			//TODO: other checks
@@ -412,6 +466,21 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return result;
 	}
 
+	private static Map<String, VariableElement> getPublicFields(TypeElement element) {
+		Map<String, VariableElement> fields = new HashMap<String, VariableElement>();
+		for (VariableElement field : ElementFilter.fieldsIn(element.getEnclosedElements())) {
+			String name = field.getSimpleName().toString();
+			boolean isAccessible = field.getModifiers().contains(Modifier.PUBLIC)
+					&& !field.getModifiers().contains(Modifier.FINAL)
+					&& !field.getModifiers().contains(Modifier.STATIC);
+			if (!isAccessible) {
+				continue;
+			}
+			fields.put(name, field);
+		}
+		return fields;
+	}
+
 	private AnnotationMirror getAnnotation(Element element, DeclaredType annotationType) {
 		for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
 			if (processingEnv.getTypeUtils().isSameType(mirror.getAnnotationType(), annotationType)) {
@@ -421,7 +490,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return null;
 	}
 
-	private static boolean hasNonNullable(ExecutableElement property) {
+	private static boolean hasNonNullable(Element property) {
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (NonNullable.contains(ann.getAnnotationType().toString())) {
 				return true;
@@ -430,10 +499,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
-	private static String getPropertyType(ExecutableElement property, Map<String, StructInfo> structs) {
-		TypeMirror type = property.getReturnType();
+	private static String getPropertyType(Element element, TypeMirror type, Map<String, StructInfo> structs) {
 		String simpleType = SupportedTypes.get(type.toString());
-		boolean hasNonNullable = hasNonNullable(property);
+		boolean hasNonNullable = hasNonNullable(element);
 		if (simpleType != null) {
 			return simpleType.endsWith("?") && hasNonNullable
 					? simpleType.substring(0, simpleType.length() - 1)

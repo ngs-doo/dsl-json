@@ -27,18 +27,19 @@ More information about DSL can be found on [DSL Platform](https://dsl-platform.c
 
 ## @CompiledJson annotation
 
-Annotation processor works by translating Java bean classes into DSL and running DSL Platform compiler on it.
+Annotation processor works by translating Java classes into DSL and running DSL Platform compiler on it.
 DSL compiler will generate optimized converters and register them into `META-INF/services`.
 This will be loaded during `DslJson` initialization with `ServiceLoader`.
 Converters will be created even for dependent objects which don't have `@CompiledJson` annotation.
 This can be used to create serializers for pre-existing classes without annotating them.
+Both bean properties and public non-final fields are supported.
 
 Annotation processor can be added as Maven dependency with:
 
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>0.2</version>
+      <version>0.3</version>
       <scope>provided</scope>
     </dependency>
 
@@ -81,7 +82,14 @@ and
 | java.net.InetAddress                                   |  ip?        |
 | java.awt.Color                                         |  color?     |
 | java.awt.geom.Rectangle2D                              |  rectangle? |
+| java.awt.geom.Point2D                                  |  location?  |
+| java.awt.geom.Point                                    |  point?     |
 | java.awt.image.BufferedImage                           |  image?     |
+| android.graphics.Rect                                  |  rectangle? |
+| android.graphics.PointF                                |  location?  |
+| android.graphics.Point                                 |  point?     |
+| android.graphics.Bitmap                                |  image?     |
+| org.w3c.dom.Element                                    |  xml?       |
 
 ### Java/DSL collection mapping
 
@@ -122,7 +130,7 @@ Those annotations will be translated into specialized DSL for specifying seriali
 
 ### Ignored properties
 
-Existing bean properties can be ignored using one of the supported annotations:
+Existing bean properties and fields can be ignored using one of the supported annotations:
 
  * com.fasterxml.jackson.annotation.JsonIgnore
  * org.codehaus.jackson.annotate.JsonIgnore

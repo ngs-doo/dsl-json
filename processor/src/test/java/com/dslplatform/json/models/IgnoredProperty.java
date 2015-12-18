@@ -8,6 +8,15 @@ public class IgnoredProperty {
 	private char prop;
 
 	@JsonIgnore
+	public byte field;
+
+	public final String name;
+
+	public IgnoredProperty() {
+		this.name = "";
+	}
+
+	@JsonIgnore
 	public char getProp() {
 		return prop;
 	}

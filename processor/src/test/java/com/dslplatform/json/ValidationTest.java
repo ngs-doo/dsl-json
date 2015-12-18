@@ -59,6 +59,16 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testNestedNonStaticClass() {
+		assertCompilationReturned(Diagnostic.Kind.ERROR, 6, compileTestCase(NestedNonStaticClass.class));
+	}
+
+	@Test
+	public void testNestedStaticClass() {
+		assertCompilationSuccessful(compileTestCase(NestedStaticClass.class));
+	}
+
+	@Test
 	public void canIgnoreUnsupportedProperty() {
 		assertCompilationSuccessful(compileTestCase(IgnoredProperty.class));
 	}
@@ -84,8 +94,8 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
-		Assert.assertTrue(dsl.contains("int num { serialization name 'y'; }"));
-		Assert.assertTrue(dsl.contains("string? prop { serialization name 'x'; }"));
+		Assert.assertTrue(dsl.contains("int num {\n      serialization name 'y';"));
+		Assert.assertTrue(dsl.contains("string? prop {\n      serialization name 'x';"));
 		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.PropertyAlias';"));
 	}
 
@@ -109,5 +119,15 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		String dsl = note.getMessage(Locale.ENGLISH);
 		Assert.assertTrue(dsl.contains("int u;"));
 		Assert.assertTrue(dsl.contains("int URI;"));
+	}
+
+	@Test
+	public void fieldsAreRecognized() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ValidType.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("string? simpleField {\n      simple Java access;"));
+		Assert.assertTrue(dsl.contains("List<string?>? listField {\n      simple Java access;"));
 	}
 }
