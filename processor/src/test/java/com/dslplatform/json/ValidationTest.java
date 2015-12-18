@@ -83,9 +83,10 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(IgnoredProperty.class);
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
-		Assert.assertEquals("Note: module json {\n  struct struct0 {\n"
-						+ "    external name Java 'com.dslplatform.json.models.IgnoredProperty';\n  }\n}",
-				note.getMessage(Locale.ENGLISH));
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertFalse(dsl.contains(" prop"));
+		Assert.assertFalse(dsl.contains(" field"));
+		Assert.assertFalse(dsl.contains("string? name"));
 	}
 
 	@Test
@@ -94,8 +95,8 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
-		Assert.assertTrue(dsl.contains("int num {\n      serialization name 'y';"));
-		Assert.assertTrue(dsl.contains("string? prop {\n      serialization name 'x';"));
+		Assert.assertTrue(dsl.contains("int num {  serialization name 'y';  }"));
+		Assert.assertTrue(dsl.contains("string? prop {  serialization name 'x';  }"));
 		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.PropertyAlias';"));
 	}
 
@@ -127,7 +128,24 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
-		Assert.assertTrue(dsl.contains("string? simpleField {\n      simple Java access;"));
-		Assert.assertTrue(dsl.contains("List<string?>? listField {\n      simple Java access;"));
+		Assert.assertTrue(dsl.contains("string? simpleField {  simple Java access;"));
+		Assert.assertTrue(dsl.contains("List<string?>? listField {  simple Java access;"));
+	}
+
+	@Test
+	public void duplicateAlias() {
+		assertCompilationReturned(Diagnostic.Kind.ERROR, 10, compileTestCase(DuplicatePropertyAlias.class));
+	}
+
+	@Test
+	public void checkMinifiedNames() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(MinifiedProperties.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("int width {  simple Java access;  serialization name 'w';  }"));
+		Assert.assertTrue(dsl.contains("int height {  simple Java access;  serialization name 'h';  }"));
+		Assert.assertTrue(dsl.contains("string? name {  simple Java access;  serialization name 'n0';  }"));
+		Assert.assertTrue(dsl.contains("int customNumber {  simple Java access;  serialization name 'n';  }"));
 	}
 }

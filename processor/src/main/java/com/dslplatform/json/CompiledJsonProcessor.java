@@ -121,10 +121,26 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
+	private static class CompileOptions {
+		public boolean useJodaTime;
+		public boolean useAndroid;
+		public boolean hasError;
+
+		public AnnotationCompiler.CompileOptions toOptions(String namespace) {
+			AnnotationCompiler.CompileOptions options = new AnnotationCompiler.CompileOptions();
+			options.namespace = namespace;
+			options.useAndroid = useAndroid;
+			options.useJodaTime = useJodaTime;
+			return options;
+		}
+	}
+
 	private static class StructInfo {
 		public final TypeElement element;
 		public final String name;
 		public final boolean isEnum;
+		public final Set<String> properties = new HashSet<String>();
+		public final Map<String, String> minifiedNames = new HashMap<String, String>();
 
 		public StructInfo(TypeElement element, String name, boolean isEnum) {
 			this.element = element;
@@ -141,27 +157,22 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		Set<? extends Element> jsonAnnotated = roundEnv.getElementsAnnotatedWith(jsonTypeElement);
 		if (!jsonAnnotated.isEmpty()) {
 			Map<String, StructInfo> structs = new HashMap<String, StructInfo>();
-			StringBuilder dsl = new StringBuilder();
-			dsl.append("module json {\n");
+			CompileOptions options = new CompileOptions();
 			for (Element el : jsonAnnotated) {
-				findStructs(structs, el, "CompiledJson requires public no argument constructor");
+				findStructs(structs, options, el, "CompiledJson requires public no argument constructor");
 			}
-			findRelatedReferences(structs);
-			AnnotationCompiler.CompileOptions options = new AnnotationCompiler.CompileOptions();
-			options.namespace = namespace;
-			buildDsl(structs, dsl, options);
-			dsl.append("}");
+			findRelatedReferences(structs, options);
+			String dsl = buildDsl(structs, options);
 
-			if (dsl.length() < 20) {
+			if (options.hasError) {
 				return false;
 			}
 
-			String fullDsl = dsl.toString();
-			processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, fullDsl);
+			processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, dsl);
 
 			String fileContent;
 			try {
-				fileContent = AnnotationCompiler.buildExternalJson(fullDsl, options);
+				fileContent = AnnotationCompiler.buildExternalJson(dsl, options.toOptions(namespace));
 			} catch (Exception e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "DSL compilation error\n" + e.getMessage());
 				return false;
@@ -173,7 +184,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				bw.close();
 				FileObject rfo = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", "META-INF/services/com.dslplatform.json.Configuration");
 				bw = new BufferedWriter(rfo.openWriter());
-				bw.write(options.namespace + ".json.ExternalSerialization");
+				bw.write(namespace + ".json.ExternalSerialization");
 				bw.close();
 			} catch (IOException e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving compiled json serialization files");
@@ -187,7 +198,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		public boolean hasSecond;
 	}
 
-	private void buildDsl(Map<String, StructInfo> structs, StringBuilder dsl, AnnotationCompiler.CompileOptions options) {
+	private String buildDsl(Map<String, StructInfo> structs, CompileOptions options) {
+		StringBuilder dsl = new StringBuilder();
+		dsl.append("module json {\n");
 		TypeCheck[] checks = new TypeCheck[CheckTypes.size()];
 		for (int i = 0; i < checks.length; i++) {
 			checks[i] = new TypeCheck();
@@ -220,10 +233,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				}
 				Map<String, VariableElement> fields = getPublicFields(info.element);
 				for (Map.Entry<String, VariableElement> p : fields.entrySet()) {
-					if (methods.containsKey(p.getKey())) {
-						continue;
-					}
-					if (hasIgnoredAnnotation(p.getValue())) {
+					if (methods.containsKey(p.getKey()) || hasIgnoredAnnotation(p.getValue())) {
 						continue;
 					}
 					String dslType = getPropertyType(p.getValue(), p.getValue().asType(), structs);
@@ -235,11 +245,13 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			dsl.append(info.element.getQualifiedName());
 			dsl.append("';\n  }\n");
 		}
+		dsl.append("}");
+		return dsl.toString();
 	}
 
 	private <T extends Element> void processProperty(
 			StringBuilder dsl,
-			AnnotationCompiler.CompileOptions options,
+			CompileOptions options,
 			TypeCheck[] checks,
 			StructInfo info,
 			Map.Entry<String, T> property,
@@ -253,6 +265,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				boolean hasFirst = tc.hasFirst || javaType.startsWith(it.first);
 				boolean hasSecond = tc.hasSecond || javaType.startsWith(it.second);
 				if (hasFirst && hasSecond && !tc.hasFirst && !tc.hasSecond) {
+					options.hasError = true;
 					processingEnv.getMessager().printMessage(
 							Diagnostic.Kind.ERROR,
 							"Both Joda Time and Java Time detected as property types. Only one supported at once.",
@@ -271,21 +284,35 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			dsl.append(" ");
 			dsl.append(property.getKey());
 			String alias = findNameAlias(property);
+			if (info.minifiedNames.containsKey(property.getKey())) {
+				alias = info.minifiedNames.get(property.getKey());
+			}
+			String name = alias != null ? alias : property.getKey();
+			if (!info.properties.add(name)) {
+				options.hasError = true;
+				processingEnv.getMessager().printMessage(
+						Diagnostic.Kind.ERROR,
+						"Duplicate alias detected on " + (fieldAccess ? "field: " : "bean property: ") + property.getKey(),
+						property.getValue(),
+						getAnnotation(info.element, jsonDeclaredType));
+				return;
+			}
 			if (fieldAccess || alias != null) {
-				dsl.append(" {\n");
+				dsl.append(" {");
 				if (fieldAccess) {
-					dsl.append("      simple Java access;\n");
+					dsl.append("  simple Java access;");
 				}
 				if (alias != null) {
-					dsl.append("      serialization name '");
+					dsl.append("  serialization name '");
 					dsl.append(alias);
-					dsl.append("';\n");
+					dsl.append("';");
 				}
-				dsl.append("    }\n");
+				dsl.append("  }\n");
 			} else {
 				dsl.append(";\n");
 			}
 		} else {
+			options.hasError = true;
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					"Specified type not supported. If you wish to ignore this property,\n"
@@ -296,7 +323,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
-	private void findRelatedReferences(Map<String, StructInfo> structs) {
+	private void findRelatedReferences(Map<String, StructInfo> structs, CompileOptions options) {
 		int total;
 		do {
 			total = structs.size();
@@ -308,7 +335,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					if (propertyType != null) {
 						continue;
 					}
-					checkRelatedProperty(structs, p.getValue().getReturnType(), "bean property");
+					checkRelatedProperty(structs, options, p.getValue().getReturnType(), "bean property");
 				}
 				Map<String, VariableElement> fields = getPublicFields(info.element);
 				for (Map.Entry<String, VariableElement> f : fields.entrySet()) {
@@ -319,24 +346,24 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					if (propertyType != null) {
 						continue;
 					}
-					checkRelatedProperty(structs, f.getValue().asType(), "field");
+					checkRelatedProperty(structs, options, f.getValue().asType(), "field");
 				}
 			}
 		} while (total != structs.size());
 	}
 
-	private void checkRelatedProperty(Map<String, StructInfo> structs, TypeMirror returnType, String access) {
+	private void checkRelatedProperty(Map<String, StructInfo> structs, CompileOptions options, TypeMirror returnType, String access) {
 		String typeName = returnType.toString();
 		TypeElement el = processingEnv.getElementUtils().getTypeElement(typeName);
 		if (el != null) {
-			findStructs(structs, el, el + " is referenced as " + access + " from POJO with CompiledJson annotation.");
+			findStructs(structs, options, el, el + " is referenced as " + access + " from POJO with CompiledJson annotation.");
 			return;
 		}
 		if (returnType instanceof ArrayType) {
 			ArrayType at = (ArrayType) returnType;
 			el = processingEnv.getElementUtils().getTypeElement(at.getComponentType().toString());
 			if (el != null) {
-				findStructs(structs, el, el + " is referenced as array " + access + " from POJO with CompiledJson annotation.");
+				findStructs(structs, options, el, el + " is referenced as array " + access + " from POJO with CompiledJson annotation.");
 				return;
 			}
 		}
@@ -347,7 +374,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			String elementType = typeName.substring(kv.getKey().length(), typeName.length() - 1);
 			el = processingEnv.getElementUtils().getTypeElement(elementType);
 			if (el != null) {
-				findStructs(structs, el, el + " is referenced as collection " + access + " from POJO with CompiledJson annotation.");
+				findStructs(structs, options, el, el + " is referenced as collection " + access + " from POJO with CompiledJson annotation.");
 				break;
 			}
 		}
@@ -357,6 +384,20 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (JsonIgnore.contains(ann.getAnnotationType().toString())) {
 				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isMinified(Element struct) {
+		for (AnnotationMirror ann : struct.getAnnotationMirrors()) {
+			if ("com.dslplatform.json.CompiledJson".equals(ann.getAnnotationType().toString())) {
+				for (ExecutableElement ee : ann.getElementValues().keySet()) {
+					if ("minified()".equals(ee.toString())) {
+						AnnotationValue minified = ann.getElementValues().get(ee);
+						return (Boolean) minified.getValue();
+					}
+				}
 			}
 		}
 		return false;
@@ -376,12 +417,13 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return null;
 	}
 
-	private void findStructs(Map<String, StructInfo> structs, Element el, String errorMessge) {
+	private void findStructs(Map<String, StructInfo> structs, CompileOptions options, Element el, String errorMessge) {
 		if (!(el instanceof TypeElement)) {
 			return;
 		}
 		TypeElement element = (TypeElement) el;
 		if (!hasEmptyCtor(element)) {
+			options.hasError = true;
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
@@ -389,6 +431,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					element,
 					entityAnnotation);
 		} else if (!element.getModifiers().contains(Modifier.PUBLIC)) {
+			options.hasError = true;
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
@@ -396,6 +439,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					element,
 					entityAnnotation);
 		} else if (element.getNestingKind().isNested() && !element.getModifiers().contains(Modifier.STATIC)) {
+			options.hasError = true;
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
@@ -405,8 +449,77 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			//TODO: other checks
 		} else {
 			String name = "struct" + structs.size();
-			structs.put(element.asType().toString(), new StructInfo(element, name, element.getKind() == ElementKind.ENUM));
+			StructInfo info = new StructInfo(element, name, element.getKind() == ElementKind.ENUM);
+			structs.put(element.asType().toString(), info);
+			if (isMinified(element)) {
+				prepareMinifiedNames(info);
+			}
 		}
+	}
+
+	private void prepareMinifiedNames(StructInfo info) {
+		Map<Character, Integer> counters = new HashMap<Character, Integer>();
+		Map<String, ExecutableElement> methods = getBeanProperties(info.element);
+		Map<String, VariableElement> fields = getPublicFields(info.element);
+		Set<String> processedProperties = new HashSet<String>();
+		Set<String> names = new HashSet<String>();
+		for (Map.Entry<String, ExecutableElement> p : methods.entrySet()) {
+			if (hasIgnoredAnnotation(p.getValue())) {
+				continue;
+			}
+			String alias = findNameAlias(p);
+			if (alias != null) {
+				info.minifiedNames.put(p.getKey(), alias);
+				processedProperties.add(p.getKey());
+				names.add(alias);
+			}
+		}
+		for (Map.Entry<String, VariableElement> p : fields.entrySet()) {
+			if (methods.containsKey(p.getKey()) || hasIgnoredAnnotation(p.getValue())) {
+				continue;
+			}
+			String alias = findNameAlias(p);
+			if (alias != null) {
+				info.minifiedNames.put(p.getKey(), alias);
+				processedProperties.add(p.getKey());
+				names.add(alias);
+			}
+		}
+		for (Map.Entry<String, ExecutableElement> p : methods.entrySet()) {
+			if (processedProperties.contains(p.getKey()) || hasIgnoredAnnotation(p.getValue())) {
+				continue;
+			}
+			String shortName = buildShortName(p.getKey(), names, counters);
+			info.minifiedNames.put(p.getKey(), shortName);
+		}
+		for (Map.Entry<String, VariableElement> p : fields.entrySet()) {
+			if (processedProperties.contains(p.getKey()) || methods.containsKey(p.getKey()) || hasIgnoredAnnotation(p.getValue())) {
+				continue;
+			}
+			String shortName = buildShortName(p.getKey(), names, counters);
+			info.minifiedNames.put(p.getKey(), shortName);
+		}
+	}
+
+	private static String buildShortName(String name, Set<String> names, Map<Character, Integer> counters) {
+		String shortName = name.substring(0, 1);
+		Character first = name.charAt(0);
+		Integer next = counters.get(first);
+		if (!names.contains(shortName)) {
+			names.add(shortName);
+			counters.put(first, 0);
+			return shortName;
+		}
+		if (next == null) {
+			next = 0;
+		}
+		do {
+			shortName = first.toString() + next;
+			next++;
+		} while (names.contains(shortName));
+		counters.put(first, next);
+		names.add(shortName);
+		return shortName;
 	}
 
 	private static boolean hasEmptyCtor(Element element) {
