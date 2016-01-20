@@ -535,6 +535,11 @@ public abstract class NumberConverter {
 	}
 
 	public static int deserializeInt(final JsonReader reader) throws IOException {
+		if (reader.last() == '"') {
+			final int position = reader.getCurrentIndex();
+			final char[] buf = reader.readSimpleQuote();
+			return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, position + 1).intValue();
+		}
 		final char[] buf = reader.readNumber();
 		final int position = reader.getCurrentIndex();
 		final int len = position - reader.getTokenStart();
@@ -647,6 +652,11 @@ public abstract class NumberConverter {
 	}
 
 	public static long deserializeLong(final JsonReader reader) throws IOException {
+		if (reader.last() == '"') {
+			final int position = reader.getCurrentIndex();
+			final char[] buf = reader.readSimpleQuote();
+			return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, position + 1).longValue();
+		}
 		final char[] buf = reader.readNumber();
 		final int position = reader.getCurrentIndex();
 		final int len = position - reader.getTokenStart();
@@ -711,6 +721,11 @@ public abstract class NumberConverter {
 	}
 
 	public static BigDecimal deserializeDecimal(final JsonReader reader) throws IOException {
+		if (reader.last() == '"') {
+			final int position = reader.getCurrentIndex();
+			final char[] buf = reader.readSimpleQuote();
+			return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, position + 1);
+		}
 		final char[] buf = reader.readNumber();
 		final int position = reader.getCurrentIndex();
 		final int len = position - reader.getTokenStart();

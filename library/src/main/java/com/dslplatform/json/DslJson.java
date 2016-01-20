@@ -1205,11 +1205,10 @@ public class DslJson<TContext> {
 		final JsonWriter jw = new JsonWriter();
 		final Class<?> manifest = value.getClass();
 		if (!serialize(jw, manifest, value)) {
-			if (fallback != null) {
-				fallback.serialize(value, stream);
-			} else {
+			if (fallback == null) {
 				throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
 			}
+			fallback.serialize(value, stream);
 		} else {
 			jw.toStream(stream);
 		}
@@ -1222,12 +1221,12 @@ public class DslJson<TContext> {
 		}
 		final Class<?> manifest = value.getClass();
 		if (!serialize(writer, manifest, value)) {
-			if (fallback != null) {
-				ByteArrayOutputStream stream = new ByteArrayOutputStream();
-				fallback.serialize(value, stream);
-				writer.writeAscii(stream.toByteArray());
+			if (fallback == null) {
+				throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
 			}
-			throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
+			ByteArrayOutputStream stream = new ByteArrayOutputStream();
+			fallback.serialize(value, stream);
+			writer.writeAscii(stream.toByteArray());
 		}
 	}
 }
