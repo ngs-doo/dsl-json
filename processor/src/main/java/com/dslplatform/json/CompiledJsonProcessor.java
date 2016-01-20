@@ -58,7 +58,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		SupportedTypes.put("org.joda.time.DateTime", "timestamp?");
 		SupportedTypes.put("byte[]", "binary");
 		SupportedTypes.put("java.util.UUID", "uuid?");
-		SupportedTypes.put("java.util.Map<java.lang.String,java.lang.String>", "map?");
+		SupportedTypes.put("java.util.Map<java.lang.String,java.lang.String>", "properties?");
+		SupportedTypes.put("java.util.Map<java.lang.String,java.lang.Object>", "map?");
 		SupportedTypes.put("java.net.InetAddress", "ip?");
 		SupportedTypes.put("java.net.URI", "url?");
 		SupportedTypes.put("java.awt.Color", "color?");
