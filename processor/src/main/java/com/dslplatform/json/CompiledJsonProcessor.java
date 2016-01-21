@@ -10,8 +10,8 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.*;
-import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
@@ -25,6 +25,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static final Set<String> NonNullable;
 	private static final Set<String> PropertyAlias;
 	private static final List<IncompatibleTypes> CheckTypes;
+
+	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
 
 	private static class IncompatibleTypes {
 		public final String first;
@@ -108,7 +110,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 	private TypeElement jsonTypeElement;
 	private DeclaredType jsonDeclaredType;
-	private String namespace = "dsl_" + UUID.randomUUID().toString().replace("-", "");
+	private String namespace;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -119,6 +121,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		String ns = options.get("dsljson.namespace");
 		if (ns != null && ns.length() > 0) {
 			namespace = ns;
+		} else {
+			namespace = "dsl_json";
 		}
 	}
 
@@ -179,14 +183,13 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				return false;
 			}
 			try {
-				JavaFileObject jfo = processingEnv.getFiler().createSourceFile("ExternalSerialization");
-				BufferedWriter bw = new BufferedWriter(jfo.openWriter());
-				bw.write(fileContent);
-				bw.close();
-				FileObject rfo = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", "META-INF/services/com.dslplatform.json.Configuration");
-				bw = new BufferedWriter(rfo.openWriter());
-				bw.write(namespace + ".json.ExternalSerialization");
-				bw.close();
+				String className = namespace + ".json.ExternalSerialization";
+				Writer writer = processingEnv.getFiler().createSourceFile(className).openWriter();
+				writer.write(fileContent);
+				writer.close();
+				writer = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG).openWriter();
+				writer.write(className);
+				writer.close();
 			} catch (IOException e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving compiled json serialization files");
 			}

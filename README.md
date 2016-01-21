@@ -18,6 +18,7 @@ Java JSON library designed for performance. Built for invasive software composit
  * zero-copy operations - converters avoid producing garbage
  * minimal size - runtime dependency weights around 100KB
  * no runtime overhead - both schema and annotation based POJOs are prepared at compile time
+ * no unsafe code - library doesn't rely on Java UNSAFE/internal methods
 
 ## Schema based serialization
 
@@ -39,12 +40,9 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>0.3</version>
+      <version>0.4</version>
       <scope>provided</scope>
     </dependency>
-
-and
-
     <plugin>
       <groupId>org.apache.maven.plugins</groupId>
       <artifactId>maven-compiler-plugin</artifactId>
@@ -56,40 +54,52 @@ and
       </configuration>
     </plugin>
 
+	
+For use in Android, Gradle can be configured with:
+
+    apply plugin: 'android-apt'
+    apt {
+      processor 'com.dslplatform.json.CompiledJsonProcessor'
+    }
+    dependencies {
+      compile compile 'com.dslplatform:dsl-json:0.9.5'
+      apt 'com.dslplatform:dsl-json-processor:0.4'
+    }
+
 ### Java/DSL property mapping
 
-| Java type                                              | DSL type    |
-| ------------------------------------------------------ | ----------- |
-| int                                                    |  int        |
-| long                                                   |  long       |
-| float                                                  |  float      |
-| double                                                 |  double     |
-| boolean                                                |  bool       |
-| java.lang.String                                       |  string?    |
-| java.lang.Integer                                      |  int?       |
-| java.lang.Long                                         |  long?      |
-| java.lang.Float                                        |  float?     |
-| java.lang.Double                                       |  double?    |
-| java.lang.Boolean                                      |  bool?      |
-| java.math.BigDecimal                                   |  decimal?   |
-| java.time.LocalDate                                    |  date?      |
-| java.time.OffsetDateTime                               |  timestamp? |
-| org.joda.time.LocalDate                                |  date?      |
-| org.joda.time.DateTime                                 |  timestamp? |
-| byte[]                                                 |  binary     |
-| java.util.UUID                                         |  uuid?      |
-| java.util.Map&lt;java.lang.String,java.lang.String&gt; |  map?       |
-| java.net.InetAddress                                   |  ip?        |
-| java.awt.Color                                         |  color?     |
-| java.awt.geom.Rectangle2D                              |  rectangle? |
-| java.awt.geom.Point2D                                  |  location?  |
-| java.awt.geom.Point                                    |  point?     |
-| java.awt.image.BufferedImage                           |  image?     |
-| android.graphics.Rect                                  |  rectangle? |
-| android.graphics.PointF                                |  location?  |
-| android.graphics.Point                                 |  point?     |
-| android.graphics.Bitmap                                |  image?     |
-| org.w3c.dom.Element                                    |  xml?       |
+| Java type                                              | DSL type     |
+| ------------------------------------------------------ | ------------ |
+| int                                                    |  int         |
+| long                                                   |  long        |
+| float                                                  |  float       |
+| double                                                 |  double      |
+| boolean                                                |  bool        |
+| java.lang.String                                       |  string?     |
+| java.lang.Integer                                      |  int?        |
+| java.lang.Long                                         |  long?       |
+| java.lang.Float                                        |  float?      |
+| java.lang.Double                                       |  double?     |
+| java.lang.Boolean                                      |  bool?       |
+| java.math.BigDecimal                                   |  decimal?    |
+| java.time.LocalDate                                    |  date?       |
+| java.time.OffsetDateTime                               |  timestamp?  |
+| org.joda.time.LocalDate                                |  date?       |
+| org.joda.time.DateTime                                 |  timestamp?  |
+| byte[]                                                 |  binary      |
+| java.util.UUID                                         |  uuid?       |
+| java.util.Map&lt;java.lang.String,java.lang.String&gt; |  properties? |
+| java.net.InetAddress                                   |  ip?         |
+| java.awt.Color                                         |  color?      |
+| java.awt.geom.Rectangle2D                              |  rectangle?  |
+| java.awt.geom.Point2D                                  |  location?   |
+| java.awt.geom.Point                                    |  point?      |
+| java.awt.image.BufferedImage                           |  image?      |
+| android.graphics.Rect                                  |  rectangle?  |
+| android.graphics.PointF                                |  location?   |
+| android.graphics.Point                                 |  point?      |
+| android.graphics.Bitmap                                |  image?      |
+| org.w3c.dom.Element                                    |  xml?        |
 
 ### Java/DSL collection mapping
 
@@ -169,7 +179,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>0.9.3</version>
+      <version>0.9.5</version>
     </dependency>
 
 ## Best practices
@@ -180,8 +190,8 @@ Reusing reader/writer.
 For thread reuse use something like `ThreadLocal<JsonWriter>`.
 After serialization copy resulting buffer to stream with `.toStream(OutputStream)` method.
 
-`JsonReader` works best on `byte[]` input. It's best to construct `JsonReader` with reusable `byte[]` and specifying `int` length.
-For `InputStream` `JsonStreamReader` should be used. For small messages it's better to use byte based reader instead of stream based reader.
+`JsonReader` works on `byte[]` input. It's best to construct `JsonReader` with reusable `byte[]` and specifying `int` length.
+For `InputStream` `JsonStreamReader` can be used. For small messages it's better to use byte based reader instead of stream based reader.
 
 ## FAQ
 
