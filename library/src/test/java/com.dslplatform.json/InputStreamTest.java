@@ -137,6 +137,20 @@ public class InputStreamTest {
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
 		DslJson<Object> json = new DslJson<Object>();
 		String result = json.deserialize(String.class, is, new byte[512]);
-		Assert.assertEquals(largeString.substring(1 , largeString.length() - 1), result);
+		Assert.assertEquals(largeString.substring(1, largeString.length() - 1), result);
+	}
+
+	@Test
+	public void canReadBase64FromStream() throws IOException, InterruptedException {
+		byte[] buf = new byte[8196 * 8];
+		for (int i = 0; i < buf.length; i++) {
+			buf[i] = (byte)i;
+		}
+		JsonWriter writer = new JsonWriter();
+		writer.writeBinary(buf);
+		ByteArrayInputStream is = new ByteArrayInputStream(writer.toString().getBytes("UTF-8"));
+		DslJson<Object> json = new DslJson<Object>();
+		byte[] result = json.deserialize(byte[].class, is, new byte[512]);
+		Assert.assertArrayEquals(buf, result);
 	}
 }

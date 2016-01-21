@@ -1,5 +1,6 @@
 package com.dslplatform.json;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -144,5 +145,13 @@ public class JsonStreamReader<TContext> extends JsonReader<TContext> {
 			chars[soFar++] = (char) bc;
 		}
 		throw new IOException("JSON string was not closed with a double quote!");
+	}
+
+	public byte[] readBase64() throws IOException {
+		if (Base64.findEnd(buffer, currentIndex) == buffer.length) {
+			final String input = readString();
+			return DatatypeConverter.parseBase64Binary(input);
+		}
+		return super.readBase64();
 	}
 }
