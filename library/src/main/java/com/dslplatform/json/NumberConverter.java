@@ -8,7 +8,7 @@ import java.util.Collection;
 
 public abstract class NumberConverter {
 
-	private final static int[] Digits = new int[100];
+	private final static int[] DIGITS = new int[1000];
 	private final static double[] POW_10 = new double[18];
 	static final JsonReader.ReadObject<Double> DoubleReader = new JsonReader.ReadObject<Double>() {
 		@Override
@@ -78,8 +78,11 @@ public abstract class NumberConverter {
 	};
 
 	static {
-		for (int i = 0; i < 100; i++) {
-			Digits[i] = (i < 10 ? 1 << 16 : 0) + (((i / 10) + '0') << 8) + i % 10 + '0';
+		for (int i = 0; i < 1000; i++) {
+			DIGITS[i] = (i < 10 ? (2 << 24) : i < 100 ? (1 << 24) : 0)
+					+ (((i / 100) + '0') << 16)
+					+ ((((i / 10) % 10) + '0') << 8)
+					+ i % 10 + '0';
 		}
 		long tenPow = 1;
 		for (int i = 0; i < POW_10.length; i++) {
@@ -92,25 +95,23 @@ public abstract class NumberConverter {
 		if (value > 9999) {
 			throw new IllegalArgumentException("Only 4 digits numbers are supported. Provided: " + value);
 		}
-		final int q = value / 100;
-		final int v1 = Digits[q];
-		final int v2 = Digits[value - ((q << 6) + (q << 5) + (q << 2))];
-		buf[pos] = (byte) (v1 >> 8);
-		buf[pos + 1] = (byte) v1;
-		buf[pos + 2] = (byte) (v2 >> 8);
-		buf[pos + 3] = (byte) v2;
+		final int q = value / 1000;
+		final int v = DIGITS[value - q * 1000];
+		buf[pos] = (byte)(q + '0');
+		buf[pos + 1] = (byte) (v >> 16);
+		buf[pos + 2] = (byte) (v >> 8);
+		buf[pos + 3] = (byte) v;
 	}
 
 	static void write3(final int number, final byte[] buf, int pos) {
-		final int hi = number / 100;
-		buf[pos] = (byte)(hi + '0');
-		final int pair = Digits[number - hi * 100];
-		buf[pos + 1] = (byte) (pair >> 8);
-		buf[pos + 2] = (byte) pair;
+		final int v = DIGITS[number];
+		buf[pos] = (byte) (v >> 16);
+		buf[pos + 1] = (byte) (v >> 8);
+		buf[pos + 2] = (byte) v;
 	}
 
 	static void write2(final int value, final byte[] buf, final int pos) {
-		final int v = Digits[value];
+		final int v = DIGITS[value];
 		buf[pos] = (byte) (v >> 8);
 		buf[pos + 1] = (byte) v;
 	}
@@ -478,7 +479,7 @@ public abstract class NumberConverter {
 		} else {
 			final byte[] buf = sw.tmp;
 			int q, r;
-			int charPos = 10;
+			int charPos = 11;
 			int i;
 			if (value < 0) {
 				i = -value;
@@ -489,16 +490,17 @@ public abstract class NumberConverter {
 
 			int v = 0;
 			while (charPos > 1) {
-				q = i / 100;
-				r = i - ((q << 6) + (q << 5) + (q << 2));
+				q = i / 1000;
+				r = i - q * 1000;
 				i = q;
-				v = Digits[r];
+				v = DIGITS[r];
 				buf[charPos--] = (byte) v;
 				buf[charPos--] = (byte) (v >> 8);
+				buf[charPos--] = (byte) (v >> 16);
 				if (i == 0) break;
 			}
 
-			sw.writeBuffer(charPos + 1 + (v >> 16), 11);
+			sw.writeBuffer(charPos + 1 + (v >> 24), 12);
 		}
 	}
 
@@ -622,16 +624,17 @@ public abstract class NumberConverter {
 
 			int v = 0;
 			while (charPos > 1) {
-				q = i / 100;
-				r = (int) (i - ((q << 6) + (q << 5) + (q << 2)));
+				q = i / 1000;
+				r = (int) (i - q * 1000);
 				i = q;
-				v = Digits[r];
+				v = DIGITS[r];
 				buf[charPos--] = (byte) v;
 				buf[charPos--] = (byte) (v >> 8);
+				buf[charPos--] = (byte) (v >> 16);
 				if (i == 0) break;
 			}
 
-			sw.writeBuffer(charPos + 1 + (v >> 16), 21);
+			sw.writeBuffer(charPos + 1 + (v >> 24), 21);
 		}
 	}
 
