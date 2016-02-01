@@ -680,30 +680,25 @@ public abstract class NumberConverter {
 				} else {
 					long q;
 					int r;
-					long i;
-					final int wasMinus;
-					if (value < 0) {
-						i = -value;
-						wasMinus = 1;
-					} else {
-						i = value;
-						wasMinus = 0;
-					}
+					final long sign = value >> 63;
+					long i = (value + sign) ^ sign;
 
-					int v = 0;
+					int v;
 					do {
-						q = i / 100;
-						r = (int) (i - ((q << 6) + (q << 5) + (q << 2)));
+						q = i / 1000;
+						r = (int) (i - q * 1000);
 						i = q;
-						v = Digits[r];
+						v = DIGITS[r];
 						buf[charPos--] = (byte) v;
 						buf[charPos--] = (byte) (v >> 8);
-					} while (i != 0);
+						buf[charPos--] = (byte) (v >> 16);
+					}
+					while (i != 0);
 
-					r = charPos + (v >> 16);
+					r = charPos + (v >> 24);
 					buf[r] = MINUS;
 
-					charPos = r - wasMinus;
+					charPos = r + (int) sign;
 					buf[charPos] = JsonWriter.COMMA;
 				}
 			}
