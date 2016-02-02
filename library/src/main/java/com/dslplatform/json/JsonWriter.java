@@ -11,6 +11,14 @@ public final class JsonWriter extends Writer {
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
 
 	public final byte[] tmp = new byte[48];
+
+	final byte[] ensureCapacity(final int free) {
+		if (position + free >= result.length) {
+			result = Arrays.copyOf(result, result.length + (result.length << 1) + free);
+		}
+		return result;
+	}
+
 	private int position;
 	private byte[] result;
 
@@ -259,6 +267,12 @@ public final class JsonWriter extends Writer {
 			_result[p++] = tmp[i];
 		}
 		position = p;
+	}
+
+	final void copyFromOffset(int offset) {
+		final int size = result.length - offset;
+		System.arraycopy(result, offset, result, position, size);
+		position += size;
 	}
 
 	public final void writeBuffer(final int len) {

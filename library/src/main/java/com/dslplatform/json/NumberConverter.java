@@ -638,19 +638,73 @@ public abstract class NumberConverter {
 		}
 	}
 
-	public static void serialize(final long[] value, final JsonWriter sw) {
-		if (value == null) {
+	public static void serialize(final long[] values, final JsonWriter sw) {
+		if (values == null) {
 			sw.writeNull();
-		} else if (value.length == 0) {
+		} else if (values.length == 0) {
 			sw.writeAscii("[]");
 		} else {
-			sw.writeByte(JsonWriter.ARRAY_START);
-			serialize(value[0], sw);
-			for(int i = 1; i < value.length; i++) {
-				sw.writeByte(JsonWriter.COMMA);
-				serialize(value[i], sw);
+			final int maxNeeded = values.length * 21;
+			final byte[] buf = sw.ensureCapacity(maxNeeded);
+
+			int charPos = buf.length - 1;
+			buf[charPos] = ']';
+
+			for (int index = values.length - 1; index >= 0; index--) {
+				charPos--;
+
+				long value = values[index];
+				if (value == Long.MIN_VALUE) {
+					buf[charPos     ] = '8';
+					buf[charPos -  1] = '0';
+					buf[charPos -  2] = '8';
+					buf[charPos -  3] = '5';
+					buf[charPos -  4] = '7';
+					buf[charPos -  5] = '7';
+					buf[charPos -  6] = '4';
+					buf[charPos -  7] = '5';
+					buf[charPos -  8] = '8';
+					buf[charPos -  9] = '6';
+					buf[charPos - 10] = '3';
+					buf[charPos - 11] = '0';
+					buf[charPos - 12] = '2';
+					buf[charPos - 13] = '7';
+					buf[charPos - 14] = '3';
+					buf[charPos - 15] = '3';
+					buf[charPos - 16] = '2';
+					buf[charPos - 17] = '2';
+					buf[charPos - 18] = '9';
+					buf[charPos - 19] = '-';
+					buf[charPos - 20] = ',';
+					charPos -= 20;
+				} else {
+					long q;
+					int r;
+					final long sign = value >> 63;
+					long i = (value + sign) ^ sign;
+
+					int v;
+					do {
+						q = i / 1000;
+						r = (int) (i - q * 1000);
+						i = q;
+						v = DIGITS[r];
+						buf[charPos--] = (byte) v;
+						buf[charPos--] = (byte) (v >> 8);
+						buf[charPos--] = (byte) (v >> 16);
+					}
+					while (i != 0);
+
+					r = charPos + (v >> 24);
+					buf[r] = MINUS;
+
+					charPos = r + (int) sign;
+					buf[charPos] = JsonWriter.COMMA;
+				}
 			}
-			sw.writeByte(JsonWriter.ARRAY_END);
+
+			buf[charPos] = '[';
+			sw.copyFromOffset(charPos);
 		}
 	}
 
