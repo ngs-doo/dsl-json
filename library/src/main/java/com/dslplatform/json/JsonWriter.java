@@ -10,13 +10,15 @@ public final class JsonWriter extends Writer {
 
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-	public final byte[] tmp = new byte[48];
-
 	final byte[] ensureCapacity(final int free) {
 		if (position + free >= result.length) {
 			result = Arrays.copyOf(result, result.length + (result.length << 1) + free);
 		}
 		return result;
+	}
+
+	void advance(int size) {
+		position += size;
 	}
 
 	private int position;
@@ -257,36 +259,6 @@ public final class JsonWriter extends Writer {
 		position = cur + 1;
 	}
 
-	public final void writeBuffer(final int off, final int end) {
-		if (position + 64 >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2);
-		}
-		int p = position;
-		final byte[] _result = result;
-		for (int i = off; i < end; i++) {
-			_result[p++] = tmp[i];
-		}
-		position = p;
-	}
-
-	final void copyFromOffset(int offset) {
-		final int size = result.length - offset;
-		System.arraycopy(result, offset, result, position, size);
-		position += size;
-	}
-
-	public final void writeBuffer(final int len) {
-		if (position + 64 >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2);
-		}
-		final int p = position;
-		final byte[] _result = result;
-		for (int i = 0; i < len; i++) {
-			_result[p + i] = tmp[i];
-		}
-		position += len;
-	}
-
 	@SuppressWarnings("deprecation")
 	public final void writeAscii(final String str) {
 		final int len = str.length();
@@ -368,8 +340,7 @@ public final class JsonWriter extends Writer {
 	@Override
 	public void write(int c) throws IOException {
 		if (c < 127) {
-			tmp[0] = (byte) c;
-			writeBuffer(1);
+			writeByte((byte) c);
 		} else {
 			write(new char[]{(char) c}, 0, 1);
 		}

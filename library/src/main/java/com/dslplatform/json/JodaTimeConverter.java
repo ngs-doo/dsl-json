@@ -51,43 +51,46 @@ public abstract class JodaTimeConverter {
 	}
 
 	public static void serialize(final DateTime value, final JsonWriter sw) {
-		final byte[] buf = sw.tmp;
-		buf[0] = '"';
+		final byte[] buf = sw.ensureCapacity(32);
+		final int pos = sw.size();
+		buf[pos] = '"';
 		final int year = value.getYear();
-		NumberConverter.write4(year, buf, 1);
-		buf[5] = '-';
-		NumberConverter.write2(value.getMonthOfYear(), buf, 6);
-		buf[8] = '-';
-		NumberConverter.write2(value.getDayOfMonth(), buf, 9);
-		buf[11] = 'T';
-		NumberConverter.write2(value.getHourOfDay(), buf, 12);
-		buf[14] = ':';
-		NumberConverter.write2(value.getMinuteOfHour(), buf, 15);
-		buf[17] = ':';
-		NumberConverter.write2(value.getSecondOfMinute(), buf, 18);
+		NumberConverter.write4(year, buf, pos + 1);
+		buf[pos + 5] = '-';
+		NumberConverter.write2(value.getMonthOfYear(), buf, pos + 6);
+		buf[pos + 8] = '-';
+		NumberConverter.write2(value.getDayOfMonth(), buf, pos + 9);
+		buf[pos + 11] = 'T';
+		NumberConverter.write2(value.getHourOfDay(), buf, pos + 12);
+		buf[pos + 14] = ':';
+		NumberConverter.write2(value.getMinuteOfHour(), buf, pos + 15);
+		buf[pos + 17] = ':';
+		NumberConverter.write2(value.getSecondOfMinute(), buf, pos + 18);
 		final int milis = value.getMillisOfSecond();
+		final int offset;
 		if (milis != 0) {
-			buf[20] = '.';
+			buf[pos + 20] = '.';
 			final int hi = milis / 100;
 			final int lo = milis - hi * 100;
-			buf[21] = (byte) (hi + 48);
+			buf[pos + 21] = (byte) (hi + 48);
 			if (lo != 0) {
-				NumberConverter.write2(lo, buf, 22);
-				writeTimezone(buf, 24, value, sw);
+				NumberConverter.write2(lo, buf, pos + 22);
+				offset = 24 + writeTimezone(buf, pos + 24, value, sw);
 			} else {
-				writeTimezone(buf, 22, value, sw);
+				offset = 22 + writeTimezone(buf, pos + 22, value, sw);
 			}
 		} else {
-			writeTimezone(buf, 20, value, sw);
+			offset = 20 + writeTimezone(buf, pos + 20, value, sw);
 		}
+		sw.advance(offset);
 	}
 
-	private static void writeTimezone(final byte[] buf, final int position, final DateTime dt, final JsonWriter sw) {
+	private static int writeTimezone(final byte[] buf, final int position, final DateTime dt, final JsonWriter sw) {
 		final DateTimeZone zone = dt.getZone();
 		if (utcZone.equals(zone) || zone == null) {
 			buf[position] = 'Z';
 			buf[position + 1] = '"';
-			sw.writeBuffer(position + 2);
+			return 2;
 		} else {
 			final long ms = dt.getMillis();
 			int off = zone.getOffset(ms);
@@ -103,7 +106,7 @@ public abstract class JodaTimeConverter {
 			buf[position + 3] = ':';
 			NumberConverter.write2(remainder / 60000, buf, position + 4);
 			buf[position + 6] = '"';
-			sw.writeBuffer(position + 7);
+			return 7;
 		}
 	}
 
@@ -166,16 +169,17 @@ public abstract class JodaTimeConverter {
 	}
 
 	public static void serialize(final LocalDate value, final JsonWriter sw) {
-		final byte[] buf = sw.tmp;
-		buf[0] = '"';
+		final byte[] buf = sw.ensureCapacity(12);
+		final int pos = sw.size();
+		buf[pos] = '"';
 		final int year = value.getYear();
-		NumberConverter.write4(year, buf, 1);
-		buf[5] = '-';
-		NumberConverter.write2(value.getMonthOfYear(), buf, 6);
-		buf[8] = '-';
-		NumberConverter.write2(value.getDayOfMonth(), buf, 9);
-		buf[11] = '"';
-		sw.writeBuffer(12);
+		NumberConverter.write4(year, buf, pos + 1);
+		buf[pos + 5] = '-';
+		NumberConverter.write2(value.getMonthOfYear(), buf, pos + 6);
+		buf[pos + 8] = '-';
+		NumberConverter.write2(value.getDayOfMonth(), buf, pos + 9);
+		buf[pos + 11] = '"';
+		sw.advance(12);
 	}
 
 	public static LocalDate deserializeLocalDate(final JsonReader reader) throws IOException {

@@ -97,7 +97,7 @@ public abstract class NumberConverter {
 		}
 		final int q = value / 1000;
 		final int v = DIGITS[value - q * 1000];
-		buf[pos] = (byte)(q + '0');
+		buf[pos] = (byte) (q + '0');
 		buf[pos + 1] = (byte) (v >> 16);
 		buf[pos + 2] = (byte) (v >> 8);
 		buf[pos + 3] = (byte) v;
@@ -155,7 +155,7 @@ public abstract class NumberConverter {
 			sw.writeAscii("\"NaN\"");
 		} else if (Double.isInfinite(value)) {
 			final long bits = Double.doubleToLongBits(value);
-			if((bits & -9223372036854775808L) != 0L) {
+			if ((bits & -9223372036854775808L) != 0L) {
 				sw.writeAscii("\"-Infinity\"");
 			} else {
 				sw.writeAscii("\"Infinity\"");
@@ -171,7 +171,7 @@ public abstract class NumberConverter {
 		} else {
 			sw.writeByte(JsonWriter.ARRAY_START);
 			serialize(value[0], sw);
-			for(int i = 1; i < value.length; i++) {
+			for (int i = 1; i < value.length; i++) {
 				sw.writeByte(JsonWriter.COMMA);
 				serialize(value[i], sw);
 			}
@@ -182,6 +182,7 @@ public abstract class NumberConverter {
 	private static class NumberInfo {
 		public final char[] buffer;
 		public final int length;
+
 		public NumberInfo(final char[] buffer, final int length) {
 			this.buffer = buffer;
 			this.length = length;
@@ -345,7 +346,7 @@ public abstract class NumberConverter {
 		} else {
 			sw.writeByte(JsonWriter.ARRAY_START);
 			serialize(value[0], sw);
-			for(int i = 1; i < value.length; i++) {
+			for (int i = 1; i < value.length; i++) {
 				sw.writeByte(JsonWriter.COMMA);
 				serialize(value[i], sw);
 			}
@@ -472,51 +473,77 @@ public abstract class NumberConverter {
 	}
 
 	private static final byte MINUS = '-';
+	private static final byte[] MIN_INT = "-2147483648".getBytes();
 
 	public static void serialize(final int value, final JsonWriter sw) {
-		if (value == Integer.MIN_VALUE) {
-			sw.writeAscii("-2147483648");
-		} else {
-			final byte[] buf = sw.tmp;
-			int q, r;
-			int charPos = 11;
-			int i;
-			if (value < 0) {
-				i = -value;
-				sw.writeByte(MINUS);
-			} else {
-				i = value;
-			}
-
-			int v = 0;
-			while (charPos > 1) {
-				q = i / 1000;
-				r = i - q * 1000;
-				i = q;
-				v = DIGITS[r];
-				buf[charPos--] = (byte) v;
-				buf[charPos--] = (byte) (v >> 8);
-				buf[charPos--] = (byte) (v >> 16);
-				if (i == 0) break;
-			}
-
-			sw.writeBuffer(charPos + 1 + (v >> 24), 12);
-		}
+		final byte[] buf = sw.ensureCapacity(11);
+		final int position = sw.size();
+		int current = serialize(buf, position, value);
+		sw.advance(current - position);
 	}
 
-	public static void serialize(final int[] value, final JsonWriter sw) {
-		if (value == null) {
+	private static int serialize(final byte[] buf, int pos, final int value) {
+		if (value == Integer.MIN_VALUE) {
+			for (int i = 0; i < MIN_INT.length; i++) {
+				buf[pos + i] = MIN_INT[i];
+			}
+			return pos + MIN_INT.length;
+		}
+		int i;
+		if (value < 0) {
+			i = -value;
+			buf[pos++] = MINUS;
+		} else {
+			i = value;
+		}
+		final int q1 = i / 1000;
+		final int r1 = i - q1 * 1000;
+		if (q1 == 0) {
+			pos += writeFirstBuf(buf, DIGITS[r1], pos);
+			return pos;
+		}
+		final int q2 = q1 / 1000;
+		final int r2 = q1 - q2 * 1000;
+		if (q2 == 0) {
+			final int v1 = DIGITS[r1];
+			final int v2 = DIGITS[r2];
+			int off = writeFirstBuf(buf, v2, pos);
+			writeBuf(buf, v1, pos + off);
+			return pos + 3 + off;
+		}
+		final long q3 = q2 / 1000;
+		final int r3 = (int) (q2 - q3 * 1000);
+		final int v1 = DIGITS[r1];
+		final int v2 = DIGITS[r2];
+		final int v3 = DIGITS[r3];
+		if (q3 == 0) {
+			pos += writeFirstBuf(buf, v3, pos);
+		} else {
+			buf[pos++] = (byte) (q3 + '0');
+			writeBuf(buf, v3, pos);
+			pos += 3;
+		}
+		writeBuf(buf, v2, pos);
+		writeBuf(buf, v1, pos + 3);
+		return pos + 6;
+	}
+
+	public static void serialize(final int[] values, final JsonWriter sw) {
+		if (values == null) {
 			sw.writeNull();
-		} else if (value.length == 0) {
+		} else if (values.length == 0) {
 			sw.writeAscii("[]");
 		} else {
-			sw.writeByte(JsonWriter.ARRAY_START);
-			serialize(value[0], sw);
-			for(int i = 1; i < value.length; i++) {
-				sw.writeByte(JsonWriter.COMMA);
-				serialize(value[i], sw);
+			final byte[] buf = sw.ensureCapacity(values.length * 21 + 2);
+			int position = sw.size();
+			buf[position++] = '[';
+			position = serialize(buf, position, values[0]);
+			for (int i = 1; i < values.length; i++) {
+				buf[position++] = ',';
+				position = serialize(buf, position, values[i]);
 			}
-			sw.writeByte(JsonWriter.ARRAY_END);
+			buf[position++] = ']';
+			sw.advance(position - sw.size());
 		}
 	}
 
@@ -528,7 +555,7 @@ public abstract class NumberConverter {
 		} else {
 			sw.writeByte(JsonWriter.ARRAY_START);
 			serialize(value[0], sw);
-			for(int i = 1; i < value.length; i++) {
+			for (int i = 1; i < value.length; i++) {
 				sw.writeByte(JsonWriter.COMMA);
 				serialize(value[i], sw);
 			}
@@ -606,36 +633,119 @@ public abstract class NumberConverter {
 		}
 	}
 
+	private final static int[] SHIFTS = {16, 8, 0};
+
+	private static int writeFirstBuf(final byte[] buf, final int v, int pos) {
+		final int start = v >> 24;
+		for (int x = start; x < 3; x++)
+			buf[pos++] = (byte) (v >> SHIFTS[x]);
+		return 3 - start;
+	}
+
+	private static void writeBuf(final byte[] buf, final int v, int pos) {
+		buf[pos] = (byte) (v >> 16);
+		buf[pos + 1] = (byte) (v >> 8);
+		buf[pos + 2] = (byte) v;
+	}
+
+	private static final byte[] MIN_LONG = "-9223372036854775808".getBytes();
+
 	public static void serialize(final long value, final JsonWriter sw) {
+		final byte[] buf = sw.ensureCapacity(21);
+		final int position = sw.size();
+		int current = serialize(buf, position, value);
+		sw.advance(current - position);
+	}
+
+	private static int serialize(final byte[] buf, int pos, final long value) {
 		if (value == Long.MIN_VALUE) {
-			sw.writeAscii("-9223372036854775808");
-		} else {
-			final byte[] buf = sw.tmp;
-			long q;
-			int r;
-			int charPos = 20;
-			long i;
-			if (value < 0) {
-				i = -value;
-				sw.writeByte(MINUS);
-			} else {
-				i = value;
+			for (int i = 0; i < MIN_LONG.length; i++) {
+				buf[pos + i] = MIN_LONG[i];
 			}
-
-			int v = 0;
-			while (charPos > 1) {
-				q = i / 1000;
-				r = (int) (i - q * 1000);
-				i = q;
-				v = DIGITS[r];
-				buf[charPos--] = (byte) v;
-				buf[charPos--] = (byte) (v >> 8);
-				buf[charPos--] = (byte) (v >> 16);
-				if (i == 0) break;
-			}
-
-			sw.writeBuffer(charPos + 1 + (v >> 24), 21);
+			return pos + MIN_LONG.length;
 		}
+		long i;
+		if (value < 0) {
+			i = -value;
+			buf[pos++] = MINUS;
+		} else {
+			i = value;
+		}
+		final long q1 = i / 1000;
+		final int r1 = (int) (i - q1 * 1000);
+		if (q1 == 0) {
+			pos += writeFirstBuf(buf, DIGITS[r1], pos);
+			return pos;
+		}
+		final long q2 = q1 / 1000;
+		final int r2 = (int) (q1 - q2 * 1000);
+		if (q2 == 0) {
+			final int v1 = DIGITS[r1];
+			final int v2 = DIGITS[r2];
+			int off = writeFirstBuf(buf, v2, pos);
+			writeBuf(buf, v1, pos + off);
+			return pos + 3 + off;
+		}
+		final long q3 = q2 / 1000;
+		final int r3 = (int) (q2 - q3 * 1000);
+		if (q3 == 0) {
+			final int v1 = DIGITS[r1];
+			final int v2 = DIGITS[r2];
+			final int v3 = DIGITS[r3];
+			pos += writeFirstBuf(buf, v3, pos);
+			writeBuf(buf, v2, pos);
+			writeBuf(buf, v1, pos + 3);
+			return pos + 6;
+		}
+		final int q4 = (int) (q3 / 1000);
+		final int r4 = (int) (q3 - q4 * 1000);
+		if (q4 == 0) {
+			final int v1 = DIGITS[r1];
+			final int v2 = DIGITS[r2];
+			final int v3 = DIGITS[r3];
+			final int v4 = DIGITS[r4];
+			pos += writeFirstBuf(buf, v4, pos);
+			writeBuf(buf, v3, pos);
+			writeBuf(buf, v2, pos + 3);
+			writeBuf(buf, v1, pos + 6);
+			return pos + 9;
+		}
+		final int q5 = q4 / 1000;
+		final int r5 = q4 - q5 * 1000;
+		if (q5 == 0) {
+			final int v1 = DIGITS[r1];
+			final int v2 = DIGITS[r2];
+			final int v3 = DIGITS[r3];
+			final int v4 = DIGITS[r4];
+			final int v5 = DIGITS[r5];
+			pos += writeFirstBuf(buf, v5, pos);
+			writeBuf(buf, v4, pos);
+			writeBuf(buf, v3, pos + 3);
+			writeBuf(buf, v2, pos + 6);
+			writeBuf(buf, v1, pos + 9);
+			return pos + 12;
+		}
+		final int q6 = q5 / 1000;
+		final int r6 = q5 - q6 * 1000;
+		final int v1 = DIGITS[r1];
+		final int v2 = DIGITS[r2];
+		final int v3 = DIGITS[r3];
+		final int v4 = DIGITS[r4];
+		final int v5 = DIGITS[r5];
+		final int v6 = DIGITS[r6];
+		if (q6 == 0) {
+			pos += writeFirstBuf(buf, v6, pos);
+		} else {
+			buf[pos++] = (byte) (q6 + '0');
+			writeBuf(buf, v6, pos);
+			pos += 3;
+		}
+		writeBuf(buf, v5, pos);
+		writeBuf(buf, v4, pos + 3);
+		writeBuf(buf, v3, pos + 6);
+		writeBuf(buf, v2, pos + 9);
+		writeBuf(buf, v1, pos + 12);
+		return pos + 15;
 	}
 
 	public static void serialize(final long[] values, final JsonWriter sw) {
@@ -644,67 +754,16 @@ public abstract class NumberConverter {
 		} else if (values.length == 0) {
 			sw.writeAscii("[]");
 		} else {
-			final int maxNeeded = values.length * 21;
-			final byte[] buf = sw.ensureCapacity(maxNeeded);
-
-			int charPos = buf.length - 1;
-			buf[charPos] = ']';
-
-			for (int index = values.length - 1; index >= 0; index--) {
-				charPos--;
-
-				long value = values[index];
-				if (value == Long.MIN_VALUE) {
-					buf[charPos     ] = '8';
-					buf[charPos -  1] = '0';
-					buf[charPos -  2] = '8';
-					buf[charPos -  3] = '5';
-					buf[charPos -  4] = '7';
-					buf[charPos -  5] = '7';
-					buf[charPos -  6] = '4';
-					buf[charPos -  7] = '5';
-					buf[charPos -  8] = '8';
-					buf[charPos -  9] = '6';
-					buf[charPos - 10] = '3';
-					buf[charPos - 11] = '0';
-					buf[charPos - 12] = '2';
-					buf[charPos - 13] = '7';
-					buf[charPos - 14] = '3';
-					buf[charPos - 15] = '3';
-					buf[charPos - 16] = '2';
-					buf[charPos - 17] = '2';
-					buf[charPos - 18] = '9';
-					buf[charPos - 19] = '-';
-					buf[charPos - 20] = ',';
-					charPos -= 20;
-				} else {
-					long q;
-					int r;
-					final long sign = value >> 63;
-					long i = (value + sign) ^ sign;
-
-					int v;
-					do {
-						q = i / 1000;
-						r = (int) (i - q * 1000);
-						i = q;
-						v = DIGITS[r];
-						buf[charPos--] = (byte) v;
-						buf[charPos--] = (byte) (v >> 8);
-						buf[charPos--] = (byte) (v >> 16);
-					}
-					while (i != 0);
-
-					r = charPos + (v >> 24);
-					buf[r] = MINUS;
-
-					charPos = r + (int) sign;
-					buf[charPos] = JsonWriter.COMMA;
-				}
+			final byte[] buf = sw.ensureCapacity(values.length * 21 + 2);
+			int position = sw.size();
+			buf[position++] = '[';
+			position = serialize(buf, position, values[0]);
+			for (int i = 1; i < values.length; i++) {
+				buf[position++] = ',';
+				position = serialize(buf, position, values[i]);
 			}
-
-			buf[charPos] = '[';
-			sw.copyFromOffset(charPos);
+			buf[position++] = ']';
+			sw.advance(position - sw.size());
 		}
 	}
 

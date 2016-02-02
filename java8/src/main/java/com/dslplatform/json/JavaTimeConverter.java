@@ -37,45 +37,46 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static void serialize(final OffsetDateTime value, final JsonWriter sw) {
-		final byte[] buf = sw.tmp;
-		buf[0] = '"';
+		final byte[] buf = sw.ensureCapacity(32);
+		final int pos = sw.size();
+		buf[pos] = '"';
 		final int year = value.getYear();
-		NumberConverter.write4(year, buf, 1);
-		buf[5] = '-';
-		NumberConverter.write2(value.getMonthValue(), buf, 6);
-		buf[8] = '-';
-		NumberConverter.write2(value.getDayOfMonth(), buf, 9);
-		buf[11] = 'T';
-		NumberConverter.write2(value.getHour(), buf, 12);
-		buf[14] = ':';
-		NumberConverter.write2(value.getMinute(), buf, 15);
-		buf[17] = ':';
-		NumberConverter.write2(value.getSecond(), buf, 18);
+		NumberConverter.write4(year, buf, pos + 1);
+		buf[pos + 5] = '-';
+		NumberConverter.write2(value.getMonthValue(), buf, pos + 6);
+		buf[pos + 8] = '-';
+		NumberConverter.write2(value.getDayOfMonth(), buf, pos + 9);
+		buf[pos + 11] = 'T';
+		NumberConverter.write2(value.getHour(), buf, pos + 12);
+		buf[pos + 14] = ':';
+		NumberConverter.write2(value.getMinute(), buf, pos + 15);
+		buf[pos + 17] = ':';
+		NumberConverter.write2(value.getSecond(), buf, pos + 18);
 		final int nano = value.getNano() / 100;
 		if (nano != 0) {
-			buf[20] = '.';
+			buf[pos + 20] = '.';
 			final int div = nano / 100;
 			final int div2 = div / 100;
 			final int rem = nano - div * 100;
 			int end;
 			if (rem != 0) {
-				NumberConverter.write3(div2, buf, 21);
-				NumberConverter.write2(div - div2 * 100, buf, 24);
-				NumberConverter.write2(rem, buf, 26);
+				NumberConverter.write3(div2, buf, pos + 21);
+				NumberConverter.write2(div - div2 * 100, buf, pos + 24);
+				NumberConverter.write2(rem, buf, pos + 26);
 				end = 28;
 			} else {
 				final int rem2 = div - div2 * 100;
 				if (rem2 != 0) {
-					NumberConverter.write3(div2, buf, 21);
-					NumberConverter.write2(div - div2 * 100, buf, 24);
+					NumberConverter.write3(div2, buf, pos + 21);
+					NumberConverter.write2(div - div2 * 100, buf, pos + 24);
 					end = 26;
 				} else {
 					final int div3 = div2 / 100;
 					if (div2 != div3 * 100) {
-						NumberConverter.write3(div2, buf, 21);
+						NumberConverter.write3(div2, buf, pos + 21);
 						end = 24;
 					} else {
-						buf[21] = (byte) (div3 + '0');
+						buf[pos + 21] = (byte) (div3 + '0');
 						end = 22;
 					}
 				}
@@ -87,60 +88,61 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static void serialize(final LocalDateTime value, final JsonWriter sw) {
-		final byte[] buf = sw.tmp;
-		buf[0] = '"';
+		final byte[] buf = sw.ensureCapacity(32);
+		final int pos = sw.size();
+		buf[pos] = '"';
 		final int year = value.getYear();
-		NumberConverter.write4(year, buf, 1);
-		buf[5] = '-';
-		NumberConverter.write2(value.getMonthValue(), buf, 6);
-		buf[8] = '-';
-		NumberConverter.write2(value.getDayOfMonth(), buf, 9);
-		buf[11] = 'T';
-		NumberConverter.write2(value.getHour(), buf, 12);
-		buf[14] = ':';
-		NumberConverter.write2(value.getMinute(), buf, 15);
-		buf[17] = ':';
-		NumberConverter.write2(value.getSecond(), buf, 18);
+		NumberConverter.write4(year, buf, pos + 1);
+		buf[pos + 5] = '-';
+		NumberConverter.write2(value.getMonthValue(), buf, pos + 6);
+		buf[pos + 8] = '-';
+		NumberConverter.write2(value.getDayOfMonth(), buf, pos + 9);
+		buf[pos + 11] = 'T';
+		NumberConverter.write2(value.getHour(), buf, pos + 12);
+		buf[pos + 14] = ':';
+		NumberConverter.write2(value.getMinute(), buf, pos + 15);
+		buf[pos + 17] = ':';
+		NumberConverter.write2(value.getSecond(), buf, pos + 18);
 		final int nano = value.getNano() / 100;
 		if (nano != 0) {
-			buf[20] = '.';
+			buf[pos + 20] = '.';
 			final int div = nano / 100;
 			final int div2 = div / 100;
 			final int rem = nano - div * 100;
 			int end;
 			if (rem != 0) {
-				NumberConverter.write3(div2, buf, 21);
-				NumberConverter.write2(div - div2 * 100, buf, 24);
-				NumberConverter.write2(rem, buf, 26);
+				NumberConverter.write3(div2, buf, pos + 21);
+				NumberConverter.write2(div - div2 * 100, buf, pos + 24);
+				NumberConverter.write2(rem, buf, pos + 26);
 				end = 28;
 			} else {
 				final int rem2 = div - div2 * 100;
 				if (rem2 != 0) {
-					NumberConverter.write3(div2, buf, 21);
-					NumberConverter.write2(div - div2 * 100, buf, 24);
+					NumberConverter.write3(div2, buf, pos + 21);
+					NumberConverter.write2(div - div2 * 100, buf, pos + 24);
 					end = 26;
 				} else {
 					final int div3 = div2 / 100;
 					if (div2 != div3 * 100) {
-						NumberConverter.write3(div2, buf, 21);
+						NumberConverter.write3(div2, buf, pos + 21);
 						end = 24;
 					} else {
-						buf[21] = (byte) (div3 + '0');
+						buf[pos + 21] = (byte) (div3 + '0');
 						end = 22;
 					}
 				}
 			}
-			buf[end] = '"';
-			sw.writeBuffer(end + 1);
+			buf[pos + end] = '"';
+			sw.advance(end + 1);
 		} else {
-			buf[20] = '"';
-			sw.writeBuffer(21);
+			buf[pos + 20] = '"';
+			sw.advance(21);
 		}
 	}
 
 	private static void writeTimezone(final byte[] buf, final int position, final OffsetDateTime dt, final JsonWriter sw) {
 		final ZoneOffset zone = dt.getOffset();
-		sw.writeBuffer(position);
+		sw.advance(position);
 		sw.writeAscii(zone.getId());
 		sw.writeByte((byte) '"');
 	}
@@ -319,16 +321,17 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static void serialize(final LocalDate value, final JsonWriter sw) {
-		final byte[] buf = sw.tmp;
-		buf[0] = '"';
+		final byte[] buf = sw.ensureCapacity(12);
+		final int pos = sw.size();
+		buf[pos] = '"';
 		final int year = value.getYear();
-		NumberConverter.write4(year, buf, 1);
-		buf[5] = '-';
-		NumberConverter.write2(value.getMonthValue(), buf, 6);
-		buf[8] = '-';
-		NumberConverter.write2(value.getDayOfMonth(), buf, 9);
-		buf[11] = '"';
-		sw.writeBuffer(12);
+		NumberConverter.write4(year, buf, pos + 1);
+		buf[pos + 5] = '-';
+		NumberConverter.write2(value.getMonthValue(), buf, pos + 6);
+		buf[pos + 8] = '-';
+		NumberConverter.write2(value.getDayOfMonth(), buf, pos + 9);
+		buf[pos + 11] = '"';
+		sw.advance(12);
 	}
 
 	public static LocalDate deserializeLocalDate(final JsonReader reader) throws IOException {
