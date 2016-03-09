@@ -1,9 +1,9 @@
 package com.dslplatform.json;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 public class JsonReader<TContext> {
@@ -28,17 +28,20 @@ public class JsonReader<TContext> {
 	private long currentPosition = 0;
 	private byte last = ' ';
 
-	protected int length;
+	private int length;
 	private final char[] tmp;
 
 	public final TContext context;
 	protected final byte[] buffer;
+
+	protected char[] chars;
 
 	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context) {
 		this.tmp = tmp;
 		this.buffer = buffer;
 		this.length = length;
 		this.context = context;
+		this.chars = tmp;
 	}
 
 	public JsonReader(final byte[] buffer, final TContext context) {
@@ -68,7 +71,7 @@ public class JsonReader<TContext> {
 		}
 	}
 
-	public int length() {
+	public final int length() {
 		return length;
 	}
 
@@ -213,33 +216,20 @@ public class JsonReader<TContext> {
 		}
 		currentIndex = ci;
 
-		return readLargeString(startIndex);
-	}
-
-	protected String readLargeString(final int startIndex) throws IOException {
-
-		if (currentIndex >= length) {
-			throw new IOException("JSON string was not closed with a double quote at: " + currentIndex);
-		}
-
 		int soFar = --currentIndex - startIndex;
-		char[] chars = new char[soFar + 256];
-
-		for (int i = soFar - 1; i >= 0; i--) {
+		chars = Arrays.copyOf(chars, soFar + 256);
+		for (int i = 0; i < soFar; i++) {
 			chars[i] = (char) buffer[startIndex + i];
 		}
 
-		while (currentIndex < length) {
-			int bc = buffer[currentIndex++];
+		while (!isEndOfStream()) {
+			int bc = read();
 			if (bc == '"') {
 				return new String(chars, 0, soFar);
 			}
 
-			// if we're running out of space, double the buffer capacity
 			if (soFar >= chars.length - 3) {
-				final char[] newChars = new char[chars.length << 1];
-				System.arraycopy(chars, 0, newChars, 0, soFar);
-				chars = newChars;
+				chars = Arrays.copyOf(chars, chars.length * 2);
 			}
 
 			if (bc == '\\') {
@@ -310,7 +300,7 @@ public class JsonReader<TContext> {
 		throw new IOException("JSON string was not closed with a double quote!");
 	}
 
-	protected static int hexToInt(final byte value) throws IOException {
+	private static int hexToInt(final byte value) throws IOException {
 		if (value >= '0' && value <= '9') return value - 0x30;
 		if (value >= 'A' && value <= 'F') return value - 0x37;
 		if (value >= 'a' && value <= 'f') return value - 0x57;
