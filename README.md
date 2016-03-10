@@ -5,7 +5,7 @@ DSL Platform compatible JSON library for Java and Android.
 
 Java JSON library designed for performance. Built for invasive software composition with DSL Platform compiler.
 
-![JVM serializers benchmark results](https://cloud.githubusercontent.com/assets/551485/11828210/07a3ecfe-a393-11e5-8d5e-45bdb68f014b.png)
+![JVM serializers benchmark results](https://cloud.githubusercontent.com/assets/1181401/13662269/8c49a02c-e699-11e5-9e46-f98f07fd68ef.png)
 
 ## Distinguishing features
 
