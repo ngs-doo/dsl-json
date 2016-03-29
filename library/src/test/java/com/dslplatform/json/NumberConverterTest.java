@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,125 @@ import java.util.Map;
 import java.util.Random;
 
 public class NumberConverterTest {
+
+	@Test
+	public void rangeCheckInt() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40);
+		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+
+		final int from = -10000000;
+		final int to = 10000000;
+
+		for (long value = from; value <= to; value += 33) {
+			sw.reset();
+
+			// serialization
+			NumberConverter.serialize(value, sw);
+
+			sr.reset(sw.size());
+			sr.read();
+
+			final long valueParsed = NumberConverter.deserializeLong(sr);
+			Assert.assertEquals(value, valueParsed);
+		}
+	}
+
+	@Test
+	public void rangeCheckLong() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40);
+		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+
+		final int from = -10000000;
+		final int to = 10000000;
+
+		for (int value = from; value <= to; value += 33) {
+			sw.reset();
+
+			// serialization
+			NumberConverter.serialize(value, sw);
+
+			sr.reset(sw.size());
+			sr.read();
+
+			final long valueParsed = NumberConverter.deserializeInt(sr);
+			Assert.assertEquals(value, valueParsed);
+		}
+	}
+
+	@Test
+	public void rangeCheckDecimal() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40);
+		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+
+		final int from = -10000000;
+		final int to = 10000000;
+
+		for (int value = from; value <= to; value += 33) {
+			sw.reset();
+
+			// serialization
+			BigDecimal bd = BigDecimal.valueOf(value / 100);
+			NumberConverter.serialize(bd, sw);
+
+			sr.reset(sw.size());
+			sr.read();
+
+			final BigDecimal valueParsed = NumberConverter.deserializeDecimal(sr);
+			Assert.assertEquals(bd, valueParsed);
+		}
+	}
+
+	@Test
+	public void rangeCheckDouble() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40);
+		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+
+		final int from = -10000000;
+		final int to = 10000000;
+
+		for (int value = from; value <= to; value += 33) {
+			sw.reset();
+
+			// serialization
+			double d = value / 100.0;
+			NumberConverter.serialize(d, sw);
+
+			sr.reset(sw.size());
+			sr.read();
+
+			final double valueParsed = NumberConverter.deserializeDouble(sr);
+			Assert.assertEquals(d, valueParsed, 0);
+		}
+	}
+
+	@Test
+	public void rangeCheckFloat() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40);
+		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+
+		final int from = -10000000;
+		final int to = 10000000;
+
+		for (int value = from; value <= to; value += 33) {
+			sw.reset();
+
+			// serialization
+			float f = value / 100.0f;
+			NumberConverter.serialize(f, sw);
+
+			sr.reset(sw.size());
+			sr.read();
+
+			final float valueParsed = NumberConverter.deserializeFloat(sr);
+			Assert.assertEquals(f, valueParsed, 0);
+		}
+	}
+
 	@Test
 	public void testSerialization() {
 		// setup
@@ -44,7 +164,7 @@ public class NumberConverterTest {
 			collection.add(-i);                                   // -1000000
 			for (int r = 0; r < 100; r++) {
 				collection.add(Math.abs(rnd.nextLong()) % i);     //   234992
-				collection.add(- (Math.abs(rnd.nextLong()) % i)); //  -712919
+				collection.add(-(Math.abs(rnd.nextLong()) % i)); //  -712919
 			}
 		}
 		collection.add(Long.MIN_VALUE);
@@ -56,7 +176,8 @@ public class NumberConverterTest {
 			primitives[i] = boxes[i];
 		}
 
-		final String expected; {
+		final String expected;
+		{
 			final StringBuilder tmp = new StringBuilder("[");
 			for (long value : primitives) {
 				tmp.append(value).append(',');
@@ -84,11 +205,11 @@ public class NumberConverterTest {
 		String sciForm = "1";
 
 		final int maxLen = Long.toString(Long.MAX_VALUE).length();
-		for (int i = 0; i < maxLen; i ++) {
+		for (int i = 0; i < maxLen; i++) {
 			// space to prevent end of stream gotcha
 			final byte[] body = (sciForm + " ").getBytes(Charset.forName("ISO-8859-1"));
 
-			final JsonReader jr = new JsonReader(body, null);
+			final JsonReader<Object> jr = new JsonReader<Object>(body, null);
 			jr.getNextToken();
 			final long parsed = NumberConverter.deserializeLong(jr);
 

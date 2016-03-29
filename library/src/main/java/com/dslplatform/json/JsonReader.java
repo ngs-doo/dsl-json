@@ -30,6 +30,7 @@ public class JsonReader<TContext> {
 
 	private int length;
 	private final char[] tmp;
+	final int tmpLength;
 
 	public final TContext context;
 	protected final byte[] buffer;
@@ -38,6 +39,7 @@ public class JsonReader<TContext> {
 
 	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context) {
 		this.tmp = tmp;
+		this.tmpLength = tmp.length;
 		this.buffer = buffer;
 		this.length = length;
 		this.context = context;
@@ -125,6 +127,31 @@ public class JsonReader<TContext> {
 		currentIndex += i - 1;
 		last = bb;
 		return tmp;
+	}
+
+	public final int scanNumber() {
+		tokenStart = currentIndex - 1;
+		int i = 1;
+		int ci = currentIndex;
+		byte bb = last;
+		while (i < tmp.length && ci < length) {
+			bb = buffer[ci++];
+			if (bb == ',' || bb == '}' || bb == ']') break;
+			i++;
+		}
+		currentIndex += i - 1;
+		last = bb;
+		return tokenStart;
+	}
+
+	final char[] prepareBuffer(final int start) {
+		final char[] _tmp = tmp;
+		final byte[] _buf = buffer;
+		final int max = Math.min(_tmp.length, _buf.length - start);
+		for (int i = 0; i < max; i++) {
+			_tmp[i] = (char) _buf[start + i];
+		}
+		return _tmp;
 	}
 
 	public final String readSimpleString() throws IOException {
@@ -382,6 +409,10 @@ public class JsonReader<TContext> {
 
 	public final long positionInStream() {
 		return currentPosition + currentIndex;
+	}
+
+	public final long positionInStream(final int offset) {
+		return currentPosition + currentIndex - offset;
 	}
 
 	public final int fillName() throws IOException {
