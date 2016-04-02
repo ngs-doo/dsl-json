@@ -15,7 +15,6 @@ import java.io.Writer;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
-@SupportedSourceVersion(SourceVersion.RELEASE_6)
 @SupportedOptions({"dsljson.namespace"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
@@ -29,11 +28,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
 
 	private static class IncompatibleTypes {
-		public final String first;
-		public final String second;
-		public final String description;
+		final String first;
+		final String second;
+		final String description;
 
-		public IncompatibleTypes(String first, String second, String description) {
+		IncompatibleTypes(String first, String second, String description) {
 			this.first = first;
 			this.second = second;
 			this.description = description;
@@ -127,11 +126,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	}
 
 	private static class CompileOptions {
-		public boolean useJodaTime;
-		public boolean useAndroid;
-		public boolean hasError;
+		boolean useJodaTime;
+		boolean useAndroid;
+		boolean hasError;
 
-		public AnnotationCompiler.CompileOptions toOptions(String namespace) {
+		AnnotationCompiler.CompileOptions toOptions(String namespace) {
 			AnnotationCompiler.CompileOptions options = new AnnotationCompiler.CompileOptions();
 			options.namespace = namespace;
 			options.useAndroid = useAndroid;
@@ -141,13 +140,13 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	}
 
 	private static class StructInfo {
-		public final TypeElement element;
-		public final String name;
-		public final boolean isEnum;
-		public final Set<String> properties = new HashSet<String>();
-		public final Map<String, String> minifiedNames = new HashMap<String, String>();
+		final TypeElement element;
+		final String name;
+		final boolean isEnum;
+		final Set<String> properties = new HashSet<String>();
+		final Map<String, String> minifiedNames = new HashMap<String, String>();
 
-		public StructInfo(TypeElement element, String name, boolean isEnum) {
+		StructInfo(TypeElement element, String name, boolean isEnum) {
 			this.element = element;
 			this.name = name;
 			this.isEnum = isEnum;
@@ -197,9 +196,16 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
+	@Override
+	public SourceVersion getSupportedSourceVersion() {
+		SourceVersion latest = SourceVersion.latest();
+		if ("RELEASE_8".equals(latest.name()) || "RELEASE_7".equals(latest.name())) return latest;
+		return SourceVersion.RELEASE_6;
+	}
+
 	private static class TypeCheck {
-		public boolean hasFirst;
-		public boolean hasSecond;
+		boolean hasFirst;
+		boolean hasSecond;
 	}
 
 	private String buildDsl(Map<String, StructInfo> structs, CompileOptions options) {
