@@ -163,7 +163,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			Map<String, StructInfo> structs = new HashMap<String, StructInfo>();
 			CompileOptions options = new CompileOptions();
 			for (Element el : jsonAnnotated) {
-				findStructs(structs, options, el, "CompiledJson requires public no argument constructor");
+				findStructs(structs, options, el, "CompiledJson requires accessible public no argument constructor");
 			}
 			findRelatedReferences(structs, options);
 			String dsl = buildDsl(structs, options);
@@ -454,6 +454,17 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", therefore class can't be nested member. Only static nested classes class are supported",
+					element,
+					entityAnnotation);
+		} else if (element.getQualifiedName().contentEquals(element.getSimpleName())
+				|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
+				&& element.getEnclosingElement() instanceof TypeElement
+				&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName())) {
+			options.hasError = true;
+			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					errorMessge + ", but class '" + element.getQualifiedName() + "' is defined without package name and cannot be accessed",
 					element,
 					entityAnnotation);
 			//TODO: other checks

@@ -147,7 +147,12 @@ public abstract class AbstractAnnotationProcessorTest {
 		File javaRoot = new File(new File(new File(projectRoot, "src"), "test"), "java");
 
 		for (String filename : filenames) {
-			classpathFiles.add(new File(javaRoot, filename));
+			int ind = filename.indexOf('$');
+			if (ind < 0) {
+				classpathFiles.add(new File(javaRoot, filename));
+			} else {
+				classpathFiles.add(new File(javaRoot, filename.substring(0, ind) + ".java"));
+			}
 		}
 
 		return classpathFiles;
