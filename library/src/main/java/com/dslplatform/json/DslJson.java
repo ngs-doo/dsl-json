@@ -121,8 +121,21 @@ public class DslJson<TContext> {
 		registerReader(Number.class, NumberConverter.NumberReader);
 
 		if (serializers != null) {
+			boolean found = false;
 			for (Configuration serializer : serializers) {
 				serializer.configure(this);
+				found = true;
+			}
+			if (!found) {
+				//TODO: workaround common issue with failed services registration. try to load common external name if exists
+				try {
+					ClassLoader loader = Thread.currentThread().getContextClassLoader();
+					Class<?> external = loader.loadClass("dsl_json.json.ExternalSerialization");
+					Configuration instance = (Configuration) external.newInstance();
+					instance.configure(this);
+				} catch (NoClassDefFoundError ignore) {
+				} catch (Exception ignore) {
+				}
 			}
 		}
 	}
@@ -645,6 +658,10 @@ public class DslJson<TContext> {
 		findAllSignatures(manifest, signatures);
 		for (final Class<?> sig : signatures) {
 			if (jsonReaders.containsKey(sig)) {
+				if (sig.equals(manifest)) {
+					throw new IOException("Reader for provided type: " + manifest + " is disabled and fallback serialization is not registered.\n" +
+							"Try initializing system with custom fallback or don't register null for " + manifest);
+				}
 				throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 						"Found reader for: " + sig + " so try deserializing into that instead?\n" +
 						"Alternatively, try initializing system with custom fallback or register specified type using registerReader into " + getClass());
