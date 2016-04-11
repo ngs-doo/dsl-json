@@ -200,3 +200,6 @@ For `InputStream` `JsonStreamReader` can be used. For small messages it's better
  
  ***Q***: Why is DSL JSON faster than others?  
  ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching.
+ 
+ ***Q***: DslJson is failing with unable to resolve reader/writer. What does it mean?  
+ ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. In certain scenarios this file is not copied to APK or to the appropriate jar/war file. You can work around it by creating such file in your project under `src/main/resources/META-INF/services` as workaround for the used package/build tool.
