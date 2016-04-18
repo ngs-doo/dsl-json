@@ -1,56 +1,57 @@
-package com.dslplatform.compiler.client;
+package com.dslplatform.json;
 
+import com.dslplatform.compiler.client.*;
 import com.dslplatform.compiler.client.parameters.*;
 
+import javax.annotation.processing.Messager;
+import javax.tools.Diagnostic;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-public abstract class AnnotationCompiler {
+abstract class AnnotationCompiler {
 
-	public static class CompileOptions {
-		public boolean useJodaTime;
-		public boolean useAndroid;
-		public String namespace;
+	static class CompileOptions {
+		boolean useJodaTime;
+		boolean useAndroid;
+		String namespace;
+		String compiler;
 	}
 
-	static class DslContext extends Context {
-		public final StringBuilder showLog = new StringBuilder();
-		public final StringBuilder errorLog = new StringBuilder();
-		public final StringBuilder traceLog = new StringBuilder();
+	private static class DslContext extends Context {
+
+		private Messager messager;
+
+		DslContext(Messager messager) {
+			this.messager = messager;
+		}
 
 		public void show(String... values) {
-			for (String v : values) {
-				showLog.append(v);
-			}
 		}
 
 		public void log(String value) {
-			traceLog.append(value);
 		}
 
 		public void log(char[] value, int len) {
-			traceLog.append(value, 0, len);
 		}
 
 		public void error(String value) {
-			errorLog.append(value);
+			messager.printMessage(Diagnostic.Kind.ERROR, value);
 		}
 
 		public void error(Exception ex) {
-			errorLog.append(ex.getMessage());
-			traceLog.append(ex.toString());
+			messager.printMessage(Diagnostic.Kind.ERROR, ex.getMessage());
 		}
 	}
 
-	public static String buildExternalJson(String dsl, CompileOptions options) throws IOException {
+	static String buildExternalJson(String dsl, CompileOptions options, Messager messager) throws IOException {
 		File temp = File.createTempFile("annotation-", ".dsl");
 		try {
 			FileOutputStream fos = new FileOutputStream(temp);
 			fos.write(dsl.getBytes());
 			fos.close();
-			DslContext ctx = new DslContext();
+			DslContext ctx = new DslContext(messager);
 			Targets.Option target = options.useAndroid
 					? Targets.Option.ANDORID_EXTERNAL_JSON
 					: Targets.Option.JAVA_EXTERNAL_JSON;
@@ -63,9 +64,10 @@ public abstract class AnnotationCompiler {
 				ctx.put(Settings.Option.JODA_TIME.toString(), null);
 			}
 			ctx.put(Namespace.INSTANCE, options.namespace);
+			ctx.put(DslCompiler.INSTANCE, options.compiler);
 			List<CompileParameter> parameters = Main.initializeParameters(ctx, ".");
 			if (!Main.processContext(ctx, parameters)) {
-				throw new IOException(ctx.errorLog.toString());
+				throw new IOException("Unable to setup DSL-JSON processing environment");
 			}
 			File projectPath = TempPath.getTempProjectPath(ctx);
 			File rootPackage = new File(new File(projectPath, target.name()), options.namespace);
@@ -76,7 +78,9 @@ public abstract class AnnotationCompiler {
 			}
 			return content.get();
 		} finally {
-			temp.delete();
+			if (!temp.delete()) {
+				messager.printMessage(Diagnostic.Kind.WARNING, "Unable to delete temporary file: " + temp.getAbsolutePath());
+			}
 		}
 	}
 }

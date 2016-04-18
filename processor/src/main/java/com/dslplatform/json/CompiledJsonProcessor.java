@@ -1,7 +1,5 @@
 package com.dslplatform.json;
 
-import com.dslplatform.compiler.client.AnnotationCompiler;
-
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.*;
@@ -15,7 +13,7 @@ import java.io.Writer;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
-@SupportedOptions({"dsljson.namespace"})
+@SupportedOptions({"dsljson.namespace", "dsljson.compiler"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
 	private static final Map<String, String> SupportedTypes;
@@ -110,6 +108,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private TypeElement jsonTypeElement;
 	private DeclaredType jsonDeclaredType;
 	private String namespace;
+	private String compiler;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -123,6 +122,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		} else {
 			namespace = "dsl_json";
 		}
+		compiler = options.get("dsljson.compiler");
 	}
 
 	private static class CompileOptions {
@@ -130,9 +130,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		boolean useAndroid;
 		boolean hasError;
 
-		AnnotationCompiler.CompileOptions toOptions(String namespace) {
+		AnnotationCompiler.CompileOptions toOptions(String namespace, String compiler) {
 			AnnotationCompiler.CompileOptions options = new AnnotationCompiler.CompileOptions();
 			options.namespace = namespace;
+			options.compiler = compiler;
 			options.useAndroid = useAndroid;
 			options.useJodaTime = useJodaTime;
 			return options;
@@ -176,7 +177,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 			String fileContent;
 			try {
-				fileContent = AnnotationCompiler.buildExternalJson(dsl, options.toOptions(namespace));
+				fileContent = AnnotationCompiler.buildExternalJson(dsl, options.toOptions(namespace, compiler), processingEnv.getMessager());
 			} catch (Exception e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "DSL compilation error\n" + e.getMessage());
 				return false;
