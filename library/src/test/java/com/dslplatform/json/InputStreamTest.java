@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -199,5 +200,35 @@ public class InputStreamTest {
 		} catch (IOException ex) {
 			Assert.assertTrue(ex.getMessage().contains("JSON string was not closed with a double quote"));
 		}
+	}
+
+	@Test
+	public void canRereadInputStream() throws IOException, InterruptedException {
+		byte[] buffer = new byte[100];
+		for (int i = 0; i < 100; i++) {
+			buffer[i] = (byte) (i + 1);
+		}
+		ByteArrayInputStream is = new ByteArrayInputStream(buffer);
+		JsonStreamReader<Object> json = new JsonStreamReader<Object>(is, new byte[64], null);
+		Assert.assertEquals(1, json.getNextToken());
+		Assert.assertEquals(2, json.getNextToken());
+		InputStream reread1 = json.streamFromStart();
+		Assert.assertEquals(1, reread1.read());
+		Assert.assertEquals(2, reread1.read());
+		byte[] tmp = new byte[2];
+		int total = reread1.read(tmp);
+		Assert.assertEquals(2, total);
+		Assert.assertEquals(3, tmp[0]);
+		Assert.assertEquals(4, tmp[1]);
+		total = reread1.read(new byte[58]);
+		Assert.assertEquals(58, total);
+		total = reread1.read(tmp);
+		Assert.assertEquals(2, total);
+		Assert.assertEquals(63, tmp[0]);
+		Assert.assertEquals(64, tmp[1]);
+		total = reread1.read(tmp);
+		Assert.assertEquals(2, total);
+		Assert.assertEquals(65, tmp[0]);
+		Assert.assertEquals(66, tmp[1]);
 	}
 }

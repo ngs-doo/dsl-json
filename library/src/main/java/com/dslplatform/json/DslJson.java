@@ -18,35 +18,35 @@ import java.util.concurrent.ConcurrentMap;
  * Main DSL-JSON class.
  * Easiest way to use the library is to create an DslJson&lt;Object&gt; instance and reuse it within application.
  * DslJson has optional constructor for specifying default readers/writers.
- *
+ * <p>
  * During initialization DslJson will use ServiceLoader API to load registered services.
  * This is done through `META-INF/services/com.dslplatform.json.CompiledJson` file.
- *
+ * <p>
  * DslJson can fallback to another serializer in case when it doesn't know how to handle specific type.
  * This can be specified by Fallback interface during initialization.
- *
+ * <p>
  * If you wish to use compile time databinding @CompiledJson annotation must be specified on the classes
  * and annotation processor must be configured to register those classes into services file.
- *
+ * <p>
  * Usage example:
- *
+ * <p>
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&lt;();
  *     dsl.serialize(instance, OutputStream);
  *     POJO pojo = dsl.deserialize(POJO.class, InputStream, new byte[1024]);
  * </pre>
- *
+ * <p>
  * For best performance use serialization API with JsonWriter which is reused.
  * For best deserialization performance prefer byte[] API instead of InputStream API.
  * If InputStream API is used, reuse the buffer instance
- *
+ * <p>
  * During deserialization TContext can be used to pass data into deserialized classes.
  * This is useful when deserializing domain objects which require state or service provider.
  * For example DSL Platform entities require service locator to be able to perform lazy load.
- *
+ * <p>
  * DslJson doesn't have a String or Reader API since it's optimized for processing bytes.
  * If you wish to process String, use String.getBytes("UTF-8") as argument for DslJson
- *
+ * <p>
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
  *     JsonWriter writer = new JsonWriter();
@@ -67,6 +67,8 @@ public class DslJson<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
 
 		Object deserialize(TContext context, Type manifest, byte[] body, int size) throws IOException;
+
+		Object deserialize(TContext context, Type manifest, InputStream stream) throws IOException;
 	}
 
 	static final JsonReader.ReadObject<Object> ObjectReader = new JsonReader.ReadObject<Object>() {
@@ -104,12 +106,12 @@ public class DslJson<TContext> {
 	/**
 	 * Fully configurable entry point.
 	 *
-	 * @param context context instance which can be provided to deserialized objects. Use null if not sure
+	 * @param context          context instance which can be provided to deserialized objects. Use null if not sure
 	 * @param androidSpecifics register Android specific classes such as Point, Rect and Bitmap
-	 * @param javaSpecifics register Java graphics specific classes such as java.awt.Point, Image, ...
-	 * @param jodaTime register converters for JodaTime classes (LocalDate and DateTime)
-	 * @param fallback in case of unsupported type, try serialization/deserialization through external API
-	 * @param serializers additional serializers/deserializers which will be immediately registered into readers/writers
+	 * @param javaSpecifics    register Java graphics specific classes such as java.awt.Point, Image, ...
+	 * @param jodaTime         register converters for JodaTime classes (LocalDate and DateTime)
+	 * @param fallback         in case of unsupported type, try serialization/deserialization through external API
+	 * @param serializers      additional serializers/deserializers which will be immediately registered into readers/writers
 	 */
 	public DslJson(
 			final TContext context,
@@ -246,16 +248,16 @@ public class DslJson<TContext> {
 	/**
 	 * Register custom reader for specific type (JSON -&gt; instance conversion).
 	 * Reader is used for conversion from input byte[] -&gt; target object instance
-	 *
+	 * <p>
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
-	 *
+	 * <p>
 	 * If null is registered for a reader this will disable deserialization of specified type
 	 *
 	 * @param manifest specified type
-	 * @param reader provide custom implementation for reading JSON into an object instance
-	 * @param <T> type
-	 * @param <S> type or subtype
+	 * @param reader   provide custom implementation for reading JSON into an object instance
+	 * @param <T>      type
+	 * @param <S>      type or subtype
 	 */
 	public <T, S extends T> void registerReader(final Class<T> manifest, final JsonReader.ReadObject<S> reader) {
 		jsonReaders.put(manifest, reader);
@@ -264,14 +266,14 @@ public class DslJson<TContext> {
 	/**
 	 * Register custom reader for specific type (JSON -&gt; instance conversion).
 	 * Reader is used for conversion from input byte[] -&gt; target object instance
-	 *
+	 * <p>
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
-	 *
+	 * <p>
 	 * If null is registered for a reader this will disable deserialization of specified type
 	 *
 	 * @param manifest specified type
-	 * @param reader provide custom implementation for reading JSON into an object instance
+	 * @param reader   provide custom implementation for reading JSON into an object instance
 	 */
 	public void registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
 		jsonReaders.put(manifest, reader);
@@ -282,15 +284,15 @@ public class DslJson<TContext> {
 	/**
 	 * Register custom writer for specific type (instance -&gt; JSON conversion).
 	 * Writer is used for conversion from object instance -&gt; output byte[]
-	 *
+	 * <p>
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
-	 *
+	 * <p>
 	 * If null is registered for a writer this will disable serialization of specified type
 	 *
 	 * @param manifest specified type
-	 * @param writer provide custom implementation for writing JSON from object instance
-	 * @param <T> type
+	 * @param writer   provide custom implementation for writing JSON from object instance
+	 * @param <T>      type
 	 */
 	public <T> void registerWriter(final Class<T> manifest, final JsonWriter.WriteObject<T> writer) {
 		writerMap.put(manifest, manifest);
@@ -300,14 +302,14 @@ public class DslJson<TContext> {
 	/**
 	 * Register custom writer for specific type (instance -&gt; JSON conversion).
 	 * Writer is used for conversion from object instance -&gt; output byte[]
-	 *
+	 * <p>
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
-	 *
+	 * <p>
 	 * If null is registered for a writer this will disable serialization of specified type
 	 *
 	 * @param manifest specified type
-	 * @param writer provide custom implementation for writing JSON from object instance
+	 * @param writer   provide custom implementation for writing JSON from object instance
 	 */
 	public void registerWriter(final Type manifest, final JsonWriter.WriteObject<?> writer) {
 		jsonWriters.put(manifest, writer);
@@ -619,14 +621,14 @@ public class DslJson<TContext> {
 	/**
 	 * Convenient deserialize API for working with bytes.
 	 * Deserialize provided byte input into target object.
-	 *
+	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
 	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
 	 *
-	 * @param manifest target type
-	 * @param body input JSON
-	 * @param size length
+	 * @param manifest  target type
+	 * @param body      input JSON
+	 * @param size      length
 	 * @param <TResult> target type
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
@@ -678,20 +680,20 @@ public class DslJson<TContext> {
 		if (fallback != null) {
 			return (TResult) fallback.deserialize(context, manifest, body, size);
 		}
-		throw createErrorMessage(manifest, true);
+		throw createErrorMessage(manifest);
 	}
 
 	/**
 	 * Deserialize API for working with bytes.
 	 * Deserialize provided byte input into target object.
-	 *
+	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
 	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
 	 *
 	 * @param manifest target type
-	 * @param body input JSON
-	 * @param size length
+	 * @param body     input JSON
+	 * @param size     length
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
 	 */
@@ -818,37 +820,35 @@ public class DslJson<TContext> {
 		return new Object[0];
 	}
 
-	private IOException createErrorMessage(final Class<?> manifest, final boolean canUseFallback) throws IOException {
+	private IOException createErrorMessage(final Class<?> manifest) throws IOException {
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(manifest, signatures);
-		final String withFallback = canUseFallback ? " and fallback serialization is not registered" : "";
-		final String tryFallback = canUseFallback ? "" : " (and use byte API instead of stream API)";
 		for (final Class<?> sig : signatures) {
 			if (jsonReaders.containsKey(sig)) {
 				if (sig.equals(manifest)) {
-					return new IOException("Reader for provided type: " + manifest + " is disabled" + withFallback + " (converter is registered as null).\n" +
-							"Try initializing system with custom fallback " + tryFallback + "or don't register null for " + manifest);
+					return new IOException("Reader for provided type: " + manifest + " is disabled and fallback serialization is not registered (converter is registered as null).\n" +
+							"Try initializing system with custom fallback or don't register null for " + manifest);
 				}
-				return new IOException("Unable to find reader for provided type: " + manifest + withFallback + ".\n" +
+				return new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 						"Found reader for: " + sig + " so try deserializing into that instead?\n" +
-						"Alternatively, try initializing system with custom fallback" + tryFallback + " or register specified type using registerReader into " + getClass());
+						"Alternatively, try initializing system with custom fallback or register specified type using registerReader into " + getClass());
 			}
 		}
-		return new IOException("Unable to find reader for provided type: " + manifest + withFallback + ".\n" +
-				"Try initializing DslJson with custom fallback in case of unsupported objects" + tryFallback + " or register specified type using registerReader into " + getClass());
+		return new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
 	/**
 	 * Convenient deserialize list API for working with bytes.
 	 * Deserialize provided byte input into target object.
-	 *
+	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
 	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
 	 *
-	 * @param manifest target type
-	 * @param body input JSON
-	 * @param size length
+	 * @param manifest  target type
+	 * @param body      input JSON
+	 * @param size      length
 	 * @param <TResult> target element type
 	 * @return deserialized list instance
 	 * @throws IOException error during deserialization
@@ -896,26 +896,26 @@ public class DslJson<TContext> {
 			}
 			return list;
 		}
-		throw createErrorMessage(manifest, true);
+		throw createErrorMessage(manifest);
 	}
 
 	/**
 	 * Convenient deserialize list API for working with streams.
 	 * Deserialize provided stream input into target object.
 	 * Use buffer for internal conversion from stream into byte[] for partial processing.
-	 *
+	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
 	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
-	 *
+	 * <p>
 	 * When working on InputStream DslJson will process JSON in chunks of byte[] inputs.
 	 * Provided buffer will be used as input for partial processing.
-	 *
+	 * <p>
 	 * For best performance buffer should be reused.
 	 *
-	 * @param manifest target type
-	 * @param stream input JSON
-	 * @param buffer buffer used for InputStream -&gt; byte[] conversion
+	 * @param manifest  target type
+	 * @param stream    input JSON
+	 * @param buffer    buffer used for InputStream -&gt; byte[] conversion
 	 * @param <TResult> target element type
 	 * @return deserialized list
 	 * @throws IOException error during deserialization
@@ -942,29 +942,41 @@ public class DslJson<TContext> {
 			}
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
-		if (simpleReader == null) {
-			throw createErrorMessage(manifest, false);
+		if (simpleReader != null) {
+			return json.deserializeNullableCollection(simpleReader);
 		}
-		return json.deserializeNullableCollection(simpleReader);
+		if (fallback != null) {
+			final Object array = Array.newInstance(manifest, 0);
+			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), json.streamFromStart());
+			if (result == null) {
+				return null;
+			}
+			final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+			for (TResult aResult : result) {
+				list.add(aResult);
+			}
+			return list;
+		}
+		throw createErrorMessage(manifest);
 	}
 
 	/**
 	 * Convenient deserialize API for working with streams.
 	 * Deserialize provided stream input into target object.
 	 * Use buffer for internal conversion from stream into byte[] for partial processing.
-	 *
+	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
 	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
-	 *
+	 * <p>
 	 * When working on InputStream DslJson will process JSON in chunks of byte[] inputs.
 	 * Provided buffer will be used as input for partial processing.
-	 *
+	 * <p>
 	 * For best performance buffer should be reused.
 	 *
-	 * @param manifest target type
-	 * @param stream input JSON
-	 * @param buffer buffer used for InputStream -&gt; byte[] conversion
+	 * @param manifest  target type
+	 * @param stream    input JSON
+	 * @param buffer    buffer used for InputStream -&gt; byte[] conversion
 	 * @param <TResult> target type
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
@@ -1012,26 +1024,29 @@ public class DslJson<TContext> {
 				return (TResult) convertResultToArray(elementManifest, list);
 			}
 		}
-		throw createErrorMessage(manifest, false);
+		if (fallback != null) {
+			return (TResult) fallback.deserialize(context, manifest, json.streamFromStart());
+		}
+		throw createErrorMessage(manifest);
 	}
 
 	/**
 	 * Deserialize API for working with streams.
 	 * Deserialize provided stream input into target object.
 	 * Use buffer for internal conversion from stream into byte[] for partial processing.
-	 *
+	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
 	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
-	 *
+	 * <p>
 	 * When working on InputStream DslJson will process JSON in chunks of byte[] inputs.
 	 * Provided buffer will be used as input for partial processing.
-	 *
+	 * <p>
 	 * For best performance buffer should be reused.
 	 *
 	 * @param manifest target type
-	 * @param stream input JSON
-	 * @param buffer buffer used for InputStream -&gt; byte[] conversion
+	 * @param stream   input JSON
+	 * @param buffer   buffer used for InputStream -&gt; byte[] conversion
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
 	 */
@@ -1046,7 +1061,10 @@ public class DslJson<TContext> {
 		}
 		final Object result = deserializeWith(manifest, json);
 		if (result != null) return result;
-		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not available (in stream processing).");
+		if (fallback != null) {
+			return fallback.deserialize(context, manifest, json.streamFromStart());
+		}
+		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not available.");
 	}
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {
@@ -1158,16 +1176,16 @@ public class DslJson<TContext> {
 	 * Generic serialize API.
 	 * Based on provided type manifest converter will be chosen.
 	 * If converter is not found method will return false.
-	 *
+	 * <p>
 	 * Resulting JSON will be written into provided writer argument.
 	 * In case of successful serialization true will be returned.
-	 *
+	 * <p>
 	 * For best performance writer argument should be reused.
 	 *
-	 * @param writer where to write resulting JSON
+	 * @param writer   where to write resulting JSON
 	 * @param manifest type manifest
-	 * @param value instance to serialize
-	 * @param <T> type
+	 * @param value    instance to serialize
+	 * @param <T>      type
 	 * @return successful serialization
 	 */
 	@SuppressWarnings("unchecked")
@@ -1279,7 +1297,7 @@ public class DslJson<TContext> {
 	 * This method will create a new instance of JsonWriter and serialize JSON into it.
 	 * At the end JsonWriter will be copied into resulting stream.
 	 *
-	 * @param value instance to serialize
+	 * @param value  instance to serialize
 	 * @param stream where to write resulting JSON
 	 * @throws IOException error when unable to serialize instance
 	 */
@@ -1303,14 +1321,14 @@ public class DslJson<TContext> {
 	/**
 	 * Main serialization API.
 	 * Convert object instance into JSON.
-	 *
+	 * <p>
 	 * JsonWriter contains a growable byte[] where JSON will be serialized.
 	 * After serialization JsonWriter can be copied into OutputStream or it's byte[] can be obtained
-	 *
+	 * <p>
 	 * For best performance reuse JsonWriter
 	 *
 	 * @param writer where to write resulting JSON
-	 * @param value object instance to serialize
+	 * @param value  object instance to serialize
 	 * @throws IOException error when unable to serialize instance
 	 */
 	public final void serialize(final JsonWriter writer, final Object value) throws IOException {
