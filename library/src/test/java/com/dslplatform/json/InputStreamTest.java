@@ -6,6 +6,7 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 public class InputStreamTest {
@@ -25,13 +26,8 @@ public class InputStreamTest {
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
 		DslJson<Object> json = new DslJson<Object>();
-		Iterator<Map> result = json.iterateOver(Map.class, is, new byte[512]);
-		int total = 0;
-		while (result.hasNext()) {
-			result.next();
-			total++;
-		}
-		Assert.assertEquals(1001, total);
+		List<Map> result = json.deserializeList(Map.class, is, new byte[512]);
+		Assert.assertEquals(1001, result.size());
 	}
 
 	static class Obj implements JsonObject {
@@ -87,13 +83,8 @@ public class InputStreamTest {
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
 		DslJson<Object> json = new DslJson<Object>();
-		Iterator<Obj> result = json.iterateOver(Obj.class, is, new byte[512]);
-		int total = 0;
-		while (result.hasNext()) {
-			result.next();
-			total++;
-		}
-		Assert.assertEquals(1001, total);
+		List<Obj> result = json.deserializeList(Obj.class, is, new byte[512]);
+		Assert.assertEquals(1001, result.size());
 	}
 
 	@Test
@@ -144,7 +135,7 @@ public class InputStreamTest {
 	public void canReadBase64FromStream() throws IOException, InterruptedException {
 		byte[] buf = new byte[8196 * 8];
 		for (int i = 0; i < buf.length; i++) {
-			buf[i] = (byte)i;
+			buf[i] = (byte) i;
 		}
 		JsonWriter writer = new JsonWriter();
 		writer.writeBinary(buf);
@@ -152,5 +143,61 @@ public class InputStreamTest {
 		DslJson<Object> json = new DslJson<Object>();
 		byte[] result = json.deserialize(byte[].class, is, new byte[512]);
 		Assert.assertArrayEquals(buf, result);
+	}
+
+	@Test
+	public void willDetectMissingEndOfString() throws IOException, InterruptedException {
+		String largeString = "\"abcd";
+		byte[] bytes = largeString.getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		try {
+			json.deserialize(String.class, is, new byte[512]);
+			Assert.fail("expecting quote error");
+		} catch (IOException ex) {
+			Assert.assertTrue(ex.getMessage().contains("JSON string was not closed with a double quote at: 5"));
+		}
+	}
+
+	@Test
+	public void willDetectMissingEndOfStringAfterBuffer() throws IOException, InterruptedException {
+		String largeString = "\"0123456789012345678901234567890123456789012345678901234567890123456789";
+		byte[] bytes = largeString.getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		try {
+			json.deserialize(String.class, is, new byte[70]);
+			Assert.fail("expecting quote error");
+		} catch (IOException ex) {
+			Assert.assertTrue(ex.getMessage().contains("JSON string was not closed with a double quote"));
+		}
+	}
+
+	@Test
+	public void willDetectMissingEndOfStringBufferSize() throws IOException, InterruptedException {
+		String largeString = "\"012345678901234567890123456789012345678901234567890123456789012345678";
+		byte[] bytes = largeString.getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		try {
+			json.deserialize(String.class, is, new byte[70]);
+			Assert.fail("expecting error");
+		} catch (IOException ex) {
+			Assert.assertTrue(ex.getMessage().contains("JSON string was not closed with a double quote"));
+		}
+	}
+
+	@Test
+	public void willDetectMissingEndOfStringBufferSizePlus() throws IOException, InterruptedException {
+		String largeString = "\"01234567890123456789012345678901234567890123456789012345678901234567890";
+		byte[] bytes = largeString.getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		try {
+			json.deserialize(String.class, is, new byte[70]);
+			Assert.fail("expecting quote error");
+		} catch (IOException ex) {
+			Assert.assertTrue(ex.getMessage().contains("JSON string was not closed with a double quote"));
+		}
 	}
 }

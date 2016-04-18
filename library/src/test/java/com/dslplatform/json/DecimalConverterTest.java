@@ -96,7 +96,7 @@ public class DecimalConverterTest {
 			final String plainForm = check.toPlainString();
 			final byte[] body = plainForm.getBytes(Charset.forName("ISO-8859-1"));
 
-			final JsonReader jr = new JsonReader(body, null);
+			final JsonReader jr = new JsonReader<Object>(body, null);
 			jr.getNextToken();
 			final BigDecimal parsed = NumberConverter.deserializeDecimal(jr);
 

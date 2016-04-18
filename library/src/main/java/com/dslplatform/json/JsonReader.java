@@ -166,10 +166,10 @@ public class JsonReader<TContext> {
 				tmp[i++] = (char) bb;
 			}
 		} catch (ArrayIndexOutOfBoundsException ignore) {
-			throw new IOException("JSON string was not closed with a double quote at: " + currentIndex);
+			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
 		}
 		if (ci > length) {
-			throw new IOException("JSON string was not closed with a double quote at: " + currentIndex);
+			throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
 		}
 		currentIndex = ci;
 		return new String(tmp, 0, i);
@@ -187,10 +187,10 @@ public class JsonReader<TContext> {
 				tmp[i] = (char) bb;
 			}
 		} catch (ArrayIndexOutOfBoundsException ignore) {
-			throw new IOException("JSON string was not closed with a double quote at: " + currentIndex);
+			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
 		}
 		if (ci > length) {
-			throw new IOException("JSON string was not closed with a double quote at: " + currentIndex);
+			throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
 		}
 		currentIndex = ci;
 		return tmp;
@@ -223,7 +223,7 @@ public class JsonReader<TContext> {
 			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
 		}
 		if (ci >= length) {
-			throw new IOException("JSON string was not closed with a double quote at: " + ci);
+			throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
 		}
 
 		// If the buffer contains an ASCII string (no high bit set) without any escape codes "\n", "\t", etc...,
@@ -557,7 +557,7 @@ public class JsonReader<TContext> {
 				last = 'l';
 				return true;
 			}
-			throw new IOException("Invalid null value found at: " + currentIndex);
+			throw new IOException("Invalid null value found at: " + positionInStream());
 		}
 		return false;
 	}
@@ -570,7 +570,7 @@ public class JsonReader<TContext> {
 				last = 'e';
 				return true;
 			}
-			throw new IOException("Invalid boolean value found at: " + currentIndex);
+			throw new IOException("Invalid boolean value found at: " + positionInStream());
 		}
 		return false;
 	}
@@ -584,7 +584,7 @@ public class JsonReader<TContext> {
 				last = 'e';
 				return true;
 			}
-			throw new IOException("Invalid boolean value found at: " + currentIndex);
+			throw new IOException("Invalid boolean value found at: " + positionInStream());
 		}
 		return false;
 	}

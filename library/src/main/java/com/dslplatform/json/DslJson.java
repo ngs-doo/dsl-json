@@ -2,10 +2,7 @@ package com.dslplatform.json;
 
 import org.w3c.dom.Element;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
@@ -25,7 +22,7 @@ public class DslJson<TContext> {
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
 
-		Object deserialize(TContext context, Type manifest, byte[] body, final int size) throws IOException;
+		Object deserialize(TContext context, Type manifest, byte[] body, int size) throws IOException;
 	}
 
 	static final JsonReader.ReadObject<Object> ObjectReader = new JsonReader.ReadObject<Object>() {
@@ -360,57 +357,6 @@ public class DslJson<TContext> {
 		return res;
 	}
 
-	@SuppressWarnings("unchecked")
-	public <TResult> TResult deserialize(
-			final Class<TResult> manifest,
-			final byte[] body,
-			final int size) throws IOException {
-		if (isNull(size, body)) {
-			return null;
-		}
-		if (size == 2 && body[0] == '{' && body[1] == '}' && !manifest.isInterface()) {
-			try {
-				return manifest.newInstance();
-			} catch (InstantiationException ignore) {
-			} catch (IllegalAccessException e) {
-				throw new IOException(e);
-			}
-		}
-		if (JsonObject.class.isAssignableFrom(manifest)) {
-			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
-			final JsonReader json = new JsonReader(body, size, context);
-			if (objectReader != null && json.getNextToken() == '{') {
-				json.getNextToken();
-				return (TResult) objectReader.deserialize(json);
-			}
-		}
-		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
-		if (simpleReader == null) {
-			if (manifest.isArray()) {
-				final Class<?> elementManifest = manifest.getComponentType();
-				final List<?> list = deserializeList(elementManifest, body, size);
-				if (list == null) {
-					return null;
-				}
-				return (TResult) convertResultToArray(elementManifest, list);
-			}
-			if (fallback != null) {
-				return (TResult) fallback.deserialize(context, manifest, body, size);
-			}
-			showErrorMessage(manifest);
-		}
-		final JsonReader json = new JsonReader(body, size, context);
-		json.getNextToken();
-		if (json.wasNull()) {
-			return null;
-		}
-		final TResult result = (TResult) simpleReader.read(json);
-		if (json.getCurrentIndex() > json.length()) {
-			throw new IOException("JSON string was not closed with a double quote");
-		}
-		return result;
-	}
-
 	private static Object convertResultToArray(Class<?> elementType, List<?> result) {
 		if (elementType.isPrimitive()) {
 			if (boolean.class.equals(elementType)) {
@@ -544,6 +490,57 @@ public class DslJson<TContext> {
 		return false;
 	}
 
+
+	@SuppressWarnings("unchecked")
+	public <TResult> TResult deserialize(
+			final Class<TResult> manifest,
+			final byte[] body,
+			final int size) throws IOException {
+		if (isNull(size, body)) {
+			return null;
+		}
+		if (size == 2 && body[0] == '{' && body[1] == '}' && !manifest.isInterface()) {
+			try {
+				return manifest.newInstance();
+			} catch (InstantiationException ignore) {
+			} catch (IllegalAccessException e) {
+				throw new IOException(e);
+			}
+		}
+		final JsonReader json = new JsonReader(body, size, context);
+		json.getNextToken();
+		if (json.wasNull()) {
+			return null;
+		}
+		if (json.last() == '{' && JsonObject.class.isAssignableFrom(manifest)) {
+			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
+			if (objectReader != null) {
+				json.getNextToken();
+				return (TResult) objectReader.deserialize(json);
+			}
+		}
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
+		if (simpleReader != null) {
+			final TResult result = (TResult) simpleReader.read(json);
+			if (json.getCurrentIndex() > json.length()) {
+				throw new IOException("JSON string was not closed with a double quote");
+			}
+			return result;
+		}
+		if (json.last() == '[' && manifest.isArray()) {
+			final Class<?> elementManifest = manifest.getComponentType();
+			final List<?> list = deserializeList(elementManifest, body, size);
+			if (list == null) {
+				return null;
+			}
+			return (TResult) convertResultToArray(elementManifest, list);
+		}
+		if (fallback != null) {
+			return (TResult) fallback.deserialize(context, manifest, body, size);
+		}
+		throw createErrorMessage(manifest, true);
+	}
+
 	public Object deserialize(
 			final Type manifest,
 			final byte[] body,
@@ -554,120 +551,133 @@ public class DslJson<TContext> {
 		if (isNull(size, body)) {
 			return null;
 		}
-		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
-		if (simpleReader == null) {
-			if (manifest instanceof ParameterizedType) {
-				final ParameterizedType pt = (ParameterizedType) manifest;
-				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
-					final Type content = pt.getActualTypeArguments()[0];
-					final Class<?> container = (Class<?>) pt.getRawType();
-					if (container.isArray() || Collection.class.isAssignableFrom(container)) {
-						final JsonReader<TContext> json = new JsonReader<TContext>(body, size, context);
-						if (json.getNextToken() != '[') {
-							if (json.wasNull()) {
-								return null;
-							}
-							throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
-						}
-						json.getNextToken();
-						final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
-						if (contentReader != null) {
-							final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
-							if (container.isArray()) {
-								if (content instanceof Class<?>) {
-									return convertResultToArray((Class<?>) content, result);
-								}
-								if (content instanceof ParameterizedType) {
-									final ParameterizedType cpt = (ParameterizedType) content;
-									if (cpt.getRawType() instanceof Class<?>) {
-										return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), result.size()));
-									}
-								}
-								return result.toArray();
-							}
-							return result;
-						} else if (content instanceof Class<?>) {
-							final Class<?> contentType = (Class<?>) content;
-							if (JsonObject.class.isAssignableFrom(contentType)) {
-								final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
-								if (objectReader != null) {
-									final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
-									if (container.isArray()) {
-										return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
-									}
-									return result;
-								}
-							}
-						}
-					}
-				}
-			} else if (manifest instanceof GenericArrayType) {
-				final Type content = ((GenericArrayType) manifest).getGenericComponentType();
-				final JsonReader<TContext> json = new JsonReader<TContext>(body, size, context);
-				if (json.getNextToken() != '[') {
-					if (json.wasNull()) {
-						return null;
-					}
-					throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
-				}
-				json.getNextToken();
-				final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
-				if (contentReader != null) {
-					final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
-					if (content instanceof Class<?>) {
-						return convertResultToArray((Class<?>) content, result);
-					}
-					if (content instanceof ParameterizedType) {
-						final ParameterizedType cpt = (ParameterizedType) content;
-						if (cpt.getRawType() instanceof Class<?>) {
-							return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), result.size()));
-						}
-					}
-					return result.toArray();
-				} else if (content instanceof Class<?>) {
-					final Class<?> contentType = (Class<?>) content;
-					if (JsonObject.class.isAssignableFrom(contentType)) {
-						final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
-						if (objectReader != null) {
-							final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
-							return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
-						}
-					}
-				}
-			}
-			if (fallback != null) {
-				return fallback.deserialize(context, manifest, body, size);
-			}
-			throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
-					"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
-		}
 		final JsonReader json = new JsonReader<TContext>(body, size, context);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
 		}
-		final Object result = simpleReader.read(json);
-		if (json.getCurrentIndex() > json.length()) {
-			throw new IOException("JSON string was not closed with a double quote");
+		final Object result = deserializeWith(manifest, json);
+		if (result != null) return result;
+		if (fallback != null) {
+			return fallback.deserialize(context, manifest, body, size);
 		}
-		return result;
+		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
-	private void showErrorMessage(final Class<?> manifest) throws IOException {
+	private Object deserializeWith(Type manifest, JsonReader json) throws IOException {
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
+		if (simpleReader != null) {
+			final Object result = simpleReader.read(json);
+			if (json.getCurrentIndex() > json.length()) {
+				throw new IOException("JSON string was not closed with a double quote");
+			}
+			return result;
+		}
+		if (manifest instanceof ParameterizedType) {
+			final ParameterizedType pt = (ParameterizedType) manifest;
+			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+				final Type content = pt.getActualTypeArguments()[0];
+				final Class<?> container = (Class<?>) pt.getRawType();
+				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
+					if (json.last() != '[') {
+						throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+					}
+					if (json.getNextToken() == ']') {
+						if (container.isArray()) {
+							returnEmptyArray(content);
+						}
+						return new ArrayList<Object>(0);
+					}
+					final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
+					if (contentReader != null) {
+						final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
+						if (container.isArray()) {
+							return returnAsArray(content, result);
+						}
+						return result;
+					} else if (content instanceof Class<?>) {
+						final Class<?> contentType = (Class<?>) content;
+						if (JsonObject.class.isAssignableFrom(contentType)) {
+							final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
+							if (objectReader != null) {
+								final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
+								if (container.isArray()) {
+									return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
+								}
+								return result;
+							}
+						}
+					}
+				}
+			}
+		} else if (manifest instanceof GenericArrayType) {
+			final Type content = ((GenericArrayType) manifest).getGenericComponentType();
+			if (json.last() != '[') {
+				throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+			}
+			if (json.getNextToken() == ']') {
+				return returnEmptyArray(content);
+			}
+			final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
+			if (contentReader != null) {
+				final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
+				return returnAsArray(content, result);
+			} else if (content instanceof Class<?>) {
+				final Class<?> contentType = (Class<?>) content;
+				if (JsonObject.class.isAssignableFrom(contentType)) {
+					final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
+					if (objectReader != null) {
+						final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
+						return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	private static Object returnAsArray(final Type content, final ArrayList<?> result) {
+		if (content instanceof Class<?>) {
+			return convertResultToArray((Class<?>) content, result);
+		}
+		if (content instanceof ParameterizedType) {
+			final ParameterizedType cpt = (ParameterizedType) content;
+			if (cpt.getRawType() instanceof Class<?>) {
+				return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), result.size()));
+			}
+		}
+		return result.toArray();
+	}
+
+	private static Object returnEmptyArray(Type content) {
+		if (content instanceof Class<?>) {
+			return Array.newInstance((Class<?>) content, 0);
+		}
+		if (content instanceof ParameterizedType) {
+			final ParameterizedType pt = (ParameterizedType) content;
+			if (pt.getRawType() instanceof Class<?>) {
+				return Array.newInstance((Class<?>) pt.getRawType(), 0);
+			}
+		}
+		return new Object[0];
+	}
+
+	private IOException createErrorMessage(final Class<?> manifest, final boolean canUseFallback) throws IOException {
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(manifest, signatures);
 		for (final Class<?> sig : signatures) {
 			if (jsonReaders.containsKey(sig)) {
 				if (sig.equals(manifest)) {
-					throw new IOException("Reader for provided type: " + manifest + " is disabled and fallback serialization is not registered.\n" +
+					return new IOException("Reader for provided type: " + manifest + " is disabled and fallback serialization is not registered (converter is registered as null).\n" +
 							"Try initializing system with custom fallback or don't register null for " + manifest);
 				}
-				throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+				return new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 						"Found reader for: " + sig + " so try deserializing into that instead?\n" +
 						"Alternatively, try initializing system with custom fallback or register specified type using registerReader into " + getClass());
 			}
 		}
-		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+		return new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
@@ -699,52 +709,30 @@ public class DslJson<TContext> {
 			}
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
-		if (simpleReader == null) {
-			if (fallback != null) {
-				Object array = Array.newInstance(manifest, 0);
-				TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), body, size);
-				if (result == null) {
-					return null;
-				}
-				ArrayList<TResult> list = new ArrayList<TResult>(result.length);
-				for (TResult aResult : result) {
-					list.add(aResult);
-				}
-				return list;
-			}
-			showErrorMessage(manifest);
+		if (simpleReader != null) {
+			return json.deserializeNullableCollection(simpleReader);
 		}
-		return json.deserializeNullableCollection(simpleReader);
+		if (fallback != null) {
+			Object array = Array.newInstance(manifest, 0);
+			TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), body, size);
+			if (result == null) {
+				return null;
+			}
+			ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+			for (TResult aResult : result) {
+				list.add(aResult);
+			}
+			return list;
+		}
+		throw createErrorMessage(manifest, true);
 	}
 
-	private static final Iterator EmptyIterator = new Iterator() {
-		@Override
-		public boolean hasNext() {
-			return false;
-		}
-
-		@Override
-		public void remove() {
-		}
-
-		@Override
-		public Object next() {
-			return null;
-		}
-	};
-
-	public <TResult> Iterator<TResult> iterateOver(
+	@SuppressWarnings("unchecked")
+	public <TResult> List<TResult> deserializeList(
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
-		int position = JsonStreamReader.readFully(buffer, stream, 0);
-		if (isNull(position, buffer)) {
-			return null;
-		}
-		if (position < buffer.length) {
-			return deserializeList(manifest, buffer, position).iterator();
-		}
-		final JsonReader json = new JsonReader<TContext>(buffer, position, context);
+		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
 				return null;
@@ -752,259 +740,80 @@ public class DslJson<TContext> {
 			throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
 		}
 		if (json.getNextToken() == ']') {
-			return EmptyIterator;
+			return new ArrayList<TResult>(0);
 		}
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
 			if (reader != null) {
-				return new StreamWithObjectReader(buffer, reader, json, stream);
+				return (List<TResult>) json.deserializeNullableCollection(reader);
 			}
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader == null) {
-			if (fallback != null) {
-				return new StreamWithFallback(buffer, stream, json, manifest, fallback, context);
-			}
-			showErrorMessage(manifest);
+			throw createErrorMessage(manifest, false);
 		}
-		return new StreamWithReader(buffer, simpleReader, json, stream);
+		return json.deserializeNullableCollection(simpleReader);
 	}
 
-	private static class StreamWithObjectReader<T extends JsonObject> implements Iterator<T> {
-		private final byte[] buffer;
-		private final JsonReader.ReadJsonObject<T> reader;
-		private final JsonReader json;
-		private final InputStream stream;
-
-		private boolean hasNext;
-
-		public StreamWithObjectReader(
-				byte[] buffer,
-				JsonReader.ReadJsonObject<T> reader,
-				JsonReader json,
-				InputStream stream) {
-			this.buffer = buffer;
-			this.reader = reader;
-			this.json = json;
-			this.stream = stream;
-			hasNext = true;
-		}
-
-		@Override
-		public boolean hasNext() {
-			return hasNext;
-		}
-
-		@Override
-		public void remove() {
-		}
-
-		@Override
-		public T next() {
-			try {
-				byte nextToken = json.last();
-				final T instance;
-				if (nextToken == 'n') {
-					if (json.wasNull()) {
-						instance = null;
-					} else {
-						throw new RuntimeException("Expecting 'null' for collection item. Found: " + (char) json.last());
-					}
-				} else if (nextToken == '{') {
-					json.getNextToken();
-					instance = reader.deserialize(json);
-				} else {
-					throw new IOException("Expecting '{' at position " + json.positionInStream() + ". Found " + (char) nextToken);
-				}
-				hasNext = json.getNextToken() == ',';
-				if (!hasNext && json.last() != ']') {
-					throw new RuntimeException("Expecting ']' for end of collection. Found: " + (char) json.last());
-				}
-				final int current = json.getCurrentIndex();
-				if (current * 2 > buffer.length) {
-					final int len = buffer.length - current;
-					System.arraycopy(buffer, current, buffer, 0, len);
-					int position = JsonStreamReader.readFully(buffer, stream, len);
-					json.reset(position);
-				}
-				json.getNextToken();
-				return instance;
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
-	private static class StreamWithReader<T> implements Iterator<T> {
-		private final byte[] buffer;
-		private final JsonReader.ReadObject<T> reader;
-		private final JsonReader json;
-		private final InputStream stream;
-
-		private boolean hasNext;
-
-		public StreamWithReader(
-				byte[] buffer,
-				JsonReader.ReadObject<T> reader,
-				JsonReader json,
-				InputStream stream) {
-			this.buffer = buffer;
-			this.reader = reader;
-			this.json = json;
-			this.stream = stream;
-			hasNext = true;
-		}
-
-		@Override
-		public boolean hasNext() {
-			return hasNext;
-		}
-
-		@Override
-		public void remove() {
-		}
-
-		@Override
-		public T next() {
-			try {
-				byte nextToken = json.last();
-				final T instance;
-				if (nextToken == 'n') {
-					if (json.wasNull()) {
-						instance = null;
-					} else {
-						throw new RuntimeException("Expecting 'null' for collection item. Found: " + (char) json.last());
-					}
-				} else {
-					instance = reader.read(json);
-				}
-				hasNext = json.getNextToken() == ',';
-				if (!hasNext && json.last() != ']') {
-					throw new RuntimeException("Expecting ']' for end of collection. Found: " + (char) json.last());
-				}
-				final int current = json.getCurrentIndex();
-				if (current * 2 > buffer.length) {
-					final int len = buffer.length - current;
-					System.arraycopy(buffer, current, buffer, 0, len);
-					int position = JsonStreamReader.readFully(buffer, stream, len);
-					json.reset(position);
-				}
-				json.getNextToken();
-				return instance;
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
-	private static class StreamWithFallback<T, TContext> implements Iterator<T> {
-		private final byte[] buffer;
-		private final InputStream stream;
-		private final JsonReader json;
-		private final Type manifest;
-		private final Fallback<TContext> fallback;
-		private final TContext context;
-
-		private boolean hasNext;
-
-		public StreamWithFallback(
-				byte[] buffer,
-				InputStream stream,
-				JsonReader json,
-				Type manifest,
-				Fallback<TContext> fallback,
-				TContext context) {
-			this.buffer = buffer;
-			this.stream = stream;
-			this.json = json;
-			this.manifest = manifest;
-			this.fallback = fallback;
-			this.context = context;
-			hasNext = true;
-		}
-
-		@Override
-		public boolean hasNext() {
-			return hasNext;
-		}
-
-		@Override
-		public void remove() {
-		}
-
-		@Override
-		public T next() {
-			try {
-				byte nextToken = json.last();
-				final T instance;
-				if (nextToken == 'n') {
-					if (json.wasNull()) {
-						instance = null;
-					} else {
-						throw new RuntimeException("Expecting 'null' for collection item. Found: " + (char) json.last());
-					}
-				} else {
-					json.skip();
-					instance = (T) fallback.deserialize(context, manifest, buffer, json.getCurrentIndex());
-				}
-				hasNext = json.getNextToken() == ',';
-				if (!hasNext && json.last() != ']') {
-					throw new RuntimeException("Expecting ']' for end of collection. Found: " + (char) json.last());
-				}
-				final int current = json.getCurrentIndex();
-				final int len = buffer.length - current;
-				System.arraycopy(buffer, current, buffer, 0, len);
-				int position = JsonStreamReader.readFully(buffer, stream, len);
-				json.reset(position);
-				json.getNextToken();
-				return instance;
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
+	@SuppressWarnings("unchecked")
 	public <TResult> TResult deserialize(
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
-		if (JsonObject.class.isAssignableFrom(manifest)) {
-			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
-			final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
-			if (objectReader != null && json.getNextToken() == '{') {
-				json.getNextToken();
-				return (TResult) objectReader.deserialize(json);
-			}
-		}
-		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
-		if (simpleReader == null) {
-			if (manifest.isArray()) {
-				final Class<?> elementManifest = manifest.getComponentType();
-				final Iterator<?> iter = iterateOver(elementManifest, stream, buffer);
-				if (iter == null) {
-					return null;
-				}
-				final ArrayList<Object> list = new ArrayList<Object>();
-				while (iter.hasNext()) {
-					list.add(iter.next());
-				}
-				final Object result = Array.newInstance(elementManifest, list.size());
-				for (int i = 0; i < list.size(); i++) {
-					Array.set(result, i, list.get(i));
-				}
-				return (TResult) result;
-			}
-			showErrorMessage(manifest);
-		}
 		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
 		}
-		//TODO: ckeck not closed string
-		return (TResult) simpleReader.read(json);
+		if (json.last() == '{' && JsonObject.class.isAssignableFrom(manifest)) {
+			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
+			if (objectReader != null && json.last() == '{') {
+				json.getNextToken();
+				return (TResult) objectReader.deserialize(json);
+			}
+		}
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
+		if (simpleReader != null) {
+			final TResult result = (TResult) simpleReader.read(json);
+			if (json.getCurrentIndex() > json.length()) {
+				throw new IOException("JSON string was not closed with a double quote");
+			}
+			return result;
+		}
+		if (json.last() == '[' && manifest.isArray()) {
+			final Class<?> elementManifest = manifest.getComponentType();
+			if (json.getNextToken() == ']') {
+				return (TResult) Array.newInstance(elementManifest, 0);
+			}
+			if (JsonObject.class.isAssignableFrom(elementManifest)) {
+				final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(elementManifest);
+				if (objectReader != null) {
+					List<?> list = json.deserializeNullableCollection(objectReader);
+					return (TResult) convertResultToArray(elementManifest, list);
+				}
+			}
+			final JsonReader.ReadObject<?> simpleElementReader = tryFindReader(elementManifest);
+			if (simpleElementReader != null) {
+				List<?> list = json.deserializeNullableCollection(simpleElementReader);
+				return (TResult) convertResultToArray(elementManifest, list);
+			}
+		}
+		throw createErrorMessage(manifest, false);
 	}
 
+	public Object deserialize(
+			final Type manifest,
+			final InputStream stream,
+			final byte[] buffer) throws IOException {
+		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+		json.getNextToken();
+		if (json.wasNull()) {
+			return null;
+		}
+		final Object result = deserializeWith(manifest, json);
+		if (result != null) return result;
+		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not available (in stream processing).");
+	}
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {
 		if (array == null) {

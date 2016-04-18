@@ -23,8 +23,8 @@ public class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	}
 
 	public static int readFully(final byte[] buffer, final InputStream stream, final int offset) throws IOException {
-		int read = stream.read(buffer, offset, buffer.length - offset);
-		int position = read + offset;
+		int read;
+		int position = offset;
 		while (position < buffer.length
 				&& (read = stream.read(buffer, position, buffer.length - position)) != -1) {
 			position += read;
@@ -42,7 +42,11 @@ public class JsonStreamReader<TContext> extends JsonReader<TContext> {
 			final int len = buffer.length - currentIndex;
 			System.arraycopy(buffer, currentIndex, buffer, 0, len);
 			int position = readFully(buffer, stream, len);
-			reset(position);
+			if (position == len) {
+				super.reset(length() - currentIndex);
+			} else {
+				super.reset(position);
+			}
 		}
 		return super.read();
 	}
@@ -54,7 +58,10 @@ public class JsonStreamReader<TContext> extends JsonReader<TContext> {
 		final int len = buffer.length - currentIndex;
 		System.arraycopy(buffer, currentIndex, buffer, 0, len);
 		int position = readFully(buffer, stream, len);
-		reset(position);
+		if (position == len) {
+			return true;
+		}
+		super.reset(position);
 		return super.isEndOfStream();
 	}
 
