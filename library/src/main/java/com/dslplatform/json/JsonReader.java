@@ -6,6 +6,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
+/**
+ * Object for processing JSON from byte[].
+ * DSL-JSON works on byte level (instead of char level).
+ * Deserialized instances can obtain TContext information provided with this reader.
+ *
+ * @param <TContext> context passed to deserialized object instances
+ */
 public class JsonReader<TContext> {
 
 	private static final boolean[] WHITESPACE = new boolean[256];
@@ -561,6 +568,12 @@ public class JsonReader<TContext> {
 		return Base64.decodeFast(buffer, start, currentIndex - 1);
 	}
 
+	/**
+	 * Custom objects can be deserialized based on the implementation specified through this interface.
+	 * Annotation processor creates custom deserializers at compile time and registers them into DslJson.
+	 *
+	 * @param <T> type
+	 */
 	public interface ReadObject<T> {
 		T read(JsonReader reader) throws IOException;
 	}

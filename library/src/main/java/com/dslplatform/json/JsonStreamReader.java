@@ -3,8 +3,16 @@ package com.dslplatform.json;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 
+/**
+ * Object for processing JSON from InputStream.
+ * DSL-JSON works on byte level (instead of char level).
+ * Deserialized instances can obtain TContext information provided with this reader.
+ *
+ * Stream reader works by partially processing JSON in chunks.
+ *
+ * @param <TContext> context passed to deserialized object instances
+ */
 public class JsonStreamReader<TContext> extends JsonReader<TContext> {
 
 	private InputStream stream;

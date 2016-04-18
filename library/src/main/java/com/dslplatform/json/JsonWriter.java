@@ -6,6 +6,16 @@ import java.io.Writer;
 import java.nio.charset.Charset;
 import java.util.*;
 
+/**
+ * DslJson writes JSON into an byte[] target.
+ * This class is used for growing such byte[] buffer
+ * and providing other low level methods for JSON serialization.
+ *
+ * After the processing is done, JSON can be copied to target OutputStream or resulting byte[] can be used directly.
+ *
+ * For maximum performance JsonWriter instances should be reused.
+ * They should not be shared across threads (concurrently) so for Thread reuse it's best to use patterns such as ThreadLocal.
+ */
 public final class JsonWriter extends Writer {
 
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
@@ -367,6 +377,12 @@ public final class JsonWriter extends Writer {
 		position = 0;
 	}
 
+	/**
+	 * Custom objects can be serialized based on the implementation specified through this interface.
+	 * Annotation processor creates custom deserializers at compile time and registers them into DslJson.
+	 *
+	 * @param <T> type
+	 */
 	public interface WriteObject<T> {
 		void write(JsonWriter writer, T value);
 	}
