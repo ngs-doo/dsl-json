@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentMap;
  * Usage example:
  *
  * <pre>
- *     DslJson<Object> dsl = new DslJson<>();
+ *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&lt;();
  *     dsl.serialize(instance, OutputStream);
  *     POJO pojo = dsl.deserialize(POJO.class, InputStream, new byte[1024]);
  * </pre>
@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentMap;
  * If you wish to process String, use String.getBytes("UTF-8") as argument for DslJson
  *
  * <pre>
- *     DslJson<Object> dsl = new DslJson<>();
+ *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
  *     JsonWriter writer = new JsonWriter();
  *     dsl.serialize(writer, instance);
  *     String json = writer.toString(); //JSON as string
@@ -244,8 +244,8 @@ public class DslJson<TContext> {
 	private final HashMap<Type, JsonReader.ReadObject<?>> jsonReaders = new HashMap<Type, JsonReader.ReadObject<?>>();
 
 	/**
-	 * Register custom reader for specific type (JSON -> instance conversion).
-	 * Reader is used for conversion from input byte[] -> target object instance
+	 * Register custom reader for specific type (JSON -&gt; instance conversion).
+	 * Reader is used for conversion from input byte[] -&gt; target object instance
 	 *
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
@@ -262,8 +262,8 @@ public class DslJson<TContext> {
 	}
 
 	/**
-	 * Register custom reader for specific type (JSON -> instance conversion).
-	 * Reader is used for conversion from input byte[] -> target object instance
+	 * Register custom reader for specific type (JSON -&gt; instance conversion).
+	 * Reader is used for conversion from input byte[] -&gt; target object instance
 	 *
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
@@ -280,8 +280,8 @@ public class DslJson<TContext> {
 	private final HashMap<Type, JsonWriter.WriteObject<?>> jsonWriters = new HashMap<Type, JsonWriter.WriteObject<?>>();
 
 	/**
-	 * Register custom writer for specific type (instance -> JSON conversion).
-	 * Writer is used for conversion from object instance -> output byte[]
+	 * Register custom writer for specific type (instance -&gt; JSON conversion).
+	 * Writer is used for conversion from object instance -&gt; output byte[]
 	 *
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
@@ -298,8 +298,8 @@ public class DslJson<TContext> {
 	}
 
 	/**
-	 * Register custom writer for specific type (instance -> JSON conversion).
-	 * Writer is used for conversion from object instance -> output byte[]
+	 * Register custom writer for specific type (instance -&gt; JSON conversion).
+	 * Writer is used for conversion from object instance -&gt; output byte[]
 	 *
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
@@ -915,7 +915,7 @@ public class DslJson<TContext> {
 	 *
 	 * @param manifest target type
 	 * @param stream input JSON
-	 * @param buffer buffer used for InputStream -> byte[] conversion
+	 * @param buffer buffer used for InputStream -&gt; byte[] conversion
 	 * @param <TResult> target element type
 	 * @return deserialized list
 	 * @throws IOException error during deserialization
@@ -964,7 +964,7 @@ public class DslJson<TContext> {
 	 *
 	 * @param manifest target type
 	 * @param stream input JSON
-	 * @param buffer buffer used for InputStream -> byte[] conversion
+	 * @param buffer buffer used for InputStream -&gt; byte[] conversion
 	 * @param <TResult> target type
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
@@ -1031,7 +1031,7 @@ public class DslJson<TContext> {
 	 *
 	 * @param manifest target type
 	 * @param stream input JSON
-	 * @param buffer buffer used for InputStream -> byte[] conversion
+	 * @param buffer buffer used for InputStream -&gt; byte[] conversion
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
 	 */

@@ -13,8 +13,7 @@ package com.dslplatform.json;
  *       public void serialize(JsonWriter writer, boolean minimal) {
  *         //implement serialization logic, eg: writer.writeAscii("{\"my\":\"object\"}");
  *       }
- *       public static final JsonReader.ReadJsonObject<MyCustomPojo> JSON_READER = new JsonReader.ReadJsonObject<MyCustomPojo>() {
- *         @Override
+ *       public static final JsonReader.ReadJsonObject&lt;MyCustomPojo&gt; JSON_READER = new JsonReader.ReadJsonObject&lt;MyCustomPojo&gt;() {
  *         public MyCustomPojo deserialize(JsonReader reader) throws IOException {
  *           //implement deserialization logic, eg: return new MyCustomPojo();
  *         }
