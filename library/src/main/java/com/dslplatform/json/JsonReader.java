@@ -482,7 +482,7 @@ public class JsonReader<TContext> {
 
 	public final byte skip() throws IOException {
 		if (last == '"') return skipString();
-		else if (last == '{') {
+		if (last == '{') {
 			byte nextToken = getNextToken();
 			if (nextToken == '}') return getNextToken();
 			if (nextToken == '"') nextToken = skipString();
@@ -505,21 +505,41 @@ public class JsonReader<TContext> {
 			if (nextToken != '}')
 				throw new IOException("Expecting '}' at position " + positionInStream() + ". Found " + (char) nextToken);
 			return getNextToken();
-		} else if (last == '[') {
+		}
+		if (last == '[') {
 			getNextToken();
 			byte nextToken = skip();
 			while (nextToken == ',') {
 				getNextToken();
 				nextToken = skip();
 			}
-			if (nextToken != ']')
+			if (nextToken != ']') {
 				throw new IOException("Expecting ']' at position " + positionInStream() + ". Found " + (char) nextToken);
+			}
 			return getNextToken();
-		} else {
-			while (last != ',' && last != '}' && last != ']')
-				read();
-			return last;
 		}
+		if (last == 'n') {
+			if (!wasNull()) {
+				throw new IOException("Expecting 'null' at position " + positionInStream());
+			}
+			return getNextToken();
+		}
+		if (last == 't') {
+			if (!wasTrue()) {
+				throw new IOException("Expecting 'true' at position " + positionInStream());
+			}
+			return getNextToken();
+		}
+		if (last == 'f') {
+			if (!wasFalse()) {
+				throw new IOException("Expecting 'false' at position " + positionInStream());
+			}
+			return getNextToken();
+		}
+		while (last != ',' && last != '}' && last != ']') {
+			read();
+		}
+		return last;
 	}
 
 	public String readNext() throws IOException {

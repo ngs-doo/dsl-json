@@ -138,7 +138,6 @@ public class NumberConverterTest {
 
 		final int from = -1000000;
 		final int to = 1000000;
-		final long range = to - from + 1;
 
 		for (long value = from; value <= to; value++) {
 

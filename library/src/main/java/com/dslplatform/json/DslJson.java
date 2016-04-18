@@ -565,6 +565,7 @@ public class DslJson<TContext> {
 				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
+	@SuppressWarnings("unchecked")
 	private Object deserializeWith(Type manifest, JsonReader json) throws IOException {
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
@@ -666,19 +667,21 @@ public class DslJson<TContext> {
 	private IOException createErrorMessage(final Class<?> manifest, final boolean canUseFallback) throws IOException {
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(manifest, signatures);
+		final String withFallback = canUseFallback ? " and fallback serialization is not registered" : "";
+		final String tryFallback = canUseFallback ? "" : " (and use byte API instead of stream API)";
 		for (final Class<?> sig : signatures) {
 			if (jsonReaders.containsKey(sig)) {
 				if (sig.equals(manifest)) {
-					return new IOException("Reader for provided type: " + manifest + " is disabled and fallback serialization is not registered (converter is registered as null).\n" +
-							"Try initializing system with custom fallback or don't register null for " + manifest);
+					return new IOException("Reader for provided type: " + manifest + " is disabled" + withFallback + " (converter is registered as null).\n" +
+							"Try initializing system with custom fallback " + tryFallback + "or don't register null for " + manifest);
 				}
-				return new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+				return new IOException("Unable to find reader for provided type: " + manifest + withFallback + ".\n" +
 						"Found reader for: " + sig + " so try deserializing into that instead?\n" +
-						"Alternatively, try initializing system with custom fallback or register specified type using registerReader into " + getClass());
+						"Alternatively, try initializing system with custom fallback" + tryFallback + " or register specified type using registerReader into " + getClass());
 			}
 		}
-		return new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
-				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
+		return new IOException("Unable to find reader for provided type: " + manifest + withFallback + ".\n" +
+				"Try initializing DslJson with custom fallback in case of unsupported objects" + tryFallback + " or register specified type using registerReader into " + getClass());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -713,12 +716,12 @@ public class DslJson<TContext> {
 			return json.deserializeNullableCollection(simpleReader);
 		}
 		if (fallback != null) {
-			Object array = Array.newInstance(manifest, 0);
-			TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), body, size);
+			final Object array = Array.newInstance(manifest, 0);
+			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), body, size);
 			if (result == null) {
 				return null;
 			}
-			ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+			final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
 			for (TResult aResult : result) {
 				list.add(aResult);
 			}

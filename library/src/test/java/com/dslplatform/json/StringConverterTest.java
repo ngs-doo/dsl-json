@@ -1,7 +1,5 @@
 package com.dslplatform.json;
 
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -13,7 +11,6 @@ public class StringConverterTest {
 		// setup
 		final int from = Character.MIN_VALUE;
 		final int to = Character.MAX_VALUE;
-		final long range = to - from + 1;
 
 		for (long value = from; value <= to; value++) {
 
@@ -57,7 +54,7 @@ public class StringConverterTest {
 
 			// deserialization
 			final byte[] buf = text.getBytes("UTF-8");
-			final JsonReader jr = new JsonReader(buf, null);
+			final JsonReader<Object> jr = new JsonReader<Object>(buf, null);
 			Assert.assertEquals(jr.read(), '"');
 			final String read = jr.readString();
 			Assert.assertEquals(buf.length, jr.getCurrentIndex()); // test for end of stream
@@ -80,7 +77,6 @@ public class StringConverterTest {
 
 		final int from = 0;
 		final int to = Character.MAX_VALUE;
-		final long range = to - from + 1;
 
 		for (long value = from; value <= to; value++) {
 
