@@ -62,9 +62,11 @@ For use in Android, Gradle can be configured with:
       processor 'com.dslplatform.json.CompiledJsonProcessor'
     }
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:0.9.8'
+      compile compile 'com.dslplatform:dsl-json:0.9.9'
       apt 'com.dslplatform:dsl-json-processor:0.5'
     }
+
+Project examples can be found in [examples folder](examples)
 
 ### Java/DSL property mapping
 
@@ -179,7 +181,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>0.9.8</version>
+      <version>0.9.9</version>
     </dependency>
 
 ## Best practices
