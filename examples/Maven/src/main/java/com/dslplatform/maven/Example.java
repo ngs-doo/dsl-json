@@ -1,0 +1,56 @@
+package com.dslplatform.maven;
+
+import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.DslJson;
+import com.dslplatform.json.JsonWriter;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.Vector;
+
+public class Example {
+
+	@CompiledJson
+	public static class Model {
+		public String string;
+		public List<Integer> integers;
+		public UUID[] uuids;
+		public Set<BigDecimal> decimals;
+		public Vector<Long> longs;
+		public int number;
+		public List<Nested> nested;
+
+		public static class Nested {
+			public long x;
+			public double y;
+			public float z;
+		}
+	}
+
+	public static void main(String[] args) throws IOException {
+
+		//ServiceLoader.load will load Model since it will be registered into META-INF/services during annotation processing
+		DslJson<Object> dslJson = new DslJson<Object>();
+		//writer should be reused. For per thread reuse use ThreadLocal pattern
+		JsonWriter writer = new JsonWriter();
+
+		Model instance = new Model();
+		instance.string = "Hello World!";
+		instance.number = 42;
+
+		dslJson.serialize(writer, instance);
+
+		//resulting buffer with JSON
+		byte[] buffer = writer.getByteBuffer();
+		//end of buffer
+		int size = writer.size();
+
+		//deserialization using byte[] API
+		Model deser = dslJson.deserialize(Model.class, buffer, size);
+
+		System.out.println(deser.string);
+	}
+}
