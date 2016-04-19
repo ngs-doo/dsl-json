@@ -399,17 +399,17 @@ public class DslJson<TContext> {
 		switch (reader.last()) {
 			case 'n':
 				if (!reader.wasNull()) {
-					throw new IOException("Expecting 'null' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+					throw reader.expecting("null");
 				}
 				return null;
 			case 't':
 				if (!reader.wasTrue()) {
-					throw new IOException("Expecting 'true' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+					throw reader.expecting("true");
 				}
 				return true;
 			case 'f':
 				if (!reader.wasFalse()) {
-					throw new IOException("Expecting 'false' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+					throw reader.expecting("false");
 				}
 				return false;
 			case '"':
@@ -425,7 +425,7 @@ public class DslJson<TContext> {
 
 	public static ArrayList<Object> deserializeList(final JsonReader reader) throws IOException {
 		if (reader.last() != '[') {
-			throw new IOException("Expecting '[' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+			throw reader.expecting("[");
 		}
 		byte nextToken = reader.getNextToken();
 		if (nextToken == ']') return new ArrayList<Object>(0);
@@ -436,14 +436,14 @@ public class DslJson<TContext> {
 			res.add(deserializeObject(reader));
 		}
 		if (nextToken != ']') {
-			throw new IOException("Expecting ']' at position " + reader.positionInStream() + ". Found " + (char) nextToken);
+			throw reader.expecting("]", nextToken);
 		}
 		return res;
 	}
 
 	public static LinkedHashMap<String, Object> deserializeMap(final JsonReader reader) throws IOException {
 		if (reader.last() != '{') {
-			throw new IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+			throw reader.expecting("{");
 		}
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new LinkedHashMap<String, Object>(0);
@@ -451,7 +451,7 @@ public class DslJson<TContext> {
 		String key = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
 		if (nextToken != ':') {
-			throw new IOException("Expecting ':' at position " + reader.positionInStream() + ". Found " + (char) nextToken);
+			throw reader.expecting(":", nextToken);
 		}
 		reader.getNextToken();
 		res.put(key, deserializeObject(reader));
@@ -460,13 +460,13 @@ public class DslJson<TContext> {
 			key = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
 			if (nextToken != ':') {
-				throw new IOException("Expecting ':' at position " + reader.positionInStream() + ". Found " + (char) nextToken);
+				throw reader.expecting(":", nextToken);
 			}
 			reader.getNextToken();
 			res.put(key, deserializeObject(reader));
 		}
 		if (nextToken != '}') {
-			throw new IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char) nextToken);
+			throw reader.expecting("}", nextToken);
 		}
 		return res;
 	}
@@ -654,11 +654,13 @@ public class DslJson<TContext> {
 		if (json.wasNull()) {
 			return null;
 		}
-		if (json.last() == '{' && JsonObject.class.isAssignableFrom(manifest)) {
+		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
 			if (objectReader != null) {
-				json.getNextToken();
-				return (TResult) objectReader.deserialize(json);
+				if (json.last() == '{') {
+					json.getNextToken();
+					return (TResult) objectReader.deserialize(json);
+				} else throw json.expecting("{");
 			}
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
@@ -669,7 +671,10 @@ public class DslJson<TContext> {
 			}
 			return result;
 		}
-		if (json.last() == '[' && manifest.isArray()) {
+		if (manifest.isArray()) {
+			if (json.last() != '[') {
+				throw json.expecting("[");
+			}
 			final Class<?> elementManifest = manifest.getComponentType();
 			final List<?> list = deserializeList(elementManifest, body, size);
 			if (list == null) {
@@ -738,7 +743,7 @@ public class DslJson<TContext> {
 				final Class<?> container = (Class<?>) pt.getRawType();
 				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
 					if (json.last() != '[') {
-						throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+						throw json.expecting("[");
 					}
 					if (json.getNextToken() == ']') {
 						if (container.isArray()) {
@@ -769,10 +774,10 @@ public class DslJson<TContext> {
 				}
 			}
 		} else if (manifest instanceof GenericArrayType) {
-			final Type content = ((GenericArrayType) manifest).getGenericComponentType();
 			if (json.last() != '[') {
-				throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+				throw json.expecting("[");
 			}
+			final Type content = ((GenericArrayType) manifest).getGenericComponentType();
 			if (json.getNextToken() == ']') {
 				return returnEmptyArray(content);
 			}
@@ -869,7 +874,7 @@ public class DslJson<TContext> {
 			if (json.wasNull()) {
 				return null;
 			}
-			throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+			throw json.expecting("[");
 		}
 		if (json.getNextToken() == ']') {
 			return new ArrayList<TResult>(0);
@@ -930,7 +935,7 @@ public class DslJson<TContext> {
 			if (json.wasNull()) {
 				return null;
 			}
-			throw new IOException("Expecting '[' as array start. Found: " + (char) json.last());
+			throw json.expecting("[");
 		}
 		if (json.getNextToken() == ']') {
 			return new ArrayList<TResult>(0);
@@ -991,11 +996,13 @@ public class DslJson<TContext> {
 		if (json.wasNull()) {
 			return null;
 		}
-		if (json.last() == '{' && JsonObject.class.isAssignableFrom(manifest)) {
+		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
-			if (objectReader != null && json.last() == '{') {
-				json.getNextToken();
-				return (TResult) objectReader.deserialize(json);
+			if (objectReader != null) {
+				if (json.last() == '{') {
+					json.getNextToken();
+					return (TResult) objectReader.deserialize(json);
+				} else throw json.expecting("{");
 			}
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
@@ -1006,7 +1013,10 @@ public class DslJson<TContext> {
 			}
 			return result;
 		}
-		if (json.last() == '[' && manifest.isArray()) {
+		if (manifest.isArray()) {
+			if (json.last() != '[') {
+				throw json.expecting("[");
+			}
 			final Class<?> elementManifest = manifest.getComponentType();
 			if (json.getNextToken() == ']') {
 				return (TResult) Array.newInstance(elementManifest, 0);
@@ -1054,6 +1064,9 @@ public class DslJson<TContext> {
 			final Type manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
+		if (manifest instanceof Class<?>) {
+			return deserialize((Class<?>) manifest, stream, buffer);
+		}
 		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
 		json.getNextToken();
 		if (json.wasNull()) {
@@ -1064,7 +1077,8 @@ public class DslJson<TContext> {
 		if (fallback != null) {
 			return fallback.deserialize(context, manifest, json.streamFromStart());
 		}
-		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not available.");
+		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {

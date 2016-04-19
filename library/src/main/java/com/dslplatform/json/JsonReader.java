@@ -112,6 +112,14 @@ public class JsonReader<TContext> {
 		return last;
 	}
 
+	final IOException expecting(final String what) {
+		return new IOException("Expecting '" + what + "' at position " + positionInStream() + ". Found " + (char) last);
+	}
+
+	final IOException expecting(final String what, final byte found) {
+		return new IOException("Expecting '" + what + "' at position " + positionInStream() + ". Found " + (char) found);
+	}
+
 	public final int getTokenStart() {
 		return tokenStart;
 	}
