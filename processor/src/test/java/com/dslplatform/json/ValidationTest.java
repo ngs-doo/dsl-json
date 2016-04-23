@@ -148,4 +148,32 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("string? name {  simple Java access;  serialization name 'n0';  }"));
 		Assert.assertTrue(dsl.contains("int customNumber {  simple Java access;  serialization name 'n';  }"));
 	}
+
+	@Test
+	public void supportsInterfaces() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(UsesInterfaceType.class, Implements1Type.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("with mixin"));
+		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.InterfaceType';"));
+		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.Implements1Type';"));
+	}
+
+	@Test
+	public void missingImplementations() {
+		assertCompilationReturned(Diagnostic.Kind.ERROR, 7, compileTestCase(UsesInterfaceType.class));
+	}
+
+	@Test
+	public void supportsAbstractClasses() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(UsesAbstractType.class, ExtendsType.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("with mixin"));
+		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.AbstractType';"));
+		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.ExtendsType';"));
+		Assert.assertTrue(dsl.contains("long y {  simple Java access;"));
+	}
 }

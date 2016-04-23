@@ -22,11 +22,22 @@ public class Example {
 		public Vector<Long> longs;
 		public int number;
 		public List<Nested> nested;
+		public Abstract abs;//abstract classes or interfaces can be used
 
+		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
 			public long x;
 			public double y;
 			public float z;
+		}
+		public static abstract class Abstract {
+			public int x;
+		}
+		//since this class is not explicitly referenced, but it's an extension of the abstract class used as a property
+		//it needs to be decorated with annotation
+		@CompiledJson
+		public static class Concrete extends Abstract {
+			public long y;
 		}
 	}
 
@@ -40,6 +51,10 @@ public class Example {
 		Model instance = new Model();
 		instance.string = "Hello World!";
 		instance.number = 42;
+		Model.Concrete concrete = new Model.Concrete();
+		concrete.x = 11;
+		concrete.y = 23;
+		instance.abs = concrete;
 
 		dslJson.serialize(writer, instance);
 

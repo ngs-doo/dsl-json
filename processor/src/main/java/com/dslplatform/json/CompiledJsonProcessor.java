@@ -140,17 +140,24 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
+	private enum ObjectType {
+		CLASS,
+		ENUM,
+		MIXIN
+	}
+
 	private static class StructInfo {
 		final TypeElement element;
 		final String name;
-		final boolean isEnum;
+		final ObjectType type;
+		final Set<StructInfo> implementations = new HashSet<StructInfo>();
 		final Set<String> properties = new HashSet<String>();
 		final Map<String, String> minifiedNames = new HashMap<String, String>();
 
-		StructInfo(TypeElement element, String name, boolean isEnum) {
+		StructInfo(TypeElement element, String name, ObjectType type) {
 			this.element = element;
 			this.name = name;
-			this.isEnum = isEnum;
+			this.type = type;
 		}
 	}
 
@@ -167,6 +174,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				findStructs(structs, options, el, "CompiledJson requires accessible public no argument constructor");
 			}
 			findRelatedReferences(structs, options);
+			findImplementations(structs.values());
 			String dsl = buildDsl(structs, options);
 
 			if (options.hasError) {
@@ -217,15 +225,17 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			checks[i] = new TypeCheck();
 		}
 		for (StructInfo info : structs.values()) {
-			if (info.isEnum) {
+			if (info.type == ObjectType.ENUM) {
 				dsl.append("  enum ");
+			} else if (info.type == ObjectType.MIXIN) {
+				dsl.append("  mixin ");
 			} else {
 				dsl.append("  struct ");
 			}
 			dsl.append(info.name);
 			dsl.append(" {\n");
 
-			if (info.isEnum) {
+			if (info.type == ObjectType.ENUM) {
 				List<String> constants = getEnumConstants(info.element);
 				for (String c : constants) {
 					dsl.append("    ");
@@ -233,6 +243,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append(";\n");
 				}
 			} else {
+				for (StructInfo impl : info.implementations) {
+					dsl.append("    with mixin ");
+					dsl.append(impl.name);
+					dsl.append(";\n");
+				}
 				Map<String, ExecutableElement> methods = getBeanProperties(info.element);
 				for (Map.Entry<String, ExecutableElement> p : methods.entrySet()) {
 					if (hasIgnoredAnnotation(p.getValue())) {
@@ -240,7 +255,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					}
 					String dslType = getPropertyType(p.getValue(), p.getValue().getReturnType(), structs);
 					String javaType = p.getValue().getReturnType().toString();
-					processProperty(dsl, options, checks, info, p, dslType, javaType, false);
+					processProperty(dsl, options, checks, info, p, dslType, javaType, structs, false);
 				}
 				Map<String, VariableElement> fields = getPublicFields(info.element);
 				for (Map.Entry<String, VariableElement> p : fields.entrySet()) {
@@ -249,7 +264,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					}
 					String dslType = getPropertyType(p.getValue(), p.getValue().asType(), structs);
 					String javaType = p.getValue().asType().toString();
-					processProperty(dsl, options, checks, info, p, dslType, javaType, true);
+					processProperty(dsl, options, checks, info, p, dslType, javaType, structs, true);
 				}
 			}
 			dsl.append("    external name Java '");
@@ -268,6 +283,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			Map.Entry<String, T> property,
 			String dslType,
 			String javaType,
+			Map<String, StructInfo> structs,
 			boolean fieldAccess) {
 		for (int i = 0; i < CheckTypes.size(); i++) {
 			IncompatibleTypes it = CheckTypes.get(i);
@@ -307,6 +323,18 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 						property.getValue(),
 						getAnnotation(info.element, jsonDeclaredType));
 				return;
+			}
+			StructInfo target = findReferenced(property.getValue().asType(), structs);
+			if (target != null && target.type == ObjectType.MIXIN && target.implementations.size() == 0) {
+				String what = target.element.getKind() == ElementKind.INTERFACE ? "interface" : "abstract class";
+				String one = target.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
+				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Property " + property.getKey() +
+								" is referencing " + what + " (" + target.element.getQualifiedName() + ") which doesn't have registered " +
+								"implementations with @CompiledJson.\nAt least one " + one + " of specified " + what + " must be annotated " +
+								"with CompiledJson annotation",
+						property.getValue(),
+						getAnnotation(info.element, jsonDeclaredType));
+				options.hasError = true;
 			}
 			if (fieldAccess || alias != null) {
 				dsl.append(" {");
@@ -361,6 +389,24 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				}
 			}
 		} while (total != structs.size());
+	}
+
+	private void findImplementations(Collection<StructInfo> structs) {
+		for (StructInfo current : structs) {
+			if (current.type == ObjectType.MIXIN) {
+				String iface = current.element.asType().toString();
+				for (StructInfo info : structs) {
+					if (info.type == ObjectType.CLASS) {
+						for (TypeMirror type : processingEnv.getTypeUtils().directSupertypes(info.element.asType())) {
+							if (type.toString().equals(iface)) {
+								current.implementations.add(info);
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private void checkRelatedProperty(Map<String, StructInfo> structs, CompileOptions options, TypeMirror returnType, String access) {
@@ -433,7 +479,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			return;
 		}
 		TypeElement element = (TypeElement) el;
-		if (!hasEmptyCtor(element)) {
+		boolean isMixin = element.getKind() == ElementKind.INTERFACE
+				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
+		if (!isMixin && !hasEmptyCtor(element)) {
 			options.hasError = true;
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
@@ -468,10 +516,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					errorMessge + ", but class '" + element.getQualifiedName() + "' is defined without package name and cannot be accessed",
 					element,
 					entityAnnotation);
-			//TODO: other checks
 		} else {
 			String name = "struct" + structs.size();
-			StructInfo info = new StructInfo(element, name, element.getKind() == ElementKind.ENUM);
+			ObjectType type = isMixin ? ObjectType.MIXIN : element.getKind() == ElementKind.ENUM ? ObjectType.ENUM : ObjectType.CLASS;
+			StructInfo info = new StructInfo(element, name, type);
 			structs.put(element.asType().toString(), info);
 			if (isMinified(element)) {
 				prepareMinifiedNames(info);
@@ -674,5 +722,20 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			return "json." + info.name + (hasNonNullable ? "" : "?");
 		}
 		return null;
+	}
+
+	private static StructInfo findReferenced(TypeMirror type, Map<String, StructInfo> structs) {
+		if (type instanceof ArrayType) {
+			ArrayType at = (ArrayType) type;
+			String elementType = at.getComponentType().toString();
+			return structs.get(elementType);
+		}
+		for (Map.Entry<String, String> kv : SupportedCollections.entrySet()) {
+			if (type.toString().startsWith(kv.getKey())) {
+				String typeName = type.toString().substring(kv.getKey().length(), type.toString().length() - 1);
+				return structs.get(typeName);
+			}
+		}
+		return structs.get(type.toString());
 	}
 }
