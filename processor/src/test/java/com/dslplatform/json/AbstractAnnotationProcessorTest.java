@@ -119,7 +119,7 @@ public abstract class AbstractAnnotationProcessorTest {
          * are annotations, they certainly need to be validated.
          */
 		CompilationTask task = COMPILER.getTask(null, fileManager, diagnosticCollector,
-				Collections.singletonList("-proc:only"), null,
+				Arrays.asList("-proc:only", "-Adsljson.showdsl=true"), null,
 				fileManager.getJavaFileObjectsFromFiles(compilationUnits));
 		task.setProcessors(getProcessors());
 		task.call();

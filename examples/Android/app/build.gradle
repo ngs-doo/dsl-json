@@ -26,7 +26,7 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.3.0'
 
     compile 'com.dslplatform:dsl-json:0.9.9'
-    apt 'com.dslplatform:dsl-json-processor:0.6'
+    apt 'com.dslplatform:dsl-json-processor:0.7'
 }
 
 apt {

@@ -6,10 +6,7 @@ import com.dslplatform.json.JsonWriter;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.Vector;
+import java.util.*;
 
 public class Example {
 
@@ -30,9 +27,11 @@ public class Example {
 			public double y;
 			public float z;
 		}
+
 		public static abstract class Abstract {
 			public int x;
 		}
+
 		//since this class is not explicitly referenced, but it's an extension of the abstract class used as a property
 		//it needs to be decorated with annotation
 		@CompiledJson
@@ -51,6 +50,10 @@ public class Example {
 		Model instance = new Model();
 		instance.string = "Hello World!";
 		instance.number = 42;
+		instance.integers = Arrays.asList(1, 2, 3);
+		instance.decimals = new HashSet<BigDecimal>(Arrays.asList(BigDecimal.ONE, BigDecimal.ZERO));
+		instance.uuids = new UUID[]{new UUID(1L, 2L), new UUID(3L, 4L)};
+		instance.longs = new Vector<Long>(Arrays.asList(1L, 2L));
 		Model.Concrete concrete = new Model.Concrete();
 		concrete.x = 11;
 		concrete.y = 23;

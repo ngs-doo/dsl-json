@@ -13,7 +13,7 @@ import java.io.Writer;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
-@SupportedOptions({"dsljson.namespace", "dsljson.compiler"})
+@SupportedOptions({"dsljson.namespace", "dsljson.compiler", "dsljson.showdsl"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
 	private static final Map<String, String> SupportedTypes;
@@ -109,6 +109,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private DeclaredType jsonDeclaredType;
 	private String namespace;
 	private String compiler;
+	private boolean showDsl;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -123,6 +124,15 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			namespace = "dsl_json";
 		}
 		compiler = options.get("dsljson.compiler");
+		String sd = options.get("dsljson.showdsl");
+		if (sd != null && sd.length() > 0) {
+			try {
+				showDsl = Boolean.parseBoolean(sd);
+			} catch (Exception ignore) {
+			}
+		} else {
+			showDsl = false;
+		}
 	}
 
 	private static class CompileOptions {
@@ -181,7 +191,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				return false;
 			}
 
-			processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, dsl);
+			if (showDsl) {
+				processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, dsl);
+			}
 
 			String fileContent;
 			try {
