@@ -27,8 +27,34 @@ public class InputStreamTest {
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
 		DslJson<Object> json = new DslJson<Object>();
-		List<Map> result = json.deserializeList(Map.class, is, new byte[512]);
-		Assert.assertEquals(1001, result.size());
+		Iterator<Map> result = json.iterateOver(Map.class, is, new byte[512]);
+		int total = 0;
+		while (result.hasNext()) {
+			result.next();
+			total++;
+		}
+		Assert.assertEquals(1001, total);
+	}
+
+	@Test
+	public void testIteratingLongFromStream() throws IOException {
+		StringBuilder sb = new StringBuilder();
+		sb.append("[null");
+		for (int i = 0; i < 1000; i++) {
+			sb.append(",");
+			sb.append(Integer.toString(i));
+		}
+		sb.append("]");
+		byte[] bytes = sb.toString().getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		Iterator<Long> result = json.iterateOver(Long.class, is, new byte[512]);
+		int total = 0;
+		while (result.hasNext()) {
+			result.next();
+			total++;
+		}
+		Assert.assertEquals(1001, total);
 	}
 
 	static class Obj implements JsonObject {
@@ -84,8 +110,13 @@ public class InputStreamTest {
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
 		DslJson<Object> json = new DslJson<Object>();
-		List<Obj> result = json.deserializeList(Obj.class, is, new byte[512]);
-		Assert.assertEquals(1001, result.size());
+		Iterator<Obj> result = json.iterateOver(Obj.class, is, new byte[512]);
+		int total = 0;
+		while (result.hasNext()) {
+			result.next();
+			total++;
+		}
+		Assert.assertEquals(1001, total);
 	}
 
 	@Test

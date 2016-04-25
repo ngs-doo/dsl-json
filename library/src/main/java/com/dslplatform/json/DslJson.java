@@ -1081,6 +1081,169 @@ public class DslJson<TContext> {
 				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
+	private static class StreamWithObjectReader<T extends JsonObject> implements Iterator<T> {
+		private final JsonReader.ReadJsonObject<T> reader;
+		private final JsonStreamReader json;
+
+		private boolean hasNext;
+
+		StreamWithObjectReader(
+				JsonReader.ReadJsonObject<T> reader,
+				JsonStreamReader json) {
+			this.reader = reader;
+			this.json = json;
+			hasNext = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return hasNext;
+		}
+
+		@Override
+		public void remove() {
+		}
+
+		@Override
+		public T next() {
+			try {
+				byte nextToken = json.last();
+				final T instance;
+				if (nextToken == 'n') {
+					if (json.wasNull()) {
+						instance = null;
+					} else {
+						throw json.expecting("null");
+					}
+				} else if (nextToken == '{') {
+					json.getNextToken();
+					instance = reader.deserialize(json);
+				} else {
+					throw json.expecting("{");
+				}
+				hasNext = json.getNextToken() == ',';
+				if (hasNext) {
+					json.getNextToken();
+				} else {
+					if (json.last() != ']') {
+						throw json.expecting("]");
+					}
+				}
+				return instance;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	private static class StreamWithReader<T> implements Iterator<T> {
+		private final JsonReader.ReadObject<T> reader;
+		private final JsonStreamReader json;
+
+		private boolean hasNext;
+
+		StreamWithReader(
+				JsonReader.ReadObject<T> reader,
+				JsonStreamReader json) {
+			this.reader = reader;
+			this.json = json;
+			hasNext = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return hasNext;
+		}
+
+		@Override
+		public void remove() {
+		}
+
+		@Override
+		public T next() {
+			try {
+				byte nextToken = json.last();
+				final T instance;
+				if (nextToken == 'n') {
+					if (json.wasNull()) {
+						instance = null;
+					} else {
+						throw json.expecting("null");
+					}
+				} else {
+					instance = reader.read(json);
+				}
+				hasNext = json.getNextToken() == ',';
+				if (hasNext) {
+					json.getNextToken();
+				} else {
+					if (json.last() != ']') {
+						throw json.expecting("]");
+					}
+				}
+				return instance;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	private static final Iterator EmptyIterator = new Iterator() {
+		@Override
+		public boolean hasNext() {
+			return false;
+		}
+
+		@Override
+		public void remove() {
+		}
+
+		@Override
+		public Object next() {
+			return null;
+		}
+	};
+
+	@SuppressWarnings("unchecked")
+	public <TResult> Iterator<TResult> iterateOver(
+			final Class<TResult> manifest,
+			final InputStream stream,
+			final byte[] buffer) throws IOException {
+		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+		if (json.getNextToken() != '[') {
+			if (json.wasNull()) {
+				return null;
+			}
+			throw json.expecting("[");
+		}
+		if (json.getNextToken() == ']') {
+			return EmptyIterator;
+		}
+		if (JsonObject.class.isAssignableFrom(manifest)) {
+			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
+			if (reader != null) {
+				return new StreamWithObjectReader(reader, json);
+			}
+		}
+		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
+		if (simpleReader != null) {
+			return new StreamWithReader(simpleReader, json);
+		}
+		if (fallback != null) {
+			final Object array = Array.newInstance(manifest, 0);
+			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), json.streamFromStart());
+			if (result == null) {
+				return null;
+			}
+			final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+			for (TResult aResult : result) {
+				list.add(aResult);
+			}
+			return list.iterator();
+		}
+		throw createErrorMessage(manifest);
+	}
+
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {
 		if (array == null) {
 			writer.writeNull();
