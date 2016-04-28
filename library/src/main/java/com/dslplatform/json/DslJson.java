@@ -1204,6 +1204,23 @@ public class DslJson<TContext> {
 		}
 	};
 
+	/**
+	 * Streaming API for collection deserialization.
+	 * DslJson will create iterator based on provided manifest info.
+	 * It will attempt to deserialize from stream on each next() invocation.
+	 * <p>
+	 * Useful for processing very large streams if only one instance from collection is required at once.
+	 * <p>
+	 * Stream will be processed in chunks of specified buffer byte[].
+	 * It will block on reading until buffer is full or end of stream is detected.
+	 *
+	 * @param manifest  type info
+	 * @param stream    JSON data stream
+	 * @param buffer    size of processing chunk
+	 * @param <TResult> type info
+	 * @return Iterator to instances deserialized from input JSON
+	 * @throws IOException if reader is not found or there is an error processing input stream
+	 */
 	@SuppressWarnings("unchecked")
 	public <TResult> Iterator<TResult> iterateOver(
 			final Class<TResult> manifest,
@@ -1242,6 +1259,284 @@ public class DslJson<TContext> {
 			return list.iterator();
 		}
 		throw createErrorMessage(manifest);
+	}
+
+	@SuppressWarnings("unchecked")
+	private JsonWriter.WriteObject getOrCreateWriter(final Object instance, final Class<?> instanceManifest) throws IOException {
+		if (instance instanceof JsonObject) {
+			return new JsonWriter.WriteObject() {
+				@Override
+				public void write(JsonWriter writer, Object value) {
+					((JsonObject) value).serialize(writer, false);
+				}
+			};
+		}
+		if (instance instanceof JsonObject[]) {
+			return new JsonWriter.WriteObject() {
+				@Override
+				public void write(JsonWriter writer, Object value) {
+					serialize(writer, (JsonObject[]) value);
+				}
+			};
+		}
+		final Class<?> manifest = instanceManifest != null ? instanceManifest : instance.getClass();
+		if (instanceManifest != null) {
+			if (JsonObject.class.isAssignableFrom(manifest)) {
+				return new JsonWriter.WriteObject() {
+					@Override
+					public void write(JsonWriter writer, Object value) {
+						((JsonObject) value).serialize(writer, false);
+					}
+				};
+			}
+		}
+		final JsonWriter.WriteObject simpleWriter = tryFindWriter(manifest);
+		if (simpleWriter != null) {
+			return simpleWriter;
+		}
+		if (manifest.isArray()) {
+			final Class<?> elementManifest = manifest.getComponentType();
+			if (elementManifest.isPrimitive()) {
+				if (elementManifest == boolean.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							BoolConverter.serialize((boolean[]) value, writer);
+						}
+					};
+				} else if (elementManifest == int.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							NumberConverter.serialize((int[]) value, writer);
+						}
+					};
+				} else if (elementManifest == long.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							NumberConverter.serialize((long[]) value, writer);
+						}
+					};
+				} else if (elementManifest == byte.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							BinaryConverter.serialize((byte[]) value, writer);
+						}
+					};
+				} else if (elementManifest == short.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							NumberConverter.serialize((short[]) value, writer);
+						}
+					};
+				} else if (elementManifest == float.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							NumberConverter.serialize((float[]) value, writer);
+						}
+					};
+				} else if (elementManifest == double.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							NumberConverter.serialize((double[]) value, writer);
+						}
+					};
+				} else if (elementManifest == char.class) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							StringConverter.serialize(new String((char[]) value), writer);
+						}
+					};
+				}
+				return null;
+			} else {
+				final JsonWriter.WriteObject elementWriter = tryFindWriter(elementManifest);
+				if (elementWriter != null) {
+					return new JsonWriter.WriteObject() {
+						@Override
+						public void write(JsonWriter writer, Object value) {
+							writer.serialize((Object[]) value, elementWriter);
+						}
+					};
+				}
+			}
+		}
+		if (instance instanceof Collection || Collection.class.isAssignableFrom(manifest)) {
+			return new JsonWriter.WriteObject() {
+				@Override
+				public void write(JsonWriter writer, final Object value) {
+					final Collection items = (Collection) value;
+					Class<?> baseType = null;
+					final Iterator iterator = items.iterator();
+					//TODO: pick lowest common denominator!?
+					do {
+						final Object item = iterator.next();
+						if (item != null) {
+							Class<?> elementType = item.getClass();
+							if (elementType != baseType) {
+								if (baseType == null || elementType.isAssignableFrom(baseType)) {
+									baseType = elementType;
+								}
+							}
+						}
+					} while (iterator.hasNext());
+					if (baseType == null) {
+						writer.writeByte(JsonWriter.ARRAY_START);
+						writer.writeNull();
+						for (int i = 1; i < items.size(); i++) {
+							writer.writeAscii(",null");
+						}
+						writer.writeByte(JsonWriter.ARRAY_END);
+					} else if (JsonObject.class.isAssignableFrom(baseType)) {
+						serialize(writer, (Collection<JsonObject>) items);
+					} else {
+						final JsonWriter.WriteObject elementWriter = tryFindWriter(baseType);
+						if (elementWriter != null) {
+							writer.serialize(items, elementWriter);
+						} else if (fallback != null) {
+							final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+							stream.reset();
+							try {
+								fallback.serialize(value, stream);
+							} catch (IOException ex) {
+								throw new RuntimeException(ex);
+							}
+							writer.writeAscii(stream.toByteArray());
+						} else {
+							throw new RuntimeException("Unable to serialize provided object. Failed to find serializer for: " + items.getClass());
+						}
+					}
+				}
+			};
+		}
+		throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
+	}
+
+	/**
+	 * Streaming API for collection serialization.
+	 * <p>
+	 * It will iterate over entire iterator and serialize each instance into target output stream.
+	 * After each instance serialization it will copy JSON into target output stream.
+	 * During each serialization reader will be looked up based on next() instance which allows
+	 * serializing collection with different types.
+	 * If collection contains all instances of the same type, prefer the other streaming API.
+	 * <p>
+	 * If reader is not found an IOException will be thrown
+	 * <p>
+	 * If JsonWriter is provided it will be used, otherwise a new instance will be internally created.
+	 *
+	 * @param iterator input data
+	 * @param stream   target JSON stream
+	 * @param writer   temporary buffer for serializing a single item. Can be null
+	 * @param <T>      input data type
+	 * @throws IOException reader is not found, there is an error during serialization or problem with writing to target stream
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> void iterateOver(
+			final Iterator<T> iterator,
+			final OutputStream stream,
+			final JsonWriter writer) throws IOException {
+		final JsonWriter buffer = writer == null ? new JsonWriter() : writer;
+		stream.write(JsonWriter.ARRAY_START);
+		T item = iterator.next();
+		Class<?> lastManifest = null;
+		JsonWriter.WriteObject lastWriter = null;
+		if (item != null) {
+			lastManifest = item.getClass();
+			lastWriter = getOrCreateWriter(item, lastManifest);
+			buffer.reset();
+			try {
+				lastWriter.write(buffer, item);
+			} catch (Exception e) {
+				throw new IOException(e);
+			}
+			buffer.toStream(stream);
+		} else {
+			stream.write(NULL);
+		}
+		while (iterator.hasNext()) {
+			stream.write(JsonWriter.COMMA);
+			item = iterator.next();
+			if (item != null) {
+				final Class<?> currentManifest = item.getClass();
+				if (lastWriter == null || lastManifest == null || !lastManifest.equals(currentManifest)) {
+					lastManifest = currentManifest;
+					lastWriter = getOrCreateWriter(item, lastManifest);
+				}
+				buffer.reset();
+				try {
+					lastWriter.write(buffer, item);
+				} catch (Exception e) {
+					throw new IOException(e);
+				}
+				buffer.toStream(stream);
+			} else {
+				stream.write(NULL);
+			}
+		}
+		stream.write(JsonWriter.ARRAY_END);
+	}
+
+	/**
+	 * Streaming API for collection serialization.
+	 * <p>
+	 * It will iterate over entire iterator and serialize each instance into target output stream.
+	 * After each instance serialization it will copy JSON into target output stream.
+	 * <p>
+	 * If reader is not found an IOException will be thrown
+	 * <p>
+	 * If JsonWriter is provided it will be used, otherwise a new instance will be internally created.
+	 *
+	 * @param iterator input data
+	 * @param manifest type of elements in collection
+	 * @param stream   target JSON stream
+	 * @param writer   temporary buffer for serializing a single item. Can be null
+	 * @param <T>      input data type
+	 * @throws IOException reader is not found, there is an error during serialization or problem with writing to target stream
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> void iterateOver(
+			final Iterator<T> iterator,
+			final Class<T> manifest,
+			final OutputStream stream,
+			final JsonWriter writer) throws IOException {
+		final JsonWriter buffer = writer == null ? new JsonWriter() : writer;
+		final JsonWriter.WriteObject instanceWriter = getOrCreateWriter(null, manifest);
+		stream.write(JsonWriter.ARRAY_START);
+		T item = iterator.next();
+		if (item != null) {
+			buffer.reset();
+			try {
+				instanceWriter.write(buffer, item);
+			} catch (Exception e) {
+				throw new IOException(e);
+			}
+			buffer.toStream(stream);
+		} else {
+			stream.write(NULL);
+		}
+		while (iterator.hasNext()) {
+			stream.write(JsonWriter.COMMA);
+			item = iterator.next();
+			if (item != null) {
+				buffer.reset();
+				try {
+					instanceWriter.write(buffer, item);
+				} catch (Exception e) {
+					throw new IOException(e);
+				}
+				buffer.toStream(stream);
+			} else {
+				stream.write(NULL);
+			}
+		}
+		stream.write(JsonWriter.ARRAY_END);
 	}
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {

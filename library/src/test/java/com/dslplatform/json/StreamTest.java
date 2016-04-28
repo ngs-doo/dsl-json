@@ -4,13 +4,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
-public class InputStreamTest {
+public class StreamTest {
 	@Test
 	public void testIteratingMapFromStream() throws IOException {
 		StringBuilder sb = new StringBuilder();
@@ -65,6 +65,16 @@ public class InputStreamTest {
 
 		@Override
 		public void serialize(JsonWriter writer, boolean minimal) {
+			writer.writeAscii("{\"x\":");
+			NumberConverter.serialize(x, writer);
+			writer.writeAscii(",\"y\":");
+			NumberConverter.serialize(y, writer);
+			writer.writeAscii(",\"z\":");
+			if (z) {
+				writer.writeAscii("true}");
+			} else {
+				writer.writeAscii("false}");
+			}
 		}
 
 		public static final JsonReader.ReadJsonObject<Obj> JSON_READER = new JsonReader.ReadJsonObject<Obj>() {
@@ -261,5 +271,84 @@ public class InputStreamTest {
 		Assert.assertEquals(2, total);
 		Assert.assertEquals(65, tmp[0]);
 		Assert.assertEquals(66, tmp[1]);
+	}
+
+	@Test
+	public void iterateToOutputObject() throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
+		sb.append("[{\"x\":1,\"y\":1.1,\"z\":true}");
+		for (int i = 0; i < 1000; i++) {
+			sb.append(",{\"x\":");
+			sb.append(Integer.toString(i));
+			sb.append(",\"y\":");
+			sb.append(Double.toString(i / 10d));
+			sb.append(",\"z\":");
+			sb.append(i % 2 == 0 ? "true}" : "false}");
+			sb.append(",null");
+		}
+		sb.append("]");
+		byte[] bytes = sb.toString().getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		Iterator<Obj> result = json.iterateOver(Obj.class, is, new byte[512]);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		json.iterateOver(result, os, new JsonWriter());
+		Assert.assertArrayEquals(os.toByteArray(), bytes);
+		os.reset();
+		is.reset();
+		result = json.iterateOver(Obj.class, is, new byte[512]);
+		json.iterateOver(result, Obj.class, os, new JsonWriter());
+		Assert.assertArrayEquals(os.toByteArray(), bytes);
+	}
+
+	@Test
+	public void iterateToOutputMap() throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
+		sb.append("[{\"x\":1,\"y\":1.1,\"z\":true}");
+		for (int i = 0; i < 1000; i++) {
+			sb.append(",{\"x\":");
+			sb.append(Integer.toString(i));
+			sb.append(",\"y\":");
+			sb.append(Double.toString(i / 10d));
+			sb.append(",\"z\":");
+			sb.append(i % 2 == 0 ? "true}" : "false}");
+			sb.append(",null");
+		}
+		sb.append("]");
+		byte[] bytes = sb.toString().getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		Iterator<Map> result = json.iterateOver(Map.class, is, new byte[512]);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		json.iterateOver(result, os, new JsonWriter());
+		Assert.assertArrayEquals(os.toByteArray(), bytes);
+		os.reset();
+		is.reset();
+		result = json.iterateOver(Map.class, is, new byte[512]);
+		json.iterateOver(result, Map.class, os, new JsonWriter());
+		Assert.assertArrayEquals(os.toByteArray(), bytes);
+	}
+
+	@Test
+	public void iterateToOutputLong() throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
+		sb.append("[-1");
+		for (int i = 0; i < 1000; i++) {
+			sb.append(",");
+			sb.append(Integer.toString(i));
+		}
+		sb.append("]");
+		byte[] bytes = sb.toString().getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		Iterator<Long> result = json.iterateOver(Long.class, is, new byte[512]);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		json.iterateOver(result, os, new JsonWriter());
+		Assert.assertArrayEquals(os.toByteArray(), bytes);
+		os.reset();
+		is.reset();
+		result = json.iterateOver(Long.class, is, new byte[512]);
+		json.iterateOver(result, Long.class, os, new JsonWriter());
+		Assert.assertArrayEquals(os.toByteArray(), bytes);
 	}
 }
