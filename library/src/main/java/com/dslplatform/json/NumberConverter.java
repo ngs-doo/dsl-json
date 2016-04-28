@@ -615,6 +615,78 @@ public abstract class NumberConverter {
 		return reader.deserializeCollection(IntReader);
 	}
 
+	public static int[] deserializeIntArray(final JsonReader reader) throws IOException {
+		if (reader.last() == ']') {
+			return new int[0];
+		}
+		int[] buffer = new int[4];
+		buffer[0] = deserializeInt(reader);
+		int i = 1;
+		while (reader.getNextToken() == ',') {
+			reader.getNextToken();
+			if (i == buffer.length) {
+				buffer = Arrays.copyOf(buffer, buffer.length << 1);
+			}
+			buffer[i++] = deserializeInt(reader);
+		}
+		reader.checkArrayEnd();
+		return Arrays.copyOf(buffer, i);
+	}
+
+	public static long[] deserializeLongArray(final JsonReader reader) throws IOException {
+		if (reader.last() == ']') {
+			return new long[0];
+		}
+		long[] buffer = new long[4];
+		buffer[0] = deserializeLong(reader);
+		int i = 1;
+		while (reader.getNextToken() == ',') {
+			reader.getNextToken();
+			if (i == buffer.length) {
+				buffer = Arrays.copyOf(buffer, buffer.length << 1);
+			}
+			buffer[i++] = deserializeLong(reader);
+		}
+		reader.checkArrayEnd();
+		return Arrays.copyOf(buffer, i);
+	}
+
+	public static float[] deserializeFloatArray(final JsonReader reader) throws IOException {
+		if (reader.last() == ']') {
+			return new float[0];
+		}
+		float[] buffer = new float[4];
+		buffer[0] = deserializeFloat(reader);
+		int i = 1;
+		while (reader.getNextToken() == ',') {
+			reader.getNextToken();
+			if (i == buffer.length) {
+				buffer = Arrays.copyOf(buffer, buffer.length << 1);
+			}
+			buffer[i++] = deserializeFloat(reader);
+		}
+		reader.checkArrayEnd();
+		return Arrays.copyOf(buffer, i);
+	}
+
+	public static double[] deserializeDoubleArray(final JsonReader reader) throws IOException {
+		if (reader.last() == ']') {
+			return new double[0];
+		}
+		double[] buffer = new double[4];
+		buffer[0] = deserializeDouble(reader);
+		int i = 1;
+		while (reader.getNextToken() == ',') {
+			reader.getNextToken();
+			if (i == buffer.length) {
+				buffer = Arrays.copyOf(buffer, buffer.length << 1);
+			}
+			buffer[i++] = deserializeDouble(reader);
+		}
+		reader.checkArrayEnd();
+		return Arrays.copyOf(buffer, i);
+	}
+
 	public static void deserializeIntCollection(final JsonReader reader, final Collection<Integer> res) throws IOException {
 		reader.deserializeCollection(IntReader, res);
 	}
