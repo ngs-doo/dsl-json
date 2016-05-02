@@ -18,7 +18,7 @@ public @interface CompiledJson {
 	/**
 	 * JSON attribute names can be minified using builtin simplistic algorithm
 	 * which results in smaller JSON and faster processing.
-	 * This is useful when using JSON for persistance instead of public API or Javascript interoperability.
+	 * This is useful when using JSON for persistence instead of public API or Javascript interoperability.
 	 *
 	 * @return should JSON properties use short names
 	 */

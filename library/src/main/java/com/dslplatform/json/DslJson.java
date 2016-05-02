@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentMap;
  * and annotation processor must be configured to register those classes into services file.
  * <p>
  * Usage example:
- * <p>
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&lt;();
  *     dsl.serialize(instance, OutputStream);
@@ -46,7 +45,6 @@ import java.util.concurrent.ConcurrentMap;
  * <p>
  * DslJson doesn't have a String or Reader API since it's optimized for processing bytes.
  * If you wish to process String, use String.getBytes("UTF-8") as argument for DslJson
- * <p>
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
  *     JsonWriter writer = new JsonWriter();

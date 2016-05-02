@@ -54,6 +54,7 @@ public class Example {
 		instance.decimals = new HashSet<BigDecimal>(Arrays.asList(BigDecimal.ONE, BigDecimal.ZERO));
 		instance.uuids = new UUID[]{new UUID(1L, 2L), new UUID(3L, 4L)};
 		instance.longs = new Vector<Long>(Arrays.asList(1L, 2L));
+		instance.nested = Arrays.asList(new Model.Nested(), null);
 		Model.Concrete concrete = new Model.Concrete();
 		concrete.x = 11;
 		concrete.y = 23;

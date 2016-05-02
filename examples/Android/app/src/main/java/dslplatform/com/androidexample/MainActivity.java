@@ -70,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
         example.decimals = new HashSet<BigDecimal>(Arrays.asList(BigDecimal.ONE, BigDecimal.ZERO));
         example.uuids = new UUID[]{new UUID(1L, 2L), new UUID(3L, 4L)};
         example.longs = new Vector<Long>(Arrays.asList(1L, 2L));
+        example.nested = Arrays.asList(new Model.Nested(), null);
         Model.Concrete concrete = new Model.Concrete();
         concrete.x = 11;
         concrete.y = 23;
