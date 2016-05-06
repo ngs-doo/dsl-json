@@ -40,7 +40,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>0.5</version>
+      <version>0.8</version>
       <scope>provided</scope>
     </dependency>
     <plugin>
@@ -63,7 +63,7 @@ For use in Android, Gradle can be configured with:
     }
     dependencies {
       compile compile 'com.dslplatform:dsl-json:1.0.0'
-      apt 'com.dslplatform:dsl-json-processor:0.7'
+      apt 'com.dslplatform:dsl-json-processor:0.8'
     }
 
 Project examples can be found in [examples folder](examples)
