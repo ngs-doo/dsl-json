@@ -7,16 +7,16 @@
     <groupId>com.dslplatform</groupId>
     <artifactId>dsl-json-processor</artifactId>
     <name>DSL Platform JSON Annotation processor</name>
-    <description>Embedding compiled time json conversion for DSL Platform JSON library (https://dsl-platform.com)</description>
+    <description>Embedding compiled time JSON conversion for DSL Platform JSON library (https://dsl-platform.com)</description>
     <url>https://github.com/ngs-doo/dsl-json</url>
     <packaging>jar</packaging>
-    <version>0.8</version>
+    <version>0.9</version>
 
     <dependencies>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>dsl-clc</artifactId>
-            <version>1.6.3</version>
+            <version>1.7.0</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>

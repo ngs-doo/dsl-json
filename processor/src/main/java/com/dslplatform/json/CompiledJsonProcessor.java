@@ -13,7 +13,7 @@ import java.io.Writer;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
-@SupportedOptions({"dsljson.namespace", "dsljson.compiler", "dsljson.showdsl"})
+@SupportedOptions({"dsljson.namespace", "dsljson.compiler", "dsljson.showdsl", "dsljson.loglevel"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
 	private static final Map<String, String> SupportedTypes;
@@ -110,6 +110,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private String namespace;
 	private String compiler;
 	private boolean showDsl;
+	private AnnotationCompiler.LogLevel logLevel = AnnotationCompiler.LogLevel.ERRORS;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -132,6 +133,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			}
 		} else {
 			showDsl = false;
+		}
+		String ll = options.get("dsljson.loglevel");
+		if (ll != null && ll.length() > 0) {
+			logLevel = AnnotationCompiler.LogLevel.valueOf(ll);
 		}
 	}
 
@@ -197,7 +202,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 			String fileContent;
 			try {
-				fileContent = AnnotationCompiler.buildExternalJson(dsl, options.toOptions(namespace, compiler), processingEnv.getMessager());
+				fileContent = AnnotationCompiler.buildExternalJson(dsl, options.toOptions(namespace, compiler), logLevel, processingEnv.getMessager());
 			} catch (Exception e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "DSL compilation error\n" + e.getMessage());
 				return false;

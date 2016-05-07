@@ -16,7 +16,7 @@
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-processor</artifactId>
-			<version>0.8</version>
+			<version>0.9</version>
 		</dependency>
 	</dependencies>
 
@@ -30,6 +30,11 @@
 					<annotationProcessors>
 						<annotationProcessor>com.dslplatform.json.CompiledJsonProcessor</annotationProcessor>
 					</annotationProcessors>
+					<compilerArguments>
+						<!--Adsljson.showdsl>true</Adsljson.showdsl-->
+						<!--Adsljson.loglevel>DEBUG</Adsljson.loglevel-->
+						<!--Adsljson.compiler>custom_path_to_compiler/dsl-compiler.exe</Adsljson.compiler-->
+					</compilerArguments>
 				</configuration>
 			</plugin>
 		</plugins>
