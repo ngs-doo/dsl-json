@@ -176,4 +176,15 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.ExtendsType';"));
 		Assert.assertTrue(dsl.contains("long y {  simple Java access;"));
 	}
+
+	@Test
+	public void checkInheritance() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ExtendsType.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("string? x {"));
+		Assert.assertTrue(dsl.contains("long y {"));
+		Assert.assertTrue(dsl.contains("int o;"));
+	}
 }

@@ -10,6 +10,7 @@ import javax.lang.model.util.ElementFilter;
 import javax.tools.*;
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.annotation.ElementType;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
@@ -631,27 +632,41 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return result;
 	}
 
-	private static Map<String, ExecutableElement> getBeanProperties(TypeElement element) {
+	private List<TypeElement> getTypeHierarchy(TypeElement element) {
+		List<TypeElement> result = new ArrayList<TypeElement>();
+		result.add(element);
+		for (TypeMirror type : processingEnv.getTypeUtils().directSupertypes(element.asType())) {
+			Element current = processingEnv.getTypeUtils().asElement(type);
+			if (current instanceof TypeElement) {
+				result.add((TypeElement) current);
+			}
+		}
+		return result;
+	}
+
+	private Map<String, ExecutableElement> getBeanProperties(TypeElement element) {
 		Map<String, VariableElement> setters = new HashMap<String, VariableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
-		for (ExecutableElement method : ElementFilter.methodsIn(element.getEnclosedElements())) {
-			String name = method.getSimpleName().toString();
-			boolean isAccessible = method.getModifiers().contains(Modifier.PUBLIC)
-					&& !method.getModifiers().contains(Modifier.STATIC)
-					&& !method.getModifiers().contains(Modifier.ABSTRACT);
-			if (name.length() < 4 || !isAccessible) {
-				continue;
-			}
-			String property = name.substring(3).toUpperCase().equals(name.substring(3)) && name.length() > 4
-					? name.substring(3)
-					: name.substring(3, 4).toLowerCase() + name.substring(4);
-			if (name.startsWith("get")
-					&& method.getParameters().size() == 0
-					&& method.getReturnType() != null) {
-				getters.put(property, method);
-			} else if (name.startsWith("set")
-					&& method.getParameters().size() == 1) {
-				setters.put(property, method.getParameters().get(0));
+		for (TypeElement inheritance : getTypeHierarchy(element)) {
+			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
+				String name = method.getSimpleName().toString();
+				boolean isAccessible = method.getModifiers().contains(Modifier.PUBLIC)
+						&& !method.getModifiers().contains(Modifier.STATIC)
+						&& !method.getModifiers().contains(Modifier.ABSTRACT);
+				if (name.length() < 4 || !isAccessible) {
+					continue;
+				}
+				String property = name.substring(3).toUpperCase().equals(name.substring(3)) && name.length() > 4
+						? name.substring(3)
+						: name.substring(3, 4).toLowerCase() + name.substring(4);
+				if (name.startsWith("get")
+						&& method.getParameters().size() == 0
+						&& method.getReturnType() != null) {
+					getters.put(property, method);
+				} else if (name.startsWith("set")
+						&& method.getParameters().size() == 1) {
+					setters.put(property, method.getParameters().get(0));
+				}
 			}
 		}
 		Map<String, ExecutableElement> result = new HashMap<String, ExecutableElement>();
@@ -666,17 +681,19 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return result;
 	}
 
-	private static Map<String, VariableElement> getPublicFields(TypeElement element) {
+	private Map<String, VariableElement> getPublicFields(TypeElement element) {
 		Map<String, VariableElement> fields = new HashMap<String, VariableElement>();
-		for (VariableElement field : ElementFilter.fieldsIn(element.getEnclosedElements())) {
-			String name = field.getSimpleName().toString();
-			boolean isAccessible = field.getModifiers().contains(Modifier.PUBLIC)
-					&& !field.getModifiers().contains(Modifier.FINAL)
-					&& !field.getModifiers().contains(Modifier.STATIC);
-			if (!isAccessible) {
-				continue;
+		for (TypeElement inheritance : getTypeHierarchy(element)) {
+			for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
+				String name = field.getSimpleName().toString();
+				boolean isAccessible = field.getModifiers().contains(Modifier.PUBLIC)
+						&& !field.getModifiers().contains(Modifier.FINAL)
+						&& !field.getModifiers().contains(Modifier.STATIC);
+				if (!isAccessible) {
+					continue;
+				}
+				fields.put(name, field);
 			}
-			fields.put(name, field);
 		}
 		return fields;
 	}
