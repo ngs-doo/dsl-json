@@ -20,6 +20,8 @@ public class Example {
 		public int number;
 		public List<Nested> nested;
 		public Abstract abs;//abstract classes or interfaces can be used
+		public ParentClass inheritance;
+		public List<State> states;
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -38,6 +40,26 @@ public class Example {
 		public static class Concrete extends Abstract {
 			public long y;
 		}
+
+		public static class BaseClass {
+			public int a;
+		}
+
+		public static class ParentClass extends BaseClass {
+			public long b;
+		}
+
+		public enum State {
+			LOW(0),
+			MID(1),
+			HI(2);
+
+			private final int value;
+
+			State(int value) {
+				this.value = value;
+			}
+		}
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -55,6 +77,10 @@ public class Example {
 		instance.uuids = new UUID[]{new UUID(1L, 2L), new UUID(3L, 4L)};
 		instance.longs = new Vector<Long>(Arrays.asList(1L, 2L));
 		instance.nested = Arrays.asList(new Model.Nested(), null);
+		instance.inheritance = new Model.ParentClass();
+		instance.inheritance.a = 5;
+		instance.inheritance.b = 6;
+		instance.states = Arrays.asList(Model.State.HI, Model.State.LOW);
 		Model.Concrete concrete = new Model.Concrete();
 		concrete.x = 11;
 		concrete.y = 23;

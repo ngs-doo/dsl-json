@@ -31,6 +31,8 @@ public class MainActivity extends AppCompatActivity {
         public int number;
         public List<Nested> nested;
         public Abstract abs;//abstract classes or interfaces can be used
+        public ParentClass inheritance;
+        public List<State> states;
 
         //explicitly referenced classes don't require @CompiledJson annotation
         public static class Nested {
@@ -46,6 +48,26 @@ public class MainActivity extends AppCompatActivity {
         @CompiledJson
         public static class Concrete extends Abstract {
             public long y;
+        }
+
+        public static class BaseClass {
+            public int a;
+        }
+
+        public static class ParentClass extends BaseClass {
+            public long b;
+        }
+
+        public enum State {
+            LOW(0),
+            MID(1),
+            HI(2);
+
+            private final int value;
+
+            State(int value) {
+                this.value = value;
+            }
         }
     }
 
@@ -71,6 +93,10 @@ public class MainActivity extends AppCompatActivity {
         example.uuids = new UUID[]{new UUID(1L, 2L), new UUID(3L, 4L)};
         example.longs = new Vector<Long>(Arrays.asList(1L, 2L));
         example.nested = Arrays.asList(new Model.Nested(), null);
+        example.inheritance = new Model.ParentClass();
+        example.inheritance.a = 5;
+        example.inheritance.b = 6;
+        example.states = Arrays.asList(Model.State.HI, Model.State.LOW);
         Model.Concrete concrete = new Model.Concrete();
         concrete.x = 11;
         concrete.y = 23;

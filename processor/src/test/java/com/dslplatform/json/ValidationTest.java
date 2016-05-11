@@ -7,10 +7,7 @@ import org.junit.Test;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 public class ValidationTest extends AbstractAnnotationProcessorTest {
 
@@ -191,5 +188,61 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("string? x {"));
 		Assert.assertTrue(dsl.contains("long y {"));
 		Assert.assertTrue(dsl.contains("int o;"));
+	}
+
+	@Test
+	public void noOuputByDefault() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(new ArrayList<String>(), ValidType.class);
+		Assert.assertEquals(0, diagnostics.size());
+	}
+
+	@Test
+	public void checkImplicitReference() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ReferenceToImplicitType.class, ImplicitType.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.ImplicitType';"));
+		Assert.assertTrue(dsl.contains("? prop;"));
+	}
+
+	@Test
+	public void checkNonJavaImplicitReference() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics =
+				compileTestCase(
+						Arrays.asList("-Adsljson.annotation=NON_JAVA", "-Adsljson.showdsl=true"),
+						ReferenceToImplicitType.class, ImplicitType.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.ImplicitType';"));
+		Assert.assertTrue(dsl.contains("? prop;"));
+	}
+
+	@Test
+	public void checkExplicitReference() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics =
+				compileTestCase(
+						Collections.singletonList("-Adsljson.annotation=EXPLICIT"),
+						ReferenceToImplicitType.class, ImplicitType.class);
+		Assert.assertEquals(1, diagnostics.size());
+		Diagnostic note = diagnostics.get(0);
+		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
+		String error = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(error.contains("Annotation usage is set to explicit, but 'com.dslplatform.json.models.ImplicitType' is used implicitly through references"));
+	}
+
+	@Test
+	public void checkJavaAndImplicitReference() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics =
+				compileTestCase(
+						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
+						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
+		Assert.assertEquals(1, diagnostics.size());
+		Diagnostic note = diagnostics.get(0);
+		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
+		String error = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(error.contains("Annotation usage is set to non-java, but 'java.util.Date' is found in java package"));
+		Assert.assertTrue(error.contains("java.util.Date is referenced as field from 'com.dslplatform.json.models.ImplicitWithJavaType'"));
 	}
 }

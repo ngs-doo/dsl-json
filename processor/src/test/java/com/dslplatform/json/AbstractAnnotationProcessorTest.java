@@ -59,9 +59,26 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * @param compilationUnits the classes to compile
 	 * @return the {@link Diagnostic diagnostics} returned by the compilation,
 	 * as demonstrated in the documentation for {@link JavaCompiler}
-	 * @see #compileTestCase(String...)
+	 * @see #compileTestCase(String[], List&lt;String&gt;)
 	 */
 	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(Class<?>... compilationUnits) {
+		return compileTestCase(Arrays.asList("-Adsljson.showdsl=true"), compilationUnits);
+	}
+
+	/**
+	 * Attempts to compile the given compilation units using the Java Compiler
+	 * API.
+	 * <p>
+	 * The compilation units and all their dependencies are expected to be on
+	 * the classpath.
+	 *
+	 * @param compileArguments compile arguments to pass into annotation processing
+	 * @param compilationUnits the classes to compile
+	 * @return the {@link Diagnostic diagnostics} returned by the compilation,
+	 * as demonstrated in the documentation for {@link JavaCompiler}
+	 * @see #compileTestCase(String[], List&lt;String&gt;)
+	 */
+	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(List<String> compileArguments, Class<?>... compilationUnits) {
 		assert (compilationUnits != null);
 
 		String[] compilationUnitPaths = new String[compilationUnits.length];
@@ -71,7 +88,7 @@ public abstract class AbstractAnnotationProcessorTest {
 			compilationUnitPaths[i] = toResourcePath(compilationUnits[i]);
 		}
 
-		return compileTestCase(compilationUnitPaths);
+		return compileTestCase(compilationUnitPaths, compileArguments);
 	}
 
 	private static String toResourcePath(Class<?> clazz) {
@@ -89,7 +106,7 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * as demonstrated in the documentation for {@link JavaCompiler}
 	 * @see #compileTestCase(Class...)
 	 */
-	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(String... compilationUnitPaths) {
+	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(String[] compilationUnitPaths, List<String> arguments) {
 		assert (compilationUnitPaths != null);
 
 		Collection<File> compilationUnits;
@@ -108,6 +125,9 @@ public abstract class AbstractAnnotationProcessorTest {
 		StandardJavaFileManager fileManager =
 				COMPILER.getStandardFileManager(diagnosticCollector, null, null);
 
+		ArrayList<String> compileArgs = new ArrayList<String>();
+		compileArgs.add("-proc:only");
+		compileArgs.addAll(arguments);
         /*
          * Call the compiler with the "-proc:only" option. The "class names"
          * option (which could, in principle, be used instead of compilation
@@ -119,7 +139,7 @@ public abstract class AbstractAnnotationProcessorTest {
          * are annotations, they certainly need to be validated.
          */
 		CompilationTask task = COMPILER.getTask(null, fileManager, diagnosticCollector,
-				Arrays.asList("-proc:only", "-Adsljson.showdsl=true"), null,
+				compileArgs, null,
 				fileManager.getJavaFileObjectsFromFiles(compilationUnits));
 		task.setProcessors(getProcessors());
 		task.call();

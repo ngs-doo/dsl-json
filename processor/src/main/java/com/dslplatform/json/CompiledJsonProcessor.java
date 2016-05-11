@@ -13,7 +13,7 @@ import java.io.Writer;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
-@SupportedOptions({"dsljson.namespace", "dsljson.compiler", "dsljson.showdsl", "dsljson.loglevel"})
+@SupportedOptions({"dsljson.namespace", "dsljson.compiler", "dsljson.showdsl", "dsljson.loglevel", "dsljson.annotation"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
 	private static final Map<String, String> SupportedTypes;
@@ -111,6 +111,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private String compiler;
 	private boolean showDsl;
 	private AnnotationCompiler.LogLevel logLevel = AnnotationCompiler.LogLevel.ERRORS;
+	private AnnotationUsage annotationUsage = AnnotationUsage.IMPLICIT;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -138,6 +139,16 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		if (ll != null && ll.length() > 0) {
 			logLevel = AnnotationCompiler.LogLevel.valueOf(ll);
 		}
+		String au = options.get("dsljson.annotation");
+		if (au != null && au.length() > 0) {
+			annotationUsage = AnnotationUsage.valueOf(au);
+		}
+	}
+
+	private enum AnnotationUsage {
+		EXPLICIT,
+		IMPLICIT,
+		NON_JAVA;
 	}
 
 	private static class CompileOptions {
@@ -391,7 +402,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					if (propertyType != null) {
 						continue;
 					}
-					checkRelatedProperty(structs, options, p.getValue().getReturnType(), "bean property");
+					checkRelatedProperty(structs, options, p.getValue().getReturnType(), "bean property", info.element);
 				}
 				Map<String, VariableElement> fields = getPublicFields(info.element);
 				for (Map.Entry<String, VariableElement> f : fields.entrySet()) {
@@ -402,7 +413,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					if (propertyType != null) {
 						continue;
 					}
-					checkRelatedProperty(structs, options, f.getValue().asType(), "field");
+					checkRelatedProperty(structs, options, f.getValue().asType(), "field", info.element);
 				}
 			}
 		} while (total != structs.size());
@@ -426,18 +437,18 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
-	private void checkRelatedProperty(Map<String, StructInfo> structs, CompileOptions options, TypeMirror returnType, String access) {
+	private void checkRelatedProperty(Map<String, StructInfo> structs, CompileOptions options, TypeMirror returnType, String access, Element inside) {
 		String typeName = returnType.toString();
 		TypeElement el = processingEnv.getElementUtils().getTypeElement(typeName);
 		if (el != null) {
-			findStructs(structs, options, el, el + " is referenced as " + access + " from POJO with CompiledJson annotation.");
+			findStructs(structs, options, el, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.");
 			return;
 		}
 		if (returnType instanceof ArrayType) {
 			ArrayType at = (ArrayType) returnType;
 			el = processingEnv.getElementUtils().getTypeElement(at.getComponentType().toString());
 			if (el != null) {
-				findStructs(structs, options, el, el + " is referenced as array " + access + " from POJO with CompiledJson annotation.");
+				findStructs(structs, options, el, el + " is referenced as array " + access + " from '" + inside.asType() + "' through CompiledJson annotation.");
 				return;
 			}
 		}
@@ -448,7 +459,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			String elementType = typeName.substring(kv.getKey().length(), typeName.length() - 1);
 			el = processingEnv.getElementUtils().getTypeElement(elementType);
 			if (el != null) {
-				findStructs(structs, options, el, el + " is referenced as collection " + access + " from POJO with CompiledJson annotation.");
+				findStructs(structs, options, el, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.");
 				break;
 			}
 		}
@@ -463,14 +474,13 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
-	private static boolean isMinified(Element struct) {
-		for (AnnotationMirror ann : struct.getAnnotationMirrors()) {
-			if ("com.dslplatform.json.CompiledJson".equals(ann.getAnnotationType().toString())) {
-				for (ExecutableElement ee : ann.getElementValues().keySet()) {
-					if ("minified()".equals(ee.toString())) {
-						AnnotationValue minified = ann.getElementValues().get(ee);
-						return (Boolean) minified.getValue();
-					}
+	private boolean isMinified(Element struct) {
+		AnnotationMirror ann = getAnnotation(struct, jsonDeclaredType);
+		if (ann != null) {
+			for (ExecutableElement ee : ann.getElementValues().keySet()) {
+				if ("minified()".equals(ee.toString())) {
+					AnnotationValue minified = ann.getElementValues().get(ee);
+					return (Boolean) minified.getValue();
 				}
 			}
 		}
@@ -500,42 +510,61 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
 		if (!isMixin && element.getKind() != ElementKind.ENUM && !hasEmptyCtor(element)) {
 			options.hasError = true;
-			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
+			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", therefore '" + element.asType() + "' requires public no argument constructor",
 					element,
-					entityAnnotation);
+					annotation);
 		} else if (!element.getModifiers().contains(Modifier.PUBLIC)) {
 			options.hasError = true;
-			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
+			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", therefore '" + element.asType() + "' must be public",
 					element,
-					entityAnnotation);
+					annotation);
 		} else if (element.getNestingKind().isNested() && !element.getModifiers().contains(Modifier.STATIC)) {
 			options.hasError = true;
-			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
+			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", therefore '" + element.asType() + "' can't be nested member. Only static nested classes class are supported",
 					element,
-					entityAnnotation);
+					annotation);
 		} else if (element.getQualifiedName().contentEquals(element.getSimpleName())
 				|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
 				&& element.getEnclosingElement() instanceof TypeElement
 				&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName())) {
 			options.hasError = true;
-			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
+			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", but class '" + element.getQualifiedName() + "' is defined without package name and cannot be accessed",
 					element,
-					entityAnnotation);
+					annotation);
 		} else {
 			String name = "struct" + structs.size();
 			ObjectType type = isMixin ? ObjectType.MIXIN : element.getKind() == ElementKind.ENUM ? ObjectType.ENUM : ObjectType.CLASS;
+			if (annotationUsage != AnnotationUsage.IMPLICIT) {
+				AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
+				if (annotation == null) {
+					if (annotationUsage == AnnotationUsage.EXPLICIT) {
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.ERROR,
+								"Annotation usage is set to explicit, but '" + element.getQualifiedName() + "' is used implicitly through references. " +
+										"Either change usage to implicit or use @Ignore on property referencing this type. " + errorMessge,
+								element);
+					} else if (element.getQualifiedName().toString().startsWith("java.")) {
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.ERROR,
+								"Annotation usage is set to non-java, but '" + element.getQualifiedName() + "' is found in java package. " +
+										"Either change usage to implicit, use @Ignore on property referencing this type or add annotation to this type. " +
+										errorMessge,
+								element);
+					}
+				}
+			}
 			StructInfo info = new StructInfo(element, name, type);
 			structs.put(element.asType().toString(), info);
 			if (isMinified(element)) {

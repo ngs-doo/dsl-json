@@ -25,25 +25,29 @@ abstract class AnnotationCompiler {
 		ERRORS(2),
 		NONE(3);
 
-		final int level;
+		private final int level;
 
 		LogLevel(int level) {
 			this.level = level;
+		}
+
+		public boolean isVisible(LogLevel other) {
+			return other.level <= this.level;
 		}
 	}
 
 	private static class DslContext extends Context {
 
 		private Messager messager;
-		private int logLevel;
+		private LogLevel logLevel;
 
 		DslContext(Messager messager, LogLevel logLevel) {
 			this.messager = messager;
-			this.logLevel = logLevel.level;
+			this.logLevel = logLevel;
 		}
 
 		public void show(String... values) {
-			if (logLevel < 2) {
+			if (LogLevel.INFO.isVisible(logLevel)) {
 				for (String v : values) {
 					messager.printMessage(Diagnostic.Kind.OTHER, v);
 				}
@@ -51,37 +55,37 @@ abstract class AnnotationCompiler {
 		}
 
 		public void log(String value) {
-			if (logLevel < 1) {
+			if (LogLevel.DEBUG.isVisible(logLevel)) {
 				messager.printMessage(Diagnostic.Kind.OTHER, value);
 			}
 		}
 
 		public void log(char[] value, int len) {
-			if (logLevel < 1) {
+			if (LogLevel.DEBUG.isVisible(logLevel)) {
 				messager.printMessage(Diagnostic.Kind.OTHER, new String(value, 0, len));
 			}
 		}
 
 		public void warning(String value) {
-			if (logLevel < 2) {
+			if (LogLevel.INFO.isVisible(logLevel)) {
 				messager.printMessage(Diagnostic.Kind.WARNING, value);
 			}
 		}
 
 		public void warning(Exception ex) {
-			if (logLevel < 2) {
+			if (LogLevel.INFO.isVisible(logLevel)) {
 				messager.printMessage(Diagnostic.Kind.WARNING, ex.getMessage());
 			}
 		}
 
 		public void error(String value) {
-			if (logLevel < 3) {
+			if (LogLevel.ERRORS.isVisible(logLevel)) {
 				messager.printMessage(Diagnostic.Kind.ERROR, value);
 			}
 		}
 
 		public void error(Exception ex) {
-			if (logLevel < 3) {
+			if (LogLevel.ERRORS.isVisible(logLevel)) {
 				messager.printMessage(Diagnostic.Kind.ERROR, ex.getMessage());
 			}
 		}
@@ -118,7 +122,7 @@ abstract class AnnotationCompiler {
 			ctx.put(DslCompiler.INSTANCE, options.compiler);
 			List<CompileParameter> parameters = Main.initializeParameters(ctx, ".");
 			if (!Main.processContext(ctx, parameters)) {
-				if (logLevel.level > 0) {
+				if (logLevel != LogLevel.DEBUG) {
 					throw new IOException("Unable to setup DSL-JSON processing environment. Specify dsljson.loglevel=DEBUG for more information.");
 				} else {
 					throw new IOException("Unable to setup DSL-JSON processing environment. Inspect javac output log for more information.");
@@ -133,7 +137,7 @@ abstract class AnnotationCompiler {
 			}
 			return content.get();
 		} finally {
-			if (!temp.delete() && logLevel.level < 3) {
+			if (!temp.delete() && logLevel != LogLevel.NONE) {
 				messager.printMessage(Diagnostic.Kind.WARNING, "Unable to delete temporary file: " + temp.getAbsolutePath());
 			}
 		}
