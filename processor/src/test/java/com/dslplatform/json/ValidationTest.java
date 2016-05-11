@@ -59,6 +59,11 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testEnumWithCtor() {
+		assertCompilationSuccessful(compileTestCase(EnumWithArgs.class));
+	}
+
+	@Test
 	public void testNestedNonStaticClass() {
 		assertCompilationReturned(Diagnostic.Kind.ERROR, 6, compileTestCase(NestedNonStaticClass.class));
 	}

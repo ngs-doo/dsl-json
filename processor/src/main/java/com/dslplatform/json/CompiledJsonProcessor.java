@@ -10,7 +10,6 @@ import javax.lang.model.util.ElementFilter;
 import javax.tools.*;
 import java.io.IOException;
 import java.io.Writer;
-import java.lang.annotation.ElementType;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
@@ -499,12 +498,12 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
-		if (!isMixin && !hasEmptyCtor(element)) {
+		if (!isMixin && element.getKind() != ElementKind.ENUM && !hasEmptyCtor(element)) {
 			options.hasError = true;
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore it requires public no argument constructor",
+					errorMessge + ", therefore '" + element.asType() + "' requires public no argument constructor",
 					element,
 					entityAnnotation);
 		} else if (!element.getModifiers().contains(Modifier.PUBLIC)) {
@@ -512,7 +511,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore class must be public",
+					errorMessge + ", therefore '" + element.asType() + "' must be public",
 					element,
 					entityAnnotation);
 		} else if (element.getNestingKind().isNested() && !element.getModifiers().contains(Modifier.STATIC)) {
@@ -520,7 +519,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			AnnotationMirror entityAnnotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore class can't be nested member. Only static nested classes class are supported",
+					errorMessge + ", therefore '" + element.asType() + "' can't be nested member. Only static nested classes class are supported",
 					element,
 					entityAnnotation);
 		} else if (element.getQualifiedName().contentEquals(element.getSimpleName())
