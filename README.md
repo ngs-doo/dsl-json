@@ -206,5 +206,5 @@ For `InputStream` `JsonStreamReader` can be used. For small messages it's better
  ***Q***: DslJson is failing with unable to resolve reader/writer. What does it mean?  
  ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. In certain scenarios this file is not copied to APK or to the appropriate jar/war file. You can work around it by creating such file in your project under `src/main/resources/META-INF/services` as workaround for the used package/build tool.
  
- ***Q***: Maven/Gradle are failing during compilation with @CompiledJson. What can I do about it?
+ ***Q***: Maven/Gradle are failing during compilation with @CompiledJson. What can I do about it?  
  ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/Maven/pom.xml#L35)

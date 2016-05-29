@@ -2,6 +2,7 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 public abstract class BoolConverter {
@@ -59,6 +60,24 @@ public abstract class BoolConverter {
 			return false;
 		}
 		throw new IOException("Found invalid boolean value at: " + reader.positionInStream());
+	}
+
+	public static boolean[] deserializeBoolArray(final JsonReader reader) throws IOException {
+		if (reader.last() == ']') {
+			return new boolean[0];
+		}
+		boolean[] buffer = new boolean[4];
+		buffer[0] = deserialize(reader);
+		int i = 1;
+		while (reader.getNextToken() == ',') {
+			reader.getNextToken();
+			if (i == buffer.length) {
+				buffer = Arrays.copyOf(buffer, buffer.length << 1);
+			}
+			buffer[i++] = deserialize(reader);
+		}
+		reader.checkArrayEnd();
+		return Arrays.copyOf(buffer, i);
 	}
 
 	public static ArrayList<Boolean> deserializeCollection(final JsonReader reader) throws IOException {

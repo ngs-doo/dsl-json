@@ -87,7 +87,8 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
 		Assert.assertFalse(dsl.contains(" prop"));
-		Assert.assertFalse(dsl.contains(" field"));
+		Assert.assertFalse(dsl.contains(" field1"));
+		Assert.assertFalse(dsl.contains(" field2"));
 		Assert.assertFalse(dsl.contains("string? name"));
 	}
 
@@ -98,7 +99,7 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
 		Assert.assertTrue(dsl.contains("int num {  serialization name 'y';  }"));
-		Assert.assertTrue(dsl.contains("string? prop {  serialization name 'x';  }"));
+		Assert.assertTrue(dsl.contains("string? prop {  serialization name 'x';  deserialization alias 'X';  deserialization alias 'old_prop';  }"));
 		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.PropertyAlias';"));
 	}
 
@@ -244,5 +245,102 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		String error = note.getMessage(Locale.ENGLISH);
 		Assert.assertTrue(error.contains("Annotation usage is set to non-java, but 'java.util.Date' is found in java package"));
 		Assert.assertTrue(error.contains("java.util.Date is referenced as field from 'com.dslplatform.json.models.ImplicitWithJavaType'"));
+	}
+
+	@Test
+	public void jsonObjectReferences() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ReferenceJsonObject.class);
+		String warning1 = diagnostics.get(diagnostics.size() - 4).getMessage(Locale.ENGLISH);
+		String warning2 = diagnostics.get(diagnostics.size() - 3).getMessage(Locale.ENGLISH);
+		String warning3 = diagnostics.get(diagnostics.size() - 2).getMessage(Locale.ENGLISH);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
+				"external Java JSON converter;\n" +
+				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplProper';\n" +
+				"}"));
+		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
+				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1';\n" +
+				"}"));
+		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
+				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2';\n" +
+				"}"));
+		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
+				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3';\n" +
+				"}"));
+		Assert.assertTrue(
+				warning1.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
+						|| warning2.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
+						|| warning3.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
+		);
+		Assert.assertTrue(
+				warning1.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
+						|| warning2.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
+						|| warning3.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
+		);
+		Assert.assertTrue(
+				warning1.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
+						|| warning2.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
+						|| warning3.startsWith("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
+		);
+	}
+
+	@Test
+	public void hashMatchAnnotation() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(SerializationMatch.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("string? hash {  simple Java access;  }"));
+		Assert.assertTrue(dsl.contains("string? full {  simple Java access;  deserialization match full;  }"));
+		Assert.assertTrue(dsl.contains("string? def {  simple Java access;  }"));
+	}
+
+	@Test
+	public void validConverter() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(DatePojo.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
+				"external Java JSON converter 'com.dslplatform.json.models.DatePojo.DateConverter';\n" +
+				"external name Java 'java.util.Date';\n" +
+				"}"));
+	}
+
+	@Test
+	public void invalidConverterErrors() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InvalidConveterErrors.class);
+		Assert.assertEquals(9, diagnostics.size());
+		for(Diagnostic note : diagnostics) {
+			Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
+		}
+		String error1 = diagnostics.get(0).getMessage(Locale.ENGLISH);
+		String error2 = diagnostics.get(1).getMessage(Locale.ENGLISH);
+		String error3 = diagnostics.get(2).getMessage(Locale.ENGLISH);
+		Assert.assertTrue(error1.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.CharConverter' doesn't have a JSON_READER or JSON_WRITER field"));
+		Assert.assertTrue(error2.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.DateConverter' doesn't have public and static JSON_READER and JSON_WRITER fields"));
+		Assert.assertTrue(error3.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.ShortConverter' has invalid type for JSON_WRITER field"));
+		Assert.assertTrue(error3.contains("must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<java.lang.Short>'"));
+	}
+
+	@Test
+	public void allowedDuplicatesInDifferentProperties() {
+		assertCompilationSuccessful(compileTestCase(DuplicateHashAllowed.class));
+	}
+
+	@Test
+	public void allowedDuplicatesOnSameProperty() {
+		assertCompilationSuccessful(compileTestCase(DuplicateAlternativeHashAllowed.class));
+	}
+
+	@Test
+	public void disallowDuplicatesOnDifferentAlternatives() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(DuplicateHashNotAllowed.class);
+		Assert.assertEquals(1, diagnostics.size());
+		Assert.assertEquals(Diagnostic.Kind.ERROR, diagnostics.get(0).getKind());
+		String error = diagnostics.get(0).getMessage(Locale.ENGLISH);
+		Assert.assertTrue(error.contains("Duplicate hash value detected"));
 	}
 }

@@ -1,8 +1,6 @@
 package com.dslplatform.maven;
 
-import com.dslplatform.json.CompiledJson;
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -12,16 +10,24 @@ public class Example {
 
 	@CompiledJson
 	public static class Model {
+		@JsonAttribute(nullable = false) //indicate that field can't be null
 		public String string;
 		public List<Integer> integers;
+		@JsonAttribute(name = "guids") //use alternative name in JSON
 		public UUID[] uuids;
 		public Set<BigDecimal> decimals;
 		public Vector<Long> longs;
+		@JsonAttribute(hashMatch = false) // exact name match can be forced, otherwise hash value will be used for matching
 		public int number;
+		@JsonAttribute(alternativeNames = {"old_nested", "old_nested2"}) //several JSON attribute names can be deserialized into this field
 		public List<Nested> nested;
 		public Abstract abs;//abstract classes or interfaces can be used
 		public ParentClass inheritance;
 		public List<State> states;
+		public JsonObjectReference jsonObject; //object implementing JsonObject manage their own conversion
+		@JsonAttribute(ignore = true)
+		public char ignored;
+		public Date date; //date is not supported, but with the use of converter it can work
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -60,6 +66,57 @@ public class Example {
 				this.value = value;
 			}
 		}
+
+		public static class JsonObjectReference implements JsonObject {
+
+			public final int x;
+			public final String s;
+
+			public JsonObjectReference(int x, String s) {
+				this.x = x;
+				this.s = s;
+			}
+
+			public void serialize(JsonWriter writer, boolean minimal) {
+				writer.writeAscii("{\"x\":");
+				NumberConverter.serialize(x, writer);
+				writer.writeAscii(",\"s\":");
+				StringConverter.serialize(s, writer);
+				writer.writeAscii("}");
+			}
+
+			public static final JsonReader.ReadJsonObject<JsonObjectReference> JSON_READER = new JsonReader.ReadJsonObject<JsonObjectReference>() {
+				public JsonObjectReference deserialize(JsonReader reader) throws IOException {
+					reader.getNextToken();//{
+					reader.fillName();//"x"
+					reader.getNextToken();//start number
+					int x = NumberConverter.deserializeInt(reader);
+					reader.getNextToken();//,
+					reader.getNextToken();//start name
+					reader.fillName();//"s"
+					reader.getNextToken();//start string
+					String s = StringConverter.deserialize(reader);
+					reader.getNextToken();//}
+					reader.getNextToken();// move position to next token
+					return new JsonObjectReference(x, s);
+				}
+			};
+		}
+		@JsonConverter(target = Date.class)
+		public static abstract class DateConverter {
+			public static final JsonReader.ReadObject<Date> JSON_READER = new JsonReader.ReadObject<Date>() {
+				public Date read(JsonReader reader) throws IOException {
+					long time = NumberConverter.deserializeLong(reader);
+					reader.getNextToken();//we must move position to next token
+					return new Date(time);
+				}
+			};
+			public static final JsonWriter.WriteObject<Date> JSON_WRITER = new JsonWriter.WriteObject<Date>() {
+				public void write(JsonWriter writer, Date value) {
+					NumberConverter.serialize(value.getTime(), writer);
+				}
+			};
+		}
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -81,6 +138,8 @@ public class Example {
 		instance.inheritance.a = 5;
 		instance.inheritance.b = 6;
 		instance.states = Arrays.asList(Model.State.HI, Model.State.LOW);
+		instance.jsonObject = new Model.JsonObjectReference(43, "abcd");
+		instance.date = new Date();
 		Model.Concrete concrete = new Model.Concrete();
 		concrete.x = 11;
 		concrete.y = 23;

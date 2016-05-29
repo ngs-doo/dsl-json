@@ -1,6 +1,7 @@
 package com.dslplatform.json.models;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.JsonAttribute;
 
 import javax.annotation.Nonnull;
 import java.util.Set;
@@ -43,7 +44,7 @@ public class NonNullableReferenceProperty {
 
 	private Set<UUID> uuid;
 
-	@Nonnull
+	@JsonAttribute(nullable = false)
 	public Set<UUID> getUuid() {
 		return uuid;
 	}

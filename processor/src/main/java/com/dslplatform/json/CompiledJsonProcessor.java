@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
 
-@SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson"})
+@SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter"})
 @SupportedOptions({"dsljson.namespace", "dsljson.compiler", "dsljson.showdsl", "dsljson.loglevel", "dsljson.annotation"})
 public class CompiledJsonProcessor extends AbstractProcessor {
 
@@ -105,8 +105,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 						"Both Java AWT and Android graphics detected as property types. Only one supported at once."));
 	}
 
-	private TypeElement jsonTypeElement;
-	private DeclaredType jsonDeclaredType;
+	private TypeElement compiledJsonElement;
+	private DeclaredType compiledJsonType;
+	private DeclaredType attributeType;
+	private TypeElement converterElement;
+	private DeclaredType converterType;
 	private String namespace;
 	private String compiler;
 	private boolean showDsl;
@@ -116,8 +119,12 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
 		super.init(processingEnv);
-		jsonTypeElement = processingEnv.getElementUtils().getTypeElement("com.dslplatform.json.CompiledJson");
-		jsonDeclaredType = processingEnv.getTypeUtils().getDeclaredType(jsonTypeElement);
+		compiledJsonElement = processingEnv.getElementUtils().getTypeElement("com.dslplatform.json.CompiledJson");
+		compiledJsonType = processingEnv.getTypeUtils().getDeclaredType(compiledJsonElement);
+		TypeElement attributeElement = processingEnv.getElementUtils().getTypeElement("com.dslplatform.json.JsonAttribute");
+		attributeType = processingEnv.getTypeUtils().getDeclaredType(attributeElement);
+		converterElement = processingEnv.getElementUtils().getTypeElement("com.dslplatform.json.JsonConverter");
+		converterType = processingEnv.getTypeUtils().getDeclaredType(converterElement);
 		Map<String, String> options = processingEnv.getOptions();
 		String ns = options.get("dsljson.namespace");
 		if (ns != null && ns.length() > 0) {
@@ -176,14 +183,23 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		final TypeElement element;
 		final String name;
 		final ObjectType type;
+		final String converter;
 		final Set<StructInfo> implementations = new HashSet<StructInfo>();
-		final Set<String> properties = new HashSet<String>();
+		final Map<String, String[]> properties = new HashMap<String, String[]>();
 		final Map<String, String> minifiedNames = new HashMap<String, String>();
 
-		StructInfo(TypeElement element, String name, ObjectType type) {
+		StructInfo(TypeElement element, String name, ObjectType type, boolean isJsonObject) {
 			this.element = element;
 			this.name = name;
 			this.type = type;
+			this.converter = isJsonObject ? "" : null;
+		}
+
+		StructInfo(TypeElement converter, TypeElement target, String name) {
+			this.element = target;
+			this.name = name;
+			this.type = ObjectType.CLASS;
+			this.converter = converter.getQualifiedName().toString();
 		}
 	}
 
@@ -192,11 +208,15 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		if (roundEnv.processingOver()) {
 			return false;
 		}
-		Set<? extends Element> jsonAnnotated = roundEnv.getElementsAnnotatedWith(jsonTypeElement);
-		if (!jsonAnnotated.isEmpty()) {
+		Set<? extends Element> compiledJsons = roundEnv.getElementsAnnotatedWith(compiledJsonElement);
+		Set<? extends Element> jsonConverters = roundEnv.getElementsAnnotatedWith(converterElement);
+		if (!compiledJsons.isEmpty()) {
 			Map<String, StructInfo> structs = new HashMap<String, StructInfo>();
 			CompileOptions options = new CompileOptions();
-			for (Element el : jsonAnnotated) {
+			for (Element el : jsonConverters) {
+				findConverters(structs, options, el);
+			}
+			for (Element el : compiledJsons) {
 				findStructs(structs, options, el, "CompiledJson requires accessible public no argument constructor");
 			}
 			findRelatedReferences(structs, options);
@@ -276,23 +296,37 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append(impl.name);
 					dsl.append(";\n");
 				}
-				Map<String, ExecutableElement> methods = getBeanProperties(info.element);
-				for (Map.Entry<String, ExecutableElement> p : methods.entrySet()) {
-					if (hasIgnoredAnnotation(p.getValue())) {
-						continue;
+				if (info.converter == null) {
+					Map<String, ExecutableElement> methods = getBeanProperties(info.element);
+					for (Map.Entry<String, ExecutableElement> p : methods.entrySet()) {
+						if (hasIgnoredAnnotation(p.getValue())) {
+							continue;
+						}
+						String dslType = getPropertyType(p.getValue(), p.getValue().getReturnType(), structs);
+						String javaType = p.getValue().getReturnType().toString();
+						processProperty(dsl, options, checks, info, p, dslType, javaType, structs, false);
 					}
-					String dslType = getPropertyType(p.getValue(), p.getValue().getReturnType(), structs);
-					String javaType = p.getValue().getReturnType().toString();
-					processProperty(dsl, options, checks, info, p, dslType, javaType, structs, false);
-				}
-				Map<String, VariableElement> fields = getPublicFields(info.element);
-				for (Map.Entry<String, VariableElement> p : fields.entrySet()) {
-					if (methods.containsKey(p.getKey()) || hasIgnoredAnnotation(p.getValue())) {
-						continue;
+					Map<String, VariableElement> fields = getPublicFields(info.element);
+					for (Map.Entry<String, VariableElement> p : fields.entrySet()) {
+						if (methods.containsKey(p.getKey()) || hasIgnoredAnnotation(p.getValue())) {
+							continue;
+						}
+						String dslType = getPropertyType(p.getValue(), p.getValue().asType(), structs);
+						String javaType = p.getValue().asType().toString();
+						processProperty(dsl, options, checks, info, p, dslType, javaType, structs, true);
 					}
-					String dslType = getPropertyType(p.getValue(), p.getValue().asType(), structs);
-					String javaType = p.getValue().asType().toString();
-					processProperty(dsl, options, checks, info, p, dslType, javaType, structs, true);
+					if (checkHashCollision(info)) {
+						options.hasError = true;
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.ERROR,
+								"Duplicate hash value detected. Unable to create binding for: '" + info.element.getQualifiedName() + "'. Remove (or reduce) alternativeNames from @JsonAttribute to resolve this issue.",
+								info.element,
+								getAnnotation(info.element, compiledJsonType));
+					}
+				} else if (info.converter.length() == 0) {
+					dsl.append("    external Java JSON converter;\n");
+				} else {
+					dsl.append("    external Java JSON converter '").append(info.converter).append("';\n");
 				}
 			}
 			dsl.append("    external name Java '");
@@ -301,6 +335,28 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 		dsl.append("}");
 		return dsl.toString();
+	}
+
+	private static boolean checkHashCollision(StructInfo info) {
+		boolean hasAliases = false;
+		boolean hasDuplicates = false;
+		Set<Integer> counters = new HashSet<Integer>();
+		for (Map.Entry<String, String[]> kv : info.properties.entrySet()) {
+			String[] aliases = kv.getValue();
+			int hash = calcHash(kv.getKey());
+			hasDuplicates = hasDuplicates || !counters.add(hash);
+			if (aliases != null) {
+				hasAliases = true;
+				for(String name : aliases) {
+					int aliasHash = calcHash(name);
+					if (aliasHash == hash) {
+						continue;
+					}
+					hasDuplicates = hasDuplicates || !counters.add(aliasHash);
+				}
+			}
+		}
+		return hasAliases && hasDuplicates;
 	}
 
 	private <T extends Element> void processProperty(
@@ -325,7 +381,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 							Diagnostic.Kind.ERROR,
 							"Both Joda Time and Java Time detected as property types. Only one supported at once.",
 							property.getValue(),
-							getAnnotation(info.element, jsonDeclaredType));
+							getAnnotation(info.element, compiledJsonType));
 				}
 				tc.hasFirst = hasFirst;
 				tc.hasSecond = hasSecond;
@@ -343,28 +399,31 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				alias = info.minifiedNames.get(property.getKey());
 			}
 			String name = alias != null ? alias : property.getKey();
-			if (!info.properties.add(name)) {
+			String[] deserializationAliases = getAliases(property.getValue());
+			if (info.properties.containsKey(name)) {
 				options.hasError = true;
 				processingEnv.getMessager().printMessage(
 						Diagnostic.Kind.ERROR,
 						"Duplicate alias detected on " + (fieldAccess ? "field: " : "bean property: ") + property.getKey(),
 						property.getValue(),
-						getAnnotation(info.element, jsonDeclaredType));
+						getAnnotation(info.element, compiledJsonType));
 				return;
 			}
+			info.properties.put(name, deserializationAliases);
 			StructInfo target = findReferenced(property.getValue().asType(), structs);
 			if (target != null && target.type == ObjectType.MIXIN && target.implementations.size() == 0) {
 				String what = target.element.getKind() == ElementKind.INTERFACE ? "interface" : "abstract class";
 				String one = target.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Property " + property.getKey() +
 								" is referencing " + what + " (" + target.element.getQualifiedName() + ") which doesn't have registered " +
-								"implementations with @CompiledJson.\nAt least one " + one + " of specified " + what + " must be annotated " +
+								"implementations with @CompiledJson. At least one " + one + " of specified " + what + " must be annotated " +
 								"with CompiledJson annotation",
 						property.getValue(),
-						getAnnotation(info.element, jsonDeclaredType));
+						getAnnotation(info.element, compiledJsonType));
 				options.hasError = true;
 			}
-			if (fieldAccess || alias != null) {
+			boolean isFullMatch = isFullMatch(property.getValue());
+			if (fieldAccess || alias != null || deserializationAliases != null || isFullMatch) {
 				dsl.append(" {");
 				if (fieldAccess) {
 					dsl.append("  simple Java access;");
@@ -374,6 +433,16 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append(alias);
 					dsl.append("';");
 				}
+				if (deserializationAliases != null) {
+					for (String da : deserializationAliases) {
+						dsl.append("  deserialization alias '");
+						dsl.append(da);
+						dsl.append("';");
+					}
+				}
+				if (isFullMatch) {
+					dsl.append("  deserialization match full;");
+				}
 				dsl.append("  }\n");
 			} else {
 				dsl.append(";\n");
@@ -382,11 +451,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			options.hasError = true;
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified type not supported. If you wish to ignore this property,\n"
-							+ " use one of the supported JsonIgnore annotations (such as Jackson @JsonIgnore) on "
+					"Specified type not supported. If you wish to ignore this property,"
+							+ " use one of the supported JsonIgnore annotations (such as Jackson @JsonIgnore or DSL-JSON @JsonAnnotation(ignore = true) on "
 							+ (fieldAccess ? "field" : "getter"),
 					property.getValue(),
-					getAnnotation(info.element, jsonDeclaredType));
+					getAnnotation(info.element, compiledJsonType));
 		}
 	}
 
@@ -396,6 +465,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			total = structs.size();
 			List<StructInfo> items = new ArrayList<StructInfo>(structs.values());
 			for (StructInfo info : items) {
+				if (info.converter != null) {
+					continue;
+				}
 				Map<String, ExecutableElement> properties = getBeanProperties(info.element);
 				for (Map.Entry<String, ExecutableElement> p : properties.entrySet()) {
 					String propertyType = getPropertyType(p.getValue(), p.getValue().getReturnType(), structs);
@@ -465,7 +537,52 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
-	private static boolean hasIgnoredAnnotation(Element property) {
+	@SuppressWarnings("unchecked")
+	private String[] getAliases(Element property) {
+		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		if (dslAnn != null) {
+			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+			for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> ee : values.entrySet()) {
+				if (ee.getKey().toString().equals("alternativeNames()")) {
+					List<AnnotationValue> val = (List) ee.getValue().getValue();
+					if (val == null) return null;
+					String[] names = new String[val.size()];
+					for (int i = 0; i < val.size(); i++) {
+						names[i] = val.get(i).getValue().toString();
+					}
+					return names;
+				}
+			}
+		}
+		return null;
+	}
+
+	private boolean isFullMatch(Element property) {
+		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		if (dslAnn != null) {
+			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+			for (ExecutableElement ee : values.keySet()) {
+				if (ee.toString().equals("hashMatch()")) {
+					Object val = values.get(ee).getValue();
+					return val != null && !((Boolean) val);
+				}
+			}
+		}
+		return false;
+	}
+
+	private boolean hasIgnoredAnnotation(Element property) {
+		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		if (dslAnn != null) {
+			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+			for (ExecutableElement ee : values.keySet()) {
+				if (ee.toString().equals("ignore()")) {
+					Object val = values.get(ee).getValue();
+					return val != null && (Boolean) val;
+				}
+			}
+			return false;
+		}
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (JsonIgnore.contains(ann.getAnnotationType().toString())) {
 				return true;
@@ -475,7 +592,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	}
 
 	private boolean isMinified(Element struct) {
-		AnnotationMirror ann = getAnnotation(struct, jsonDeclaredType);
+		AnnotationMirror ann = getAnnotation(struct, compiledJsonType);
 		if (ann != null) {
 			for (ExecutableElement ee : ann.getElementValues().keySet()) {
 				if ("minified()".equals(ee.toString())) {
@@ -487,7 +604,19 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
-	private static <T extends Element> String findNameAlias(Map.Entry<String, T> property) {
+	private <T extends Element> String findNameAlias(Map.Entry<String, T> property) {
+		AnnotationMirror dslAnn = getAnnotation(property.getValue(), attributeType);
+		if (dslAnn != null) {
+			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+			for (ExecutableElement ee : values.keySet()) {
+				if (ee.toString().equals("name()")) {
+					String val = (String) values.get(ee).getValue();
+					if (val != null && val.length() == 0) return null;
+					return val;
+				}
+			}
+			return null;
+		}
 		for (AnnotationMirror ann : property.getValue().getAnnotationMirrors()) {
 			if (PropertyAlias.contains(ann.getAnnotationType().toString())) {
 				for (ExecutableElement ee : ann.getElementValues().keySet()) {
@@ -501,6 +630,100 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return null;
 	}
 
+	private void findConverters(Map<String, StructInfo> structs, CompileOptions options, Element el) {
+		AnnotationMirror dslAnn = getAnnotation(el, converterType);
+		if (!(el instanceof TypeElement) || dslAnn == null) {
+			return;
+		}
+		TypeElement converter = (TypeElement) el;
+		DeclaredType target = null;
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("target()")) {
+				target = (DeclaredType)values.get(ee).getValue();
+				break;
+			}
+		}
+		if (target == null) return;
+		VariableElement jsonReader = null;
+		VariableElement jsonWriter = null;
+		for (VariableElement field : ElementFilter.fieldsIn(converter.getEnclosedElements())) {
+			if ("JSON_READER".equals(field.getSimpleName().toString())) {
+				jsonReader = field;
+			} else if ("JSON_WRITER".equals(field.getSimpleName().toString())) {
+				jsonWriter = field;
+			}
+		}
+		if (!converter.getModifiers().contains(Modifier.PUBLIC)) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.asType() + "' must be public",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (!target.asElement().getModifiers().contains(Modifier.PUBLIC)) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter target: '" + target + "' must be public",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (converter.getNestingKind().isNested() && !converter.getModifiers().contains(Modifier.STATIC)) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.asType() + "' can't be nested member. Only public static nested classes are supported",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (converter.getQualifiedName().contentEquals(converter.getSimpleName())
+				|| converter.getNestingKind().isNested() && converter.getModifiers().contains(Modifier.STATIC)
+				&& converter.getEnclosingElement() instanceof TypeElement
+				&& ((TypeElement) converter.getEnclosingElement()).getQualifiedName().contentEquals(converter.getEnclosingElement().getSimpleName())) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' is defined without package name and cannot be accessed",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (jsonReader == null || jsonWriter == null) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER or JSON_WRITER field. It must have public static JSON_READER/JSON_WRITER fields for conversion.",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (!jsonReader.getModifiers().contains(Modifier.PUBLIC)
+				|| !jsonReader.getModifiers().contains(Modifier.STATIC)
+				|| !jsonWriter.getModifiers().contains(Modifier.PUBLIC)
+				|| !jsonWriter.getModifiers().contains(Modifier.STATIC)) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER fields. They must be public and static for converter to work properly.",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (!("com.dslplatform.json.JsonReader.ReadObject<" + target + ">").equals(jsonReader.asType().toString())) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_READER field. It must be of type: 'com.dslplatform.json.JsonReader.ReadObject<" + target + ">'",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (!("com.dslplatform.json.JsonWriter.WriteObject<" + target + ">").equals(jsonWriter.asType().toString())) {
+			options.hasError = true;
+			processingEnv.getMessager().printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_WRITER field. It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<" + target + ">'",
+					converter,
+					getAnnotation(converter, converterType));
+		} else {
+			String name = "struct" + structs.size();
+			TypeElement element = (TypeElement)target.asElement();
+			StructInfo info = new StructInfo(converter, element, name);
+			structs.put(target.toString(), info);
+		}
+	}
+
 	private void findStructs(Map<String, StructInfo> structs, CompileOptions options, Element el, String errorMessge) {
 		if (!(el instanceof TypeElement)) {
 			return;
@@ -508,9 +731,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
-		if (!isMixin && element.getKind() != ElementKind.ENUM && !hasEmptyCtor(element)) {
+		boolean isJsonObject = isJsonObject(element);
+		if (!isJsonObject && !isMixin && element.getKind() != ElementKind.ENUM && !hasEmptyCtor(element)) {
 			options.hasError = true;
-			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
+			AnnotationMirror annotation = getAnnotation(element, compiledJsonType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", therefore '" + element.asType() + "' requires public no argument constructor",
@@ -518,36 +742,33 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					annotation);
 		} else if (!element.getModifiers().contains(Modifier.PUBLIC)) {
 			options.hasError = true;
-			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", therefore '" + element.asType() + "' must be public",
 					element,
-					annotation);
+					getAnnotation(element, compiledJsonType));
 		} else if (element.getNestingKind().isNested() && !element.getModifiers().contains(Modifier.STATIC)) {
 			options.hasError = true;
-			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore '" + element.asType() + "' can't be nested member. Only static nested classes class are supported",
+					errorMessge + ", therefore '" + element.asType() + "' can't be nested member. Only static nested classes are supported",
 					element,
-					annotation);
+					getAnnotation(element, compiledJsonType));
 		} else if (element.getQualifiedName().contentEquals(element.getSimpleName())
 				|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
 				&& element.getEnclosingElement() instanceof TypeElement
 				&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName())) {
 			options.hasError = true;
-			AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", but class '" + element.getQualifiedName() + "' is defined without package name and cannot be accessed",
 					element,
-					annotation);
+					getAnnotation(element, compiledJsonType));
 		} else {
 			String name = "struct" + structs.size();
 			ObjectType type = isMixin ? ObjectType.MIXIN : element.getKind() == ElementKind.ENUM ? ObjectType.ENUM : ObjectType.CLASS;
-			if (annotationUsage != AnnotationUsage.IMPLICIT) {
-				AnnotationMirror annotation = getAnnotation(element, jsonDeclaredType);
+			if (!isJsonObject && annotationUsage != AnnotationUsage.IMPLICIT) {
+				AnnotationMirror annotation = getAnnotation(element, compiledJsonType);
 				if (annotation == null) {
 					if (annotationUsage == AnnotationUsage.EXPLICIT) {
 						processingEnv.getMessager().printMessage(
@@ -565,7 +786,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					}
 				}
 			}
-			StructInfo info = new StructInfo(element, name, type);
+			StructInfo info = new StructInfo(element, name, type, isJsonObject);
 			structs.put(element.asType().toString(), info);
 			if (isMinified(element)) {
 				prepareMinifiedNames(info);
@@ -672,6 +893,52 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return result;
 	}
 
+	private boolean isJsonObject(TypeElement element) {
+		for (TypeMirror type : element.getInterfaces()) {
+			if ("com.dslplatform.json.JsonObject".equals(type.toString())) {
+				for (VariableElement field : ElementFilter.fieldsIn(element.getEnclosedElements())) {
+					if ("JSON_READER".equals(field.getSimpleName().toString())) {
+						if (!field.getModifiers().contains(Modifier.PUBLIC)
+								|| !field.getModifiers().contains(Modifier.STATIC)) {
+							if (logLevel.isVisible(AnnotationCompiler.LogLevel.INFO)) {
+								processingEnv.getMessager().printMessage(
+										Diagnostic.Kind.WARNING,
+										"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static. " +
+												"It can't be used for serialization/deserialization this way. " +
+												"You probably want to change JSON_READER field so it's public and static.",
+										element);
+							}
+							return false;
+						}
+						String correctType = "com.dslplatform.json.JsonReader.ReadJsonObject<" + element.getQualifiedName() + ">";
+						if (!(correctType.equals(field.asType().toString()))) {
+							if (logLevel.isVisible(AnnotationCompiler.LogLevel.INFO)) {
+								processingEnv.getMessager().printMessage(
+										Diagnostic.Kind.WARNING,
+										"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type. " +
+												"It can't be used for serialization/deserialization this way. " +
+												"You probably want to change JSON_READER field to: '" + correctType + "'",
+										element);
+							}
+							return false;
+						}
+						return true;
+					}
+				}
+				if (logLevel.isVisible(AnnotationCompiler.LogLevel.INFO)) {
+					processingEnv.getMessager().printMessage(
+							Diagnostic.Kind.WARNING,
+							"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field. " +
+									"It can't be used for serialization/deserialization this way. " +
+									"You probably want to add public static JSON_READER field.",
+							element);
+				}
+				return false;
+			}
+		}
+		return false;
+	}
+
 	private Map<String, ExecutableElement> getBeanProperties(TypeElement element) {
 		Map<String, VariableElement> setters = new HashMap<String, VariableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
@@ -735,7 +1002,18 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return null;
 	}
 
-	private static boolean hasNonNullable(Element property) {
+	private boolean hasNonNullable(Element property) {
+		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		if (dslAnn != null) {
+			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+			for (ExecutableElement ee : values.keySet()) {
+				if (ee.toString().equals("nullable()")) {
+					Object val = values.get(ee).getValue();
+					return val != null && !((Boolean) val);
+				}
+			}
+			return false;
+		}
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (NonNullable.contains(ann.getAnnotationType().toString())) {
 				return true;
@@ -744,7 +1022,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
-	private static String getPropertyType(Element element, TypeMirror type, Map<String, StructInfo> structs) {
+	private String getPropertyType(Element element, TypeMirror type, Map<String, StructInfo> structs) {
 		String simpleType = SupportedTypes.get(type.toString());
 		boolean hasNonNullable = hasNonNullable(element);
 		if (simpleType != null) {
@@ -799,5 +1077,15 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			}
 		}
 		return structs.get(type.toString());
+	}
+
+	private static int calcHash(String name) {
+		long hash = 0x811c9dc5;
+		for (int i = 0; i < name.length(); i++) {
+			byte b = (byte)name.charAt(i);
+			hash ^= b;
+			hash *= 0x1000193;
+		}
+		return (int) hash;
 	}
 }

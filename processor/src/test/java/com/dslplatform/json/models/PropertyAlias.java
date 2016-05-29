@@ -1,7 +1,7 @@
 package com.dslplatform.json.models;
 
 import com.dslplatform.json.CompiledJson;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.dslplatform.json.JsonAttribute;
 import com.google.gson.annotations.SerializedName;
 
 @CompiledJson
@@ -19,7 +19,7 @@ public class PropertyAlias {
 
 	private String prop;
 
-	@JsonProperty("x")
+	@JsonAttribute(name = "x", alternativeNames = {"X", "old_prop"})
 	public String getProp() {
 		return prop;
 	}
