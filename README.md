@@ -1,4 +1,4 @@
-DSL JSON library
+DSL-JSON library
 ================
 
 DSL Platform compatible JSON library for Java and Android.
@@ -40,7 +40,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.0</version>
+      <version>1.1</version>
       <scope>provided</scope>
     </dependency>
     <plugin>
@@ -62,8 +62,8 @@ For use in Android, Gradle can be configured with:
       processor 'com.dslplatform.json.CompiledJsonProcessor'
     }
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:1.0.0'
-      apt 'com.dslplatform:dsl-json-processor:1.0'
+      compile compile 'com.dslplatform:dsl-json:1.1.0'
+      apt 'com.dslplatform:dsl-json-processor:1.1'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -118,7 +118,31 @@ Project examples can be found in [examples folder](examples)
 
 Collections can be used on supported Java types, other POJOs and enums.
 
-### Nullability annotations
+### Custom types
+
+Types without builtin mapping can be supported in two ways:
+
+ * by implementing `JsonObject` and appropriate `JSON_READER`
+ * by defining custom conversion class and annotating it with `@JsonConverter`
+
+Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L105)
+Annotation processor will check if custom type implementations have appropriate signatures.
+
+### @JsonAttribute features
+
+DSL-JSON property annotation supports several customizations/features:
+
+ * name - define custom serialization name
+ * alternativeNames - different incoming JSON attributes can be mapped into appropriate property. This can be used for simple features such as casing or for complex features such as model evolution
+ * ignore - don't serialize specific property into JSON
+ * nullable - tell compiler that this property can't be null. Compiler can remove some checks in that case for minuscule performance boost
+ * hashMatch - DSL-JSON matches properties by hash values. If this option is turned off exact comparison will be performed which will add minuscule deserialization overhead, but invalid properties with same hash names will not be deserialized into "wrong" property. In case when model contains multiple properties with same hash values, compiler will inject exact comparison by default, regardless of this option value.
+
+### External annotations
+
+For existing classes which can't be modified with `@JsonAttribute` alternative external annotations are supported:
+
+#### Nullability annotations
 
 During translation from Java objects into DSL schema, existing type system nullability rules are followed.
 With the help of non-null annotations, hints can be introduced to work around some Java nullability type system limitations.
@@ -131,7 +155,7 @@ List of supported non-null annotations:
  * lombok.NonNull
  * android.support.annotation.NonNull
 
-### Property aliases
+#### Property aliases
 
 Annotation processor supports external annotations for customizing property name in JSON:
 
@@ -140,7 +164,7 @@ Annotation processor supports external annotations for customizing property name
 
 Those annotations will be translated into specialized DSL for specifying serialization name.
 
-### Ignored properties
+#### Ignored properties
 
 Existing bean properties and fields can be ignored using one of the supported annotations:
 
@@ -163,7 +187,7 @@ Best serialization performance can be obtained with combination of minimal seria
 Independent benchmarks can validate the performance of DSL-JSON library:
 
  * [JVM serializers](https://github.com/eishay/jvm-serializers/wiki) - benchmark for all kind of JVM codecs. Shows DSL-JSON as fast as top binary codecs. More up to date results available at: http://hperadin.github.io/jvm-serializers-report/report.html
- * [Techempower round 11](https://www.techempower.com/benchmarks/#section=data-r11&hw=peak&test=json) - shows 50% improvements for servlet-dsl over standard servlet utilizing Jackson
+ * [Techempower round 12](https://www.techempower.com/benchmarks/#section=data-r12&hw=peak&test=json&f=1kw-0-0-pa8-4zsow-0) - shows 80% improvements for servlet-dsl over standard servlet utilizing Jackson
  * [Kostya JSON](https://github.com/kostya/benchmarks) - fastest performing Java JSON library
 
 Reference benchmark (built by library authors):
@@ -181,7 +205,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.0.0</version>
+      <version>1.1.0</version>
     </dependency>
 
 ## Best practices
@@ -200,11 +224,11 @@ For `InputStream` `JsonStreamReader` can be used. For small messages it's better
  ***Q***: What is `TContext` in `DslJson` and what should I use for it?  
  ***A***: Generic `TContext` is used for library specialization. Use `DslJson<Object>` when you don't need it and just provide `null` for it.
  
- ***Q***: Why is DSL JSON faster than others?  
+ ***Q***: Why is DSL-JSON faster than others?  
  ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching.
  
  ***Q***: DslJson is failing with unable to resolve reader/writer. What does it mean?  
  ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. In certain scenarios this file is not copied to APK or to the appropriate jar/war file. You can work around it by creating such file in your project under `src/main/resources/META-INF/services` as workaround for the used package/build tool.
  
- ***Q***: Maven/Gradle are failing during compilation with @CompiledJson. What can I do about it?  
+ ***Q***: Maven/Gradle are failing during compilation with `@CompiledJson`. What can I do about it?  
  ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/Maven/pom.xml#L35)
