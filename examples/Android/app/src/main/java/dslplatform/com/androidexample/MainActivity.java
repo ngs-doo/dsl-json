@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -44,10 +45,12 @@ public class MainActivity extends AppCompatActivity {
         public Abstract abs;//abstract classes or interfaces can be used
         public ParentClass inheritance;
         public List<State> states;
-        public JsonObjectReference jsonObject; //object implementing JsonObject manage their own conversion
+        public JsonObjectReference jsonObject; //object implementing JsonObject manage their own conversion. They must start with '{'
+        public List<JsonObjectReference> jsonObjects;
         @JsonAttribute(ignore = true)
         public char ignored;
         public Date date; //date is not supported, but with the use of converter it can work
+        public List<Date> dates;
 
         //explicitly referenced classes don't require @CompiledJson annotation
         public static class Nested {
@@ -107,7 +110,6 @@ public class MainActivity extends AppCompatActivity {
 
             public static final JsonReader.ReadJsonObject<JsonObjectReference> JSON_READER = new JsonReader.ReadJsonObject<JsonObjectReference>() {
                 public JsonObjectReference deserialize(JsonReader reader) throws IOException {
-                    reader.getNextToken();//{
                     reader.fillName();//"x"
                     reader.getNextToken();//start number
                     int x = NumberConverter.deserializeInt(reader);
@@ -117,7 +119,6 @@ public class MainActivity extends AppCompatActivity {
                     reader.getNextToken();//start string
                     String s = StringConverter.deserialize(reader);
                     reader.getNextToken();//}
-                    reader.getNextToken();// move position to next token
                     return new JsonObjectReference(x, s);
                 }
             };
@@ -127,13 +128,16 @@ public class MainActivity extends AppCompatActivity {
             public static final JsonReader.ReadObject<Date> JSON_READER = new JsonReader.ReadObject<Date>() {
                 public Date read(JsonReader reader) throws IOException {
                     long time = NumberConverter.deserializeLong(reader);
-                    reader.getNextToken();//we must move position to next token
                     return new Date(time);
                 }
             };
             public static final JsonWriter.WriteObject<Date> JSON_WRITER = new JsonWriter.WriteObject<Date>() {
                 public void write(JsonWriter writer, Date value) {
-                    NumberConverter.serialize(value.getTime(), writer);
+                    if (value == null) {
+                        writer.writeNull();
+                    } else {
+                        NumberConverter.serialize(value.getTime(), writer);
+                    }
                 }
             };
         }
@@ -166,7 +170,9 @@ public class MainActivity extends AppCompatActivity {
         instance.inheritance.b = 6;
         instance.states = Arrays.asList(Model.State.HI, Model.State.LOW);
         instance.jsonObject = new Model.JsonObjectReference(43, "abcd");
+        instance.jsonObjects = Collections.singletonList(new Model.JsonObjectReference(34, "dcba"));
         instance.date = new Date();
+        instance.dates = Arrays.asList(null, new Date(0));
         Model.Concrete concrete = new Model.Concrete();
         concrete.x = 11;
         concrete.y = 23;
