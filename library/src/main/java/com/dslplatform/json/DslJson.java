@@ -60,6 +60,7 @@ public class DslJson<TContext> {
 
 	protected final TContext context;
 	protected final Fallback<TContext> fallback;
+	protected final boolean omitDefaults;
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
@@ -98,7 +99,7 @@ public class DslJson<TContext> {
 	 * Default ServiceLoader.load method will be used to setup services from META-INF
 	 */
 	public DslJson() {
-		this(null, false, false, false, null, ServiceLoader.load(Configuration.class));
+		this(null, false, false, false, null, false, ServiceLoader.load(Configuration.class));
 	}
 
 	/**
@@ -109,6 +110,7 @@ public class DslJson<TContext> {
 	 * @param javaSpecifics    register Java graphics specific classes such as java.awt.Point, Image, ...
 	 * @param jodaTime         register converters for JodaTime classes (LocalDate and DateTime)
 	 * @param fallback         in case of unsupported type, try serialization/deserialization through external API
+	 * @param omitDefaults     should serialization produce minified JSON (omit nulls and default values)
 	 * @param serializers      additional serializers/deserializers which will be immediately registered into readers/writers
 	 */
 	public DslJson(
@@ -117,9 +119,11 @@ public class DslJson<TContext> {
 			final boolean javaSpecifics,
 			final boolean jodaTime,
 			final Fallback<TContext> fallback,
+			final boolean omitDefaults,
 			final Iterable<Configuration> serializers) {
 		this.context = context;
 		this.fallback = fallback;
+		this.omitDefaults = omitDefaults;
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
 		registerReader(boolean.class, BoolConverter.BooleanReader);
@@ -186,15 +190,20 @@ public class DslJson<TContext> {
 			}
 			if (!found) {
 				//TODO: workaround common issue with failed services registration. try to load common external name if exists
-				try {
-					ClassLoader loader = Thread.currentThread().getContextClassLoader();
-					Class<?> external = loader.loadClass("dsl_json.json.ExternalSerialization");
-					Configuration instance = (Configuration) external.newInstance();
-					instance.configure(this);
-				} catch (NoClassDefFoundError ignore) {
-				} catch (Exception ignore) {
-				}
+				loadDefaultConverters(this, "dsl_json.json.ExternalSerialization");
+				loadDefaultConverters(this, "dsl_json_ExternalSerialization");
 			}
+		}
+	}
+
+	private static void loadDefaultConverters(final DslJson json, final String name) {
+		try {
+			ClassLoader loader = Thread.currentThread().getContextClassLoader();
+			Class<?> external = loader.loadClass(name);
+			Configuration instance = (Configuration) external.newInstance();
+			instance.configure(json);
+		} catch (NoClassDefFoundError ignore) {
+		} catch (Exception ignore) {
 		}
 	}
 
@@ -1265,7 +1274,7 @@ public class DslJson<TContext> {
 			return new JsonWriter.WriteObject() {
 				@Override
 				public void write(JsonWriter writer, Object value) {
-					((JsonObject) value).serialize(writer, false);
+					((JsonObject) value).serialize(writer, omitDefaults);
 				}
 			};
 		}
@@ -1283,7 +1292,7 @@ public class DslJson<TContext> {
 				return new JsonWriter.WriteObject() {
 					@Override
 					public void write(JsonWriter writer, Object value) {
-						((JsonObject) value).serialize(writer, false);
+						((JsonObject) value).serialize(writer, omitDefaults);
 					}
 				};
 			}
@@ -1546,7 +1555,7 @@ public class DslJson<TContext> {
 		if (array.length != 0) {
 			T item = array[0];
 			if (item != null) {
-				item.serialize(writer, false);
+				item.serialize(writer, omitDefaults);
 			} else {
 				writer.writeNull();
 			}
@@ -1554,7 +1563,7 @@ public class DslJson<TContext> {
 				writer.writeByte(JsonWriter.COMMA);
 				item = array[i];
 				if (item != null) {
-					item.serialize(writer, false);
+					item.serialize(writer, omitDefaults);
 				} else {
 					writer.writeNull();
 				}
@@ -1572,7 +1581,7 @@ public class DslJson<TContext> {
 		if (len != 0) {
 			T item = array[0];
 			if (item != null) {
-				item.serialize(writer, false);
+				item.serialize(writer, omitDefaults);
 			} else {
 				writer.writeNull();
 			}
@@ -1580,7 +1589,7 @@ public class DslJson<TContext> {
 				writer.writeByte(JsonWriter.COMMA);
 				item = array[i];
 				if (item != null) {
-					item.serialize(writer, false);
+					item.serialize(writer, omitDefaults);
 				} else {
 					writer.writeNull();
 				}
@@ -1598,7 +1607,7 @@ public class DslJson<TContext> {
 		if (list.size() != 0) {
 			T item = list.get(0);
 			if (item != null) {
-				item.serialize(writer, false);
+				item.serialize(writer, omitDefaults);
 			} else {
 				writer.writeNull();
 			}
@@ -1606,7 +1615,7 @@ public class DslJson<TContext> {
 				writer.writeByte(JsonWriter.COMMA);
 				item = list.get(i);
 				if (item != null) {
-					item.serialize(writer, false);
+					item.serialize(writer, omitDefaults);
 				} else {
 					writer.writeNull();
 				}
@@ -1625,7 +1634,7 @@ public class DslJson<TContext> {
 			final Iterator<T> it = collection.iterator();
 			T item = it.next();
 			if (item != null) {
-				item.serialize(writer, false);
+				item.serialize(writer, omitDefaults);
 			} else {
 				writer.writeNull();
 			}
@@ -1633,7 +1642,7 @@ public class DslJson<TContext> {
 				writer.writeByte(JsonWriter.COMMA);
 				item = it.next();
 				if (item != null) {
-					item.serialize(writer, false);
+					item.serialize(writer, omitDefaults);
 				} else {
 					writer.writeNull();
 				}
@@ -1665,7 +1674,7 @@ public class DslJson<TContext> {
 			return true;
 		}
 		if (value instanceof JsonObject) {
-			((JsonObject) value).serialize(writer, false);
+			((JsonObject) value).serialize(writer, omitDefaults);
 			return true;
 		}
 		if (value instanceof JsonObject[]) {
