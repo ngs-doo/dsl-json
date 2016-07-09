@@ -186,7 +186,7 @@ Best serialization performance can be obtained with combination of minimal seria
 
 Independent benchmarks can validate the performance of DSL-JSON library:
 
- * [JVM serializers](https://github.com/eishay/jvm-serializers/wiki) - benchmark for all kind of JVM codecs. Shows DSL-JSON as fast as top binary codecs. More up to date results available at: http://hperadin.github.io/jvm-serializers-report/report.html
+ * [JVM serializers](https://github.com/eishay/jvm-serializers/wiki) - benchmark for all kind of JVM codecs. Shows DSL-JSON as fast as top binary codecs
  * [Techempower round 12](https://www.techempower.com/benchmarks/#section=data-r12&hw=peak&test=json&f=1kw-0-0-pa8-4zsow-0) - shows 80% improvements for servlet-dsl over standard servlet utilizing Jackson
  * [Kostya JSON](https://github.com/kostya/benchmarks) - fastest performing Java JSON library
 
