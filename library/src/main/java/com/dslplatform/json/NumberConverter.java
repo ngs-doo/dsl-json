@@ -224,7 +224,7 @@ public abstract class NumberConverter {
 			}
 		}
 		final byte[] buf = reader.buffer;
-		final byte ch = buf[0];
+		final byte ch = buf[start];
 		if (ch == '-') {
 			return parseNegativeDouble(buf, reader, start, end, start + 1);
 		} else if (ch == '+') {
@@ -374,7 +374,7 @@ public abstract class NumberConverter {
 			}
 		}
 		final byte[] buf = reader.buffer;
-		final byte ch = buf[0];
+		final byte ch = buf[start];
 		if (ch == '-') {
 			return parseNegativeFloat(buf, reader, start, end, start + 1);
 		} else if (ch == '+') {
@@ -1067,7 +1067,7 @@ public abstract class NumberConverter {
 			}
 		}
 		final byte[] buf = reader.buffer;
-		final byte ch = buf[0];
+		final byte ch = buf[start];
 		if (ch == '-') {
 			return parseNegativeNumber(buf, reader, start, end);
 		} else if (ch == '+') {

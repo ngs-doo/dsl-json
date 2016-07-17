@@ -40,7 +40,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.1</version>
+      <version>1.2</version>
       <scope>provided</scope>
     </dependency>
     <plugin>
@@ -62,8 +62,8 @@ For use in Android, Gradle can be configured with:
       processor 'com.dslplatform.json.CompiledJsonProcessor'
     }
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:1.1.0'
-      apt 'com.dslplatform:dsl-json-processor:1.1'
+      compile compile 'com.dslplatform:dsl-json:1.1.1'
+      apt 'com.dslplatform:dsl-json-processor:1.2'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -205,7 +205,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.1.0</version>
+      <version>1.1.1</version>
     </dependency>
 
 ## Best practices
@@ -228,7 +228,7 @@ For `InputStream` `JsonStreamReader` can be used. For small messages it's better
  ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching.
  
  ***Q***: DslJson is failing with unable to resolve reader/writer. What does it mean?  
- ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. In certain scenarios this file is not copied to APK or to the appropriate jar/war file. You can work around it by creating such file in your project under `src/main/resources/META-INF/services` as workaround for the used package/build tool.
+ ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. Make sure you've referenced processor library (which is responsible for setting up readers/writers during compilation) and double check if annotation processor is running. Refer to [example projects](examples) for how to set up environment.
  
  ***Q***: Maven/Gradle are failing during compilation with `@CompiledJson`. What can I do about it?  
  ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/Maven/pom.xml#L35)

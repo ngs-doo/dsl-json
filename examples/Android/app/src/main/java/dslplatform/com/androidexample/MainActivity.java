@@ -153,6 +153,8 @@ public class MainActivity extends AppCompatActivity {
         //"dsl_json.json.ExternalSerialization" and try to initialize it manually
         DslJson<Object> dslJson = new DslJson<>();
         //it's best to reuse writer if possible
+        //since only a single serialization in Android is done concurrently
+        //a good practice is to have a static field with a synchronized guard
         JsonWriter writer = new JsonWriter();
 
         ByteArrayOutputStream os = new ByteArrayOutputStream();
