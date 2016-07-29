@@ -157,10 +157,9 @@ public abstract class JavaTimeConverter {
 	public static OffsetDateTime deserializeDateTime(final JsonReader reader) throws IOException {
 		final char[] tmp = reader.readSimpleQuote();
 		final int len = reader.getCurrentIndex() - reader.getTokenStart() - 1;
-		//TODO: non utc
 		if (len > 18 && len < 28 && tmp[len - 1] == 'Z' && tmp[4] == '-' && tmp[7] == '-'
 				&& (tmp[10] == 'T' || tmp[10] == 't' || tmp[10] == ' ')
-				&& tmp[13] == ':' && tmp[16] == ':' && allDigits(tmp, 20, len)) {
+				&& tmp[13] == ':' && tmp[16] == ':' && allDigits(tmp, 20, len - 1)) {
 			final int year = NumberConverter.read4(tmp, 0);
 			final int month = NumberConverter.read2(tmp, 5);
 			final int day = NumberConverter.read2(tmp, 8);
