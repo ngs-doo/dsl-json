@@ -222,18 +222,18 @@ public class JsonReader<TContext> {
 		byte bb = 0;
 		int ci = currentIndex;
 		try {
-			for (int i = 0; i < tmp.length; i++) {
+			for (int i = 0; i < chars.length; i++) {
 				bb = buffer[ci++];
 				if (bb == '"') {
 					currentIndex = ci;
-					return new String(tmp, 0, i);
+					return new String(chars, 0, i);
 				}
 				// If we encounter a backslash, which is a beginning of an escape sequence
 				// or a high bit was set - indicating an UTF-8 encoded multibyte character,
 				// there is no chance that we can decode the string without instantiating
 				// a temporary buffer, so quit this loop
 				if ((bb ^ '\\') < 1) break;
-				tmp[i] = (char) bb;
+				chars[i] = (char) bb;
 			}
 		} catch (ArrayIndexOutOfBoundsException ignore) {
 			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
@@ -242,28 +242,9 @@ public class JsonReader<TContext> {
 			throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
 		}
 
-		// If the buffer contains an ASCII string (no high bit set) without any escape codes "\n", "\t", etc...,
-		// there is no need to instantiate any temporary buffers, we just decode the original buffer directly
-		// via ISO-8859-1 encoding since it is the fastest encoding which is guaranteed to retain all ASCII characters
-		while (ci < buffer.length) {
-			// If we encounter a backslash, which is a beginning of an escape sequence
-			// or a high bit was set - indicating an UTF-8 encoded multibyte character,
-			// there is no chance that we can decode the string without instantiating
-			// a temporary buffer, so quit this loop
-			if ((bb ^ '\\') < 1) break;
-			bb = buffer[ci++];
-			if (bb == '"') {
-				currentIndex = ci;
-				return new String(buffer, startIndex, currentIndex - startIndex - 1, "ISO-8859-1");
-			}
-		}
 		currentIndex = ci;
 
 		int soFar = --currentIndex - startIndex;
-		chars = Arrays.copyOf(chars, soFar + 256);
-		for (int i = 0; i < soFar; i++) {
-			chars[i] = (char) buffer[startIndex + i];
-		}
 
 		while (!isEndOfStream()) {
 			int bc = read();
@@ -306,7 +287,7 @@ public class JsonReader<TContext> {
 						break;
 
 					default:
-						throw new IOException("Could not parse String, got invalid escape combination '\\" + bc + "'");
+						throw new IOException("Could not parse String at position: " + positionInStream() + ". Invalid escape combination detected: '\\" + bc + "'");
 				}
 			} else if ((bc & 0x80) != 0) {
 				final int u2 = buffer[currentIndex++];
@@ -322,12 +303,12 @@ public class JsonReader<TContext> {
 							bc = ((bc & 0x07) << 18) + ((u2 & 0x3F) << 12) + ((u3 & 0x3F) << 6) + (u4 & 0x3F);
 						} else {
 							// there are legal 5 & 6 byte combinations, but none are _valid_
-							throw new IOException();
+							throw new IOException("Invalid unicode character detected at: " + positionInStream());
 						}
 
 						if (bc >= 0x10000) {
 							// check if valid unicode
-							if (bc >= 0x110000) throw new IOException();
+							if (bc >= 0x110000) throw new IOException("Invalid unicode character detected at: " + positionInStream());
 
 							// split surrogates
 							final int sup = bc - 0x10000;
@@ -340,7 +321,7 @@ public class JsonReader<TContext> {
 
 			chars[soFar++] = (char) bc;
 		}
-		throw new IOException("JSON string was not closed with a double quote!");
+		throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
 	}
 
 	private static int hexToInt(final byte value) throws IOException {
@@ -633,7 +614,7 @@ public class JsonReader<TContext> {
 
 	public final void checkArrayEnd() throws IOException {
 		if (last != ']') {
-			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in collection.");
+			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in collection at: " + positionInStream());
 			else throw new IOException("Expecting ']' at position " + positionInStream() + ". Found " + (char) last);
 		}
 	}

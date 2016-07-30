@@ -536,7 +536,7 @@ public abstract class NumberConverter {
 		} else if (values.length == 0) {
 			sw.writeAscii("[]");
 		} else {
-			final byte[] buf = sw.ensureCapacity(values.length * 21 + 2);
+			final byte[] buf = sw.ensureCapacity(values.length * 11 + 2);
 			int position = sw.size();
 			buf[position++] = '[';
 			position = serialize(buf, position, values[0]);

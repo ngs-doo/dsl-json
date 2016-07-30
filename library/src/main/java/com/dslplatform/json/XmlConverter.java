@@ -30,7 +30,7 @@ public abstract class XmlConverter {
 		}
 	};
 
-	private static DocumentBuilder documentBuilder;
+	private static final DocumentBuilder documentBuilder;
 
 	static {
 		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();

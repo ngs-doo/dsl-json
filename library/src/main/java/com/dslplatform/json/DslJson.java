@@ -178,8 +178,6 @@ public class DslJson<TContext> {
 		registerWriter(String.class, StringConverter.Writer);
 		registerReader(UUID.class, UUIDConverter.Reader);
 		registerWriter(UUID.class, UUIDConverter.Writer);
-		registerReader(Element.class, XmlConverter.Reader);
-		registerWriter(Element.class, XmlConverter.Writer);
 		registerReader(Number.class, NumberConverter.NumberReader);
 
 		if (serializers != null) {
@@ -216,6 +214,8 @@ public class DslJson<TContext> {
 		json.registerWriter(android.graphics.Rect.class, AndroidGeomConverter.RectangleWriter);
 		json.registerReader(android.graphics.Bitmap.class, AndroidGeomConverter.ImageReader);
 		json.registerWriter(android.graphics.Bitmap.class, AndroidGeomConverter.ImageWriter);
+		json.registerReader(Element.class, XmlConverter.Reader);
+		json.registerWriter(Element.class, XmlConverter.Writer);
 	}
 
 	static void registerJodaConverters(final DslJson json) {
@@ -237,6 +237,8 @@ public class DslJson<TContext> {
 		json.registerReader(java.awt.image.BufferedImage.class, JavaGeomConverter.ImageReader);
 		json.registerReader(java.awt.Image.class, JavaGeomConverter.ImageReader);
 		json.registerWriter(java.awt.Image.class, JavaGeomConverter.ImageWriter);
+		json.registerReader(Element.class, XmlConverter.Reader);
+		json.registerWriter(Element.class, XmlConverter.Writer);
 	}
 
 	protected static boolean isNull(final int size, final byte[] body) {
@@ -530,7 +532,7 @@ public class DslJson<TContext> {
 				return array;
 			}
 		}
-		return result.toArray((Object[]) Array.newInstance(elementType, result.size()));
+		return result.toArray((Object[]) Array.newInstance(elementType, 0));
 	}
 
 	/**
@@ -772,7 +774,7 @@ public class DslJson<TContext> {
 							if (objectReader != null) {
 								final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
 								if (container.isArray()) {
-									return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
+									return result.toArray((Object[]) Array.newInstance(contentType, 0));
 								}
 								return result;
 							}
@@ -798,7 +800,7 @@ public class DslJson<TContext> {
 					final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
 					if (objectReader != null) {
 						final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
-						return result.toArray((Object[]) Array.newInstance(contentType, result.size()));
+						return result.toArray((Object[]) Array.newInstance(contentType, 0));
 					}
 				}
 			}
@@ -813,7 +815,7 @@ public class DslJson<TContext> {
 		if (content instanceof ParameterizedType) {
 			final ParameterizedType cpt = (ParameterizedType) content;
 			if (cpt.getRawType() instanceof Class<?>) {
-				return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), result.size()));
+				return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), 0));
 			}
 		}
 		return result.toArray();
