@@ -451,9 +451,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			options.hasError = true;
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified type not supported. If you wish to ignore this property,"
-							+ " use one of the supported JsonIgnore annotations (such as Jackson @JsonIgnore or DSL-JSON @JsonAnnotation(ignore = true) on "
-							+ (fieldAccess ? "field" : "getter"),
+					"Specified type not supported: '" + javaType + "'. If you wish to ignore this property,"
+							+ " use one of the supported JsonIgnore annotations [such as Jackson @JsonIgnore or DSL-JSON @JsonAttribute(ignore = true) on "
+							+ (fieldAccess ? "field" : "getter")
+							+ "]. Alternatively register @JsonConverter for this type to support it with custom conversion.",
 					property.getValue(),
 					getAnnotation(info.element, compiledJsonType));
 		}

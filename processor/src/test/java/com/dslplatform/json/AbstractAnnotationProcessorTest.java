@@ -233,23 +233,26 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * @see #assertCompilationSuccessful(List)
 	 * @see #assertCompilationReturned(Kind[], long[], List)
 	 */
-	protected static void assertCompilationReturned(
+	protected static Diagnostic assertCompilationReturned(
 			Kind expectedDiagnosticKind, long expectedLineNumber,
 			List<Diagnostic<? extends JavaFileObject>> diagnostics) {
 		assert ((expectedDiagnosticKind != null) && (diagnostics != null));
 		boolean expectedDiagnosticFound = false;
 
+		Diagnostic detected = null;
 		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
 
 			if (diagnostic.getKind().equals(expectedDiagnosticKind)
 					&& (diagnostic.getLineNumber() == expectedLineNumber)) {
 				expectedDiagnosticFound = true;
+				detected = diagnostic;
 			}
 
 		}
 
 		assertTrue("Expected a result of kind " + expectedDiagnosticKind
 				+ " at line " + expectedLineNumber, expectedDiagnosticFound);
+		return detected;
 	}
 
 }

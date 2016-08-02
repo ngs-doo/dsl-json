@@ -37,7 +37,8 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testUnsupportedPropertyType() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 9, compileTestCase(InvalidType.class));
+		Diagnostic diagnostic = assertCompilationReturned(Diagnostic.Kind.ERROR, 9, compileTestCase(InvalidType.class));
+		Assert.assertTrue(diagnostic.getMessage(Locale.ENGLISH).contains("Specified type not supported: 'char'"));
 	}
 
 	@Test
