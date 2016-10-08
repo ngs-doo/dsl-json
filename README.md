@@ -19,6 +19,7 @@ Java JSON library designed for performance. Built for invasive software composit
  * minimal size - runtime dependency weights around 100KB
  * no runtime overhead - both schema and annotation based POJOs are prepared at compile time
  * no unsafe code - library doesn't rely on Java UNSAFE/internal methods
+ * legacy name mapping - multiple versions of JSON property names can be mapped into a single POJO using alternativeNames annotation
 
 ## Schema based serialization
 
@@ -40,30 +41,16 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.2</version>
+      <version>1.3</version>
       <scope>provided</scope>
     </dependency>
-    <plugin>
-      <groupId>org.apache.maven.plugins</groupId>
-      <artifactId>maven-compiler-plugin</artifactId>
-      <version>3.3</version>
-      <configuration>
-        <annotationProcessors>
-          <annotationProcessor>com.dslplatform.json.CompiledJsonProcessor</annotationProcessor>
-        </annotationProcessors>
-      </configuration>
-    </plugin>
 
-	
 For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
-    apt {
-      processor 'com.dslplatform.json.CompiledJsonProcessor'
-    }
     dependencies {
       compile compile 'com.dslplatform:dsl-json:1.1.2'
-      apt 'com.dslplatform:dsl-json-processor:1.2'
+      apt 'com.dslplatform:dsl-json-processor:1.3'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -146,14 +133,7 @@ For existing classes which can't be modified with `@JsonAttribute` alternative e
 
 During translation from Java objects into DSL schema, existing type system nullability rules are followed.
 With the help of non-null annotations, hints can be introduced to work around some Java nullability type system limitations.
-List of supported non-null annotations:
-
- * javax.validation.constraints.NotNull
- * edu.umd.cs.findbugs.annotations.NonNull
- * javax.annotation.Nonnull
- * org.jetbrains.annotations.NotNull
- * lombok.NonNull
- * android.support.annotation.NonNull
+List of supported non-null annotations can be found in [processor source code](https://github.com/ngs-doo/dsl-json/blob/master/processor/src/main/java/com/dslplatform/json/CompiledJsonProcessor.java#L85)
 
 #### Property aliases
 
@@ -189,6 +169,7 @@ Independent benchmarks can validate the performance of DSL-JSON library:
  * [JVM serializers](https://github.com/eishay/jvm-serializers/wiki) - benchmark for all kind of JVM codecs. Shows DSL-JSON as fast as top binary codecs
  * [Techempower round 12](https://www.techempower.com/benchmarks/#section=data-r12&hw=peak&test=json&f=1kw-0-0-pa8-4zsow-0) - shows 80% improvements for servlet-dsl over standard servlet utilizing Jackson
  * [Kostya JSON](https://github.com/kostya/benchmarks) - fastest performing Java JSON library
+ * [JMH JSON benchmark](https://github.com/fabienrenaud/java-json-benchmark) - benchmarks for Java JSON libraries
 
 Reference benchmark (built by library authors):
 
