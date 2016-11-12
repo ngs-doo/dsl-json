@@ -413,25 +413,13 @@ public class JsonReader<TContext> {
 	}
 
 	public final int fillName() throws IOException {
-		if (last != '"') {
-			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
-		}
-		tokenStart = currentIndex;
-		int ci = currentIndex;
-		long hash = 0x811c9dc5;
-		while (ci < buffer.length) {
-			final byte b = buffer[ci++];
-			if (b == '"') break;
-			hash ^= b;
-			hash *= 0x1000193;
-		}
-		nameEnd = currentIndex = ci;
+		final int hash = calcHash();
 		if (read() != ':') {
 			if (!wasWhiteSpace() || getNextToken() != ':') {
 				throw new IOException("Expecting ':' at position " + positionInStream() + ". Found " + (char) last);
 			}
 		}
-		return (int) hash;
+		return hash;
 	}
 
 	public final int calcHash() throws IOException {
@@ -447,7 +435,7 @@ public class JsonReader<TContext> {
 			hash ^= b;
 			hash *= 0x1000193;
 		}
-		currentIndex = ci;
+		nameEnd = currentIndex = ci;
 		return (int) hash;
 	}
 
@@ -464,7 +452,7 @@ public class JsonReader<TContext> {
 	}
 
 	public final String getLastName() throws IOException {
-		return new String(buffer, tokenStart, currentIndex - tokenStart - 1, "ISO-8859-1");
+		return new String(buffer, tokenStart, nameEnd - tokenStart - 1, "ISO-8859-1");
 	}
 
 	private byte skipString() throws IOException {
