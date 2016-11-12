@@ -1,14 +1,9 @@
 package com.dslplatform.json;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.List;
 
 public class ReaderTest {
 
@@ -18,6 +13,7 @@ public class ReaderTest {
 		final JsonReader<Object> jr = new JsonReader<Object>(buf, null);
 		jr.getNextToken();
 		jr.fillName();
+		Assert.assertEquals("number", jr.getLastName());
 		jr.getNextToken();
 		Assert.assertTrue(jr.wasLastName("number"));
 		int num = NumberConverter.deserializeInt(jr);

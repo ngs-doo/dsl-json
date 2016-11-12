@@ -464,7 +464,7 @@ public class JsonReader<TContext> {
 	}
 
 	public final String getLastName() throws IOException {
-		return new String(buffer, tokenStart, currentIndex - tokenStart - 1, "ISO-8859-1");
+		return new String(buffer, tokenStart, nameEnd - tokenStart - 1, "ISO-8859-1");
 	}
 
 	private byte skipString() throws IOException {
