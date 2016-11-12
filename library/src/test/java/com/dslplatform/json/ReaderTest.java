@@ -19,4 +19,14 @@ public class ReaderTest {
 		int num = NumberConverter.deserializeInt(jr);
 		Assert.assertEquals(1234, num);
 	}
+
+	@Test
+	public void testCalcHashNameEndSameAsFillName() throws IOException {
+		final byte[] buf = "\"number\":1234".getBytes("UTF-8");
+		final JsonReader<Object> jr = new JsonReader<Object>(buf, null);
+		jr.getNextToken();
+		jr.calcHash();
+		Assert.assertTrue(jr.wasLastName("number"));
+		Assert.assertEquals("number", jr.getLastName());
+	}
 }
