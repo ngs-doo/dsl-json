@@ -23,4 +23,12 @@ public @interface CompiledJson {
 	 * @return should JSON properties use short names
 	 */
 	boolean minified() default false;
+
+	/**
+	 * Allow specifying subtypes for resolution.
+	 * DslJson.registerReader will be configured for every specified type.
+	 *
+	 * @return explicit subtypes for deserialization
+	 */
+	Class<?>[] baseReaders() default {};
 }

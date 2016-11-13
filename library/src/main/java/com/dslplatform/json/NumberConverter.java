@@ -151,16 +151,15 @@ public abstract class NumberConverter {
 	}
 
 	public static void serialize(final double value, final JsonWriter sw) {
-		if (Double.isNaN(value)) {
+		if (value == Double.POSITIVE_INFINITY) {
+			sw.writeAscii("\"Infinity\"");
+		} else if (value == Double.NEGATIVE_INFINITY) {
+			sw.writeAscii("\"-Infinity\"");
+		} else if (value != value) {
 			sw.writeAscii("\"NaN\"");
-		} else if (Double.isInfinite(value)) {
-			final long bits = Double.doubleToLongBits(value);
-			if ((bits & -9223372036854775808L) != 0L) {
-				sw.writeAscii("\"-Infinity\"");
-			} else {
-				sw.writeAscii("\"Infinity\"");
-			}
-		} else sw.writeAscii(Double.toString(value));
+		} else {
+			sw.writeAscii(Double.toString(value));//TODO: better implementation required
+		}
 	}
 
 	public static void serialize(final double[] value, final JsonWriter sw) {
@@ -328,16 +327,15 @@ public abstract class NumberConverter {
 	}
 
 	public static void serialize(final float value, final JsonWriter sw) {
-		if (Float.isNaN(value)) {
+		if (value == Float.POSITIVE_INFINITY) {
+			sw.writeAscii("\"Infinity\"");
+		} else if (value == Float.NEGATIVE_INFINITY) {
+			sw.writeAscii("\"-Infinity\"");
+		} else if (value != value) {
 			sw.writeAscii("\"NaN\"");
-		} else if (Float.isInfinite(value)) {
-			final int bits = Float.floatToIntBits(value);
-			if ((bits & -2147483648) != 0) {
-				sw.writeAscii("\"-Infinity\"");
-			} else {
-				sw.writeAscii("\"Infinity\"");
-			}
-		} else sw.writeAscii(Float.toString(value)); //TODO: better implementation required
+		} else {
+			sw.writeAscii(Float.toString(value));//TODO: better implementation required
+		}
 	}
 
 	public static void serialize(final float[] value, final JsonWriter sw) {

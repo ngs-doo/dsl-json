@@ -221,6 +221,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			}
 			findRelatedReferences(structs, options);
 			findImplementations(structs.values());
+			String readers = findBaseReaders(structs, compiledJsons, options);
 			String dsl = buildDsl(structs, options);
 
 			if (options.hasError) {
@@ -241,6 +242,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			try {
 				String className = namespace + ".json.ExternalSerialization";
 				Writer writer = processingEnv.getFiler().createSourceFile(className).openWriter();
+				if (readers.length() > 0) {
+					fileContent = fileContent.replace("setup(json);", "setup(json);" + readers);
+				}
 				writer.write(fileContent);
 				writer.close();
 				writer = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG).openWriter();
@@ -256,7 +260,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	@Override
 	public SourceVersion getSupportedSourceVersion() {
 		SourceVersion latest = SourceVersion.latest();
-		if ("RELEASE_8".equals(latest.name()) || "RELEASE_7".equals(latest.name())) return latest;
+		if ("RELEASE_9".equals(latest.name())
+				|| "RELEASE_8".equals(latest.name())
+				|| "RELEASE_7".equals(latest.name())) {
+			return latest;
+		}
 		return SourceVersion.RELEASE_6;
 	}
 
@@ -347,7 +355,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			hasDuplicates = hasDuplicates || !counters.add(hash);
 			if (aliases != null) {
 				hasAliases = true;
-				for(String name : aliases) {
+				for (String name : aliases) {
 					int aliasHash = calcHash(name);
 					if (aliasHash == hash) {
 						continue;
@@ -357,6 +365,69 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			}
 		}
 		return hasAliases && hasDuplicates;
+	}
+
+	private String findBaseReaders(Map<String, StructInfo> structs, Set<? extends Element> compiledJsons, CompileOptions options) {
+		StringBuilder sb = new StringBuilder();
+		Map<TypeMirror, Element> processed = new HashMap<TypeMirror, Element>();
+		for (Element el : compiledJsons) {
+			AnnotationMirror ann = getAnnotation(el, compiledJsonType);
+			StructInfo struct = structs.get(el.toString());
+			if (ann == null || struct == null || !(el instanceof TypeElement)) continue;
+			for (ExecutableElement ee : ann.getElementValues().keySet()) {
+				if (!"baseReaders()".equals(ee.toString())) continue;
+				AnnotationValue readersAnn = ann.getElementValues().get(ee);
+				if (readersAnn == null) continue;
+				for (AnnotationValue br : (List<AnnotationValue>) readersAnn.getValue()) {
+					TypeMirror target = (TypeMirror) br.getValue();
+					String className = target.toString();
+					TypeElement targetEl = processingEnv.getElementUtils().getTypeElement(className);
+					Element previous = processed.get(target);
+					if (previous != null) {
+						options.hasError = true;
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.ERROR,
+								"Duplicate base class detected. Unable to register: '" + target + "' for: '" + el + "'. It was already registered in: '" + previous + "'",
+								el,
+								getAnnotation(el, compiledJsonType));
+					} else if (targetEl == null || !targetEl.getModifiers().contains(Modifier.PUBLIC)) {
+						options.hasError = true;
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.ERROR,
+								"Unable to register: '" + target + "' base reader. It must be public to be used in: '" + el + "'",
+								el,
+								getAnnotation(el, compiledJsonType));
+					} else if (targetEl.getNestingKind().isNested() && !targetEl.getModifiers().contains(Modifier.STATIC)) {
+						options.hasError = true;
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.ERROR,
+								"Unable to register: '" + target + "' base reader. Since it's nested, it must be static to be used in: '" + el + "'",
+								el,
+								getAnnotation(el, converterType));
+					} else {
+						boolean found = false;
+						for (TypeElement baseEl : getTypeHierarchy((TypeElement) el)) {
+							if (baseEl.toString().equals(className)) {
+								found = true;
+								break;
+							}
+						}
+						if (found) {
+							processed.put(target, el);
+							sb.append("\t\tjson.registerReader(").append(className).append(".class, JSON_READER_").append(struct.name).append(");\n");
+						} else {
+							options.hasError = true;
+							processingEnv.getMessager().printMessage(
+									Diagnostic.Kind.ERROR,
+									"Specified base reader: '" + className + "' is not a base class/interface of: '" + el + "'. Unable to register it as base reader.",
+									el,
+									getAnnotation(el, compiledJsonType));
+						}
+					}
+				}
+			}
+		}
+		return sb.toString();
 	}
 
 	private <T extends Element> void processProperty(
@@ -641,7 +712,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
 			if (ee.toString().equals("target()")) {
-				target = (DeclaredType)values.get(ee).getValue();
+				target = (DeclaredType) values.get(ee).getValue();
 				break;
 			}
 		}
@@ -719,7 +790,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					getAnnotation(converter, converterType));
 		} else {
 			String name = "struct" + structs.size();
-			TypeElement element = (TypeElement)target.asElement();
+			TypeElement element = (TypeElement) target.asElement();
 			StructInfo info = new StructInfo(converter, element, name);
 			structs.put(target.toString(), info);
 		}
@@ -1083,7 +1154,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static int calcHash(String name) {
 		long hash = 0x811c9dc5;
 		for (int i = 0; i < name.length(); i++) {
-			byte b = (byte)name.charAt(i);
+			byte b = (byte) name.charAt(i);
 			hash ^= b;
 			hash *= 0x1000193;
 		}
