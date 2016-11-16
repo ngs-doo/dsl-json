@@ -29,4 +29,25 @@ public class ReaderTest {
 		Assert.assertTrue(jr.wasLastName("number"));
 		Assert.assertEquals("number", jr.getLastName());
 	}
+
+	static class Implementation implements Interface {}
+	interface Interface {}
+
+	@Test
+	public void testReaderOnInterface() throws IOException {
+		DslJson<Object> dslJson = new DslJson<Object>();
+		dslJson.registerReader(Implementation.class, new JsonReader.ReadObject<Implementation>() {
+			@Override
+			public Implementation read(JsonReader reader) throws IOException {
+				return null;
+			}
+		});
+		JsonReader.ReadObject<?> reader1 = dslJson.tryFindReader(Interface.class);
+		Assert.assertNull(reader1);
+		JsonReader.ReadObject<?> reader2 = dslJson.tryFindReader(Implementation.class);
+		Assert.assertNotNull(reader2);
+		dslJson.registerReader(Interface.class, dslJson.tryFindReader(Implementation.class));
+		JsonReader.ReadObject<?> reader3 = dslJson.tryFindReader(Interface.class);
+		Assert.assertNotNull(reader3);
+	}
 }

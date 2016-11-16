@@ -326,7 +326,17 @@ public class DslJson<TContext> {
 
 	private final ConcurrentMap<Class<?>, Class<?>> writerMap = new ConcurrentHashMap<Class<?>, Class<?>>();
 
-	protected JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
+	/**
+	 * Try to find registered writer for provided type.
+	 * If writer is not found, null will be returned.
+	 * If writer for exact type is not found, type hierarchy will be scanned for base writer.
+	 *
+	 * Writer is used for conversion from object instance into JSON representation.
+	 *
+	 * @param manifest specified type
+	 * @return         writer for specified type if found
+	 */
+	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		Class<?> found = writerMap.get(manifest);
 		if (found != null) {
 			return jsonWriters.get(found);
@@ -347,7 +357,21 @@ public class DslJson<TContext> {
 		return null;
 	}
 
-	protected JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
+	/**
+	 * Try to find registered reader for provided type.
+	 * If reader is not found, null will be returned.
+	 * Exact match must be found, type hierarchy will not be scanned for alternative writer.
+	 *
+	 * If you wish to use alternative writer for specific type, register it manually with something along the lines of
+	 * <pre>
+	 *     DslJson dslJson = ...
+	 *     dslJson.registerReader(Interface.class, dslJson.tryFindWriter(Implementation.class));
+	 * </pre>
+	 *
+	 * @param manifest  specified type
+	 * @return          found reader for specified type
+	 */
+	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		return jsonReaders.get(manifest);
 	}
 

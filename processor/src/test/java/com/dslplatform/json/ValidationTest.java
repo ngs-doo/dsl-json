@@ -344,27 +344,4 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		String error = diagnostics.get(0).getMessage(Locale.ENGLISH);
 		Assert.assertTrue(error.contains("Duplicate hash value detected"));
 	}
-
-	@Test
-	public void unimplementedBaseReader() {
-		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InvalidBaseReader1.class);
-		Assert.assertEquals(1, diagnostics.size());
-		Assert.assertEquals(Diagnostic.Kind.ERROR, diagnostics.get(0).getKind());
-		String error = diagnostics.get(0).getMessage(Locale.ENGLISH);
-		Assert.assertTrue(error.contains("Specified base reader: 'java.lang.Number' is not a base class/interface of: 'com.dslplatform.json.models.InvalidBaseReader1'. Unable to register it as base reader."));
-	}
-
-	@Test
-	public void nonPublicBaseReader() {
-		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InvalidBaseReader2.class);
-		Assert.assertEquals(1, diagnostics.size());
-		Assert.assertEquals(Diagnostic.Kind.ERROR, diagnostics.get(0).getKind());
-		String error = diagnostics.get(0).getMessage(Locale.ENGLISH);
-		Assert.assertTrue(error.contains("Unable to register: 'com.dslplatform.json.models.NonPublicInterfejs' base reader. It must be public to be used in: 'com.dslplatform.json.models.InvalidBaseReader2'"));
-	}
-
-	@Test
-	public void validBaseReader() {
-		assertCompilationSuccessful(compileTestCase(ValidBaseReader.class));
-	}
 }
