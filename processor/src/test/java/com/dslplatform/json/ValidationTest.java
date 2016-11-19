@@ -299,7 +299,7 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void validConverter() {
+	public void validClassConverter() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(DatePojo.class);
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
@@ -343,5 +343,32 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertEquals(Diagnostic.Kind.ERROR, diagnostics.get(0).getKind());
 		String error = diagnostics.get(0).getMessage(Locale.ENGLISH);
 		Assert.assertTrue(error.contains("Duplicate hash value detected"));
+	}
+
+	@Test
+	public void validPropertyConverter() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(DecimalPropertyConverter.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(
+				dsl.contains(
+						"external Java JSON converter 'com.dslplatform.json.models.DecimalPropertyConverter.FormatDecimal2' for 'java.math.BigDecimal';"));
+		Assert.assertFalse(dsl.contains("external name Java 'java.math.BigDecimal';"));
+	}
+
+	@Test
+	public void invalidPropertyConverter() {
+		assertCompilationReturned(Diagnostic.Kind.ERROR, 13, compileTestCase(InvalidDecimalPropertyConverter.class));
+	}
+
+	@Test
+	public void validPrimitivePropertyConverter() {
+		assertCompilationSuccessful(compileTestCase(PrimitivePropertyConverter.class));
+	}
+
+	@Test
+	public void validCustomArrayConverter() {
+		assertCompilationSuccessful(compileTestCase(CustomArrayConverter.class));
 	}
 }

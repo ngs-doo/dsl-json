@@ -41,7 +41,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.3</version>
+      <version>1.4</version>
       <scope>provided</scope>
     </dependency>
 
@@ -49,46 +49,32 @@ For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:1.1.2'
-      apt 'com.dslplatform:dsl-json-processor:1.3'
+      compile compile 'com.dslplatform:dsl-json:1.2.0'
+      apt 'com.dslplatform:dsl-json-processor:1.4'
     }
 
 Project examples can be found in [examples folder](examples)
 
 ### Java/DSL property mapping
 
-| Java type                                              | DSL type     |
-| ------------------------------------------------------ | ------------ |
-| int                                                    |  int         |
-| long                                                   |  long        |
-| float                                                  |  float       |
-| double                                                 |  double      |
-| boolean                                                |  bool        |
-| java.lang.String                                       |  string?     |
-| java.lang.Integer                                      |  int?        |
-| java.lang.Long                                         |  long?       |
-| java.lang.Float                                        |  float?      |
-| java.lang.Double                                       |  double?     |
-| java.lang.Boolean                                      |  bool?       |
-| java.math.BigDecimal                                   |  decimal?    |
-| java.time.LocalDate                                    |  date?       |
-| java.time.OffsetDateTime                               |  timestamp?  |
-| org.joda.time.LocalDate                                |  date?       |
-| org.joda.time.DateTime                                 |  timestamp?  |
-| byte[]                                                 |  binary      |
-| java.util.UUID                                         |  uuid?       |
-| java.util.Map&lt;java.lang.String,java.lang.String&gt; |  properties? |
-| java.net.InetAddress                                   |  ip?         |
-| java.awt.Color                                         |  color?      |
-| java.awt.geom.Rectangle2D                              |  rectangle?  |
-| java.awt.geom.Point2D                                  |  location?   |
-| java.awt.geom.Point                                    |  point?      |
-| java.awt.image.BufferedImage                           |  image?      |
-| android.graphics.Rect                                  |  rectangle?  |
-| android.graphics.PointF                                |  location?   |
-| android.graphics.Point                                 |  point?      |
-| android.graphics.Bitmap                                |  image?      |
-| org.w3c.dom.Element                                    |  xml?        |
+| Java type                 | DSL type     | Java type                          | DSL type     |
+| ------------------------- | ------------ | ---------------------------------- | ------------ |
+| int                       |  int         | byte[]                             |  binary      |
+| long                      |  long        | java.util.Map&lt;String,String&gt; |  properties? |
+| float                     |  float       | java.net.InetAddress               |  ip?         |
+| double                    |  double      | java.awt.Color                     |  color?      |
+| boolean                   |  bool        | java.awt.geom.Rectangle2D          |  rectangle?  |
+| java.lang.String          |  string?     | java.awt.geom.Point2D              |  location?   |
+| java.lang.Integer         |  int?        | java.awt.geom.Point                |  point?      |
+| java.lang.Long            |  long?       | java.awt.image.BufferedImage       |  image?      |
+| java.lang.Float           |  float?      | android.graphics.Rect              |  rectangle?  |
+| java.lang.Double          |  double?     | android.graphics.PointF            |  location?   |
+| java.lang.Boolean         |  bool?       | android.graphics.Point             |  point?      |
+| java.math.BigDecimal      |  decimal?    | android.graphics.Bitmap            |  image?      |
+| java.time.LocalDate       |  date?       | org.w3c.dom.Element                |  xml?        |
+| java.time.OffsetDateTime  |  timestamp?  | org.joda.time.LocalDate            |  date?       |
+| java.util.UUID            |  uuid?       | org.joda.time.DateTime             |  timestamp?  |
+
 
 ### Java/DSL collection mapping
 
@@ -107,13 +93,15 @@ Collections can be used on supported Java types, other POJOs and enums.
 
 ### Custom types
 
-Types without builtin mapping can be supported in two ways:
+Types without builtin mapping can be supported in three ways:
 
  * by implementing `JsonObject` and appropriate `JSON_READER`
  * by defining custom conversion class and annotating it with `@JsonConverter`
+ * by defining custom conversion class and referencing it from property with converter through `@JsonAttribute`
 
-Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L105)
+Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L110)
 Annotation processor will check if custom type implementations have appropriate signatures.
+Converter for `java.util.ArrayList` can be found in [same example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L36)
 
 ### @JsonAttribute features
 
@@ -124,6 +112,7 @@ DSL-JSON property annotation supports several customizations/features:
  * ignore - don't serialize specific property into JSON
  * nullable - tell compiler that this property can't be null. Compiler can remove some checks in that case for minuscule performance boost
  * hashMatch - DSL-JSON matches properties by hash values. If this option is turned off exact comparison will be performed which will add minuscule deserialization overhead, but invalid properties with same hash names will not be deserialized into "wrong" property. In case when model contains multiple properties with same hash values, compiler will inject exact comparison by default, regardless of this option value.
+ * converter - custom conversion per property. Can be used for formatting or any other custom handling of JSON processing for specific property
 
 ### External annotations
 
@@ -167,7 +156,7 @@ Best serialization performance can be obtained with combination of minimal seria
 Independent benchmarks can validate the performance of DSL-JSON library:
 
  * [JVM serializers](https://github.com/eishay/jvm-serializers/wiki) - benchmark for all kind of JVM codecs. Shows DSL-JSON as fast as top binary codecs
- * [Techempower round 12](https://www.techempower.com/benchmarks/#section=data-r12&hw=peak&test=json&f=1kw-0-0-pa8-4zsow-0) - shows 80% improvements for servlet-dsl over standard servlet utilizing Jackson
+ * [Techempower round 13](https://www.techempower.com/benchmarks/#section=data-r13&hw=ph&test=json) - servlet equiped with DSL-JSON tops the list
  * [Kostya JSON](https://github.com/kostya/benchmarks) - fastest performing Java JSON library
  * [JMH JSON benchmark](https://github.com/fabienrenaud/java-json-benchmark) - benchmarks for Java JSON libraries
 
@@ -186,7 +175,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.1.2</version>
+      <version>1.2.0</version>
     </dependency>
 
 ## Best practices

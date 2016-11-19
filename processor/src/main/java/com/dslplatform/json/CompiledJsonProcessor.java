@@ -307,7 +307,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 							continue;
 						}
 						String dslType = getPropertyType(p.getValue(), p.getValue().getReturnType(), structs);
-						String javaType = p.getValue().getReturnType().toString();
+						TypeMirror javaType = p.getValue().getReturnType();
 						processProperty(dsl, options, checks, info, p, dslType, javaType, structs, false);
 					}
 					Map<String, VariableElement> fields = getPublicFields(info.element);
@@ -316,7 +316,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 							continue;
 						}
 						String dslType = getPropertyType(p.getValue(), p.getValue().asType(), structs);
-						String javaType = p.getValue().asType().toString();
+						TypeMirror javaType = p.getValue().asType();
 						processProperty(dsl, options, checks, info, p, dslType, javaType, structs, true);
 					}
 					if (checkHashCollision(info)) {
@@ -370,9 +370,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			StructInfo info,
 			Map.Entry<String, T> property,
 			String dslType,
-			String javaType,
+			TypeMirror javaTypeMirror,
 			Map<String, StructInfo> structs,
 			boolean fieldAccess) {
+		String javaType = javaTypeMirror.toString();
 		for (int i = 0; i < CheckTypes.size(); i++) {
 			IncompatibleTypes it = CheckTypes.get(i);
 			if (javaType.startsWith(it.first) || javaType.startsWith(it.second)) {
@@ -390,6 +391,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				tc.hasFirst = hasFirst;
 				tc.hasSecond = hasSecond;
 			}
+		}
+		TypeMirror converter = findConverter(property.getValue());
+		if (dslType == null && converter != null) {
+			//converters for unknown DSL type must fake some type
+			dslType = "String?";
 		}
 		if (dslType != null) {
 			options.useJodaTime = options.useJodaTime || javaType.startsWith("org.joda.time");
@@ -426,8 +432,21 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 						getAnnotation(info.element, compiledJsonType));
 				options.hasError = true;
 			}
+			if (converter != null) {
+				TypeElement typeConverter = processingEnv.getElementUtils().getTypeElement(converter.toString());
+				String objectType = "int".equals(javaType) ? "java.lang.Integer"
+						: "long".equals(javaType) ? "java.lang.Long"
+						: "double".equals(javaType) ? "java.lang.Double"
+						: "float".equals(javaType) ? "java.lang.Float"
+						: "char".equals(javaType) ? "java.lang.Character"
+						: javaType;
+				Element declaredType = objectType.equals(javaType)
+						? processingEnv.getTypeUtils().asElement(javaTypeMirror)
+						: processingEnv.getElementUtils().getTypeElement(objectType);
+				validConverter(options, typeConverter, declaredType, objectType);
+			}
 			boolean isFullMatch = isFullMatch(property.getValue());
-			if (fieldAccess || alias != null || deserializationAliases != null || isFullMatch) {
+			if (fieldAccess || alias != null || deserializationAliases != null || isFullMatch || converter != null) {
 				dsl.append(" {");
 				if (fieldAccess) {
 					dsl.append("  simple Java access;");
@@ -446,6 +465,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				}
 				if (isFullMatch) {
 					dsl.append("  deserialization match full;");
+				}
+				if (converter != null) {
+					dsl.append("  external Java JSON converter '").append(converter).append("' for '").append(javaType).append("';");
 				}
 				dsl.append("  }\n");
 			} else {
@@ -479,7 +501,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					if (propertyType != null) {
 						continue;
 					}
-					checkRelatedProperty(structs, options, p.getValue().getReturnType(), "bean property", info.element);
+					checkRelatedProperty(structs, options, p.getValue().getReturnType(), "bean property", info.element, p.getValue());
 				}
 				Map<String, VariableElement> fields = getPublicFields(info.element);
 				for (Map.Entry<String, VariableElement> f : fields.entrySet()) {
@@ -490,7 +512,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					if (propertyType != null) {
 						continue;
 					}
-					checkRelatedProperty(structs, options, f.getValue().asType(), "field", info.element);
+					checkRelatedProperty(structs, options, f.getValue().asType(), "field", info.element, f.getValue());
 				}
 			}
 		} while (total != structs.size());
@@ -514,7 +536,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
-	private void checkRelatedProperty(Map<String, StructInfo> structs, CompileOptions options, TypeMirror returnType, String access, Element inside) {
+	private void checkRelatedProperty(Map<String, StructInfo> structs, CompileOptions options, TypeMirror returnType, String access, Element inside, Element property) {
+		TypeMirror converter = findConverter(property);
+		if (converter != null) return;
 		String typeName = returnType.toString();
 		TypeElement el = processingEnv.getElementUtils().getTypeElement(typeName);
 		if (el != null) {
@@ -609,6 +633,21 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return false;
 	}
 
+	private TypeMirror findConverter(Element property) {
+		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		if (dslAnn != null) {
+			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+			for (ExecutableElement ee : values.keySet()) {
+				if (ee.toString().equals("converter()")) {
+					TypeMirror mirror = (TypeMirror)values.get(ee).getValue();
+					return mirror != null && mirror.toString().equals("com.dslplatform.json.JsonAttribute") ? null : mirror;
+				}
+			}
+			return null;
+		}
+		return null;
+	}
+
 	private <T extends Element> String findNameAlias(Map.Entry<String, T> property) {
 		AnnotationMirror dslAnn = getAnnotation(property.getValue(), attributeType);
 		if (dslAnn != null) {
@@ -650,6 +689,15 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			}
 		}
 		if (target == null) return;
+		if (validConverter(options, converter, target.asElement(), target.toString())) {
+			String name = "struct" + structs.size();
+			TypeElement element = (TypeElement)target.asElement();
+			StructInfo info = new StructInfo(converter, element, name);
+			structs.put(target.toString(), info);
+		}
+	}
+
+	private boolean validConverter(CompileOptions options, TypeElement converter, Element target, String fullName) {
 		VariableElement jsonReader = null;
 		VariableElement jsonWriter = null;
 		for (VariableElement field : ElementFilter.fieldsIn(converter.getEnclosedElements())) {
@@ -666,11 +714,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					"Specified converter: '" + converter.asType() + "' must be public",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (!target.asElement().getModifiers().contains(Modifier.PUBLIC)) {
+		} else if (!target.getModifiers().contains(Modifier.PUBLIC)) {
 			options.hasError = true;
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter target: '" + target + "' must be public",
+					"Specified converter target: '" + fullName + "' must be public",
 					converter,
 					getAnnotation(converter, converterType));
 		} else if (converter.getNestingKind().isNested() && !converter.getModifiers().contains(Modifier.STATIC)) {
@@ -707,26 +755,22 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER fields. They must be public and static for converter to work properly.",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (!("com.dslplatform.json.JsonReader.ReadObject<" + target + ">").equals(jsonReader.asType().toString())) {
+		} else if (!("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReader.asType().toString())) {
 			options.hasError = true;
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_READER field. It must be of type: 'com.dslplatform.json.JsonReader.ReadObject<" + target + ">'",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (!("com.dslplatform.json.JsonWriter.WriteObject<" + target + ">").equals(jsonWriter.asType().toString())) {
+		} else if (!("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriter.asType().toString())) {
 			options.hasError = true;
 			processingEnv.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
 					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_WRITER field. It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<" + target + ">'",
 					converter,
 					getAnnotation(converter, converterType));
-		} else {
-			String name = "struct" + structs.size();
-			TypeElement element = (TypeElement)target.asElement();
-			StructInfo info = new StructInfo(converter, element, name);
-			structs.put(target.toString(), info);
-		}
+		} else return true;
+		return false;
 	}
 
 	private void findStructs(Map<String, StructInfo> structs, CompileOptions options, Element el, String errorMessge) {

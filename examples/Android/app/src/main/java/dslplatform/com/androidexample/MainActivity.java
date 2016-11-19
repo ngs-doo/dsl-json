@@ -18,6 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -51,6 +52,10 @@ public class MainActivity extends AppCompatActivity {
         public char ignored;
         public Date date; //date is not supported, but with the use of converter it can work
         public List<Date> dates;
+        @JsonAttribute(converter = FormatDecimal2.class)
+        public BigDecimal decimal2; //custom formatting can be implemented with per property converters
+        @JsonAttribute(converter = SupportArrayList.class)
+        public ArrayList<Integer> intList; //unsupported collections can be supported through property converters
 
         //explicitly referenced classes don't require @CompiledJson annotation
         public static class Nested {
@@ -141,6 +146,40 @@ public class MainActivity extends AppCompatActivity {
                 }
             };
         }
+        public static abstract class FormatDecimal2 {
+            public static final JsonReader.ReadObject<BigDecimal> JSON_READER = new JsonReader.ReadObject<BigDecimal>() {
+                public BigDecimal read(JsonReader reader) throws IOException {
+                    return NumberConverter.deserializeDecimal(reader).setScale(2);
+                }
+            };
+            public static final JsonWriter.WriteObject<BigDecimal> JSON_WRITER = new JsonWriter.WriteObject<BigDecimal>() {
+                public void write(JsonWriter writer, BigDecimal value) {
+                    if (value == null) {
+                        writer.writeNull();
+                    } else {
+                        NumberConverter.serializeNullable(value.setScale(2), writer);
+                    }
+                }
+            };
+        }
+        public static abstract class SupportArrayList {
+            public static final JsonReader.ReadObject<ArrayList<Integer>> JSON_READER = new JsonReader.ReadObject<ArrayList<Integer>>() {
+                public ArrayList<Integer> read(JsonReader reader) throws IOException {
+                    reader.getNextToken();
+                    return NumberConverter.deserializeIntNullableCollection(reader);
+                }
+            };
+            public static final JsonWriter.WriteObject<Integer> INT_WRITER = new JsonWriter.WriteObject<Integer>() {
+                public void write(JsonWriter writer, Integer value) {
+                    NumberConverter.serializeNullable(value, writer);
+                }
+            };
+            public static final JsonWriter.WriteObject<ArrayList<Integer>> JSON_WRITER = new JsonWriter.WriteObject<ArrayList<Integer>>() {
+                public void write(JsonWriter writer, ArrayList<Integer> value) {
+                    writer.serialize(value, INT_WRITER);
+                }
+            };
+        }
     }
 
     @Override
@@ -179,6 +218,8 @@ public class MainActivity extends AppCompatActivity {
         concrete.x = 11;
         concrete.y = 23;
         instance.abs = concrete;
+        instance.decimal2 = BigDecimal.TEN;
+        instance.intList = new ArrayList<Integer>(Arrays.asList(123, 456));
         try {
             //serialize into writer
             dslJson.serialize(writer, instance);
