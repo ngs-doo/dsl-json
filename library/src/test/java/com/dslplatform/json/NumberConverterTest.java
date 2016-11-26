@@ -325,4 +325,22 @@ public class NumberConverterTest {
 		double[] numbers = NumberConverter.deserializeDoubleArray(sr);
 		Assert.assertArrayEquals(input, numbers, 0);
 	}
+
+	@Test
+	public void shortWhitespaceGuard() throws IOException {
+		String input = "1234  ";
+		JsonReader reader = new JsonReader(input.getBytes(), null);
+		reader.getNextToken();
+		Number number = NumberConverter.deserializeNumber(reader);
+		Assert.assertTrue(number instanceof Long);
+	}
+
+	@Test
+	public void longWhitespaceGuard() throws IOException {
+		String input = "1234        \t\n\r               ";
+		JsonReader reader = new JsonReader(input.getBytes(), null);
+		reader.getNextToken();
+		Number number = NumberConverter.deserializeNumber(reader);
+		Assert.assertTrue(number instanceof Long);
+	}
 }

@@ -585,12 +585,13 @@ public abstract class NumberConverter {
 		int value = 0;
 		for (; i < end; i++) {
 			final int ind = buf[i] - 48;
-			value = (value << 3) + (value << 1) + ind;
 			if (ind < 0 || ind > 9) {
+				if (reader.allWhitespace(i, end)) return value;
 				BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start), end - start, reader);
 				if (v.scale() <= 0) return v.intValue();
 				throw new IOException("Error parsing int number at position: " + reader.positionInStream(end - start) + ". Found decimal value: " + v);
 			}
+			value = (value << 3) + (value << 1) + ind;
 		}
 		return value;
 	}
@@ -599,12 +600,13 @@ public abstract class NumberConverter {
 		int value = 0;
 		for (; i < end; i++) {
 			final int ind = buf[i] - 48;
-			value = (value << 3) + (value << 1) - ind;
 			if (ind < 0 || ind > 9) {
+				if (reader.allWhitespace(i, end)) return value;
 				BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start), end - start, reader);
 				if (v.scale() <= 0) return v.intValue();
 				throw new IOException("Error parsing int number at position: " + reader.positionInStream(end - start) + ". Found decimal value: " + v);
 			}
+			value = (value << 3) + (value << 1) - ind;
 		}
 		return value;
 	}
@@ -857,10 +859,11 @@ public abstract class NumberConverter {
 			i = start + 1;
 			for (; i < end; i++) {
 				final int ind = buf[i] - 48;
-				value = (value << 3) + (value << 1) - ind;
 				if (ind < 0 || ind > 9) {
+					if (reader.allWhitespace(i, end)) return value;
 					return parseLongGeneric(reader, start, end);
 				}
+				value = (value << 3) + (value << 1) - ind;
 			}
 			return value;
 		} else if (ch == '+') {
@@ -868,10 +871,11 @@ public abstract class NumberConverter {
 		}
 		for (; i < end; i++) {
 			final int ind = buf[i] - 48;
-			value = (value << 3) + (value << 1) + ind;
 			if (ind < 0 || ind > 9) {
+				if (reader.allWhitespace(i, end)) return value;
 				return parseLongGeneric(reader, start, end);
 			}
+			value = (value << 3) + (value << 1) + ind;
 		}
 		return value;
 	}
@@ -917,13 +921,15 @@ public abstract class NumberConverter {
 			return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader);
 		}
 		final int start = reader.scanNumber();
-		final int end = reader.getCurrentIndex();
-		final int len = end - start;
+		int end = reader.getCurrentIndex();
+		int len = end - start;
 		if (len > 18) {
+			end = reader.findNonWhitespace(end);
+			len = end - start;
 			if (len == reader.tmpLength) {
 				final NumberInfo info = readLongNumber(reader, start);
 				return parseNumberGeneric(info.buffer, info.length, reader);
-			} else {
+			} else if (len > 18) {
 				return parseNumberGeneric(reader.prepareBuffer(start), len, reader);
 			}
 		}
@@ -1002,10 +1008,11 @@ public abstract class NumberConverter {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
-			value = (value << 3) + (value << 1) - ind;
 			if (ind < 0 || ind > 9) {
+				if (reader.allWhitespace(i, end)) return BigDecimal.valueOf(value);
 				return parseNumberGeneric(reader.prepareBuffer(start), end - start, reader);
 			}
+			value = (value << 3) + (value << 1) - ind;
 		}
 		if (i == end) return BigDecimal.valueOf(value);
 		else if (ch == '.') {
@@ -1054,13 +1061,15 @@ public abstract class NumberConverter {
 
 	public static Number deserializeNumber(final JsonReader reader) throws IOException {
 		final int start = reader.scanNumber();
-		final int end = reader.getCurrentIndex();
-		final int len = end - start;
+		int end = reader.getCurrentIndex();
+		int len = end - start;
 		if (len > 18) {
+			end = reader.findNonWhitespace(end);
+			len = end - start;
 			if (len == reader.tmpLength) {
 				final NumberInfo tmp = readLongNumber(reader, start);
 				return parseNumberGeneric(tmp.buffer, tmp.length, reader);
-			} else {
+			} else if (len > 18) {
 				return parseNumberGeneric(reader.prepareBuffer(start), len, reader);
 			}
 		}
@@ -1081,10 +1090,11 @@ public abstract class NumberConverter {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
-			value = (value << 3) + (value << 1) + ind;
 			if (ind < 0 || ind > 9) {
+				if (reader.allWhitespace(i, end)) return value;
 				return parseNumberGeneric(reader.prepareBuffer(start), end - start, reader);
 			}
+			value = (value << 3) + (value << 1) + ind;
 		}
 		if (i == end) return value;
 		else if (ch == '.') {
@@ -1139,10 +1149,11 @@ public abstract class NumberConverter {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
-			value = (value << 3) + (value << 1) - ind;
 			if (ind < 0 || ind > 9) {
+				if (reader.allWhitespace(i, end)) return value;
 				return parseNumberGeneric(reader.prepareBuffer(start), end - start, reader);
 			}
+			value = (value << 3) + (value << 1) - ind;
 		}
 		if (i == end) return value;
 		else if (ch == '.') {

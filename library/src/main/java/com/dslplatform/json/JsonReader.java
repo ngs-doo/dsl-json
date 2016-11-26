@@ -170,6 +170,22 @@ public class JsonReader<TContext> {
 		return _tmp;
 	}
 
+	final boolean allWhitespace(final int start, final int end) {
+		final byte[] _buf = buffer;
+		for (int i = start; i < end; i++) {
+			if (!WHITESPACE[_buf[i] + 128]) return false;
+		}
+		return true;
+	}
+
+	final int findNonWhitespace(final int end) {
+		final byte[] _buf = buffer;
+		for (int i = end - 1; i > 0; i--) {
+			if (!WHITESPACE[_buf[i] + 128]) return i + 1;
+		}
+		return 0;
+	}
+
 	public final String readSimpleString() throws IOException {
 		if (last != '"')
 			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
