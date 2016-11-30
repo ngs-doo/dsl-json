@@ -3,7 +3,7 @@ package com.dslplatform.json;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Collection;
 
 public abstract class NetConverter {
@@ -49,7 +49,7 @@ public abstract class NetConverter {
 		return URI.create(reader.readString());
 	}
 
-	public static ArrayList<URI> deserializeUriCollection(final JsonReader reader) throws IOException {
+	public static List<URI> deserializeUriCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(UriReader);
 	}
 
@@ -57,7 +57,7 @@ public abstract class NetConverter {
 		reader.deserializeCollection(UriReader, res);
 	}
 
-	public static ArrayList<URI> deserializeUriNullableCollection(final JsonReader reader) throws IOException {
+	public static List<URI> deserializeUriNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(UriReader);
 	}
 
@@ -83,7 +83,7 @@ public abstract class NetConverter {
 		return InetAddress.getByName(reader.readSimpleString());
 	}
 
-	public static ArrayList<InetAddress> deserializeIpCollection(final JsonReader reader) throws IOException {
+	public static List<InetAddress> deserializeIpCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(AddressReader);
 	}
 
@@ -91,7 +91,7 @@ public abstract class NetConverter {
 		reader.deserializeCollection(AddressReader, res);
 	}
 
-	public static ArrayList<InetAddress> deserializeIpNullableCollection(final JsonReader reader) throws IOException {
+	public static List<InetAddress> deserializeIpNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(AddressReader);
 	}
 

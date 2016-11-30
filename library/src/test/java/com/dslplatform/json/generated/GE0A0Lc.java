@@ -214,7 +214,7 @@ public class GE0A0Lc   implements java.lang.Cloneable, java.io.Serializable, com
 					if (nextToken == '[') {
 						nextToken = reader.getNextToken();
 						if (nextToken != ']') {
-							java.util.ArrayList<java.awt.geom.Point2D> __res = com.dslplatform.json.JavaGeomConverter.deserializeLocationNullableCollection(reader);
+							java.util.List<java.awt.geom.Point2D> __res = com.dslplatform.json.JavaGeomConverter.deserializeLocationNullableCollection(reader);
 							_p0A0Lc_ = __res.toArray(new java.awt.geom.Point2D[__res.size()]);
 						}
 						nextToken = reader.getNextToken();
@@ -253,7 +253,7 @@ public class GE0A0Lc   implements java.lang.Cloneable, java.io.Serializable, com
 					if (nextToken == '[') {
 						nextToken = reader.getNextToken();
 						if (nextToken != ']') {
-							java.util.ArrayList<java.awt.geom.Point2D> __res = com.dslplatform.json.JavaGeomConverter.deserializeLocationNullableCollection(reader);
+							java.util.List<java.awt.geom.Point2D> __res = com.dslplatform.json.JavaGeomConverter.deserializeLocationNullableCollection(reader);
 							_p0A0Lc_ = __res.toArray(new java.awt.geom.Point2D[__res.size()]);
 						}
 						nextToken = reader.getNextToken();

@@ -1,5 +1,6 @@
 package com.dslplatform.json.generated.ocd.javaasserts;
 
+import java.util.List;
 import org.junit.Assert;
 
 public class ImageAsserts {
@@ -359,7 +360,7 @@ public class ImageAsserts {
 		assertNullableQueueOfNullableEquals("NullableQueueOfNullableImage mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	private static void assertLinkedListOfOneEquals(final String message, final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -375,7 +376,7 @@ public class ImageAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	private static void assertOneLinkedListOfOneEquals(final String message, final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		int i = 0;
 		for (final java.awt.image.BufferedImage expected : expecteds) {
 			if (expected == null) {
@@ -388,22 +389,22 @@ public class ImageAsserts {
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	public static void assertOneLinkedListOfOneEquals(final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		assertOneLinkedListOfOneEquals("OneLinkedListOfOneImage mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	private static void assertNullableLinkedListOfOneEquals(final String message, final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	public static void assertNullableLinkedListOfOneEquals(final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		assertNullableLinkedListOfOneEquals("NullableLinkedListOfOneImage mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	private static void assertLinkedListOfNullableEquals(final String message, final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -419,25 +420,25 @@ public class ImageAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	private static void assertOneLinkedListOfNullableEquals(final String message, final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		if (expecteds == null) Assert.fail(message + "expecteds was <null> - WARNING: This is a preconditions failure in expecteds, this assertion will never succeed!");
 		if (expecteds == actuals) return;
 		if (actuals == null) Assert.fail(message + "expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	public static void assertOneLinkedListOfNullableEquals(final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		assertOneLinkedListOfNullableEquals("OneLinkedListOfNullableImage mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	private static void assertNullableLinkedListOfNullableEquals(final String message, final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<java.awt.image.BufferedImage> expecteds, final java.util.LinkedList<java.awt.image.BufferedImage> actuals) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<java.awt.image.BufferedImage> expecteds, final List<java.awt.image.BufferedImage> actuals) {
 		assertNullableLinkedListOfNullableEquals("NullableLinkedListOfNullableImage mismatch: ", expecteds, actuals);
 	}
 

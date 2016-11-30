@@ -2,7 +2,7 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -302,7 +302,7 @@ public abstract class NumberConverter {
 		}
 	}
 
-	public static ArrayList<Double> deserializeDoubleCollection(final JsonReader reader) throws IOException {
+	public static List<Double> deserializeDoubleCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(DoubleReader);
 	}
 
@@ -310,7 +310,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(DoubleReader, res);
 	}
 
-	public static ArrayList<Double> deserializeDoubleNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Double> deserializeDoubleNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(DoubleReader);
 	}
 
@@ -449,7 +449,7 @@ public abstract class NumberConverter {
 		}
 	}
 
-	public static ArrayList<Float> deserializeFloatCollection(final JsonReader reader) throws IOException {
+	public static List<Float> deserializeFloatCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(FloatReader);
 	}
 
@@ -457,7 +457,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(FloatReader, res);
 	}
 
-	public static ArrayList<Float> deserializeFloatNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Float> deserializeFloatNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(FloatReader);
 	}
 
@@ -611,7 +611,7 @@ public abstract class NumberConverter {
 		return value;
 	}
 
-	public static ArrayList<Integer> deserializeIntCollection(final JsonReader reader) throws IOException {
+	public static List<Integer> deserializeIntCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(IntReader);
 	}
 
@@ -691,7 +691,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(IntReader, res);
 	}
 
-	public static ArrayList<Integer> deserializeIntNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Integer> deserializeIntNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(IntReader);
 	}
 
@@ -886,7 +886,7 @@ public abstract class NumberConverter {
 		throw new IOException("Error parsing long number at position: " + reader.positionInStream(end - start) + ". Found decimal value: " + v);
 	}
 
-	public static ArrayList<Long> deserializeLongCollection(final JsonReader reader) throws IOException {
+	public static List<Long> deserializeLongCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(LongReader);
 	}
 
@@ -894,7 +894,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(LongReader, res);
 	}
 
-	public static ArrayList<Long> deserializeLongNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Long> deserializeLongNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(LongReader);
 	}
 
@@ -1200,7 +1200,7 @@ public abstract class NumberConverter {
 		return BigDecimal.valueOf(value);
 	}
 
-	public static ArrayList<BigDecimal> deserializeDecimalCollection(final JsonReader reader) throws IOException {
+	public static List<BigDecimal> deserializeDecimalCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(DecimalReader);
 	}
 
@@ -1208,7 +1208,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(DecimalReader, res);
 	}
 
-	public static ArrayList<BigDecimal> deserializeDecimalNullableCollection(final JsonReader reader) throws IOException {
+	public static List<BigDecimal> deserializeDecimalNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(DecimalReader);
 	}
 

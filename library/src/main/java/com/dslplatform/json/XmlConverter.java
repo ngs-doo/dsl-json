@@ -191,7 +191,7 @@ public abstract class XmlConverter {
 		}
 	}
 
-	public static ArrayList<Element> deserializeCollection(final JsonReader reader) throws IOException {
+	public static List<Element> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(Reader);
 	}
 
@@ -199,7 +199,7 @@ public abstract class XmlConverter {
 		reader.deserializeCollection(Reader, res);
 	}
 
-	public static ArrayList<Element> deserializeNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Element> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(Reader);
 	}
 

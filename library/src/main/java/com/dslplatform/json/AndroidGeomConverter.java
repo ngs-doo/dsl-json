@@ -4,7 +4,7 @@ import android.graphics.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Collection;
 
 public abstract class AndroidGeomConverter {
@@ -107,7 +107,7 @@ public abstract class AndroidGeomConverter {
 		return new PointF(x, y);
 	}
 
-	public static ArrayList<PointF> deserializeLocationCollection(final JsonReader reader) throws IOException {
+	public static List<PointF> deserializeLocationCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(LocationReader);
 	}
 
@@ -115,7 +115,7 @@ public abstract class AndroidGeomConverter {
 		reader.deserializeCollection(LocationReader, res);
 	}
 
-	public static ArrayList<PointF> deserializeLocationNullableCollection(final JsonReader reader) throws IOException {
+	public static List<PointF> deserializeLocationNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(LocationReader);
 	}
 
@@ -173,7 +173,7 @@ public abstract class AndroidGeomConverter {
 
 	}
 
-	public static ArrayList<Point> deserializePointCollection(final JsonReader reader) throws IOException {
+	public static List<Point> deserializePointCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(PointReader);
 	}
 
@@ -181,7 +181,7 @@ public abstract class AndroidGeomConverter {
 		reader.deserializeCollection(PointReader, res);
 	}
 
-	public static ArrayList<Point> deserializePointNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Point> deserializePointNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(PointReader);
 	}
 
@@ -252,7 +252,7 @@ public abstract class AndroidGeomConverter {
 		return new Rect(x, y, x + width, y + height);
 	}
 
-	public static ArrayList<Rect> deserializeRectangleCollection(final JsonReader reader) throws IOException {
+	public static List<Rect> deserializeRectangleCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(RectangleReader);
 	}
 
@@ -260,7 +260,7 @@ public abstract class AndroidGeomConverter {
 		reader.deserializeCollection(RectangleReader, res);
 	}
 
-	public static ArrayList<Rect> deserializeRectangleNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Rect> deserializeRectangleNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(RectangleReader);
 	}
 
@@ -283,7 +283,7 @@ public abstract class AndroidGeomConverter {
 		return BitmapFactory.decodeByteArray(content, 0, content.length);
 	}
 
-	public static ArrayList<Bitmap> deserializeImageCollection(final JsonReader reader) throws IOException {
+	public static List<Bitmap> deserializeImageCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(ImageReader);
 	}
 
@@ -291,7 +291,7 @@ public abstract class AndroidGeomConverter {
 		reader.deserializeCollection(ImageReader, res);
 	}
 
-	public static ArrayList<Bitmap> deserializeImageNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Bitmap> deserializeImageNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(ImageReader);
 	}
 

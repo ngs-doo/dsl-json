@@ -1,12 +1,11 @@
 package com.dslplatform.json;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.util.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class NumberConverterTest {
 

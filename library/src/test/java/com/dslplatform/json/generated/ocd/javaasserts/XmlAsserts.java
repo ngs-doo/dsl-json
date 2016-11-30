@@ -1,6 +1,7 @@
 package com.dslplatform.json.generated.ocd.javaasserts;
 
 import com.dslplatform.json.generated.ocd.test.Utils;
+import java.util.List;
 import org.junit.Assert;
 
 public class XmlAsserts {
@@ -359,7 +360,7 @@ public class XmlAsserts {
 		assertNullableQueueOfNullableEquals("NullableQueueOfNullableXml mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfOneEquals(final String message, final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	private static void assertLinkedListOfOneEquals(final String message, final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -375,7 +376,7 @@ public class XmlAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfOneEquals(final String message, final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	private static void assertOneLinkedListOfOneEquals(final String message, final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		int i = 0;
 		for (final org.w3c.dom.Element expected : expecteds) {
 			if (expected == null) {
@@ -388,22 +389,22 @@ public class XmlAsserts {
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	public static void assertOneLinkedListOfOneEquals(final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		assertOneLinkedListOfOneEquals("OneLinkedListOfOneXml mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfOneEquals(final String message, final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	private static void assertNullableLinkedListOfOneEquals(final String message, final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	public static void assertNullableLinkedListOfOneEquals(final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		assertNullableLinkedListOfOneEquals("NullableLinkedListOfOneXml mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfNullableEquals(final String message, final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	private static void assertLinkedListOfNullableEquals(final String message, final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -419,25 +420,25 @@ public class XmlAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfNullableEquals(final String message, final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	private static void assertOneLinkedListOfNullableEquals(final String message, final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		if (expecteds == null) Assert.fail(message + "expecteds was <null> - WARNING: This is a preconditions failure in expecteds, this assertion will never succeed!");
 		if (expecteds == actuals) return;
 		if (actuals == null) Assert.fail(message + "expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	public static void assertOneLinkedListOfNullableEquals(final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		assertOneLinkedListOfNullableEquals("OneLinkedListOfNullableXml mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfNullableEquals(final String message, final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	private static void assertNullableLinkedListOfNullableEquals(final String message, final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<org.w3c.dom.Element> expecteds, final java.util.LinkedList<org.w3c.dom.Element> actuals) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<org.w3c.dom.Element> expecteds, final List<org.w3c.dom.Element> actuals) {
 		assertNullableLinkedListOfNullableEquals("NullableLinkedListOfNullableXml mismatch: ", expecteds, actuals);
 	}
 

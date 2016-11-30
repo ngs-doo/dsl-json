@@ -1,5 +1,6 @@
 package com.dslplatform.json.generated.ocd.javaasserts;
 
+import java.util.List;
 import org.junit.Assert;
 
 public class LocationAsserts {
@@ -425,7 +426,7 @@ public class LocationAsserts {
 		assertNullableQueueOfNullableEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	private static void assertLinkedListOfOneEquals(final String message, final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -441,7 +442,7 @@ public class LocationAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	private static void assertOneLinkedListOfOneEquals(final String message, final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		int i = 0;
 		for (final java.awt.geom.Point2D expected : expecteds) {
 			if (expected == null) {
@@ -454,30 +455,30 @@ public class LocationAsserts {
 		assertLinkedListOfOneEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	public static void assertOneLinkedListOfOneEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		assertOneLinkedListOfOneEquals("OneLinkedListOfOneLocation mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals) {
+	public static void assertOneLinkedListOfOneEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals) {
 		assertOneLinkedListOfOneEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertNullableLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	private static void assertNullableLinkedListOfOneEquals(final String message, final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfOneEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	public static void assertNullableLinkedListOfOneEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		assertNullableLinkedListOfOneEquals("NullableLinkedListOfOneLocation mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals) {
+	public static void assertNullableLinkedListOfOneEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals) {
 		assertNullableLinkedListOfOneEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	private static void assertLinkedListOfNullableEquals(final String message, final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -493,33 +494,33 @@ public class LocationAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	private static void assertOneLinkedListOfNullableEquals(final String message, final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		if (expecteds == null) Assert.fail(message + "expecteds was <null> - WARNING: This is a preconditions failure in expecteds, this assertion will never succeed!");
 		if (expecteds == actuals) return;
 		if (actuals == null) Assert.fail(message + "expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	public static void assertOneLinkedListOfNullableEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		assertOneLinkedListOfNullableEquals("OneLinkedListOfNullableLocation mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals) {
+	public static void assertOneLinkedListOfNullableEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals) {
 		assertOneLinkedListOfNullableEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertNullableLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	private static void assertNullableLinkedListOfNullableEquals(final String message, final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals, final int ulps) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals, final int ulps) {
 		assertNullableLinkedListOfNullableEquals("NullableLinkedListOfNullableLocation mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<java.awt.geom.Point2D> expecteds, final java.util.LinkedList<java.awt.geom.Point2D> actuals) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<java.awt.geom.Point2D> expecteds, final List<java.awt.geom.Point2D> actuals) {
 		assertNullableLinkedListOfNullableEquals(expecteds, actuals, 0);
 	}
 

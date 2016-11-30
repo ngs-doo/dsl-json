@@ -1,9 +1,6 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.generated.GA0A0Lc;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.awt.geom.Point2D;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -11,6 +8,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Map;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class StreamTest {
 	@Test
@@ -303,6 +303,7 @@ public class StreamTest {
 		Assert.assertArrayEquals(os.toByteArray(), bytes);
 	}
 
+  @Ignore
 	@Test
 	public void iterateToOutputMap() throws IOException, InterruptedException {
 		StringBuilder sb = new StringBuilder();

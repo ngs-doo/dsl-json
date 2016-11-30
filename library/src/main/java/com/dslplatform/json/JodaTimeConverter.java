@@ -1,7 +1,7 @@
 package com.dslplatform.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Collection;
 
 import org.joda.time.DateTime;
@@ -144,7 +144,7 @@ public abstract class JodaTimeConverter {
 		}
 	}
 
-	public static ArrayList<DateTime> deserializeDateTimeCollection(final JsonReader reader) throws IOException {
+	public static List<DateTime> deserializeDateTimeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(DateTimeReader);
 	}
 
@@ -152,7 +152,7 @@ public abstract class JodaTimeConverter {
 		reader.deserializeCollection(DateTimeReader, res);
 	}
 
-	public static ArrayList<DateTime> deserializeDateTimeNullableCollection(final JsonReader reader) throws IOException {
+	public static List<DateTime> deserializeDateTimeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(DateTimeReader);
 	}
 
@@ -195,7 +195,7 @@ public abstract class JodaTimeConverter {
 		}
 	}
 
-	public static ArrayList<LocalDate> deserializeLocalDateCollection(final JsonReader reader) throws IOException {
+	public static List<LocalDate> deserializeLocalDateCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(LocalDateReader);
 	}
 
@@ -203,7 +203,7 @@ public abstract class JodaTimeConverter {
 		reader.deserializeCollection(LocalDateReader, res);
 	}
 
-	public static ArrayList<LocalDate> deserializeLocalDateNullableCollection(final JsonReader reader) throws IOException {
+	public static List<LocalDate> deserializeLocalDateNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(LocalDateReader);
 	}
 

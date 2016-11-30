@@ -1,7 +1,7 @@
 package com.dslplatform.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Collection;
 
 public abstract class BinaryConverter {
@@ -33,7 +33,7 @@ public abstract class BinaryConverter {
 		return reader.readBase64();
 	}
 
-	public static ArrayList<byte[]> deserializeCollection(final JsonReader reader) throws IOException {
+	public static List<byte[]> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(Base64Reader);
 	}
 
@@ -41,7 +41,7 @@ public abstract class BinaryConverter {
 		reader.deserializeCollection(Base64Reader, res);
 	}
 
-	public static ArrayList<byte[]> deserializeNullableCollection(final JsonReader reader) throws IOException {
+	public static List<byte[]> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(Base64Reader);
 	}
 

@@ -2,9 +2,10 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import org.eclipse.collections.impl.list.mutable.FastList;
 
 /**
  * Object for processing JSON from byte[].
@@ -623,8 +624,8 @@ public class JsonReader<TContext> {
 		}
 	}
 
-	public final <T, S extends T> ArrayList<T> deserializeCollection(final ReadObject<S> readObject) throws IOException {
-		final ArrayList<T> res = new ArrayList<T>(4);
+	public final <T, S extends T> List<T> deserializeCollection(final ReadObject<S> readObject) throws IOException {
+		final List<T> res = FastList.newList(4);
 		deserializeCollection(readObject, res);
 		return res;
 	}
@@ -638,8 +639,8 @@ public class JsonReader<TContext> {
 		checkArrayEnd();
 	}
 
-	public final <T, S extends T> ArrayList<T> deserializeNullableCollection(final ReadObject<S> readObject) throws IOException {
-		final ArrayList<T> res = new ArrayList<T>(4);
+	public final <T, S extends T> List<T> deserializeNullableCollection(final ReadObject<S> readObject) throws IOException {
+		final List<T> res = FastList.newList(4);
 		deserializeNullableCollection(readObject, res);
 		return res;
 	}
@@ -661,8 +662,8 @@ public class JsonReader<TContext> {
 		checkArrayEnd();
 	}
 
-	public final <T extends JsonObject> ArrayList<T> deserializeCollection(final ReadJsonObject<T> readObject) throws IOException {
-		final ArrayList<T> res = new ArrayList<T>(4);
+	public final <T extends JsonObject> List<T> deserializeCollection(final ReadJsonObject<T> readObject) throws IOException {
+		final List<T> res = FastList.newList(4);
 		deserializeCollection(readObject, res);
 		return res;
 	}
@@ -681,8 +682,8 @@ public class JsonReader<TContext> {
 		checkArrayEnd();
 	}
 
-	public final <T extends JsonObject> ArrayList<T> deserializeNullableCollection(final ReadJsonObject<T> readObject) throws IOException {
-		final ArrayList<T> res = new ArrayList<T>(4);
+	public final <T extends JsonObject> List<T> deserializeNullableCollection(final ReadJsonObject<T> readObject) throws IOException {
+		final List<T> res = FastList.newList(4);
 		deserializeNullableCollection(readObject, res);
 		return res;
 	}
