@@ -1,5 +1,6 @@
 package com.dslplatform.json;
 
+import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -35,5 +36,6 @@ public class ConfigureJava8 implements Configuration {
 				JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
 			}
 		});
+		json.registerWriter(ResultSet.class, ResultSetConverter.Writer);
 	}
 }
