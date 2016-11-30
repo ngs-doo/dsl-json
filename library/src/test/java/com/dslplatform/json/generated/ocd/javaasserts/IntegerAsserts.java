@@ -1,5 +1,6 @@
 package com.dslplatform.json.generated.ocd.javaasserts;
 
+import java.util.List;
 import org.junit.Assert;
 
 public class IntegerAsserts {
@@ -339,7 +340,7 @@ public class IntegerAsserts {
 		assertNullableQueueOfNullableEquals("NullableQueueOfNullableInteger mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfOneEquals(final String message, final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	private static void assertLinkedListOfOneEquals(final String message, final List<Integer> expecteds, final List<Integer> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -358,7 +359,7 @@ public class IntegerAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfOneEquals(final String message, final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	private static void assertOneLinkedListOfOneEquals(final String message, final List<Integer> expecteds, final List<Integer> actuals) {
 		int i = 0;
 		for (final Integer expected : expecteds) {
 			if (expected == null) {
@@ -371,22 +372,22 @@ public class IntegerAsserts {
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	public static void assertOneLinkedListOfOneEquals(final List<Integer> expecteds, final List<Integer> actuals) {
 		assertOneLinkedListOfOneEquals("OneLinkedListOfOneInteger mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfOneEquals(final String message, final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	private static void assertNullableLinkedListOfOneEquals(final String message, final List<Integer> expecteds, final List<Integer> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	public static void assertNullableLinkedListOfOneEquals(final List<Integer> expecteds, final List<Integer> actuals) {
 		assertNullableLinkedListOfOneEquals("NullableLinkedListOfOneInteger mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfNullableEquals(final String message, final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	private static void assertLinkedListOfNullableEquals(final String message, final List<Integer> expecteds, final List<Integer> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -402,25 +403,25 @@ public class IntegerAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfNullableEquals(final String message, final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	private static void assertOneLinkedListOfNullableEquals(final String message, final List<Integer> expecteds, final List<Integer> actuals) {
 		if (expecteds == null) Assert.fail(message + "expecteds was <null> - WARNING: This is a preconditions failure in expecteds, this assertion will never succeed!");
 		if (expecteds == actuals) return;
 		if (actuals == null) Assert.fail(message + "expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	public static void assertOneLinkedListOfNullableEquals(final List<Integer> expecteds, final List<Integer> actuals) {
 		assertOneLinkedListOfNullableEquals("OneLinkedListOfNullableInteger mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfNullableEquals(final String message, final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	private static void assertNullableLinkedListOfNullableEquals(final String message, final List<Integer> expecteds, final List<Integer> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<Integer> expecteds, final java.util.LinkedList<Integer> actuals) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<Integer> expecteds, final List<Integer> actuals) {
 		assertNullableLinkedListOfNullableEquals("NullableLinkedListOfNullableInteger mismatch: ", expecteds, actuals);
 	}
 

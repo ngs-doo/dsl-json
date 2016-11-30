@@ -1,5 +1,6 @@
 package com.dslplatform.json.generated.ocd.javaasserts;
 
+import java.util.List;
 import org.junit.Assert;
 
 public class DoubleAsserts {
@@ -430,7 +431,7 @@ public class DoubleAsserts {
 		assertNullableQueueOfNullableEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertLinkedListOfOneEquals(final String message, final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	private static void assertLinkedListOfOneEquals(final String message, final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -449,7 +450,7 @@ public class DoubleAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfOneEquals(final String message, final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	private static void assertOneLinkedListOfOneEquals(final String message, final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		int i = 0;
 		for (final Double expected : expecteds) {
 			if (expected == null) {
@@ -462,30 +463,30 @@ public class DoubleAsserts {
 		assertLinkedListOfOneEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	public static void assertOneLinkedListOfOneEquals(final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		assertOneLinkedListOfOneEquals("OneLinkedListOfOneDouble mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals) {
+	public static void assertOneLinkedListOfOneEquals(final List<Double> expecteds, final List<Double> actuals) {
 		assertOneLinkedListOfOneEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertNullableLinkedListOfOneEquals(final String message, final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	private static void assertNullableLinkedListOfOneEquals(final String message, final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfOneEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	public static void assertNullableLinkedListOfOneEquals(final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		assertNullableLinkedListOfOneEquals("NullableLinkedListOfOneDouble mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals) {
+	public static void assertNullableLinkedListOfOneEquals(final List<Double> expecteds, final List<Double> actuals) {
 		assertNullableLinkedListOfOneEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertLinkedListOfNullableEquals(final String message, final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	private static void assertLinkedListOfNullableEquals(final String message, final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -501,33 +502,33 @@ public class DoubleAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfNullableEquals(final String message, final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	private static void assertOneLinkedListOfNullableEquals(final String message, final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		if (expecteds == null) Assert.fail(message + "expecteds was <null> - WARNING: This is a preconditions failure in expecteds, this assertion will never succeed!");
 		if (expecteds == actuals) return;
 		if (actuals == null) Assert.fail(message + "expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	public static void assertOneLinkedListOfNullableEquals(final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		assertOneLinkedListOfNullableEquals("OneLinkedListOfNullableDouble mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals) {
+	public static void assertOneLinkedListOfNullableEquals(final List<Double> expecteds, final List<Double> actuals) {
 		assertOneLinkedListOfNullableEquals(expecteds, actuals, 0);
 	}
 
-	private static void assertNullableLinkedListOfNullableEquals(final String message, final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	private static void assertNullableLinkedListOfNullableEquals(final String message, final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals, final int ulps) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<Double> expecteds, final List<Double> actuals, final int ulps) {
 		assertNullableLinkedListOfNullableEquals("NullableLinkedListOfNullableDouble mismatch: ", expecteds, actuals, ulps);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<Double> expecteds, final java.util.LinkedList<Double> actuals) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<Double> expecteds, final List<Double> actuals) {
 		assertNullableLinkedListOfNullableEquals(expecteds, actuals, 0);
 	}
 

@@ -2,6 +2,7 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.util.*;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 public abstract class MapConverter {
 
@@ -45,8 +46,8 @@ public abstract class MapConverter {
 			throw new IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
 		}
 		byte nextToken = reader.getNextToken();
-		if (nextToken == '}') return new LinkedHashMap<String, String>(0);
-		final LinkedHashMap<String, String> res = new LinkedHashMap<String, String>();
+		if (nextToken == '}') return UnifiedMap.newMap();
+		final Map<String, String> res = UnifiedMap.newMap();
 		String key = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
 		if (nextToken != ':') {
@@ -72,7 +73,7 @@ public abstract class MapConverter {
 		return res;
 	}
 
-	public static ArrayList<Map<String, String>> deserializeCollection(final JsonReader reader) throws IOException {
+	public static List<Map<String, String>> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(TypedMapReader);
 	}
 
@@ -80,7 +81,7 @@ public abstract class MapConverter {
 		reader.deserializeCollection(TypedMapReader, res);
 	}
 
-	public static ArrayList<Map<String, String>> deserializeNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Map<String, String>> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(TypedMapReader);
 	}
 

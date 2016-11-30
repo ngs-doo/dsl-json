@@ -1,7 +1,7 @@
 package com.dslplatform.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Collection;
 import java.util.UUID;
 
@@ -172,7 +172,7 @@ public abstract class UUIDConverter {
 		}
 	}
 
-	public static ArrayList<UUID> deserializeCollection(final JsonReader reader) throws IOException {
+	public static List<UUID> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(Reader);
 	}
 
@@ -180,7 +180,7 @@ public abstract class UUIDConverter {
 		reader.deserializeCollection(Reader, res);
 	}
 
-	public static ArrayList<UUID> deserializeNullableCollection(final JsonReader reader) throws IOException {
+	public static List<UUID> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(Reader);
 	}
 

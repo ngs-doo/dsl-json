@@ -1,7 +1,5 @@
 package com.dslplatform.json;
 
-import org.w3c.dom.Element;
-
 import java.io.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
@@ -13,6 +11,9 @@ import java.net.URI;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.w3c.dom.Element;
 
 /**
  * Main DSL-JSON class.
@@ -84,9 +85,9 @@ public class DslJson<TContext> {
 		}
 	};
 	@SuppressWarnings("rawtypes")
-	static final JsonReader.ReadObject<LinkedHashMap> MapReader = new JsonReader.ReadObject<LinkedHashMap>() {
+	static final JsonReader.ReadObject<Map> MapReader = new JsonReader.ReadObject<Map>() {
 		@Override
-		public LinkedHashMap read(JsonReader reader) throws IOException {
+		public Map read(JsonReader reader) throws IOException {
 			return deserializeMap(reader);
 		}
 	};
@@ -139,7 +140,7 @@ public class DslJson<TContext> {
 		if (jodaTime) {
 			registerJodaConverters(this);
 		}
-		registerReader(LinkedHashMap.class, MapReader);
+		registerReader(Map.class, MapReader);
 		registerReader(HashMap.class, MapReader);
 		registerReader(Map.class, MapReader);
 		registerWriter(Map.class, new JsonWriter.WriteObject<Map>() {
@@ -345,7 +346,7 @@ public class DslJson<TContext> {
 			return null;
 		}
 		Class<?> container = (Class<?>) manifest;
-		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
+		final List<Class<?>> signatures = FastList.newList();
 		findAllSignatures(container, signatures);
 		for (final Class<?> sig : signatures) {
 			final JsonWriter.WriteObject<?> writer = jsonWriters.get(sig);
@@ -375,7 +376,7 @@ public class DslJson<TContext> {
 		return jsonReaders.get(manifest);
 	}
 
-	private static void findAllSignatures(final Class<?> manifest, final ArrayList<Class<?>> found) {
+	private static void findAllSignatures(final Class<?> manifest, final List<Class<?>> found) {
 		if (found.contains(manifest)) {
 			return;
 		}
@@ -456,13 +457,13 @@ public class DslJson<TContext> {
 		}
 	}
 
-	public static ArrayList<Object> deserializeList(final JsonReader reader) throws IOException {
+	public static List<Object> deserializeList(final JsonReader reader) throws IOException {
 		if (reader.last() != '[') {
 			throw reader.expecting("[");
 		}
 		byte nextToken = reader.getNextToken();
-		if (nextToken == ']') return new ArrayList<Object>(0);
-		final ArrayList<Object> res = new ArrayList<Object>(4);
+		if (nextToken == ']') return FastList.newList(0);
+		final List<Object> res = FastList.newList(4);
 		res.add(deserializeObject(reader));
 		while ((nextToken = reader.getNextToken()) == ',') {
 			reader.getNextToken();
@@ -474,13 +475,13 @@ public class DslJson<TContext> {
 		return res;
 	}
 
-	public static LinkedHashMap<String, Object> deserializeMap(final JsonReader reader) throws IOException {
+	public static Map<String, Object> deserializeMap(final JsonReader reader) throws IOException {
 		if (reader.last() != '{') {
 			throw reader.expecting("{");
 		}
 		byte nextToken = reader.getNextToken();
-		if (nextToken == '}') return new LinkedHashMap<String, Object>(0);
-		final LinkedHashMap<String, Object> res = new LinkedHashMap<String, Object>();
+		if (nextToken == '}') return UnifiedMap.newMap();
+		final Map<String, Object> res = UnifiedMap.newMap();
 		String key = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
 		if (nextToken != ':') {
@@ -782,11 +783,11 @@ public class DslJson<TContext> {
 						if (container.isArray()) {
 							returnEmptyArray(content);
 						}
-						return new ArrayList<Object>(0);
+						return FastList.newList(0);
 					}
 					final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
 					if (contentReader != null) {
-						final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
+						final List<?> result = json.deserializeNullableCollection(contentReader);
 						if (container.isArray()) {
 							return returnAsArray(content, result);
 						}
@@ -796,7 +797,7 @@ public class DslJson<TContext> {
 						if (JsonObject.class.isAssignableFrom(contentType)) {
 							final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
 							if (objectReader != null) {
-								final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
+								final List<JsonObject> result = json.deserializeNullableCollection(objectReader);
 								if (container.isArray()) {
 									return result.toArray((Object[]) Array.newInstance(contentType, 0));
 								}
@@ -816,14 +817,14 @@ public class DslJson<TContext> {
 			}
 			final JsonReader.ReadObject<?> contentReader = tryFindReader(content);
 			if (contentReader != null) {
-				final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
+				final List<?> result = json.deserializeNullableCollection(contentReader);
 				return returnAsArray(content, result);
 			} else if (content instanceof Class<?>) {
 				final Class<?> contentType = (Class<?>) content;
 				if (JsonObject.class.isAssignableFrom(contentType)) {
 					final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
 					if (objectReader != null) {
-						final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
+						final List<JsonObject> result = json.deserializeNullableCollection(objectReader);
 						return result.toArray((Object[]) Array.newInstance(contentType, 0));
 					}
 				}
@@ -832,7 +833,7 @@ public class DslJson<TContext> {
 		return null;
 	}
 
-	private static Object returnAsArray(final Type content, final ArrayList<?> result) {
+	private static Object returnAsArray(final Type content, final List<?> result) {
 		if (content instanceof Class<?>) {
 			return convertResultToArray((Class<?>) content, result);
 		}
@@ -859,7 +860,7 @@ public class DslJson<TContext> {
 	}
 
 	private IOException createErrorMessage(final Class<?> manifest) throws IOException {
-		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
+		final List<Class<?>> signatures = FastList.newList();
 		findAllSignatures(manifest, signatures);
 		for (final Class<?> sig : signatures) {
 			if (jsonReaders.containsKey(sig)) {
@@ -900,7 +901,7 @@ public class DslJson<TContext> {
 			return null;
 		}
 		if (size == 2 && body[0] == '[' && body[1] == ']') {
-			return new ArrayList<TResult>(0);
+			return FastList.newList(0);
 		}
 		final JsonReader json = new JsonReader(body, size, context);
 		if (json.getNextToken() != '[') {
@@ -910,7 +911,7 @@ public class DslJson<TContext> {
 			throw json.expecting("[");
 		}
 		if (json.getNextToken() == ']') {
-			return new ArrayList<TResult>(0);
+			return FastList.newList(0);
 		}
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
@@ -928,7 +929,7 @@ public class DslJson<TContext> {
 			if (result == null) {
 				return null;
 			}
-			final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+			final List<TResult> list = FastList.newList(result.length);
 			for (TResult aResult : result) {
 				list.add(aResult);
 			}
@@ -971,7 +972,7 @@ public class DslJson<TContext> {
 			throw json.expecting("[");
 		}
 		if (json.getNextToken() == ']') {
-			return new ArrayList<TResult>(0);
+			return FastList.newList();
 		}
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
@@ -989,7 +990,7 @@ public class DslJson<TContext> {
 			if (result == null) {
 				return null;
 			}
-			final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+			final List<TResult> list = FastList.newList(result.length);
 			for (TResult aResult : result) {
 				list.add(aResult);
 			}
@@ -1285,7 +1286,7 @@ public class DslJson<TContext> {
 			if (result == null) {
 				return null;
 			}
-			final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+			final List<TResult> list = FastList.newList(result.length);
 			for (TResult aResult : result) {
 				list.add(aResult);
 			}

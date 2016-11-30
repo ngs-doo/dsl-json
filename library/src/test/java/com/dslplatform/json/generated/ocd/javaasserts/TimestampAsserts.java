@@ -1,5 +1,6 @@
 package com.dslplatform.json.generated.ocd.javaasserts;
 
+import java.util.List;
 import org.junit.Assert;
 
 public class TimestampAsserts {
@@ -465,7 +466,7 @@ public class TimestampAsserts {
 		assertNullableQueueOfNullableEquals(expecteds, actuals, org.joda.time.Duration.ZERO);
 	}
 
-	private static void assertLinkedListOfOneEquals(final String message, final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	private static void assertLinkedListOfOneEquals(final String message, final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -481,7 +482,7 @@ public class TimestampAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfOneEquals(final String message, final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	private static void assertOneLinkedListOfOneEquals(final String message, final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		int i = 0;
 		for (final org.joda.time.DateTime expected : expecteds) {
 			if (expected == null) {
@@ -494,30 +495,30 @@ public class TimestampAsserts {
 		assertLinkedListOfOneEquals(message, expecteds, actuals, delta);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	public static void assertOneLinkedListOfOneEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		assertOneLinkedListOfOneEquals("OneLinkedListOfOneTimestamp mismatch: ", expecteds, actuals, delta);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals) {
+	public static void assertOneLinkedListOfOneEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals) {
 		assertOneLinkedListOfOneEquals(expecteds, actuals, org.joda.time.Duration.ZERO);
 	}
 
-	private static void assertNullableLinkedListOfOneEquals(final String message, final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	private static void assertNullableLinkedListOfOneEquals(final String message, final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfOneEquals(message, expecteds, actuals, delta);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	public static void assertNullableLinkedListOfOneEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		assertNullableLinkedListOfOneEquals("NullableLinkedListOfOneTimestamp mismatch: ", expecteds, actuals, delta);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals) {
+	public static void assertNullableLinkedListOfOneEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals) {
 		assertNullableLinkedListOfOneEquals(expecteds, actuals, org.joda.time.Duration.ZERO);
 	}
 
-	private static void assertLinkedListOfNullableEquals(final String message, final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	private static void assertLinkedListOfNullableEquals(final String message, final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -533,33 +534,33 @@ public class TimestampAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfNullableEquals(final String message, final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	private static void assertOneLinkedListOfNullableEquals(final String message, final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		if (expecteds == null) Assert.fail(message + "expecteds was <null> - WARNING: This is a preconditions failure in expecteds, this assertion will never succeed!");
 		if (expecteds == actuals) return;
 		if (actuals == null) Assert.fail(message + "expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals, delta);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	public static void assertOneLinkedListOfNullableEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		assertOneLinkedListOfNullableEquals("OneLinkedListOfNullableTimestamp mismatch: ", expecteds, actuals, delta);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals) {
+	public static void assertOneLinkedListOfNullableEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals) {
 		assertOneLinkedListOfNullableEquals(expecteds, actuals, org.joda.time.Duration.ZERO);
 	}
 
-	private static void assertNullableLinkedListOfNullableEquals(final String message, final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	private static void assertNullableLinkedListOfNullableEquals(final String message, final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals, delta);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals, final org.joda.time.Duration delta) {
 		assertNullableLinkedListOfNullableEquals("NullableLinkedListOfNullableTimestamp mismatch: ", expecteds, actuals, delta);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<org.joda.time.DateTime> expecteds, final java.util.LinkedList<org.joda.time.DateTime> actuals) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<org.joda.time.DateTime> expecteds, final List<org.joda.time.DateTime> actuals) {
 		assertNullableLinkedListOfNullableEquals(expecteds, actuals, org.joda.time.Duration.ZERO);
 	}
 

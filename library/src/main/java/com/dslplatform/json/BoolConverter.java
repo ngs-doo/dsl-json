@@ -1,7 +1,7 @@
 package com.dslplatform.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -80,7 +80,7 @@ public abstract class BoolConverter {
 		return Arrays.copyOf(buffer, i);
 	}
 
-	public static ArrayList<Boolean> deserializeCollection(final JsonReader reader) throws IOException {
+	public static List<Boolean> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(BooleanReader);
 	}
 
@@ -88,7 +88,7 @@ public abstract class BoolConverter {
 		reader.deserializeCollection(BooleanReader, res);
 	}
 
-	public static ArrayList<Boolean> deserializeNullableCollection(final JsonReader reader) throws IOException {
+	public static List<Boolean> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(BooleanReader);
 	}
 

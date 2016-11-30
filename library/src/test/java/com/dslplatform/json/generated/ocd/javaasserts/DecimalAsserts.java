@@ -1,5 +1,6 @@
 package com.dslplatform.json.generated.ocd.javaasserts;
 
+import java.util.List;
 import org.junit.Assert;
 
 public class DecimalAsserts {
@@ -353,7 +354,7 @@ public class DecimalAsserts {
 		assertNullableQueueOfNullableEquals("NullableQueueOfNullableDecimal mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	private static void assertLinkedListOfOneEquals(final String message, final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -369,7 +370,7 @@ public class DecimalAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	private static void assertOneLinkedListOfOneEquals(final String message, final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		int i = 0;
 		for (final java.math.BigDecimal expected : expecteds) {
 			if (expected == null) {
@@ -382,22 +383,22 @@ public class DecimalAsserts {
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfOneEquals(final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	public static void assertOneLinkedListOfOneEquals(final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		assertOneLinkedListOfOneEquals("OneLinkedListOfOneDecimal mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfOneEquals(final String message, final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	private static void assertNullableLinkedListOfOneEquals(final String message, final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfOneEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfOneEquals(final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	public static void assertNullableLinkedListOfOneEquals(final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		assertNullableLinkedListOfOneEquals("NullableLinkedListOfOneDecimal mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	private static void assertLinkedListOfNullableEquals(final String message, final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		final int expectedsSize = expecteds.size();
 		final int actualsSize = actuals.size();
 		if (expectedsSize != actualsSize) {
@@ -413,25 +414,25 @@ public class DecimalAsserts {
 		}
 	}
 
-	private static void assertOneLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	private static void assertOneLinkedListOfNullableEquals(final String message, final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		if (expecteds == null) Assert.fail(message + "expecteds was <null> - WARNING: This is a preconditions failure in expecteds, this assertion will never succeed!");
 		if (expecteds == actuals) return;
 		if (actuals == null) Assert.fail(message + "expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertOneLinkedListOfNullableEquals(final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	public static void assertOneLinkedListOfNullableEquals(final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		assertOneLinkedListOfNullableEquals("OneLinkedListOfNullableDecimal mismatch: ", expecteds, actuals);
 	}
 
-	private static void assertNullableLinkedListOfNullableEquals(final String message, final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	private static void assertNullableLinkedListOfNullableEquals(final String message, final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		if (expecteds == actuals) return;
 		if (expecteds == null) Assert.fail(message + "expecteds was <null>, but actuals was a linked list of size " + actuals.size());
 		if (actuals == null) Assert.fail(message + " expecteds was a linked list of size " + expecteds.size() + ", but actuals was <null>");
 		assertLinkedListOfNullableEquals(message, expecteds, actuals);
 	}
 
-	public static void assertNullableLinkedListOfNullableEquals(final java.util.LinkedList<java.math.BigDecimal> expecteds, final java.util.LinkedList<java.math.BigDecimal> actuals) {
+	public static void assertNullableLinkedListOfNullableEquals(final List<java.math.BigDecimal> expecteds, final List<java.math.BigDecimal> actuals) {
 		assertNullableLinkedListOfNullableEquals("NullableLinkedListOfNullableDecimal mismatch: ", expecteds, actuals);
 	}
 
