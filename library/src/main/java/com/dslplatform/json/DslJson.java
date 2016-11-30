@@ -10,6 +10,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,11 +57,23 @@ import java.util.concurrent.ConcurrentMap;
  *
  * @param <TContext> used for library specialization. If unsure, use Object
  */
-public class DslJson<TContext> {
+public class DslJson<TContext> implements UnknownSerializer {
 
-	protected final TContext context;
+	private static final Charset UTF8 = Charset.forName("UTF-8");
+
+	/**
+	 * The context of this instance.
+	 * Can be used for library specialization
+	 */
+	public final TContext context;
 	protected final Fallback<TContext> fallback;
-	protected final boolean omitDefaults;
+	/**
+	 * Should properties with default values be omitted from the resulting JSON?
+	 * This will leave out nulls, empty collections, zeros and other attributes with default values
+	 * which can be reconstructed from schema information
+	 */
+	public final boolean omitDefaults;
+	protected final KeyCache keyCache;
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
@@ -70,27 +83,6 @@ public class DslJson<TContext> {
 		Object deserialize(TContext context, Type manifest, InputStream stream) throws IOException;
 	}
 
-	static final JsonReader.ReadObject<Object> ObjectReader = new JsonReader.ReadObject<Object>() {
-		@Override
-		public Object read(JsonReader reader) throws IOException {
-			return deserializeObject(reader);
-		}
-	};
-	@SuppressWarnings("rawtypes")
-	static final JsonReader.ReadObject<Collection> CollectionReader = new JsonReader.ReadObject<Collection>() {
-		@Override
-		public Collection read(JsonReader reader) throws IOException {
-			return deserializeList(reader);
-		}
-	};
-	@SuppressWarnings("rawtypes")
-	static final JsonReader.ReadObject<LinkedHashMap> MapReader = new JsonReader.ReadObject<LinkedHashMap>() {
-		@Override
-		public LinkedHashMap read(JsonReader reader) throws IOException {
-			return deserializeMap(reader);
-		}
-	};
-
 	/**
 	 * Simple initialization entry point.
 	 * Will provide null for TContext
@@ -99,7 +91,7 @@ public class DslJson<TContext> {
 	 * Default ServiceLoader.load method will be used to setup services from META-INF
 	 */
 	public DslJson() {
-		this(null, false, false, false, null, false, ServiceLoader.load(Configuration.class));
+		this(null, false, false, false, null, false, new SimpleKeyCache(), ServiceLoader.load(Configuration.class));
 	}
 
 	/**
@@ -120,10 +112,12 @@ public class DslJson<TContext> {
 			final boolean jodaTime,
 			final Fallback<TContext> fallback,
 			final boolean omitDefaults,
+			final KeyCache keyCache,
 			final Iterable<Configuration> serializers) {
 		this.context = context;
 		this.fallback = fallback;
 		this.omitDefaults = omitDefaults;
+		this.keyCache = keyCache;
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
 		registerReader(boolean.class, BoolConverter.BooleanReader);
@@ -139,16 +133,20 @@ public class DslJson<TContext> {
 		if (jodaTime) {
 			registerJodaConverters(this);
 		}
-		registerReader(LinkedHashMap.class, MapReader);
-		registerReader(HashMap.class, MapReader);
-		registerReader(Map.class, MapReader);
+		registerReader(LinkedHashMap.class, ObjectConverter.MapReader);
+		registerReader(HashMap.class, ObjectConverter.MapReader);
+		registerReader(Map.class, ObjectConverter.MapReader);
 		registerWriter(Map.class, new JsonWriter.WriteObject<Map>() {
 			@Override
 			public void write(JsonWriter writer, Map value) {
-				try {
-					serializeMap(value, writer);
-				} catch (IOException ex) {
-					throw new RuntimeException(ex);
+				if (value == null) {
+					writer.writeNull();
+				} else {
+					try {
+						serializeMap(value, writer);
+					} catch (IOException ex) {
+						throw new RuntimeException(ex);
+					}
 				}
 			}
 		});
@@ -192,6 +190,89 @@ public class DslJson<TContext> {
 				loadDefaultConverters(this, "dsl_json_ExternalSerialization");
 			}
 		}
+	}
+
+	private static class SimpleKeyCache implements KeyCache {
+
+		private final ConcurrentHashMap<Integer, String> keys = new ConcurrentHashMap<Integer, String>();
+
+		@Override
+		public String getKey(final int hash, final char[] chars, final int len) throws IOException {
+			String found = keys.get(hash);
+			if (found != null) {
+				if (len != found.length()) return new String(chars, 0, len);
+				for (int i = 0; i < len; i++) {
+					if (found.charAt(i) != chars[i]) return new String(chars, 0, len);
+				}
+				return found;
+			} else {
+				String key = new String(chars, 0, len);
+				keys.put(hash, key);
+				return key;
+			}
+		}
+	}
+
+	/**
+	 * Create a writer bound to this DSL-JSON.
+	 * Ideally it should be reused.
+	 * Bound writer can use lookups to find custom writers.
+	 * This can be used to serialize unknown types such as Object.class
+	 *
+	 * @return bound writer
+	 */
+	public JsonWriter newWriter() {
+		return new JsonWriter(this);
+	}
+
+	/**
+	 * Create a reader bound to this DSL-JSON.
+	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 *
+	 * @param bytes input bytes
+	 * @return bound reader
+	 */
+	public JsonReader<TContext> newReader(byte[] bytes) {
+		return new JsonReader<TContext>(bytes, context, keyCache);
+	}
+
+	/**
+	 * Create a reader bound to this DSL-JSON.
+	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 *
+	 * @param bytes  input bytes
+	 * @param length use input bytes up to specified length
+	 * @return bound reader
+	 */
+	public JsonReader<TContext> newReader(byte[] bytes, int length) {
+		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache);
+	}
+
+	/**
+	 * Create a reader bound to this DSL-JSON.
+	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 *
+	 * @param stream input stream
+	 * @param buffer temporary buffer
+	 * @return bound reader
+	 */
+	public JsonStreamReader<TContext> newReader(InputStream stream, byte[] buffer) throws IOException {
+		return new JsonStreamReader<TContext>(stream, buffer, context, keyCache);
+	}
+
+	/**
+	 * Create a reader bound to this DSL-JSON.
+	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 * This method id Deprecated since it should be avoided.
+	 * It's better to use byte[] or InputStream based readers
+	 *
+	 * @param input JSON string
+	 * @return bound reader
+	 */
+	@Deprecated
+	public JsonReader<TContext> newReader(String input) {
+		final byte[] bytes = input.getBytes(UTF8);
+		return new JsonReader<TContext>(bytes, context, keyCache);
 	}
 
 	private static void loadDefaultConverters(final DslJson json, final String name) {
@@ -330,11 +411,11 @@ public class DslJson<TContext> {
 	 * Try to find registered writer for provided type.
 	 * If writer is not found, null will be returned.
 	 * If writer for exact type is not found, type hierarchy will be scanned for base writer.
-	 *
+	 * <p>
 	 * Writer is used for conversion from object instance into JSON representation.
 	 *
 	 * @param manifest specified type
-	 * @return         writer for specified type if found
+	 * @return writer for specified type if found
 	 */
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		Class<?> found = writerMap.get(manifest);
@@ -361,15 +442,15 @@ public class DslJson<TContext> {
 	 * Try to find registered reader for provided type.
 	 * If reader is not found, null will be returned.
 	 * Exact match must be found, type hierarchy will not be scanned for alternative writer.
-	 *
+	 * <p>
 	 * If you wish to use alternative writer for specific type, register it manually with something along the lines of
 	 * <pre>
 	 *     DslJson dslJson = ...
 	 *     dslJson.registerReader(Interface.class, dslJson.tryFindWriter(Implementation.class));
 	 * </pre>
 	 *
-	 * @param manifest  specified type
-	 * @return          found reader for specified type
+	 * @param manifest specified type
+	 * @return found reader for specified type
 	 */
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		return jsonReaders.get(manifest);
@@ -428,80 +509,19 @@ public class DslJson<TContext> {
 		sw.writeByte(JsonWriter.OBJECT_END);
 	}
 
+	@Deprecated
 	public static Object deserializeObject(final JsonReader reader) throws IOException {
-		switch (reader.last()) {
-			case 'n':
-				if (!reader.wasNull()) {
-					throw reader.expecting("null");
-				}
-				return null;
-			case 't':
-				if (!reader.wasTrue()) {
-					throw reader.expecting("true");
-				}
-				return true;
-			case 'f':
-				if (!reader.wasFalse()) {
-					throw reader.expecting("false");
-				}
-				return false;
-			case '"':
-				return reader.readString();
-			case '{':
-				return deserializeMap(reader);
-			case '[':
-				return deserializeList(reader);
-			default:
-				return NumberConverter.deserializeNumber(reader);
-		}
+		return ObjectConverter.deserializeObject(reader);
 	}
 
+	@Deprecated
 	public static ArrayList<Object> deserializeList(final JsonReader reader) throws IOException {
-		if (reader.last() != '[') {
-			throw reader.expecting("[");
-		}
-		byte nextToken = reader.getNextToken();
-		if (nextToken == ']') return new ArrayList<Object>(0);
-		final ArrayList<Object> res = new ArrayList<Object>(4);
-		res.add(deserializeObject(reader));
-		while ((nextToken = reader.getNextToken()) == ',') {
-			reader.getNextToken();
-			res.add(deserializeObject(reader));
-		}
-		if (nextToken != ']') {
-			throw reader.expecting("]", nextToken);
-		}
-		return res;
+		return ObjectConverter.deserializeList(reader);
 	}
 
+	@Deprecated
 	public static LinkedHashMap<String, Object> deserializeMap(final JsonReader reader) throws IOException {
-		if (reader.last() != '{') {
-			throw reader.expecting("{");
-		}
-		byte nextToken = reader.getNextToken();
-		if (nextToken == '}') return new LinkedHashMap<String, Object>(0);
-		final LinkedHashMap<String, Object> res = new LinkedHashMap<String, Object>();
-		String key = StringConverter.deserialize(reader);
-		nextToken = reader.getNextToken();
-		if (nextToken != ':') {
-			throw reader.expecting(":", nextToken);
-		}
-		reader.getNextToken();
-		res.put(key, deserializeObject(reader));
-		while ((nextToken = reader.getNextToken()) == ',') {
-			reader.getNextToken();
-			key = StringConverter.deserialize(reader);
-			nextToken = reader.getNextToken();
-			if (nextToken != ':') {
-				throw reader.expecting(":", nextToken);
-			}
-			reader.getNextToken();
-			res.put(key, deserializeObject(reader));
-		}
-		if (nextToken != '}') {
-			throw reader.expecting("}", nextToken);
-		}
-		return res;
+		return ObjectConverter.deserializeMap(reader);
 	}
 
 	private static Object convertResultToArray(Class<?> elementType, List<?> result) {
@@ -682,7 +702,7 @@ public class DslJson<TContext> {
 				throw new IOException(e);
 			}
 		}
-		final JsonReader json = new JsonReader(body, size, context);
+		final JsonReader json = newReader(body, size);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -745,7 +765,7 @@ public class DslJson<TContext> {
 		if (isNull(size, body)) {
 			return null;
 		}
-		final JsonReader json = new JsonReader<TContext>(body, size, context);
+		final JsonReader json = newReader(body, size);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -902,7 +922,7 @@ public class DslJson<TContext> {
 		if (size == 2 && body[0] == '[' && body[1] == ']') {
 			return new ArrayList<TResult>(0);
 		}
-		final JsonReader json = new JsonReader(body, size, context);
+		final JsonReader json = newReader(body, size);
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
 				return null;
@@ -963,7 +983,7 @@ public class DslJson<TContext> {
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
-		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+		final JsonStreamReader json = newReader(stream, buffer);
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
 				return null;
@@ -1024,7 +1044,7 @@ public class DslJson<TContext> {
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
-		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+		final JsonStreamReader json = newReader(stream, buffer);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -1100,7 +1120,7 @@ public class DslJson<TContext> {
 		if (manifest instanceof Class<?>) {
 			return deserialize((Class<?>) manifest, stream, buffer);
 		}
-		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+		final JsonStreamReader json = newReader(stream, buffer);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -1259,7 +1279,7 @@ public class DslJson<TContext> {
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
-		final JsonStreamReader json = new JsonStreamReader<TContext>(stream, buffer, context);
+		final JsonStreamReader json = newReader(stream, buffer);
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
 				return null;
@@ -1475,7 +1495,7 @@ public class DslJson<TContext> {
 			final Iterator<T> iterator,
 			final OutputStream stream,
 			final JsonWriter writer) throws IOException {
-		final JsonWriter buffer = writer == null ? new JsonWriter() : writer;
+		final JsonWriter buffer = writer == null ? new JsonWriter(this) : writer;
 		stream.write(JsonWriter.ARRAY_START);
 		T item = iterator.next();
 		Class<?> lastManifest = null;
@@ -1539,7 +1559,7 @@ public class DslJson<TContext> {
 			final Class<T> manifest,
 			final OutputStream stream,
 			final JsonWriter writer) throws IOException {
-		final JsonWriter buffer = writer == null ? new JsonWriter() : writer;
+		final JsonWriter buffer = writer == null ? new JsonWriter(this) : writer;
 		final JsonWriter.WriteObject instanceWriter = getOrCreateWriter(null, manifest);
 		stream.write(JsonWriter.ARRAY_START);
 		T item = iterator.next();
@@ -1811,7 +1831,7 @@ public class DslJson<TContext> {
 			stream.write(NULL);
 			return;
 		}
-		final JsonWriter jw = new JsonWriter();
+		final JsonWriter jw = new JsonWriter(this);
 		final Class<?> manifest = value.getClass();
 		if (!serialize(jw, manifest, value)) {
 			if (fallback == null) {

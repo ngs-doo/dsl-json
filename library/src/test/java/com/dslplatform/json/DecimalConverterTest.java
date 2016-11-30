@@ -35,7 +35,7 @@ public class DecimalConverterTest {
 		final int count = values.length;
 
 		final byte[] buf = new byte[1024];
-		final JsonWriter jw = new JsonWriter(buf);
+		final JsonWriter jw = new JsonWriter(buf, null);
 
 		for (int i = 0; i < count - 1; i ++) {
 			// setup

@@ -73,7 +73,7 @@ public class StringConverterTest {
 	public void testCharacterPrinting() throws IOException {
 		// setup
 		final byte[] buf = new byte[1024];
-		final JsonWriter jw = new JsonWriter(buf);
+		final JsonWriter jw = new JsonWriter(buf, null);
 
 		final int from = 0;
 		final int to = Character.MAX_VALUE;

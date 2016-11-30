@@ -181,10 +181,10 @@ public class StreamTest {
 		for (int i = 0; i < buf.length; i++) {
 			buf[i] = (byte) i;
 		}
-		JsonWriter writer = new JsonWriter();
+		DslJson<Object> json = new DslJson<Object>();
+		JsonWriter writer = json.newWriter();
 		writer.writeBinary(buf);
 		ByteArrayInputStream is = new ByteArrayInputStream(writer.toString().getBytes("UTF-8"));
-		DslJson<Object> json = new DslJson<Object>();
 		byte[] result = json.deserialize(byte[].class, is, new byte[512]);
 		Assert.assertArrayEquals(buf, result);
 	}
@@ -294,12 +294,12 @@ public class StreamTest {
 		DslJson<Object> json = new DslJson<Object>();
 		Iterator<Obj> result = json.iterateOver(Obj.class, is, new byte[512]);
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		json.iterateOver(result, os, new JsonWriter());
+		json.iterateOver(result, os, json.newWriter());
 		Assert.assertArrayEquals(os.toByteArray(), bytes);
 		os.reset();
 		is.reset();
 		result = json.iterateOver(Obj.class, is, new byte[512]);
-		json.iterateOver(result, Obj.class, os, new JsonWriter());
+		json.iterateOver(result, Obj.class, os, json.newWriter());
 		Assert.assertArrayEquals(os.toByteArray(), bytes);
 	}
 
@@ -322,12 +322,12 @@ public class StreamTest {
 		DslJson<Object> json = new DslJson<Object>();
 		Iterator<Map> result = json.iterateOver(Map.class, is, new byte[512]);
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		json.iterateOver(result, os, new JsonWriter());
+		json.iterateOver(result, os, json.newWriter());
 		Assert.assertArrayEquals(os.toByteArray(), bytes);
 		os.reset();
 		is.reset();
 		result = json.iterateOver(Map.class, is, new byte[512]);
-		json.iterateOver(result, Map.class, os, new JsonWriter());
+		json.iterateOver(result, Map.class, os, json.newWriter());
 		Assert.assertArrayEquals(os.toByteArray(), bytes);
 	}
 
@@ -345,12 +345,12 @@ public class StreamTest {
 		DslJson<Object> json = new DslJson<Object>();
 		Iterator<Long> result = json.iterateOver(Long.class, is, new byte[512]);
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		json.iterateOver(result, os, new JsonWriter());
+		json.iterateOver(result, os, json.newWriter());
 		Assert.assertArrayEquals(os.toByteArray(), bytes);
 		os.reset();
 		is.reset();
 		result = json.iterateOver(Long.class, is, new byte[512]);
-		json.iterateOver(result, Long.class, os, new JsonWriter());
+		json.iterateOver(result, Long.class, os, json.newWriter());
 		Assert.assertArrayEquals(os.toByteArray(), bytes);
 	}
 

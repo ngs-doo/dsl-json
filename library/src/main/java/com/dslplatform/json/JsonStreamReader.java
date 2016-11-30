@@ -19,7 +19,11 @@ public class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	private int halfLength;
 
 	public JsonStreamReader(final InputStream stream, final byte[] buffer, final TContext context) throws IOException {
-		super(new char[64], buffer, readFully(buffer, stream, 0), context);
+		this(stream, buffer, context, null);
+	}
+
+	JsonStreamReader(final InputStream stream, final byte[] buffer, final TContext context, KeyCache keyCache) throws IOException {
+		super(new char[64], buffer, readFully(buffer, stream, 0), context, keyCache);
 		if (stream == null) {
 			throw new NullPointerException("stream provided as null.");
 		}

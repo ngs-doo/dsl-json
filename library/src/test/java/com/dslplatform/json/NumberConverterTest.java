@@ -13,7 +13,7 @@ public class NumberConverterTest {
 	@Test
 	public void rangeCheckInt() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter(40);
+		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
 
 		final int from = -10000000;
@@ -36,7 +36,7 @@ public class NumberConverterTest {
 	@Test
 	public void rangeCheckLong() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter(40);
+		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
 
 		final int from = -10000000;
@@ -59,7 +59,7 @@ public class NumberConverterTest {
 	@Test
 	public void rangeCheckDecimal() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter(40);
+		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
 
 		final int from = -10000000;
@@ -83,7 +83,7 @@ public class NumberConverterTest {
 	@Test
 	public void rangeCheckDouble() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter(40);
+		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
 
 		final int from = -10000000;
@@ -107,7 +107,7 @@ public class NumberConverterTest {
 	@Test
 	public void rangeCheckFloat() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter(40);
+		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
 
 		final int from = -10000000;
@@ -131,7 +131,7 @@ public class NumberConverterTest {
 	@Test
 	public void testSerialization() {
 		// setup
-		final JsonWriter sw = new JsonWriter(40);
+		final JsonWriter sw = new JsonWriter(40, null);
 
 		final int from = -1000000;
 		final int to = 1000000;
@@ -183,7 +183,7 @@ public class NumberConverterTest {
 			expected = tmp.toString();
 		}
 
-		final JsonWriter sw = new JsonWriter();
+		final JsonWriter sw = new JsonWriter(null);
 		NumberConverter.serialize(primitives, sw);
 		Assert.assertEquals(expected, sw.toString());
 
@@ -241,7 +241,7 @@ public class NumberConverterTest {
 	@Test
 	public void primitiveIntArrDeser() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter();
+		final JsonWriter sw = new JsonWriter(null);
 
 		final int[] input = new int[60000];
 		for (int i = 0; i < input.length; i++) {
@@ -263,7 +263,7 @@ public class NumberConverterTest {
 	@Test
 	public void primitiveLongArrDeser() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter();
+		final JsonWriter sw = new JsonWriter(null);
 
 		final long[] input = new long[60000];
 		for (int i = 0; i < input.length; i++) {
@@ -285,7 +285,7 @@ public class NumberConverterTest {
 	@Test
 	public void primitiveFloatArrDeser() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter();
+		final JsonWriter sw = new JsonWriter(null);
 
 		final float[] input = new float[60000];
 		for (int i = 0; i < input.length; i++) {
@@ -307,7 +307,7 @@ public class NumberConverterTest {
 	@Test
 	public void primitiveDoubleArrDeser() throws IOException {
 		// setup
-		final JsonWriter sw = new JsonWriter();
+		final JsonWriter sw = new JsonWriter(null);
 
 		final double[] input = new double[60000];
 		for (int i = 0; i < input.length; i++) {

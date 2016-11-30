@@ -11,7 +11,7 @@ public class TestJson {
 	@Test
 	public void dateTimeOffsetConversion() throws IOException {
 		OffsetDateTime now = OffsetDateTime.now();
-		JsonWriter jw = new JsonWriter();
+		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(now, jw);
 		JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
 		jr.read();
@@ -22,7 +22,7 @@ public class TestJson {
 	@Test
 	public void dateTimeOffsetUtcConversion() throws IOException {
 		OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-		JsonWriter jw = new JsonWriter();
+		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(now, jw);
 		JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
 		jr.read();
@@ -33,7 +33,7 @@ public class TestJson {
 	@Test
 	public void localDateTimeConversion() throws IOException {
 		LocalDateTime now = LocalDateTime.now();
-		JsonWriter jw = new JsonWriter();
+		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(now, jw);
 		JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
 		jr.read();

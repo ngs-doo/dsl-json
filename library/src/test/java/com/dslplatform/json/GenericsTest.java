@@ -73,7 +73,7 @@ public class GenericsTest {
 	@Test
 	public void testListGenerics() throws IOException {
 		DslJson<Object> json = new DslJson<Object>();
-		JsonWriter writer = new JsonWriter();
+		JsonWriter writer = json.newWriter();
 		List<Integer> items = Arrays.asList(1, 2);
 		json.serialize(writer, items);
 		String result = writer.toString();
@@ -86,7 +86,7 @@ public class GenericsTest {
 	@Test
 	public void testPrimitiveArray() throws IOException {
 		DslJson<Object> json = new DslJson<Object>();
-		JsonWriter writer = new JsonWriter();
+		JsonWriter writer = json.newWriter();
 		int[] items = new int[]{1, 2};
 		json.serialize(writer, items);
 		String result = writer.toString();
@@ -99,7 +99,7 @@ public class GenericsTest {
 	@Test
 	public void testNestedArray() throws IOException {
 		DslJson<Object> json = new DslJson<Object>();
-		JsonWriter writer = new JsonWriter();
+		JsonWriter writer = json.newWriter();
 		int[][] items = new int[2][];
 		items[0] = new int[]{1, 2};
 		items[1] = new int[]{3, 4, 5};

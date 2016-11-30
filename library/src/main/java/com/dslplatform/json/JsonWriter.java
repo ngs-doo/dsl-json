@@ -34,16 +34,24 @@ public final class JsonWriter extends Writer {
 	private int position;
 	private byte[] result;
 
+	private final UnknownSerializer unknownSerializer;
+
+	@Deprecated
 	public JsonWriter() {
-		this(512);
+		this(512, null);
 	}
 
-	public JsonWriter(final int size) {
-		this(new byte[size]);
+	JsonWriter(final UnknownSerializer unknownSerializer) {
+		this(512, unknownSerializer);
 	}
 
-	public JsonWriter(final byte[] result) {
+	JsonWriter(final int size, final UnknownSerializer unknownSerializer) {
+		this(new byte[size], unknownSerializer);
+	}
+
+	JsonWriter(final byte[] result, final UnknownSerializer unknownSerializer) {
 		this.result = result;
+		this.unknownSerializer = unknownSerializer;
 	}
 
 	public static final byte OBJECT_START = '{';
@@ -500,5 +508,15 @@ public final class JsonWriter extends Writer {
 			}
 		}
 		writeByte(ARRAY_END);
+	}
+
+	public void serializeObject(final Object value) throws IOException {
+		if (value == null) {
+			writeNull();
+		} else if (unknownSerializer != null){
+			unknownSerializer.serialize(this, value);
+		} else {
+			ObjectConverter.serializeObject(value, this);
+		}
 	}
 }

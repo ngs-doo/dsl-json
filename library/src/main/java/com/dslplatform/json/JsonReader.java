@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Object for processing JSON from byte[].
@@ -45,21 +46,28 @@ public class JsonReader<TContext> {
 
 	protected char[] chars;
 
-	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context) {
+	private final KeyCache keyCache;
+
+	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context, final KeyCache keyCache) {
 		this.tmp = tmp;
 		this.tmpLength = tmp.length;
 		this.buffer = buffer;
 		this.length = length;
 		this.context = context;
 		this.chars = tmp;
+		this.keyCache = keyCache;
 	}
 
 	public JsonReader(final byte[] buffer, final TContext context) {
-		this(new char[64], buffer, buffer.length, context);
+		this(new char[64], buffer, buffer.length, context, null);
+	}
+
+	JsonReader(final byte[] buffer, final TContext context, KeyCache keyCache) {
+		this(new char[64], buffer, buffer.length, context, keyCache);
 	}
 
 	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
-		this(tmp, buffer, buffer.length, context);
+		this(tmp, buffer, buffer.length, context, null);
 		if (tmp == null) {
 			throw new NullPointerException("tmp buffer provided as null.");
 		}
@@ -70,12 +78,16 @@ public class JsonReader<TContext> {
 	}
 
 	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp) throws IOException {
-		this(tmp, buffer, length, context);
+		this(buffer, length, context, tmp, null);
+	}
+
+	JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final KeyCache keyCache) {
+		this(tmp, buffer, length, context, keyCache);
 		if (tmp == null) {
 			throw new NullPointerException("tmp buffer provided as null.");
 		}
 		if (length > buffer.length) {
-			throw new IOException("length can't be longer than buffer.length");
+			throw new IllegalArgumentException("length can't be longer than buffer.length");
 		} else if (length < buffer.length) {
 			buffer[length] = '\0';
 		}
@@ -229,6 +241,11 @@ public class JsonReader<TContext> {
 	}
 
 	public final String readString() throws IOException {
+		final int len = parseString();
+		return new String(chars, 0, len);
+	}
+
+	final int parseString() throws IOException {
 		final int startIndex = currentIndex;
 		if (last != '"') {
 			//TODO: count special chars in separate counter
@@ -242,7 +259,7 @@ public class JsonReader<TContext> {
 				bb = buffer[ci++];
 				if (bb == '"') {
 					currentIndex = ci;
-					return new String(chars, 0, i);
+					return i;
 				}
 				// If we encounter a backslash, which is a beginning of an escape sequence
 				// or a high bit was set - indicating an UTF-8 encoded multibyte character,
@@ -265,7 +282,7 @@ public class JsonReader<TContext> {
 		while (!isEndOfStream()) {
 			int bc = read();
 			if (bc == '"') {
-				return new String(chars, 0, soFar);
+				return soFar;
 			}
 
 			if (soFar >= chars.length - 3) {
@@ -324,7 +341,9 @@ public class JsonReader<TContext> {
 
 						if (bc >= 0x10000) {
 							// check if valid unicode
-							if (bc >= 0x110000) throw new IOException("Invalid unicode character detected at: " + positionInStream());
+							if (bc >= 0x110000) {
+								throw new IOException("Invalid unicode character detected at: " + positionInStream());
+							}
 
 							// split surrogates
 							final int sup = bc - 0x10000;
@@ -468,7 +487,7 @@ public class JsonReader<TContext> {
 	}
 
 	public final String getLastName() throws IOException {
-		return new String(buffer, tokenStart, nameEnd - tokenStart - 1, "ISO-8859-1");
+		return new String(buffer, tokenStart, nameEnd - tokenStart - 1, "UTF-8");
 	}
 
 	private byte skipString() throws IOException {
@@ -562,6 +581,21 @@ public class JsonReader<TContext> {
 		return Base64.decodeFast(buffer, start, currentIndex - 1);
 	}
 
+	public String readKey() throws IOException {
+		final int len = parseString();
+		long hash = 0x811c9dc5;
+		for (int i = 0; i < len; i++) {
+			hash ^= (byte) chars[i];
+			hash *= 0x1000193;
+		}
+		String key = keyCache != null ? keyCache.getKey((int) hash, chars, len) : new String(chars, 0, len);
+		if (getNextToken() != ':') {
+			throw new IOException("Expecting ':' at position " + positionInStream() + ". Found " + (char) last);
+		}
+		getNextToken();
+		return key;
+	}
+
 	/**
 	 * Custom objects can be deserialized based on the implementation specified through this interface.
 	 * Annotation processor creates custom deserializers at compile time and registers them into DslJson.
@@ -618,7 +652,8 @@ public class JsonReader<TContext> {
 
 	public final void checkArrayEnd() throws IOException {
 		if (last != ']') {
-			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in collection at: " + positionInStream());
+			if (currentIndex >= length)
+				throw new IOException("Unexpected end of JSON in collection at: " + positionInStream());
 			else throw new IOException("Expecting ']' at position " + positionInStream() + ". Found " + (char) last);
 		}
 	}
