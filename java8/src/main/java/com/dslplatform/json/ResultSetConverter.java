@@ -24,10 +24,8 @@ public abstract class ResultSetConverter {
 
 	public static <T> void serialize(
 			final ResultSet rs,
-			final JsonWriter sw,
+			final JsonWriter buffer,
 			final OutputStream stream) throws SQLException, IOException {
-		if (sw == null && stream == null) throw new IOException("Either JsonWriter or OutputStream must be non-null");
-		final JsonWriter buffer = sw == null ? new JsonWriter() : sw;
 		final ResultSetMetaData metadata = rs.getMetaData();
 		final int columns = metadata.getColumnCount();
 		if (columns == 0) throw new IOException("No columns found in ResultSet");
@@ -42,41 +40,41 @@ public abstract class ResultSetConverter {
 	public static void serialize(
 			final ResultSet rs,
 			final OutputStream stream,
-			final JsonWriter sw,
+			final JsonWriter buffer,
 			final Writer[] writers) throws SQLException, IOException {
 		if (stream != null) {
-			sw.reset();
+			buffer.reset();
 		}
-		sw.writeByte((byte) '[');
+		buffer.writeByte((byte) '[');
 		if (rs.next()) {
-			sw.writeByte((byte) '[');
-			writers[0].write(rs, sw);
+			buffer.writeByte((byte) '[');
+			writers[0].write(rs, buffer);
 			for (int i = 1; i < writers.length; i++) {
-				sw.writeByte((byte) ',');
-				writers[i].write(rs, sw);
+				buffer.writeByte((byte) ',');
+				writers[i].write(rs, buffer);
 			}
 		} else {
-			sw.writeByte((byte) ']');
+			buffer.writeByte((byte) ']');
 			if (stream != null) {
-				sw.toStream(stream);
+				buffer.toStream(stream);
 			}
 			return;
 		}
 		while (rs.next()) {
-			sw.writeAscii("],[", 3);
-			writers[0].write(rs, sw);
+			buffer.writeAscii("],[", 3);
+			writers[0].write(rs, buffer);
 			for (int i = 1; i < writers.length; i++) {
-				sw.writeByte((byte) ',');
-				writers[i].write(rs, sw);
+				buffer.writeByte((byte) ',');
+				writers[i].write(rs, buffer);
 			}
 			if (stream != null) {
-				sw.toStream(stream);
-				sw.reset();
+				buffer.toStream(stream);
+				buffer.reset();
 			}
 		}
-		sw.writeAscii("]]");
+		buffer.writeAscii("]]");
 		if (stream != null) {
-			sw.toStream(stream);
+			buffer.toStream(stream);
 		}
 	}
 

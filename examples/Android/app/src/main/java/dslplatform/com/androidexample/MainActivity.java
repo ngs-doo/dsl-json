@@ -194,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
         //it's best to reuse writer if possible
         //since only a single serialization in Android is done concurrently
         //a good practice is to have a static field with a synchronized guard
-        JsonWriter writer = new JsonWriter();
+        JsonWriter writer = dslJson.newWriter();
 
         ByteArrayOutputStream os = new ByteArrayOutputStream();
 

@@ -41,7 +41,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.4</version>
+      <version>1.4.1</version>
       <scope>provided</scope>
     </dependency>
 
@@ -49,8 +49,8 @@ For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:1.2.0'
-      apt 'com.dslplatform:dsl-json-processor:1.4'
+      compile compile 'com.dslplatform:dsl-json:1.3.0'
+      apt 'com.dslplatform:dsl-json-processor:1.4.1'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -175,7 +175,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.2.0</version>
+      <version>1.3.0</version>
     </dependency>
 
 ## Best practices

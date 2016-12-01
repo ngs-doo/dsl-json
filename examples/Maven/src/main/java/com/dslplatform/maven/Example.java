@@ -165,7 +165,7 @@ public class Example {
 		//ServiceLoader.load will load Model since it will be registered into META-INF/services during annotation processing
 		DslJson<Object> dslJson = new DslJson<Object>();
 		//writer should be reused. For per thread reuse use ThreadLocal pattern
-		JsonWriter writer = new JsonWriter();
+		JsonWriter writer = dslJson.newWriter();
 
 		Model instance = new Model();
 		instance.string = "Hello World!";

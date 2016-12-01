@@ -120,6 +120,9 @@ abstract class AnnotationCompiler {
 				}
 			}
 			ctx.put(DslCompiler.INSTANCE, options.compiler);
+			//TODO: temp workaround not to break old versions
+			ctx.put("settings", "json-processor-1.4.1");
+			ctx.put(Force.INSTANCE, null);
 			List<CompileParameter> parameters = Main.initializeParameters(ctx, ".");
 			if (!Main.processContext(ctx, parameters)) {
 				if (logLevel != LogLevel.DEBUG) {

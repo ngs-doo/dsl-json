@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentMap;
  * If you wish to process String, use String.getBytes("UTF-8") as argument for DslJson
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
- *     JsonWriter writer = new JsonWriter();
+ *     JsonWriter writer = dsl.newWriter();
  *     dsl.serialize(writer, instance);
  *     String json = writer.toString(); //JSON as string
  *     byte[] input = json.getBytes("UTF-8");
@@ -103,6 +103,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param jodaTime         register converters for JodaTime classes (LocalDate and DateTime)
 	 * @param fallback         in case of unsupported type, try serialization/deserialization through external API
 	 * @param omitDefaults     should serialization produce minified JSON (omit nulls and default values)
+	 * @param keyCache         parsed keys can be cached (this is only used in small subset of parsing)
 	 * @param serializers      additional serializers/deserializers which will be immediately registered into readers/writers
 	 */
 	public DslJson(

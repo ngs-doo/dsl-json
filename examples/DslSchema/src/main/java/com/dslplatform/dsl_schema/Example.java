@@ -14,8 +14,8 @@ public class Example {
 
 		//Generated classes are already DSL-JSON compatible and can be serialized using reader/writer directly
 		DslJson<Object> dslJson = new DslJson<>();
-		JsonWriter writer1 = new JsonWriter();
-		JsonWriter writer2 = new JsonWriter();
+		JsonWriter writer1 = dslJson.newWriter();
+		JsonWriter writer2 = dslJson.newWriter();
 
 		Model instance = new Model()
 			.setString("Hello World!")
@@ -37,7 +37,7 @@ public class Example {
 		//writer1 content == writer2 content
 
 		//deserialization directly though JsonReader
-		JsonReader<Object> reader = new JsonReader<>(writer1.getByteBuffer(), writer1.size(), null);
+		JsonReader<Object> reader = dslJson.newReader(writer1.getByteBuffer(), writer1.size());
 		//deserialize can return null, instance or collection
 		Model deser1 = (Model)Model.deserialize(reader);
 		//standard deserialization using DslJson<>
