@@ -7,7 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ServiceLoader;
 
-public class StaticJson {
+public class StaticJsonJava {
 	private static final JsonSerialization json = new JsonSerialization();
 
 	public static JsonSerialization getSerialization() {
@@ -21,7 +21,7 @@ public class StaticJson {
 
 	public static class JsonSerialization extends DslJson<Object> {
 		public JsonSerialization() {
-			super(null, true, null, false, null, ServiceLoader.load(Configuration.class));
+			super(null, false, null, false, null, ServiceLoader.load(Configuration.class));
 		}
 		private ByteArrayOutputStream stream = new ByteArrayOutputStream();
 

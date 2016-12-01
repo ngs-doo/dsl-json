@@ -11,8 +11,10 @@
 
 	<modules>
 		<module>library</module>
-		<module>java8</module>
 		<module>processor</module>
+		<module>java8</module>
+		<module>joda</module>
+		<module>android</module>
 	</modules>
 
 	<properties>

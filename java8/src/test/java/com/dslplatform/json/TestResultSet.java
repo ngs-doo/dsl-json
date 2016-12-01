@@ -24,7 +24,7 @@ public class TestResultSet {
 		Assert.assertEquals("[[\"abc\",5,1.10],[\"cde\",24,-22.13]]", os.toString());
 		os.reset();
 		rs = com.executeQuery("SELECT * FROM test");
-		ResultSetConverter.serialize(rs, null, os);
+		ResultSetConverter.serialize(rs, dslJson.newWriter(), os);
 		Assert.assertEquals("[[\"abc\",5,1.10],[\"cde\",24,-22.13]]", os.toString());
 	}
 }

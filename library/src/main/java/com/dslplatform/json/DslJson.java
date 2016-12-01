@@ -86,21 +86,19 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Simple initialization entry point.
 	 * Will provide null for TContext
-	 * Android graphics, Java graphics and JodaTime readers/writers will not be registered.
+	 * Java graphics readers/writers will not be registered.
 	 * Fallback will not be configured.
 	 * Default ServiceLoader.load method will be used to setup services from META-INF
 	 */
 	public DslJson() {
-		this(null, false, false, false, null, false, new SimpleKeyCache(), ServiceLoader.load(Configuration.class));
+		this(null, false, null, false, new SimpleKeyCache(), ServiceLoader.load(Configuration.class));
 	}
 
 	/**
 	 * Fully configurable entry point.
 	 *
 	 * @param context          context instance which can be provided to deserialized objects. Use null if not sure
-	 * @param androidSpecifics register Android specific classes such as Point, Rect and Bitmap
 	 * @param javaSpecifics    register Java graphics specific classes such as java.awt.Point, Image, ...
-	 * @param jodaTime         register converters for JodaTime classes (LocalDate and DateTime)
 	 * @param fallback         in case of unsupported type, try serialization/deserialization through external API
 	 * @param omitDefaults     should serialization produce minified JSON (omit nulls and default values)
 	 * @param keyCache         parsed keys can be cached (this is only used in small subset of parsing)
@@ -108,9 +106,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 */
 	public DslJson(
 			final TContext context,
-			final boolean androidSpecifics,
 			final boolean javaSpecifics,
-			final boolean jodaTime,
 			final Fallback<TContext> fallback,
 			final boolean omitDefaults,
 			final KeyCache keyCache,
@@ -125,14 +121,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		registerReader(Boolean.class, BoolConverter.BooleanReader);
 		registerWriter(boolean.class, BoolConverter.BooleanWriter);
 		registerWriter(Boolean.class, BoolConverter.BooleanWriter);
-		if (androidSpecifics) {
-			registerAndroidSpecifics(this);
-		}
 		if (javaSpecifics) {
 			registerJavaSpecifics(this);
-		}
-		if (jodaTime) {
-			registerJodaConverters(this);
 		}
 		registerReader(LinkedHashMap.class, ObjectConverter.MapReader);
 		registerReader(HashMap.class, ObjectConverter.MapReader);
@@ -285,26 +275,6 @@ public class DslJson<TContext> implements UnknownSerializer {
 		} catch (NoClassDefFoundError ignore) {
 		} catch (Exception ignore) {
 		}
-	}
-
-	static void registerAndroidSpecifics(final DslJson json) {
-		json.registerReader(android.graphics.PointF.class, AndroidGeomConverter.LocationReader);
-		json.registerWriter(android.graphics.PointF.class, AndroidGeomConverter.LocationWriter);
-		json.registerReader(android.graphics.Point.class, AndroidGeomConverter.PointReader);
-		json.registerWriter(android.graphics.Point.class, AndroidGeomConverter.PointWriter);
-		json.registerReader(android.graphics.Rect.class, AndroidGeomConverter.RectangleReader);
-		json.registerWriter(android.graphics.Rect.class, AndroidGeomConverter.RectangleWriter);
-		json.registerReader(android.graphics.Bitmap.class, AndroidGeomConverter.ImageReader);
-		json.registerWriter(android.graphics.Bitmap.class, AndroidGeomConverter.ImageWriter);
-		json.registerReader(Element.class, XmlConverter.Reader);
-		json.registerWriter(Element.class, XmlConverter.Writer);
-	}
-
-	static void registerJodaConverters(final DslJson json) {
-		json.registerReader(org.joda.time.LocalDate.class, JodaTimeConverter.LocalDateReader);
-		json.registerWriter(org.joda.time.LocalDate.class, JodaTimeConverter.LocalDateWriter);
-		json.registerReader(org.joda.time.DateTime.class, JodaTimeConverter.DateTimeReader);
-		json.registerWriter(org.joda.time.DateTime.class, JodaTimeConverter.DateTimeWriter);
 	}
 
 	static void registerJavaSpecifics(final DslJson json) {
