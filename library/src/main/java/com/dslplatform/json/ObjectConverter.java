@@ -32,7 +32,7 @@ public abstract class ObjectConverter {
 		}
 	};
 
-	public static void serializeNullableMap(final Map<String, Object> value, final JsonWriter sw) throws IOException {
+	public static void serializeNullableMap(final Map<String, Object> value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -40,7 +40,7 @@ public abstract class ObjectConverter {
 		}
 	}
 
-	public static void serializeMap(final Map<String, Object> value, final JsonWriter sw) throws IOException {
+	public static void serializeMap(final Map<String, Object> value, final JsonWriter sw) {
 		sw.writeByte(JsonWriter.OBJECT_START);
 		final int size = value.size();
 		if (size > 0) {

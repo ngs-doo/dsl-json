@@ -34,6 +34,7 @@ public class Example {
 		public BigDecimal decimal2; //custom formatting can be implemented with per property converters
 		@JsonAttribute(converter = SupportArrayList.class)
 		public ArrayList<Integer> intList; //unsupported collections can be supported through property converters
+		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw RuntimeException
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -189,6 +190,9 @@ public class Example {
 		instance.abs = concrete;
 		instance.decimal2 = BigDecimal.TEN;
 		instance.intList = new ArrayList<Integer>(Arrays.asList(123, 456));
+		instance.map = new HashMap<String, Object>();
+		instance.map.put("abc", 678);
+		instance.map.put("array", new int[] { 2, 4, 8});
 
 		dslJson.serialize(writer, instance);
 

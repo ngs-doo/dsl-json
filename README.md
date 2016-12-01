@@ -49,7 +49,7 @@ For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:1.3.0'
+      compile compile 'com.dslplatform:dsl-json:1.3.1'
       apt 'com.dslplatform:dsl-json-processor:1.4.1'
     }
 
@@ -99,7 +99,7 @@ Types without builtin mapping can be supported in three ways:
  * by defining custom conversion class and annotating it with `@JsonConverter`
  * by defining custom conversion class and referencing it from property with converter through `@JsonAttribute`
 
-Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L110)
+Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L111)
 Annotation processor will check if custom type implementations have appropriate signatures.
 Converter for `java.util.ArrayList` can be found in [same example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L36)
 
@@ -166,8 +166,8 @@ Reference benchmark (built by library authors):
 
 ## Dependencies
 
-DSL compiler requires Mono/.NET, but only during compilation. There is no runtime Mono/.NET dependency, only JVM.
-Library has optional Android and Joda-Time dependencies.
+To create compile time databinding, annotation processor will invoke DSL compiler, which requires Mono/.NET.
+There is no runtime Mono/.NET dependency, only JVM.
 Java8 Java-Time API is supported as a separate jar, since core library targets Java6.
 
 Library can be added as Maven dependency with:
@@ -175,7 +175,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.3.0</version>
+      <version>1.3.1</version>
     </dependency>
 
 ## Best practices

@@ -10,9 +10,9 @@ import java.util.*;
  * DslJson writes JSON into an byte[] target.
  * This class is used for growing such byte[] buffer
  * and providing other low level methods for JSON serialization.
- *
+ * <p>
  * After the processing is done, JSON can be copied to target OutputStream or resulting byte[] can be used directly.
- *
+ * <p>
  * For maximum performance JsonWriter instances should be reused.
  * They should not be shared across threads (concurrently) so for Thread reuse it's best to use patterns such as ThreadLocal.
  */
@@ -510,13 +510,21 @@ public final class JsonWriter extends Writer {
 		writeByte(ARRAY_END);
 	}
 
-	public void serializeObject(final Object value) throws IOException {
+	public void serializeObject(final Object value) {
 		if (value == null) {
 			writeNull();
-		} else if (unknownSerializer != null){
-			unknownSerializer.serialize(this, value);
+		} else if (unknownSerializer != null) {
+			try {
+				unknownSerializer.serialize(this, value);
+			} catch (IOException ex) { //serializing unknown stuff can fail in various ways ;(
+				throw new RuntimeException(ex);
+			}
 		} else {
-			ObjectConverter.serializeObject(value, this);
+			try {
+				ObjectConverter.serializeObject(value, this);
+			} catch (IOException ex) { //serializing unknown stuff can fail in various ways ;(
+				throw new RuntimeException(ex);
+			}
 		}
 	}
 }
