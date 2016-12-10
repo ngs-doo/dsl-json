@@ -1125,7 +1125,7 @@ public abstract class NumberConverter {
 					return parseNumberGeneric(reader.prepareBuffer(start), end - start, reader);
 				}
 			}
-			if (i == end) return value / POW_10[end - dp];
+			if (i == end) return BigDecimal.valueOf(value, end - dp);
 			else if (ch == 'e' || ch == 'E') {
 				final int ep = i;
 				i++;
@@ -1184,7 +1184,7 @@ public abstract class NumberConverter {
 					return parseNumberGeneric(reader.prepareBuffer(start), end - start, reader);
 				}
 			}
-			if (i == end) return value / POW_10[end - dp];
+			if (i == end) return BigDecimal.valueOf(value, end - dp);
 			else if (ch == 'e' || ch == 'E') {
 				final int ep = i;
 				i++;
