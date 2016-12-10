@@ -239,6 +239,64 @@ public class NumberConverterTest {
 	}
 
 	@Test
+	public void testGenericNumberLongBoundaries() throws IOException {
+		final Long maxIntAsLong = Long.valueOf(Integer.MAX_VALUE);
+		final Long minIntAsLong = Long.valueOf(Integer.MIN_VALUE);
+		final BigDecimal maxIntWithDecimalAsBigDecimal = BigDecimal.valueOf(Integer.MAX_VALUE).setScale(1);
+		final BigDecimal minIntWithDecimalAsBigDecimal = BigDecimal.valueOf(Integer.MIN_VALUE).setScale(1);
+		final Long positive18DigitLong = Long.valueOf(876543210987654321L);
+		final Long negative18DigitLong = Long.valueOf(-876543210987654321L);
+		final BigDecimal positive18DigitAndOneDecimal = BigDecimal.valueOf(876543210987654321L).setScale(1);
+		final BigDecimal negative18DigitAndOneDecimal  = BigDecimal.valueOf(-876543210987654321L).setScale(1);
+		final Long maxLong = Long.valueOf(Long.MAX_VALUE);
+		final Long minLong = Long.valueOf(Long.MIN_VALUE);
+		final BigDecimal maxLongPlusOneAsBigDecimal = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
+		final BigDecimal minLongMinusOneAsBigDecimal = BigDecimal.valueOf(Long.MIN_VALUE).subtract(BigDecimal.ONE);
+
+		String input = "{\n" +
+				"\"maxIntAsLong\":" +          maxIntAsLong + ",\n" +
+				"\"maxIntAsLongWithSign\":+" + maxIntAsLong + ",\n" +
+				"\"minIntAsLong\":" +          minIntAsLong + ",\n" +
+				"\"maxIntWithDecimalAsBigDecimal\":" +          maxIntWithDecimalAsBigDecimal + ",\n" +
+				"\"maxIntWithDecimalAsBigDecimalWithSign\":+" + maxIntWithDecimalAsBigDecimal + ",\n" +
+				"\"minIntWithDecimalAsBigDecimal\":" +          minIntWithDecimalAsBigDecimal + ",\n" +
+				"\"positive18DigitLong\":" +          positive18DigitLong + ",\n" +
+				"\"positive18DigitLongWithSign\":+" + positive18DigitLong + ",\n" +
+				"\"negative18DigitLong\":" +          negative18DigitLong + ",\n" +
+				"\"positive18DigitAndOneDecimal\":" +          positive18DigitAndOneDecimal + ",\n" +
+				"\"positive18DigitAndOneDecimalWithSign\":+" + positive18DigitAndOneDecimal + ",\n" +
+				"\"negative18DigitAndOneDecimal\":" +          negative18DigitAndOneDecimal + ",\n" +
+				"\"maxLong\":" +          maxLong + ",\n" +
+				"\"maxLongWithSign\":+" + maxLong + ",\n" +
+				"\"minLong\":" +          minLong + ",\n" +
+				"\"maxLongPlusOneAsBigDecimal\":" +          maxLongPlusOneAsBigDecimal + ",\n" +
+				"\"maxLongPlusOneAsBigDecimalWithSign\":+" + maxLongPlusOneAsBigDecimal + ",\n" +
+				"\"minLongMinusOneAsBigDecimal\":" +         minLongMinusOneAsBigDecimal + "\n" +
+		"}";
+
+		DslJson json = new DslJson();
+		Map result = (Map) json.deserialize(Map.class, input.getBytes("UTF-8"), input.length());
+		Assert.assertEquals(maxIntAsLong, result.get("maxIntAsLong"));
+		Assert.assertEquals(maxIntAsLong, result.get("maxIntAsLongWithSign"));
+		Assert.assertEquals(minIntAsLong, result.get("minIntAsLong"));
+ 		Assert.assertEquals(maxIntWithDecimalAsBigDecimal, result.get("maxIntWithDecimalAsBigDecimal"));
+		Assert.assertEquals(maxIntWithDecimalAsBigDecimal, result.get("maxIntWithDecimalAsBigDecimalWithSign"));
+		Assert.assertEquals(minIntWithDecimalAsBigDecimal, result.get("minIntWithDecimalAsBigDecimal"));
+		Assert.assertEquals(positive18DigitLong, result.get("positive18DigitLong"));
+		Assert.assertEquals(positive18DigitLong, result.get("positive18DigitLongWithSign"));
+		Assert.assertEquals(negative18DigitLong, result.get("negative18DigitLong"));
+		Assert.assertEquals(positive18DigitAndOneDecimal, result.get("positive18DigitAndOneDecimal"));
+		Assert.assertEquals(positive18DigitAndOneDecimal, result.get("positive18DigitAndOneDecimalWithSign"));
+		Assert.assertEquals(negative18DigitAndOneDecimal, result.get("negative18DigitAndOneDecimal"));
+		Assert.assertEquals(maxLong, result.get("maxLong"));
+		Assert.assertEquals(maxLong, result.get("maxLongWithSign"));
+		Assert.assertEquals(minLong, result.get("minLong"));
+		Assert.assertEquals(maxLongPlusOneAsBigDecimal, result.get("maxLongPlusOneAsBigDecimal"));
+		Assert.assertEquals(maxLongPlusOneAsBigDecimal, result.get("maxLongPlusOneAsBigDecimalWithSign"));
+		Assert.assertEquals(minLongMinusOneAsBigDecimal, result.get("minLongMinusOneAsBigDecimal"));
+	}
+
+	@Test
 	public void primitiveIntArrDeser() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(null);
