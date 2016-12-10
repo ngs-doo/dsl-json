@@ -1059,6 +1059,22 @@ public abstract class NumberConverter {
 		return BigDecimal.valueOf(value);
 	}
 
+	private static final BigDecimal BD_MAX_LONG = BigDecimal.valueOf(Long.MAX_VALUE);
+	private static final BigDecimal BD_MIN_LONG = BigDecimal.valueOf(Long.MIN_VALUE);
+
+	private static Number tryLongFromBigDecimal(final BigDecimal num) {
+		if (num.scale() == 0 && num.precision() <= 19) {
+			if (num.signum() == 1) {
+				if (num.compareTo(BD_MAX_LONG) <= 0) {
+					return num.longValue();
+				}
+			} else if (num.compareTo(BD_MIN_LONG) >= 0) {
+				return num.longValue();
+			}
+		}
+		return num;
+	}
+
 	public static Number deserializeNumber(final JsonReader reader) throws IOException {
 		final int start = reader.scanNumber();
 		int end = reader.getCurrentIndex();
@@ -1068,9 +1084,9 @@ public abstract class NumberConverter {
 			len = end - start;
 			if (len == reader.tmpLength) {
 				final NumberInfo tmp = readLongNumber(reader, start);
-				return parseNumberGeneric(tmp.buffer, tmp.length, reader);
+				return tryLongFromBigDecimal(parseNumberGeneric(tmp.buffer, tmp.length, reader));
 			} else if (len > 18) {
-				return parseNumberGeneric(reader.prepareBuffer(start), len, reader);
+				return tryLongFromBigDecimal(parseNumberGeneric(reader.prepareBuffer(start), len, reader));
 			}
 		}
 		final byte[] buf = reader.buffer;
