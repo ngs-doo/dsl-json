@@ -21,7 +21,7 @@ public class StaticJson {
 
 	public static class JsonSerialization extends DslJson<Object> {
 		public JsonSerialization() {
-			super(null, true, null, false, null, ServiceLoader.load(Configuration.class));
+			super(null, true, null, false, new DslJson.SimpleKeyCache(), ServiceLoader.load(Configuration.class));
 		}
 		private ByteArrayOutputStream stream = new ByteArrayOutputStream();
 

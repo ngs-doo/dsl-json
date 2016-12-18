@@ -97,12 +97,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Fully configurable entry point.
 	 *
-	 * @param context          context instance which can be provided to deserialized objects. Use null if not sure
-	 * @param javaSpecifics    register Java graphics specific classes such as java.awt.Point, Image, ...
-	 * @param fallback         in case of unsupported type, try serialization/deserialization through external API
-	 * @param omitDefaults     should serialization produce minified JSON (omit nulls and default values)
-	 * @param keyCache         parsed keys can be cached (this is only used in small subset of parsing)
-	 * @param serializers      additional serializers/deserializers which will be immediately registered into readers/writers
+	 * @param context       context instance which can be provided to deserialized objects. Use null if not sure
+	 * @param javaSpecifics register Java graphics specific classes such as java.awt.Point, Image, ...
+	 * @param fallback      in case of unsupported type, try serialization/deserialization through external API
+	 * @param omitDefaults  should serialization produce minified JSON (omit nulls and default values)
+	 * @param keyCache      parsed keys can be cached (this is only used in small subset of parsing)
+	 * @param serializers   additional serializers/deserializers which will be immediately registered into readers/writers
 	 */
 	public DslJson(
 			final TContext context,
@@ -183,24 +183,40 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 	}
 
-	private static class SimpleKeyCache implements KeyCache {
+	public static class SimpleKeyCache implements KeyCache {
 
-		private final ConcurrentHashMap<Integer, String> keys = new ConcurrentHashMap<Integer, String>();
+		private final int mask;
+		private final String[] cache;
+
+		public SimpleKeyCache() {
+			this(10);
+		}
+
+		public SimpleKeyCache(int log2Size) {
+			int size = 2;
+			for (int i = 1; i < log2Size; i++) {
+				size *= 2;
+			}
+			mask = size - 1;
+			cache = new String[size];
+		}
 
 		@Override
-		public String getKey(final int hash, final char[] chars, final int len) throws IOException {
-			String found = keys.get(hash);
-			if (found != null) {
-				if (len != found.length()) return new String(chars, 0, len);
-				for (int i = 0; i < len; i++) {
-					if (found.charAt(i) != chars[i]) return new String(chars, 0, len);
-				}
-				return found;
-			} else {
-				String key = new String(chars, 0, len);
-				keys.put(hash, key);
-				return key;
+		public String getKey(int hash, char[] chars, int len) throws IOException {
+			final int index = hash & mask;
+			String value = cache[index];
+			if (value == null) return createAndPut(index, chars, len);
+			if (value.length() != len) return createAndPut(index, chars, len);
+			for (int i = 0; i < value.length(); i++) {
+				if (value.charAt(i) != chars[i]) return createAndPut(index, chars, len);
 			}
+			return value;
+		}
+
+		private String createAndPut(int index, char[] chars, int len) {
+			String value = new String(chars, 0, len);
+			cache[index] = value;
+			return value;
 		}
 	}
 
