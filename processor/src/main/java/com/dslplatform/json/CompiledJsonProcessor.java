@@ -213,8 +213,24 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		if (!compiledJsons.isEmpty()) {
 			Map<String, StructInfo> structs = new HashMap<String, StructInfo>();
 			CompileOptions options = new CompileOptions();
+			List<String> configurations = new ArrayList<String>();
 			for (Element el : jsonConverters) {
 				findConverters(structs, options, el);
+				if (el instanceof TypeElement) {
+					TypeElement te = (TypeElement)el;
+					if (!el.getModifiers().contains(Modifier.ABSTRACT)) {
+						for (TypeElement it : getTypeHierarchy((TypeElement) el)) {
+							if ("com.dslplatform.json.Configuration".equals(it.toString())) {
+								if (te.getNestingKind().isNested()) {
+									configurations.add(te.getEnclosingElement().asType().toString() + "$" + te.getSimpleName().toString());
+								} else {
+									configurations.add(te.asType().toString());
+								}
+								break;
+							}
+						}
+					}
+				}
 			}
 			for (Element el : compiledJsons) {
 				findStructs(structs, options, el, "CompiledJson requires accessible public no argument constructor");
@@ -245,6 +261,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				writer.close();
 				writer = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG).openWriter();
 				writer.write(className);
+				for (String conf : configurations) {
+					writer.write('\n');
+					writer.write(conf);
+				}
 				writer.close();
 			} catch (IOException e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving compiled json serialization files");
@@ -351,7 +371,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			hasDuplicates = hasDuplicates || !counters.add(hash);
 			if (aliases != null) {
 				hasAliases = true;
-				for(String name : aliases) {
+				for (String name : aliases) {
 					int aliasHash = calcHash(name);
 					if (aliasHash == hash) {
 						continue;
@@ -639,7 +659,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 			for (ExecutableElement ee : values.keySet()) {
 				if (ee.toString().equals("converter()")) {
-					TypeMirror mirror = (TypeMirror)values.get(ee).getValue();
+					TypeMirror mirror = (TypeMirror) values.get(ee).getValue();
 					return mirror != null && mirror.toString().equals("com.dslplatform.json.JsonAttribute") ? null : mirror;
 				}
 			}
@@ -684,14 +704,14 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
 			if (ee.toString().equals("target()")) {
-				target = (DeclaredType)values.get(ee).getValue();
+				target = (DeclaredType) values.get(ee).getValue();
 				break;
 			}
 		}
 		if (target == null) return;
 		if (validConverter(options, converter, target.asElement(), target.toString())) {
 			String name = "struct" + structs.size();
-			TypeElement element = (TypeElement)target.asElement();
+			TypeElement element = (TypeElement) target.asElement();
 			StructInfo info = new StructInfo(converter, element, name);
 			structs.put(target.toString(), info);
 		}
@@ -1131,7 +1151,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static int calcHash(String name) {
 		long hash = 0x811c9dc5;
 		for (int i = 0; i < name.length(); i++) {
-			byte b = (byte)name.charAt(i);
+			byte b = (byte) name.charAt(i);
 			hash ^= b;
 			hash *= 0x1000193;
 		}

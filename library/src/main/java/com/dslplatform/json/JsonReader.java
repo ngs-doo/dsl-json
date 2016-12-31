@@ -493,8 +493,10 @@ public class JsonReader<TContext> {
 	private byte skipString() throws IOException {
 		byte c = read();
 		byte prev = c;
-		while (c != '"' || prev == '\\') {
+		boolean inEscape = false;
+		while (c != '"' || inEscape) {
 			prev = c;
+			inEscape = !inEscape && prev == '\\';
 			c = read();
 		}
 		return getNextToken();

@@ -35,6 +35,7 @@ public class Example {
 		@JsonAttribute(converter = SupportArrayList.class)
 		public ArrayList<Integer> intList; //unsupported collections can be supported through property converters
 		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw RuntimeException
+		public ImmutablePerson person; //immutable objects can be supported with helper DTO implementations
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -179,6 +180,7 @@ public class Example {
 		instance.inheritance = new Model.ParentClass();
 		instance.inheritance.a = 5;
 		instance.inheritance.b = 6;
+		instance.person = new ImmutablePerson("first name", "last name", 35);
 		instance.states = Arrays.asList(Model.State.HI, Model.State.LOW);
 		instance.jsonObject = new Model.JsonObjectReference(43, "abcd");
 		instance.jsonObjects = Collections.singletonList(new Model.JsonObjectReference(34, "dcba"));

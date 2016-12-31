@@ -22,8 +22,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
@@ -57,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         @JsonAttribute(converter = SupportArrayList.class)
         public ArrayList<Integer> intList; //unsupported collections can be supported through property converters
         public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw RuntimeException
+        public ImmutablePerson person; //immutable objects can be supported with helper DTO implementations
 
         //explicitly referenced classes don't require @CompiledJson annotation
         public static class Nested {
@@ -188,10 +191,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //during initialization ServiceLoader.load should pick up services registered into META-INF/services
-        //this doesn't really work on Android so DslJson will fallback to default generated class name
-        //"dsl_json.json.ExternalSerialization" and try to initialize it manually
-        DslJson<Object> dslJson = new DslJson<>();
+        DslJson<Object> dslJson = DSL.JSON();
         //it's best to reuse writer if possible
         //since only a single serialization in Android is done concurrently
         //a good practice is to have a static field with a synchronized guard
@@ -210,6 +210,7 @@ public class MainActivity extends AppCompatActivity {
         instance.inheritance = new Model.ParentClass();
         instance.inheritance.a = 5;
         instance.inheritance.b = 6;
+        instance.person = new ImmutablePerson("first name", "last name", 35);
         instance.states = Arrays.asList(Model.State.HI, Model.State.LOW);
         instance.jsonObject = new Model.JsonObjectReference(43, "abcd");
         instance.jsonObjects = Collections.singletonList(new Model.JsonObjectReference(34, "dcba"));

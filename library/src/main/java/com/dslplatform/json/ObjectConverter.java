@@ -60,9 +60,13 @@ public abstract class ObjectConverter {
 		sw.writeByte(JsonWriter.OBJECT_END);
 	}
 
-	private static final DslJson<Object> SHARED = new DslJson<Object>();
+	//TODO: not a nice hack. fixme
+	private static DslJson<Object> SHARED;
 
 	public static void serializeObject(final Object value, final JsonWriter sw) throws IOException {
+		if (SHARED == null) {
+			SHARED = new DslJson<Object>();
+		}
 		SHARED.serialize(sw, value);
 	}
 

@@ -36,6 +36,10 @@ public final class JsonWriter extends Writer {
 
 	private final UnknownSerializer unknownSerializer;
 
+	/**
+	 * Prefer creating JsonWriter through DslJson#newWriter
+	 * This instance is safe to use when all type information is known and lookups to custom writers is not required.
+	 */
 	@Deprecated
 	public JsonWriter() {
 		this(512, null);

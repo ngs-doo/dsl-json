@@ -233,6 +233,33 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	/**
+	 * Create a writer bound to this DSL-JSON.
+	 * Ideally it should be reused.
+	 * Bound writer can use lookups to find custom writers.
+	 * This can be used to serialize unknown types such as Object.class
+	 *
+	 * @param size initial buffer size
+	 * @return bound writer
+	 */
+	public JsonWriter newWriter(int size) {
+		return new JsonWriter(size, this);
+	}
+
+	/**
+	 * Create a writer bound to this DSL-JSON.
+	 * Ideally it should be reused.
+	 * Bound writer can use lookups to find custom writers.
+	 * This can be used to serialize unknown types such as Object.class
+	 *
+	 * @param buffer initial buffer
+	 * @return bound writer
+	 */
+	public JsonWriter newWriter(byte[] buffer) {
+		if (buffer == null) throw new IllegalArgumentException("null value provided for buffer");
+		return new JsonWriter(buffer, this);
+	}
+
+	/**
 	 * Create a reader bound to this DSL-JSON.
 	 * Bound reader can reuse key cache (which is used during Map deserialization)
 	 *

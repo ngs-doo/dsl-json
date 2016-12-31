@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class ReaderTest {
 
@@ -49,5 +50,58 @@ public class ReaderTest {
 		dslJson.registerReader(Interface.class, dslJson.tryFindReader(Implementation.class));
 		JsonReader.ReadObject<?> reader3 = dslJson.tryFindReader(Interface.class);
 		Assert.assertNotNull(reader3);
+	}
+
+	@Test
+	public void skipEscaped1() throws IOException {
+		DslJson<Object> dslJson = new DslJson<Object>();
+		byte[] input = "{\"a\":1,\"b\":\"\\\",\"c\":\"\\\\\"}".getBytes("UTF-8");
+		JsonReader reader = dslJson.newReader(input);
+		Assert.assertEquals('{', reader.getNextToken());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("a", reader.readKey());
+		Assert.assertEquals(',', reader.skip());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("b", reader.readKey());
+		Assert.assertEquals('c', reader.skip());
+	}
+
+	@Test
+	public void skipEscaped2() throws IOException {
+		DslJson<Object> dslJson = new DslJson<Object>();
+		byte[] input = "{\"a\":1,\"b\":\"\\\"\",\"c\":\"\\\\\"}".getBytes("UTF-8");
+		JsonReader reader = dslJson.newReader(input);
+		Assert.assertEquals('{', reader.getNextToken());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("a", reader.readKey());
+		Assert.assertEquals(',', reader.skip());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("b", reader.readKey());
+		Assert.assertEquals(',', reader.skip());
+	}
+
+	@Test
+	public void skipEscaped3() throws IOException {
+		DslJson<Object> dslJson = new DslJson<Object>();
+		byte[] input = "{\"a\":1,\"b\":\"\\\\\",\"c\":\"\\\\\\\"\",\"d\":\"\\\"abc\"}".getBytes("UTF-8");
+		Map<String, Object> map = dslJson.deserialize(Map.class, input, input.length);
+		Assert.assertEquals(4, map.size());
+		Assert.assertEquals(map.get("a"), 1L);
+		Assert.assertEquals(map.get("b"), "\\");
+		Assert.assertEquals(map.get("c"), "\\\"");
+		JsonReader reader = dslJson.newReader(input);
+		Assert.assertEquals('{', reader.getNextToken());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("a", reader.readKey());
+		Assert.assertEquals(',', reader.skip());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("b", reader.readKey());
+		Assert.assertEquals(',', reader.skip());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("c", reader.readKey());
+		Assert.assertEquals(',', reader.skip());
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals("d", reader.readKey());
+		Assert.assertEquals('}', reader.skip());
 	}
 }

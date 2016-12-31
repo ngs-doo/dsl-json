@@ -41,7 +41,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.4.1</version>
+      <version>1.4.3</version>
       <scope>provided</scope>
     </dependency>
 
@@ -49,8 +49,8 @@ For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:1.3.2'
-      apt 'com.dslplatform:dsl-json-processor:1.4.1'
+      compile compile 'com.dslplatform:dsl-json:1.3.3'
+      apt 'com.dslplatform:dsl-json-processor:1.4.3'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -99,9 +99,11 @@ Types without builtin mapping can be supported in three ways:
  * by defining custom conversion class and annotating it with `@JsonConverter`
  * by defining custom conversion class and referencing it from property with converter through `@JsonAttribute`
 
-Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L111)
+Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L112)
 Annotation processor will check if custom type implementations have appropriate signatures.
 Converter for `java.util.ArrayList` can be found in [same example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L36)
+
+`@JsonConverter` which implements `Configuration` will also be registered in `META-INF/services` which makes it convenient to [setup initialization](examples/Maven/src/main/java/com/dslplatform/maven/ImmutablePerson.java#L48).
 
 ### @JsonAttribute features
 
@@ -175,7 +177,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.3.2</version>
+      <version>1.3.3</version>
     </dependency>
 
 ## Best practices
