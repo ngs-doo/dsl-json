@@ -60,14 +60,8 @@ public abstract class ObjectConverter {
 		sw.writeByte(JsonWriter.OBJECT_END);
 	}
 
-	//TODO: not a nice hack. fixme
-	private static DslJson<Object> SHARED;
-
 	public static void serializeObject(final Object value, final JsonWriter sw) throws IOException {
-		if (SHARED == null) {
-			SHARED = new DslJson<Object>();
-		}
-		SHARED.serialize(sw, value);
+		sw.serializeObject(value);
 	}
 
 	public static Object deserializeObject(final JsonReader reader) throws IOException {
@@ -136,6 +130,7 @@ public abstract class ObjectConverter {
 		return res;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, Object>> deserializeMapCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(TypedMapReader);
 	}
@@ -144,6 +139,7 @@ public abstract class ObjectConverter {
 		reader.deserializeCollection(TypedMapReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, Object>> deserializeNullableMapCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(TypedMapReader);
 	}

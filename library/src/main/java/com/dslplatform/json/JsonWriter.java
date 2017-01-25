@@ -524,11 +524,8 @@ public final class JsonWriter extends Writer {
 				throw new RuntimeException(ex);
 			}
 		} else {
-			try {
-				ObjectConverter.serializeObject(value, this);
-			} catch (IOException ex) { //serializing unknown stuff can fail in various ways ;(
-				throw new RuntimeException(ex);
-			}
+			throw new RuntimeException("Unknown type: " + value.getClass() + " provided.\n" +
+					"Check that JsonWriter was created through DslJson#newWriter.");
 		}
 	}
 }

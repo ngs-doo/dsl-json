@@ -366,4 +366,117 @@ public class StreamTest {
 		Assert.assertEquals(7, points.length);
 		Assert.assertEquals(1.000000000000234d, points[6].getY(), 0);
 	}
+
+	public static class JsonPoint implements JsonObject {
+
+		public double y;
+
+		public void serialize(final com.dslplatform.json.JsonWriter sw, final boolean minimal) {
+			sw.writeAscii("{\"y\":");
+			com.dslplatform.json.NumberConverter.serialize(y, sw);
+			sw.writeByte(com.dslplatform.json.JsonWriter.OBJECT_END);
+		}
+
+		public static final com.dslplatform.json.JsonReader.ReadJsonObject<JsonPoint> JSON_READER = new com.dslplatform.json.JsonReader.ReadJsonObject<JsonPoint>() {
+			@SuppressWarnings("unchecked")
+			@Override
+			public JsonPoint deserialize(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {
+				return new JsonPoint(reader);
+			}
+		};
+
+		private JsonPoint(final com.dslplatform.json.JsonReader<Object> reader) throws java.io.IOException {
+
+			double _y_ = 0;
+			byte nextToken = reader.last();
+			if(nextToken != '}') {
+				int nameHash = reader.fillName();
+				nextToken = reader.getNextToken();
+				if(nextToken == 'n') {
+					if (reader.wasNull()) {
+						nextToken = reader.getNextToken();
+					} else {
+						throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char)nextToken);
+					}
+				} else {
+					switch(nameHash) {
+
+						case -66302220:
+							_y_ = NumberConverter.deserializeDouble(reader);
+							nextToken = reader.getNextToken();
+							break;
+						default:
+							nextToken = reader.skip();
+							break;
+					}
+				}
+				while (nextToken == ',') {
+					nextToken = reader.getNextToken();
+					nameHash = reader.fillName();
+					nextToken = reader.getNextToken();
+					if(nextToken == 'n') {
+						if (reader.wasNull()) {
+							nextToken = reader.getNextToken();
+							continue;
+						} else {
+							throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char)nextToken);
+						}
+					}
+					switch(nameHash) {
+
+						case -66302220:
+							_y_ = NumberConverter.deserializeDouble(reader);
+							nextToken = reader.getNextToken();
+							break;
+						default:
+							nextToken = reader.skip();
+							break;
+					}
+				}
+				if (nextToken != '}') {
+					throw new java.io.IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char)nextToken);
+				}
+			}
+
+			this.y = _y_;
+		}
+	}
+
+	@Test
+	public void manualReadWithIterator() throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
+		sb.append("{\"coordinates\": [{\n" +
+				"      \"x\": 0.7497682823992804,\n" +
+				"      \"y\": 0.11430576315631691,\n" +
+				"      \"z\": 0.8336834710515213,\n" +
+				"      \"id\": \"1804\",\n" +
+				"      \"conf\": {\"1\": [1,true]}\n" +
+				"    }\n");
+		for (int i = 0; i < 1000; i++) {
+			sb.append(",{\n" +
+					"      \"x\": 0.996765457871507,\n" +
+					"      \"y\": 0.7250564959301626,\n" +
+					"      \"z\": 0.4599639911379607,\n" +
+					"      \"id\": \"2546\",\n" +
+					"      \"conf\": {\"1\": [1,true]\n" +
+					"      }\n" +
+					"    }");
+		}
+		sb.append("]}");
+		byte[] bytes = sb.toString().getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		JsonStreamReader reader = json.newReader(is, new byte[1024]);
+		reader.getNextToken(); // {
+		reader.getNextToken(); // "
+		reader.readKey(); // coordinates
+		reader.getNextToken(); // start
+		Iterator<JsonPoint> iterator = reader.iterateOver(JsonPoint.JSON_READER);
+		double y = 0;
+		while (iterator.hasNext()) {
+			JsonPoint obj = iterator.next();
+			y += obj.y;
+		}
+		Assert.assertEquals(725.1708016933293d, y, 0);
+	}
 }

@@ -73,7 +73,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * which can be reconstructed from schema information
 	 */
 	public final boolean omitDefaults;
-	protected final KeyCache keyCache;
+	protected final StringCache keyCache;
+	protected final StringCache valuesCache;
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
@@ -88,10 +89,11 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * Will provide null for TContext
 	 * Java graphics readers/writers will not be registered.
 	 * Fallback will not be configured.
+	 * Key cache will be enables, values cache will be disabled.
 	 * Default ServiceLoader.load method will be used to setup services from META-INF
 	 */
 	public DslJson() {
-		this(null, false, null, false, new SimpleKeyCache(), ServiceLoader.load(Configuration.class));
+		this(null, false, null, false, new SimpleStringCache(), null, ServiceLoader.load(Configuration.class));
 	}
 
 	/**
@@ -102,6 +104,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param fallback      in case of unsupported type, try serialization/deserialization through external API
 	 * @param omitDefaults  should serialization produce minified JSON (omit nulls and default values)
 	 * @param keyCache      parsed keys can be cached (this is only used in small subset of parsing)
+	 * @param valuesCache   parsed string values can be cached (will be used for every string parsing). Requires hash calculation for every string.
 	 * @param serializers   additional serializers/deserializers which will be immediately registered into readers/writers
 	 */
 	public DslJson(
@@ -109,12 +112,14 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final boolean javaSpecifics,
 			final Fallback<TContext> fallback,
 			final boolean omitDefaults,
-			final KeyCache keyCache,
+			final StringCache keyCache,
+			final StringCache valuesCache,
 			final Iterable<Configuration> serializers) {
 		this.context = context;
 		this.fallback = fallback;
 		this.omitDefaults = omitDefaults;
 		this.keyCache = keyCache;
+		this.valuesCache = valuesCache;
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
 		registerReader(boolean.class, BoolConverter.BooleanReader);
@@ -183,16 +188,16 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 	}
 
-	public static class SimpleKeyCache implements KeyCache {
+	public static class SimpleStringCache implements StringCache {
 
 		private final int mask;
 		private final String[] cache;
 
-		public SimpleKeyCache() {
+		public SimpleStringCache() {
 			this(10);
 		}
 
-		public SimpleKeyCache(int log2Size) {
+		public SimpleStringCache(int log2Size) {
 			int size = 2;
 			for (int i = 1; i < log2Size; i++) {
 				size *= 2;
@@ -202,8 +207,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 
 		@Override
-		public String getKey(int hash, char[] chars, int len) throws IOException {
-			final int index = hash & mask;
+		public String get(char[] chars, int len) {
+			long hash = 0x811c9dc5;
+			for (int i = 0; i < len; i++) {
+				hash ^= (byte) chars[i];
+				hash *= 0x1000193;
+			}
+			final int index = (int)hash & mask;
 			String value = cache[index];
 			if (value == null) return createAndPut(index, chars, len);
 			if (value.length() != len) return createAndPut(index, chars, len);
@@ -267,7 +277,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes) {
-		return new JsonReader<TContext>(bytes, context, keyCache);
+		return new JsonReader<TContext>(bytes, context, keyCache, valuesCache);
 	}
 
 	/**
@@ -279,19 +289,21 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
-		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache);
+		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache);
 	}
 
 	/**
 	 * Create a reader bound to this DSL-JSON.
 	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 * Stream readers can be reused (using reset method).
 	 *
 	 * @param stream input stream
 	 * @param buffer temporary buffer
 	 * @return bound reader
+	 * @throws java.io.IOException unable to read from stream
 	 */
 	public JsonStreamReader<TContext> newReader(InputStream stream, byte[] buffer) throws IOException {
-		return new JsonStreamReader<TContext>(stream, buffer, context, keyCache);
+		return new JsonStreamReader<TContext>(stream, buffer, context, keyCache, valuesCache);
 	}
 
 	/**
@@ -306,7 +318,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	@Deprecated
 	public JsonReader<TContext> newReader(String input) {
 		final byte[] bytes = input.getBytes(UTF8);
-		return new JsonReader<TContext>(bytes, context, keyCache);
+		return new JsonReader<TContext>(bytes, context, keyCache, valuesCache);
 	}
 
 	private static void loadDefaultConverters(final DslJson json, final String name) {
@@ -1148,114 +1160,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
-	private static class StreamWithObjectReader<T extends JsonObject> implements Iterator<T> {
-		private final JsonReader.ReadJsonObject<T> reader;
-		private final JsonStreamReader json;
-
-		private boolean hasNext;
-
-		StreamWithObjectReader(
-				JsonReader.ReadJsonObject<T> reader,
-				JsonStreamReader json) {
-			this.reader = reader;
-			this.json = json;
-			hasNext = true;
-		}
-
-		@Override
-		public boolean hasNext() {
-			return hasNext;
-		}
-
-		@Override
-		public void remove() {
-		}
-
-		@Override
-		public T next() {
-			try {
-				byte nextToken = json.last();
-				final T instance;
-				if (nextToken == 'n') {
-					if (json.wasNull()) {
-						instance = null;
-					} else {
-						throw json.expecting("null");
-					}
-				} else if (nextToken == '{') {
-					json.getNextToken();
-					instance = reader.deserialize(json);
-				} else {
-					throw json.expecting("{");
-				}
-				hasNext = json.getNextToken() == ',';
-				if (hasNext) {
-					json.getNextToken();
-				} else {
-					if (json.last() != ']') {
-						throw json.expecting("]");
-					}
-				}
-				return instance;
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
-	private static class StreamWithReader<T> implements Iterator<T> {
-		private final JsonReader.ReadObject<T> reader;
-		private final JsonStreamReader json;
-
-		private boolean hasNext;
-
-		StreamWithReader(
-				JsonReader.ReadObject<T> reader,
-				JsonStreamReader json) {
-			this.reader = reader;
-			this.json = json;
-			hasNext = true;
-		}
-
-		@Override
-		public boolean hasNext() {
-			return hasNext;
-		}
-
-		@Override
-		public void remove() {
-		}
-
-		@Override
-		public T next() {
-			try {
-				byte nextToken = json.last();
-				final T instance;
-				if (nextToken == 'n') {
-					if (json.wasNull()) {
-						instance = null;
-					} else {
-						throw json.expecting("null");
-					}
-				} else {
-					instance = reader.read(json);
-				}
-				hasNext = json.getNextToken() == ',';
-				if (hasNext) {
-					json.getNextToken();
-				} else {
-					if (json.last() != ']') {
-						throw json.expecting("]");
-					}
-				}
-				return instance;
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
-	private static final Iterator EmptyIterator = new Iterator() {
+	private static final Iterator EMPTY_ITERATOR = new Iterator() {
 		@Override
 		public boolean hasNext() {
 			return false;
@@ -1301,17 +1206,17 @@ public class DslJson<TContext> implements UnknownSerializer {
 			throw json.expecting("[");
 		}
 		if (json.getNextToken() == ']') {
-			return EmptyIterator;
+			return EMPTY_ITERATOR;
 		}
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
 			if (reader != null) {
-				return new StreamWithObjectReader(reader, json);
+				return json.iterateOver(reader);
 			}
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
-			return new StreamWithReader(simpleReader, json);
+			return json.iterateOver(simpleReader);
 		}
 		if (fallback != null) {
 			final Object array = Array.newInstance(manifest, 0);
@@ -1328,33 +1233,88 @@ public class DslJson<TContext> implements UnknownSerializer {
 		throw createErrorMessage(manifest);
 	}
 
+	private final JsonWriter.WriteObject OBJECT_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			((JsonObject) value).serialize(writer, omitDefaults);
+		}
+	};
+
+	private final JsonWriter.WriteObject OBJECT_ARRAY_WRITER = new JsonWriter.WriteObject() {
+			@Override
+			public void write(JsonWriter writer, Object value) {
+				serialize(writer, (JsonObject[]) value);
+			}
+	};
+
+	private static final JsonWriter.WriteObject BOOL_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			BoolConverter.serialize((boolean[]) value, writer);
+		}
+	};
+
+	private static final JsonWriter.WriteObject INT_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			NumberConverter.serialize((int[]) value, writer);
+		}
+	};
+
+	private static final JsonWriter.WriteObject LONG_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			NumberConverter.serialize((long[]) value, writer);
+		}
+	};
+
+	private static final JsonWriter.WriteObject SHORT_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			NumberConverter.serialize((short[]) value, writer);
+		}
+	};
+
+	private static final JsonWriter.WriteObject FLOAT_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			NumberConverter.serialize((float[]) value, writer);
+		}
+	};
+
+	private static final JsonWriter.WriteObject DOUBLE_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			NumberConverter.serialize((double[]) value, writer);
+		}
+	};
+
+	private static final JsonWriter.WriteObject BYTE_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			BinaryConverter.serialize((byte[]) value, writer);
+		}
+	};
+
+	private static final JsonWriter.WriteObject CHAR_ARRAY_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			StringConverter.serialize(new String((char[]) value), writer);
+		}
+	};
+
 	@SuppressWarnings("unchecked")
 	private JsonWriter.WriteObject getOrCreateWriter(final Object instance, final Class<?> instanceManifest) throws IOException {
 		if (instance instanceof JsonObject) {
-			return new JsonWriter.WriteObject() {
-				@Override
-				public void write(JsonWriter writer, Object value) {
-					((JsonObject) value).serialize(writer, omitDefaults);
-				}
-			};
+			return OBJECT_WRITER;
 		}
 		if (instance instanceof JsonObject[]) {
-			return new JsonWriter.WriteObject() {
-				@Override
-				public void write(JsonWriter writer, Object value) {
-					serialize(writer, (JsonObject[]) value);
-				}
-			};
+			return OBJECT_ARRAY_WRITER;
 		}
 		final Class<?> manifest = instanceManifest != null ? instanceManifest : instance.getClass();
 		if (instanceManifest != null) {
 			if (JsonObject.class.isAssignableFrom(manifest)) {
-				return new JsonWriter.WriteObject() {
-					@Override
-					public void write(JsonWriter writer, Object value) {
-						((JsonObject) value).serialize(writer, omitDefaults);
-					}
-				};
+				return OBJECT_WRITER;
 			}
 		}
 		final JsonWriter.WriteObject simpleWriter = tryFindWriter(manifest);
@@ -1365,66 +1325,27 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Class<?> elementManifest = manifest.getComponentType();
 			if (elementManifest.isPrimitive()) {
 				if (elementManifest == boolean.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							BoolConverter.serialize((boolean[]) value, writer);
-						}
-					};
+					return BOOL_ARRAY_WRITER;
 				} else if (elementManifest == int.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							NumberConverter.serialize((int[]) value, writer);
-						}
-					};
+					return INT_ARRAY_WRITER;
 				} else if (elementManifest == long.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							NumberConverter.serialize((long[]) value, writer);
-						}
-					};
+					return LONG_ARRAY_WRITER;
 				} else if (elementManifest == byte.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							BinaryConverter.serialize((byte[]) value, writer);
-						}
-					};
+					return BYTE_ARRAY_WRITER;
 				} else if (elementManifest == short.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							NumberConverter.serialize((short[]) value, writer);
-						}
-					};
+					return SHORT_ARRAY_WRITER;
 				} else if (elementManifest == float.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							NumberConverter.serialize((float[]) value, writer);
-						}
-					};
+					return FLOAT_ARRAY_WRITER;
 				} else if (elementManifest == double.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							NumberConverter.serialize((double[]) value, writer);
-						}
-					};
+					return SHORT_ARRAY_WRITER;
 				} else if (elementManifest == char.class) {
-					return new JsonWriter.WriteObject() {
-						@Override
-						public void write(JsonWriter writer, Object value) {
-							StringConverter.serialize(new String((char[]) value), writer);
-						}
-					};
+					return CHAR_ARRAY_WRITER;
 				}
 				return null;
 			} else {
 				final JsonWriter.WriteObject elementWriter = tryFindWriter(elementManifest);
 				if (elementWriter != null) {
+					//TODO: cache writer for next lookup
 					return new JsonWriter.WriteObject() {
 						@Override
 						public void write(JsonWriter writer, Object value) {

@@ -5,7 +5,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * Object for processing JSON from byte[].
@@ -34,7 +33,7 @@ public class JsonReader<TContext> {
 	private int tokenStart;
 	private int nameEnd;
 	protected int currentIndex = 0;
-	private long currentPosition = 0;
+	protected long currentPosition = 0;
 	private byte last = ' ';
 
 	private int length;
@@ -46,9 +45,10 @@ public class JsonReader<TContext> {
 
 	protected char[] chars;
 
-	private final KeyCache keyCache;
+	private final StringCache keyCache;
+	private final StringCache valuesCache;
 
-	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context, final KeyCache keyCache) {
+	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context, final StringCache keyCache, final StringCache valuesCache) {
 		this.tmp = tmp;
 		this.tmpLength = tmp.length;
 		this.buffer = buffer;
@@ -56,33 +56,34 @@ public class JsonReader<TContext> {
 		this.context = context;
 		this.chars = tmp;
 		this.keyCache = keyCache;
+		this.valuesCache = valuesCache;
 	}
 
 	public JsonReader(final byte[] buffer, final TContext context) {
-		this(new char[64], buffer, buffer.length, context, null);
+		this(new char[64], buffer, buffer.length, context, null, null);
 	}
 
-	JsonReader(final byte[] buffer, final TContext context, KeyCache keyCache) {
-		this(new char[64], buffer, buffer.length, context, keyCache);
+	JsonReader(final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) {
+		this(new char[64], buffer, buffer.length, context, keyCache, valuesCache);
 	}
 
 	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
-		this(tmp, buffer, buffer.length, context, null);
+		this(tmp, buffer, buffer.length, context, null, null);
 		if (tmp == null) {
 			throw new NullPointerException("tmp buffer provided as null.");
 		}
 	}
 
-	public JsonReader(final byte[] buffer, final int length, final TContext context) throws IOException {
+	public JsonReader(final byte[] buffer, final int length, final TContext context) {
 		this(buffer, length, context, new char[64]);
 	}
 
-	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp) throws IOException {
-		this(buffer, length, context, tmp, null);
+	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp) {
+		this(buffer, length, context, tmp, null, null);
 	}
 
-	JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final KeyCache keyCache) {
-		this(tmp, buffer, length, context, keyCache);
+	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final StringCache keyCache, final StringCache valuesCache) {
+		this(tmp, buffer, length, context, keyCache, valuesCache);
 		if (tmp == null) {
 			throw new NullPointerException("tmp buffer provided as null.");
 		}
@@ -93,12 +94,16 @@ public class JsonReader<TContext> {
 		}
 	}
 
+	/**
+	 * Valid length of the input buffer.
+	 *
+	 * @return size of JSON input
+	 */
 	public final int length() {
 		return length;
 	}
 
 	void reset(int newLength) {
-		currentPosition += currentIndex;
 		currentIndex = 0;
 		this.length = newLength;
 	}
@@ -110,6 +115,13 @@ public class JsonReader<TContext> {
 		return new String(buffer, 0, length, UTF_8);
 	}
 
+	/**
+	 * Read next byte from the JSON input.
+	 * If buffer has been read in full IOException will be thrown
+	 *
+	 * @return next byte
+	 * @throws IOException when end of JSON input
+	 */
 	public byte read() throws IOException {
 		if (currentIndex >= length) {
 			throw new IOException("Unexpected end of JSON input");
@@ -121,6 +133,12 @@ public class JsonReader<TContext> {
 		return length == currentIndex;
 	}
 
+	/**
+	 * Which was last byte read from the JSON input.
+	 * JsonReader doesn't allow to go back, but it remembers previously read byte
+	 *
+	 * @return which was the last byte read
+	 */
 	public final byte last() {
 		return last;
 	}
@@ -141,6 +159,12 @@ public class JsonReader<TContext> {
 		return currentIndex;
 	}
 
+	/**
+	 * will be removed. not used anymore
+	 *
+	 * @return parsed chars from a number
+	 */
+	@Deprecated
 	public final char[] readNumber() {
 		tokenStart = currentIndex - 1;
 		tmp[0] = (char) last;
@@ -199,8 +223,9 @@ public class JsonReader<TContext> {
 	}
 
 	public final String readSimpleString() throws IOException {
-		if (last != '"')
+		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
+		}
 		int i = 0;
 		int ci = currentIndex;
 		try {
@@ -240,9 +265,18 @@ public class JsonReader<TContext> {
 		return tmp;
 	}
 
+	/**
+	 * Read string from JSON input.
+	 * If values cache is used, string will be looked up from the cache.
+	 * <p>
+	 * String value must start and end with a double quote (").
+	 *
+	 * @return parsed string
+	 * @throws IOException error reading string input
+	 */
 	public final String readString() throws IOException {
 		final int len = parseString();
-		return new String(chars, 0, len);
+		return valuesCache == null ? new String(chars, 0, len) : valuesCache.get(chars, len);
 	}
 
 	final int parseString() throws IOException {
@@ -279,83 +313,85 @@ public class JsonReader<TContext> {
 
 		int soFar = --currentIndex - startIndex;
 
-		while (!isEndOfStream()) {
-			int bc = read();
-			if (bc == '"') {
-				return soFar;
-			}
-
-			if (soFar >= chars.length - 3) {
-				chars = Arrays.copyOf(chars, chars.length * 2);
-			}
-
-			if (bc == '\\') {
-				bc = buffer[currentIndex++];
-
-				switch (bc) {
-					case 'b':
-						bc = '\b';
-						break;
-					case 't':
-						bc = '\t';
-						break;
-					case 'n':
-						bc = '\n';
-						break;
-					case 'f':
-						bc = '\f';
-						break;
-					case 'r':
-						bc = '\r';
-						break;
-					case '"':
-					case '/':
-					case '\\':
-						break;
-					case 'u':
-						bc = (hexToInt(buffer[currentIndex++]) << 12) +
-								(hexToInt(buffer[currentIndex++]) << 8) +
-								(hexToInt(buffer[currentIndex++]) << 4) +
-								hexToInt(buffer[currentIndex++]);
-						break;
-
-					default:
-						throw new IOException("Could not parse String at position: " + positionInStream() + ". Invalid escape combination detected: '\\" + bc + "'");
+		do {
+			while (currentIndex < length) {
+				int bc = buffer[currentIndex++];
+				if (bc == '"') {
+					return soFar;
 				}
-			} else if ((bc & 0x80) != 0) {
-				final int u2 = buffer[currentIndex++];
-				if ((bc & 0xE0) == 0xC0) {
-					bc = ((bc & 0x1F) << 6) + (u2 & 0x3F);
-				} else {
-					final int u3 = buffer[currentIndex++];
-					if ((bc & 0xF0) == 0xE0) {
-						bc = ((bc & 0x0F) << 12) + ((u2 & 0x3F) << 6) + (u3 & 0x3F);
-					} else {
-						final int u4 = buffer[currentIndex++];
-						if ((bc & 0xF8) == 0xF0) {
-							bc = ((bc & 0x07) << 18) + ((u2 & 0x3F) << 12) + ((u3 & 0x3F) << 6) + (u4 & 0x3F);
-						} else {
-							// there are legal 5 & 6 byte combinations, but none are _valid_
-							throw new IOException("Invalid unicode character detected at: " + positionInStream());
-						}
 
-						if (bc >= 0x10000) {
-							// check if valid unicode
-							if (bc >= 0x110000) {
+				if (soFar >= chars.length - 3) {
+					chars = Arrays.copyOf(chars, chars.length * 2);
+				}
+
+				if (bc == '\\') {
+					bc = read();
+
+					switch (bc) {
+						case 'b':
+							bc = '\b';
+							break;
+						case 't':
+							bc = '\t';
+							break;
+						case 'n':
+							bc = '\n';
+							break;
+						case 'f':
+							bc = '\f';
+							break;
+						case 'r':
+							bc = '\r';
+							break;
+						case '"':
+						case '/':
+						case '\\':
+							break;
+						case 'u':
+							bc = (hexToInt(buffer[currentIndex++]) << 12) +
+									(hexToInt(buffer[currentIndex++]) << 8) +
+									(hexToInt(buffer[currentIndex++]) << 4) +
+									hexToInt(buffer[currentIndex++]);
+							break;
+
+						default:
+							throw new IOException("Could not parse String at position: " + positionInStream() + ". Invalid escape combination detected: '\\" + bc + "'");
+					}
+				} else if ((bc & 0x80) != 0) {
+					final int u2 = read();
+					if ((bc & 0xE0) == 0xC0) {
+						bc = ((bc & 0x1F) << 6) + (u2 & 0x3F);
+					} else {
+						final int u3 = buffer[currentIndex++];
+						if ((bc & 0xF0) == 0xE0) {
+							bc = ((bc & 0x0F) << 12) + ((u2 & 0x3F) << 6) + (u3 & 0x3F);
+						} else {
+							final int u4 = buffer[currentIndex++];
+							if ((bc & 0xF8) == 0xF0) {
+								bc = ((bc & 0x07) << 18) + ((u2 & 0x3F) << 12) + ((u3 & 0x3F) << 6) + (u4 & 0x3F);
+							} else {
+								// there are legal 5 & 6 byte combinations, but none are _valid_
 								throw new IOException("Invalid unicode character detected at: " + positionInStream());
 							}
 
-							// split surrogates
-							final int sup = bc - 0x10000;
-							chars[soFar++] = (char) ((sup >>> 10) + 0xd800);
-							chars[soFar++] = (char) ((sup & 0x3ff) + 0xdc00);
+							if (bc >= 0x10000) {
+								// check if valid unicode
+								if (bc >= 0x110000) {
+									throw new IOException("Invalid unicode character detected at: " + positionInStream());
+								}
+
+								// split surrogates
+								final int sup = bc - 0x10000;
+								chars[soFar++] = (char) ((sup >>> 10) + 0xd800);
+								chars[soFar++] = (char) ((sup & 0x3ff) + 0xdc00);
+							}
 						}
 					}
 				}
-			}
 
-			chars[soFar++] = (char) bc;
-		}
+				chars[soFar++] = (char) bc;
+			}
+		} while (!isEndOfStream());
 		throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
 	}
 
@@ -429,6 +465,13 @@ public class JsonReader<TContext> {
 		}
 	}
 
+	/**
+	 * Read next token (byte) from input JSON.
+	 * Whitespace will be skipped and next non-whitespace byte will be returned.
+	 *
+	 * @return next non-whitespace byte in the JSON input
+	 * @throws IOException unable to get next byte (end of stream, ...)
+	 */
 	public final byte getNextToken() throws IOException {
 		read();
 		if (WHITESPACE[last + 128]) {
@@ -502,30 +545,44 @@ public class JsonReader<TContext> {
 		return getNextToken();
 	}
 
+	/**
+	 * Skip to next non-whitespace token (byte)
+	 * Will not allocate memory while skipping over JSON input.
+	 *
+	 * @return next non-whitespace byte
+	 * @throws IOException unable to read next byte (end of stream, invalid JSON, ...)
+	 */
 	public final byte skip() throws IOException {
 		if (last == '"') return skipString();
 		if (last == '{') {
 			byte nextToken = getNextToken();
 			if (nextToken == '}') return getNextToken();
-			if (nextToken == '"') nextToken = skipString();
-			else
+			if (nextToken == '"') {
+				nextToken = skipString();
+			} else {
 				throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) nextToken);
-			if (nextToken != ':')
+			}
+			if (nextToken != ':') {
 				throw new IOException("Expecting ':' at position " + positionInStream() + ". Found " + (char) nextToken);
+			}
 			getNextToken();
 			nextToken = skip();
 			while (nextToken == ',') {
 				nextToken = getNextToken();
-				if (nextToken == '"') nextToken = skipString();
-				else
+				if (nextToken == '"') {
+					nextToken = skipString();
+				} else {
 					throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) nextToken);
-				if (nextToken != ':')
+				}
+				if (nextToken != ':') {
 					throw new IOException("Expecting ':' at position " + positionInStream() + ". Found " + (char) nextToken);
+				}
 				getNextToken();
 				nextToken = skip();
 			}
-			if (nextToken != '}')
+			if (nextToken != '}') {
 				throw new IOException("Expecting '}' at position " + positionInStream() + ". Found " + (char) nextToken);
+			}
 			return getNextToken();
 		}
 		if (last == '[') {
@@ -564,6 +621,13 @@ public class JsonReader<TContext> {
 		return last;
 	}
 
+	/**
+	 * will be removed
+	 *
+	 * @return not used anymore
+	 * @throws IOException will not throw
+	 */
+	@Deprecated
 	public String readNext() throws IOException {
 		final int start = currentIndex - 1;
 		skip();
@@ -583,14 +647,16 @@ public class JsonReader<TContext> {
 		return Base64.decodeFast(buffer, start, currentIndex - 1);
 	}
 
+	/**
+	 * Read key value of JSON input.
+	 * If key cache is used, it will be looked up from there.
+	 *
+	 * @return parsed key value
+	 * @throws IOException unable to parse string input
+	 */
 	public String readKey() throws IOException {
 		final int len = parseString();
-		long hash = 0x811c9dc5;
-		for (int i = 0; i < len; i++) {
-			hash ^= (byte) chars[i];
-			hash *= 0x1000193;
-		}
-		String key = keyCache != null ? keyCache.getKey((int) hash, chars, len) : new String(chars, 0, len);
+		final String key = keyCache != null ? keyCache.get(chars, len) : new String(chars, 0, len);
 		if (getNextToken() != ':') {
 			throw new IOException("Expecting ':' at position " + positionInStream() + ". Found " + (char) last);
 		}

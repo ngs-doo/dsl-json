@@ -69,7 +69,7 @@ public abstract class XmlConverter {
 				throw new IOException(ex);
 			}
 		} else {
-			final Map<String, Object> map = DslJson.deserializeMap(reader);
+			final Map<String, Object> map = ObjectConverter.deserializeMap(reader);
 			return mapToXml(map);
 		}
 	}
@@ -191,6 +191,7 @@ public abstract class XmlConverter {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Element> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(Reader);
 	}
@@ -199,6 +200,7 @@ public abstract class XmlConverter {
 		reader.deserializeCollection(Reader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Element> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(Reader);
 	}
