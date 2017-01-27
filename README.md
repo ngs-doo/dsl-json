@@ -49,7 +49,7 @@ For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
     dependencies {
-      compile compile 'com.dslplatform:dsl-json:1.3.3'
+      compile 'com.dslplatform:dsl-json:1.3.3'
       apt 'com.dslplatform:dsl-json-processor:1.4.3'
     }
 
