@@ -15,7 +15,7 @@ public abstract class ResultSetConverter {
 			try {
 				serialize(value, writer, null);
 			} catch (SQLException e) {
-				throw new RuntimeException(e);
+				throw new SerializationException(e);
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
 			}
@@ -28,11 +28,11 @@ public abstract class ResultSetConverter {
 			final OutputStream stream) throws SQLException, IOException {
 		final ResultSetMetaData metadata = rs.getMetaData();
 		final int columns = metadata.getColumnCount();
-		if (columns == 0) throw new IOException("No columns found in ResultSet");
+		if (columns == 0) throw new SerializationException("No columns found in ResultSet");
 		final Writer[] writers = new Writer[columns];
 		for (int i = 0; i < writers.length; i++) {
 			final Writer wrt = writers[i] = createWriter(metadata, i + 1);
-			if (wrt == null) throw new IOException("Unable to find Writer for column " + i);
+			if (wrt == null) throw new SerializationException("Unable to find Writer for column " + i);
 		}
 		serialize(rs, stream, buffer, writers);
 	}

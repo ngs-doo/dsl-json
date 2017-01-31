@@ -273,7 +273,7 @@ public final class JsonWriter extends Writer {
 					_result[cur++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
 					_result[cur++] = (byte) (0x80 | (cp & 0x3F));
 				} else {
-					throw new RuntimeException("Unknown unicode codepoint in string! " + Integer.toHexString(cp));
+					throw new SerializationException("Unknown unicode codepoint in string! " + Integer.toHexString(cp));
 				}
 			}
 		}
@@ -521,10 +521,10 @@ public final class JsonWriter extends Writer {
 			try {
 				unknownSerializer.serialize(this, value);
 			} catch (IOException ex) { //serializing unknown stuff can fail in various ways ;(
-				throw new RuntimeException(ex);
+				throw new SerializationException(ex);
 			}
 		} else {
-			throw new RuntimeException("Unknown type: " + value.getClass() + " provided.\n" +
+			throw new SerializationException("Unable to serialize: " + value.getClass() + ".\n" +
 					"Check that JsonWriter was created through DslJson#newWriter.");
 		}
 	}

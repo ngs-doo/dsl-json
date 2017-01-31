@@ -324,7 +324,7 @@ public abstract class JavaGeomConverter {
 			BinaryConverter.serialize(baos.toByteArray(), sw);
 		}
 		catch (final IOException e) {
-			throw new RuntimeException(e);
+			throw new SerializationException(e);
 		}
 	}
 

@@ -371,4 +371,16 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	public void validCustomArrayConverter() {
 		assertCompilationSuccessful(compileTestCase(CustomArrayConverter.class));
 	}
+
+	@Test
+	public void mandatoryProperties() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(RequiredProperty.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("string? field1 {  simple Java access;  mandatory;  }"));
+		Assert.assertTrue(dsl.contains("string? field2 {  simple Java access;  mandatory;  }"));
+		Assert.assertTrue(dsl.contains("string? field3 {  simple Java access;  }"));
+		Assert.assertTrue(dsl.contains("string? field4 {  simple Java access;  }"));
+	}
 }

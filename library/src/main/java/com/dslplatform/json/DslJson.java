@@ -75,6 +75,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	public final boolean omitDefaults;
 	protected final StringCache keyCache;
 	protected final StringCache valuesCache;
+	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
+	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
@@ -82,6 +84,95 @@ public class DslJson<TContext> implements UnknownSerializer {
 		Object deserialize(TContext context, Type manifest, byte[] body, int size) throws IOException;
 
 		Object deserialize(TContext context, Type manifest, InputStream stream) throws IOException;
+	}
+
+	public interface ConverterFactory<T> {
+		T tryCreate(Type manifest, DslJson dslJson);
+	}
+
+	public static class Settings<TContext> {
+		private TContext context;
+		private boolean javaSpecifics;
+		private Fallback<TContext> fallback;
+		private boolean omitDefaults;
+		private StringCache keyCache = new SimpleStringCache();
+		private StringCache valuesCache;
+		private boolean withServiceLoader;
+		private final List<Configuration> configurations = new ArrayList<Configuration>();
+		private final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
+		private final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
+
+		public Settings<TContext> withContext(TContext context) {
+			this.context = context;
+			return this;
+		}
+
+		public Settings<TContext> withJavaConverters(boolean javaSpecifics) {
+			this.javaSpecifics = javaSpecifics;
+			return this;
+		}
+
+		/**
+		 * Will be eventually replaced with writer/reader factories
+		 *
+		 * @param fallback how to handle unsupported type
+		 * @return which fallback to use in case of unsupported type
+		 */
+		@Deprecated
+		public Settings<TContext> fallbackTo(Fallback<TContext> fallback) {
+			this.fallback = fallback;
+			return this;
+		}
+
+		public Settings<TContext> skipDefaultValues(boolean omitDefaults) {
+			this.omitDefaults = omitDefaults;
+			return this;
+		}
+
+		public Settings<TContext> useKeyCache(StringCache keyCache) {
+			this.keyCache = keyCache;
+			return this;
+		}
+
+		public Settings<TContext> useStringValuesCache(StringCache valuesCache) {
+			this.valuesCache = valuesCache;
+			return this;
+		}
+
+		public Settings<TContext> resolveWriter(ConverterFactory<JsonWriter.WriteObject> writer) {
+			if (writer == null) throw new IllegalArgumentException("writer can't be null");
+			writerFactories.add(writer);
+			return this;
+		}
+
+		public Settings<TContext> resolveReader(ConverterFactory<JsonReader.ReadObject> reader) {
+			if (reader == null) throw new IllegalArgumentException("reader can't be null");
+			readerFactories.add(reader);
+			return this;
+		}
+
+		public Settings<TContext> includeServiceLoader() {
+			withServiceLoader = true;
+			for (Configuration c : ServiceLoader.load(Configuration.class)) {
+				configurations.add(c);
+			}
+			return this;
+		}
+
+		public Settings<TContext> with(Configuration conf) {
+			if (conf == null) throw new IllegalArgumentException("conf can't be null");
+			configurations.add(conf);
+			return this;
+		}
+
+		private Settings<TContext> with(Iterable<Configuration> confs) {
+			if (confs != null) {
+				withServiceLoader = true;
+				for (Configuration c : confs)
+					configurations.add(c);
+			}
+			return this;
+		}
 	}
 
 	/**
@@ -93,10 +184,11 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * Default ServiceLoader.load method will be used to setup services from META-INF
 	 */
 	public DslJson() {
-		this(null, false, null, false, new SimpleStringCache(), null, ServiceLoader.load(Configuration.class));
+		this(new Settings<TContext>().includeServiceLoader());
 	}
 
 	/**
+	 * Will be removed. Use DslJson(Settings) instead.
 	 * Fully configurable entry point.
 	 *
 	 * @param context       context instance which can be provided to deserialized objects. Use null if not sure
@@ -104,29 +196,48 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param fallback      in case of unsupported type, try serialization/deserialization through external API
 	 * @param omitDefaults  should serialization produce minified JSON (omit nulls and default values)
 	 * @param keyCache      parsed keys can be cached (this is only used in small subset of parsing)
-	 * @param valuesCache   parsed string values can be cached (will be used for every string parsing). Requires hash calculation for every string.
 	 * @param serializers   additional serializers/deserializers which will be immediately registered into readers/writers
 	 */
+	@Deprecated
 	public DslJson(
 			final TContext context,
 			final boolean javaSpecifics,
 			final Fallback<TContext> fallback,
 			final boolean omitDefaults,
 			final StringCache keyCache,
-			final StringCache valuesCache,
 			final Iterable<Configuration> serializers) {
-		this.context = context;
-		this.fallback = fallback;
-		this.omitDefaults = omitDefaults;
-		this.keyCache = keyCache;
-		this.valuesCache = valuesCache;
+		this(new Settings<TContext>()
+				.withContext(context)
+				.withJavaConverters(javaSpecifics)
+				.fallbackTo(fallback)
+				.skipDefaultValues(omitDefaults)
+				.useKeyCache(keyCache)
+				.with(serializers)
+		);
+	}
+
+	/**
+	 * Fully configurable entry point.
+	 * Provide settings for DSL-JSON initialization.
+	 *
+	 * @param settings DSL-JSON configuration
+	 */
+	public DslJson(Settings<TContext> settings) {
+		if (settings == null) throw new IllegalArgumentException("settings can't be null");
+		this.context = settings.context;
+		this.fallback = settings.fallback;
+		this.omitDefaults = settings.omitDefaults;
+		this.keyCache = settings.keyCache;
+		this.valuesCache = settings.valuesCache;
+		this.writerFactories.addAll(settings.writerFactories);
+		this.readerFactories.addAll(settings.readerFactories);
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
 		registerReader(boolean.class, BoolConverter.BooleanReader);
 		registerReader(Boolean.class, BoolConverter.BooleanReader);
 		registerWriter(boolean.class, BoolConverter.BooleanWriter);
 		registerWriter(Boolean.class, BoolConverter.BooleanWriter);
-		if (javaSpecifics) {
+		if (settings.javaSpecifics) {
 			registerJavaSpecifics(this);
 		}
 		registerReader(LinkedHashMap.class, ObjectConverter.MapReader);
@@ -141,7 +252,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 					try {
 						serializeMap(value, writer);
 					} catch (IOException ex) {
-						throw new RuntimeException(ex);
+						throw new SerializationException(ex);
 					}
 				}
 			}
@@ -174,17 +285,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 		registerWriter(UUID.class, UUIDConverter.Writer);
 		registerReader(Number.class, NumberConverter.NumberReader);
 
-		if (serializers != null) {
-			boolean found = false;
-			for (Configuration serializer : serializers) {
-				serializer.configure(this);
-				found = true;
-			}
-			if (!found) {
-				//TODO: workaround common issue with failed services registration. try to load common external name if exists
-				loadDefaultConverters(this, "dsl_json.json.ExternalSerialization");
-				loadDefaultConverters(this, "dsl_json_ExternalSerialization");
-			}
+		for (Configuration serializer : settings.configurations) {
+			serializer.configure(this);
+		}
+		if (settings.withServiceLoader && settings.configurations.isEmpty()) {
+			//TODO: workaround common issue with failed services registration. try to load common external name if exists
+			loadDefaultConverters(this, "dsl_json.json.ExternalSerialization");
+			loadDefaultConverters(this, "dsl_json_ExternalSerialization");
 		}
 	}
 
@@ -213,7 +320,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 				hash ^= (byte) chars[i];
 				hash *= 0x1000193;
 			}
-			final int index = (int)hash & mask;
+			final int index = (int) hash & mask;
 			String value = cache[index];
 			if (value == null) return createAndPut(index, chars, len);
 			if (value.length() != len) return createAndPut(index, chars, len);
@@ -444,6 +551,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return writer for specified type if found
 	 */
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
+		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
+		if (writer != null) return writer;
+		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
+			writer = wrt.tryCreate(manifest, this);
+			if (writer != null) {
+				jsonWriters.put(manifest, writer);
+				return writer;
+			}
+		}
 		Class<?> found = writerMap.get(manifest);
 		if (found != null) {
 			return jsonWriters.get(found);
@@ -455,7 +571,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(container, signatures);
 		for (final Class<?> sig : signatures) {
-			final JsonWriter.WriteObject<?> writer = jsonWriters.get(sig);
+			writer = jsonWriters.get(sig);
 			if (writer != null) {
 				writerMap.putIfAbsent(container, sig);
 				return writer;
@@ -479,7 +595,17 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return found reader for specified type
 	 */
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
-		return jsonReaders.get(manifest);
+		JsonReader.ReadObject found = jsonReaders.get(manifest);
+		if (found == null) {
+			for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
+				found = rdr.tryCreate(manifest, this);
+				if (found != null) {
+					jsonReaders.put(manifest, found);
+					break;
+				}
+			}
+		}
+		return found;
 	}
 
 	private static void findAllSignatures(final Class<?> manifest, final ArrayList<Class<?>> found) {
@@ -613,6 +739,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return can serialize this type into JSON
 	 */
 	public final boolean canSerialize(final Type manifest) {
+		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
+		if (writer != null) return true;
 		if (manifest instanceof Class<?>) {
 			final Class<?> content = (Class<?>) manifest;
 			if (JsonObject.class.isAssignableFrom(content)) {
@@ -645,6 +773,11 @@ public class DslJson<TContext> implements UnknownSerializer {
 			return gat.getGenericComponentType() instanceof Class<?>
 					&& JsonObject.class.isAssignableFrom((Class<?>) gat.getGenericComponentType())
 					|| tryFindWriter(gat.getGenericComponentType()) != null;
+		}
+		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
+			if (wrt.tryCreate(manifest, this) != null) {
+				return true;
+			}
 		}
 		return false;
 	}
@@ -744,11 +877,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
-			final TResult result = (TResult) simpleReader.read(json);
-			if (json.getCurrentIndex() > json.length()) {
-				throw new IOException("JSON string was not closed with a double quote");
-			}
-			return result;
+			return (TResult) simpleReader.read(json);
 		}
 		if (manifest.isArray()) {
 			if (json.last() != '[') {
@@ -809,11 +938,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	private Object deserializeWith(Type manifest, JsonReader json) throws IOException {
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
-			final Object result = simpleReader.read(json);
-			if (json.getCurrentIndex() > json.length()) {
-				throw new IOException("JSON string was not closed with a double quote");
-			}
-			return result;
+			return simpleReader.read(json);
 		}
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
@@ -1086,11 +1211,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
-			final TResult result = (TResult) simpleReader.read(json);
-			if (json.getCurrentIndex() > json.length()) {
-				throw new IOException("JSON string was not closed with a double quote");
-			}
-			return result;
+			return (TResult) simpleReader.read(json);
 		}
 		if (manifest.isArray()) {
 			if (json.last() != '[') {
@@ -1241,10 +1362,10 @@ public class DslJson<TContext> implements UnknownSerializer {
 	};
 
 	private final JsonWriter.WriteObject OBJECT_ARRAY_WRITER = new JsonWriter.WriteObject() {
-			@Override
-			public void write(JsonWriter writer, Object value) {
-				serialize(writer, (JsonObject[]) value);
-			}
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			serialize(writer, (JsonObject[]) value);
+		}
 	};
 
 	private static final JsonWriter.WriteObject BOOL_ARRAY_WRITER = new JsonWriter.WriteObject() {
@@ -1338,10 +1459,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 					return FLOAT_ARRAY_WRITER;
 				} else if (elementManifest == double.class) {
 					return SHORT_ARRAY_WRITER;
-				} else if (elementManifest == char.class) {
+				} else {
 					return CHAR_ARRAY_WRITER;
 				}
-				return null;
 			} else {
 				final JsonWriter.WriteObject elementWriter = tryFindWriter(elementManifest);
 				if (elementWriter != null) {
@@ -1393,11 +1513,11 @@ public class DslJson<TContext> implements UnknownSerializer {
 							try {
 								fallback.serialize(value, stream);
 							} catch (IOException ex) {
-								throw new RuntimeException(ex);
+								throw new SerializationException(ex);
 							}
 							writer.writeAscii(stream.toByteArray());
 						} else {
-							throw new RuntimeException("Unable to serialize provided object. Failed to find serializer for: " + items.getClass());
+							throw new SerializationException("Unable to serialize provided object. Failed to find serializer for: " + items.getClass());
 						}
 					}
 				}
@@ -1430,8 +1550,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Iterator<T> iterator,
 			final OutputStream stream,
 			final JsonWriter writer) throws IOException {
-		final JsonWriter buffer = writer == null ? new JsonWriter(this) : writer;
 		stream.write(JsonWriter.ARRAY_START);
+		if (!iterator.hasNext()) {
+			stream.write(JsonWriter.ARRAY_END);
+			return;
+		}
+		final JsonWriter buffer = writer == null ? new JsonWriter(this) : writer;
 		T item = iterator.next();
 		Class<?> lastManifest = null;
 		JsonWriter.WriteObject lastWriter = null;

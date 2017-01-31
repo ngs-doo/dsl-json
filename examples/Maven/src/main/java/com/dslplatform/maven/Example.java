@@ -34,7 +34,7 @@ public class Example {
 		public BigDecimal decimal2; //custom formatting can be implemented with per property converters
 		@JsonAttribute(converter = SupportArrayList.class)
 		public ArrayList<Integer> intList; //unsupported collections can be supported through property converters
-		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw RuntimeException
+		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw SerializationException
 		public ImmutablePerson person; //immutable objects can be supported with helper DTO implementations
 
 		//explicitly referenced classes don't require @CompiledJson annotation

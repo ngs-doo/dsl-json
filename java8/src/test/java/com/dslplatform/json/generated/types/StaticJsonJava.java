@@ -21,7 +21,7 @@ public class StaticJsonJava {
 
 	public static class JsonSerialization extends DslJson<Object> {
 		public JsonSerialization() {
-			super(null, false, null, false, null, null, ServiceLoader.load(Configuration.class));
+			super(new Settings<>().includeServiceLoader());
 		}
 		private ByteArrayOutputStream stream = new ByteArrayOutputStream();
 

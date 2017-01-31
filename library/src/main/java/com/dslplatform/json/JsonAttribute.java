@@ -21,6 +21,14 @@ public @interface JsonAttribute {
 	boolean ignore() default false;
 
 	/**
+	 * When mandatory is enabled, property will always be written in JSON.
+	 * If property is missing during parsing an IOException will be thrown.
+	 *
+	 * @return true for ignored property
+	 */
+	boolean mandatory() default false;
+
+	/**
 	 * Can this field be nullable.
 	 * This will omit null checks for micro performance boost (reduced branching).
 	 *

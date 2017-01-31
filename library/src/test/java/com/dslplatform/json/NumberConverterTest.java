@@ -401,4 +401,26 @@ public class NumberConverterTest {
 		Number number = NumberConverter.deserializeNumber(reader);
 		Assert.assertTrue(number instanceof Long);
 	}
+
+	@Test
+	public void overflowDetection() throws IOException {
+		String input = "1234567890123456        \t\n\r               ";
+		JsonReader reader = new JsonReader(input.getBytes(), null);
+		reader.getNextToken();
+		try {
+			NumberConverter.deserializeInt(reader);
+			Assert.fail();
+		}catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("Integer overflow"));
+		}
+		input = "-1234567890123456        \t\n\r               ";
+		reader = new JsonReader(input.getBytes(), null);
+		reader.getNextToken();
+		try {
+			NumberConverter.deserializeInt(reader);
+			Assert.fail();
+		}catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("Integer overflow"));
+		}
+	}
 }

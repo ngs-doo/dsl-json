@@ -592,6 +592,9 @@ public abstract class NumberConverter {
 				throw new IOException("Error parsing int number at position: " + reader.positionInStream(end - start) + ". Found decimal value: " + v);
 			}
 			value = (value << 3) + (value << 1) + ind;
+			if (value < 0) {
+				throw new IOException("Integer overflow detected at position: " + reader.positionInStream(end - start));
+			}
 		}
 		return value;
 	}
@@ -607,6 +610,9 @@ public abstract class NumberConverter {
 				throw new IOException("Error parsing int number at position: " + reader.positionInStream(end - start) + ". Found decimal value: " + v);
 			}
 			value = (value << 3) + (value << 1) - ind;
+			if (value > 0) {
+				throw new IOException("Integer overflow detected at position: " + reader.positionInStream(end - start));
+			}
 		}
 		return value;
 	}
@@ -864,6 +870,9 @@ public abstract class NumberConverter {
 					return parseLongGeneric(reader, start, end);
 				}
 				value = (value << 3) + (value << 1) - ind;
+				if (value > 0) {
+					throw new IOException("Long overflow detected at position: " + reader.positionInStream(end - start));
+				}
 			}
 			return value;
 		} else if (ch == '+') {
@@ -876,6 +885,9 @@ public abstract class NumberConverter {
 				return parseLongGeneric(reader, start, end);
 			}
 			value = (value << 3) + (value << 1) + ind;
+			if (value < 0) {
+				throw new IOException("Long overflow detected at position: " + reader.positionInStream(end - start));
+			}
 		}
 		return value;
 	}

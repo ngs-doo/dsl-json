@@ -22,7 +22,7 @@ public class StaticJsonJoda {
 
 	public static class JsonSerialization extends DslJson<Object> {
 		public JsonSerialization() {
-			super(null, false, null, false, null, null, ServiceLoader.load(Configuration.class));
+			super(new Settings<Object>().includeServiceLoader());
 		}
 		private ByteArrayOutputStream stream = new ByteArrayOutputStream();
 

@@ -229,7 +229,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 				}
 				return instance;
 			} catch (IOException e) {
-				throw new RuntimeException(e);
+				throw new SerializationException(e);
 			}
 		}
 	}
@@ -284,7 +284,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 				}
 				return instance;
 			} catch (IOException e) {
-				throw new RuntimeException(e);
+				throw new SerializationException(e);
 			}
 		}
 	}

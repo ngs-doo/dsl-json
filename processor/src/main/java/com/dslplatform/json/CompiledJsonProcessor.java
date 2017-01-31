@@ -21,6 +21,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static final Set<String> JsonIgnore;
 	private static final Set<String> NonNullable;
 	private static final Set<String> PropertyAlias;
+	private static final Map<String, String> JsonRequired;
 	private static final List<IncompatibleTypes> CheckTypes;
 
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
@@ -92,6 +93,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		PropertyAlias = new HashSet<String>();
 		PropertyAlias.add("com.fasterxml.jackson.annotation.JsonProperty");
 		PropertyAlias.add("com.google.gson.annotations.SerializedName");
+		JsonRequired = new HashMap<String, String>();
+		JsonRequired.put("com.fasterxml.jackson.annotation.JsonProperty", "required()");
 		CheckTypes = new ArrayList<IncompatibleTypes>();
 		CheckTypes.add(
 				new IncompatibleTypes(
@@ -466,7 +469,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				validConverter(options, typeConverter, declaredType, objectType);
 			}
 			boolean isFullMatch = isFullMatch(property.getValue());
-			if (fieldAccess || alias != null || deserializationAliases != null || isFullMatch || converter != null) {
+			boolean isMandatory = hasMandatoryAnnotation(property.getValue());
+			if (fieldAccess || alias != null || deserializationAliases != null || isFullMatch || converter != null || isMandatory) {
 				dsl.append(" {");
 				if (fieldAccess) {
 					dsl.append("  simple Java access;");
@@ -485,6 +489,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				}
 				if (isFullMatch) {
 					dsl.append("  deserialization match full;");
+				}
+				if (isMandatory) {
+					dsl.append("  mandatory;");
 				}
 				if (converter != null) {
 					dsl.append("  external Java JSON converter '").append(converter).append("' for '").append(javaType).append("';");
@@ -623,18 +630,36 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private boolean hasIgnoredAnnotation(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
 		if (dslAnn != null) {
-			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
-			for (ExecutableElement ee : values.keySet()) {
-				if (ee.toString().equals("ignore()")) {
-					Object val = values.get(ee).getValue();
-					return val != null && (Boolean) val;
-				}
-			}
-			return false;
+			return booleanAnnotationValue(dslAnn, "ignore()");
 		}
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (JsonIgnore.contains(ann.getAnnotationType().toString())) {
 				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean hasMandatoryAnnotation(Element property) {
+		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		if (dslAnn != null) {
+			return booleanAnnotationValue(dslAnn, "mandatory()");
+		}
+		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
+			String value = JsonRequired.get(ann.getAnnotationType().toString());
+			if (value != null && booleanAnnotationValue(ann, value)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean booleanAnnotationValue(AnnotationMirror ann, String method) {
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = ann.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals(method)) {
+				Object val = values.get(ee).getValue();
+				return val != null && (Boolean) val;
 			}
 		}
 		return false;

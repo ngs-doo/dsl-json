@@ -101,9 +101,9 @@ abstract class AnnotationCompiler {
 			Targets.Option target = options.useAndroid
 					? Targets.Option.ANDORID_EXTERNAL_JSON
 					: Targets.Option.JAVA_EXTERNAL_JSON;
+			ctx.put("library:" + Targets.Option.JAVA_EXTERNAL_JSON.toString(), "1.4.4");
 			ctx.put(target.toString(), null);
 			ctx.put(DslPath.INSTANCE, temp.getAbsolutePath());
-			ctx.put(Download.INSTANCE, null);
 			ctx.put(DisablePrompt.INSTANCE, null);
 			ctx.put(Settings.Option.SOURCE_ONLY.toString(), null);
 			ctx.put(Settings.Option.MANUAL_JSON.toString(), null);
@@ -118,11 +118,13 @@ abstract class AnnotationCompiler {
 				} else if (compiler.isDirectory()) {
 					throw new IOException("DSL compiler specified with dsljson.compiler option is an folder. Please specify file instead: " + options.compiler);
 				}
+			} else {
+				File compiler = new File("dsl-compiler.exe");
+				if (!compiler.exists()) {
+					ctx.put(Download.INSTANCE, null);
+				}
 			}
 			ctx.put(DslCompiler.INSTANCE, options.compiler);
-			//TODO: temp workaround not to break old versions
-			ctx.put("settings", "json-processor-1.4.1");
-			ctx.put(Force.INSTANCE, null);
 			List<CompileParameter> parameters = Main.initializeParameters(ctx, ".");
 			if (!Main.processContext(ctx, parameters)) {
 				if (logLevel != LogLevel.DEBUG) {
