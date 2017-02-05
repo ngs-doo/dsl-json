@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>
  * For best performance use serialization API with JsonWriter which is reused.
  * For best deserialization performance prefer byte[] API instead of InputStream API.
- * If InputStream API is used, reuse the buffer instance
+ * If InputStream API is used, reuse the buffer instance or reuse the whole JsonStreamReader by calling reset(InputStream)
  * <p>
  * During deserialization TContext can be used to pass data into deserialized classes.
  * This is useful when deserializing domain objects which require state or service provider.
@@ -90,6 +90,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 		T tryCreate(Type manifest, DslJson dslJson);
 	}
 
+	/**
+	 * Configuration for DslJson options.
+	 * By default key cache is enabled. Everything else is not configured.
+	 * To load `META-INF/services` call `includeServiceLoader()`
+	 *
+	 * @param <TContext> DslJson context
+	 */
 	public static class Settings<TContext> {
 		private TContext context;
 		private boolean javaSpecifics;
@@ -102,18 +109,32 @@ public class DslJson<TContext> implements UnknownSerializer {
 		private final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 		private final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
 
+		/**
+		 * Pass in context for DslJson.
+		 * Context will be available in JsonReader for objects which needs it.
+		 *
+		 * @param context context propagated to JsonReaders
+		 * @return itself
+		 */
 		public Settings<TContext> withContext(TContext context) {
 			this.context = context;
 			return this;
 		}
 
+		/**
+		 * Enable converters for Java specific types (Graphics API) not available on Android.
+		 *
+		 * @param javaSpecifics should register Java specific converters
+		 * @return itself
+		 */
 		public Settings<TContext> withJavaConverters(boolean javaSpecifics) {
 			this.javaSpecifics = javaSpecifics;
 			return this;
 		}
 
 		/**
-		 * Will be eventually replaced with writer/reader factories
+		 * Will be eventually replaced with writer/reader factories.
+		 * Used by DslJson to call into when trying to serialize/deserialize object which is not supported.
 		 *
 		 * @param fallback how to handle unsupported type
 		 * @return which fallback to use in case of unsupported type
@@ -124,33 +145,90 @@ public class DslJson<TContext> implements UnknownSerializer {
 			return this;
 		}
 
+		/**
+		 * DslJson can exclude some properties from resulting JSON which it can reconstruct fully from schema information.
+		 * Eg. int with value 0 can be omitted since that is default value for the type.
+		 * Null values can be excluded since they are handled the same way as missing property.
+		 *
+		 * @param omitDefaults should exclude default values from resulting JSON
+		 * @return itself
+		 */
 		public Settings<TContext> skipDefaultValues(boolean omitDefaults) {
 			this.omitDefaults = omitDefaults;
 			return this;
 		}
 
+		/**
+		 * Use specific key cache implementation.
+		 * Key cache is enabled by default and it's used when deserializing unstructured objects such as Map&lt;String, Object&gt;
+		 * to avoid allocating new String key instance. Instead StringCache will provide a new or an old instance.
+		 * This improves memory usage and performance since there is usually small number of keys.
+		 * It does have some performance overhead, but this is dependant on the implementation.
+		 * <p>
+		 * To disable key cache, provide null for it.
+		 *
+		 * @param keyCache which key cache to use
+		 * @return itself
+		 */
 		public Settings<TContext> useKeyCache(StringCache keyCache) {
 			this.keyCache = keyCache;
 			return this;
 		}
 
+		/**
+		 * Use specific string values cache implementation.
+		 * By default string values cache is disabled.
+		 * <p>
+		 * To support memory restricted scenarios where there is limited number of string values,
+		 * values cache can be used.
+		 * <p>
+		 * Not every "JSON string" will use this cache... eg UUID, LocalDate don't create an instance of string
+		 * and therefore don't use this cache.
+		 *
+		 * @param valuesCache which values cache to use
+		 * @return itself
+		 */
 		public Settings<TContext> useStringValuesCache(StringCache valuesCache) {
 			this.valuesCache = valuesCache;
 			return this;
 		}
 
+		/**
+		 * DslJson will iterate over converter factories when requested type is unknown.
+		 * Registering writer converter factory allows for constructing JSON converter lazily.
+		 *
+		 * @param writer registered writer factory
+		 * @return itself
+		 */
 		public Settings<TContext> resolveWriter(ConverterFactory<JsonWriter.WriteObject> writer) {
 			if (writer == null) throw new IllegalArgumentException("writer can't be null");
 			writerFactories.add(writer);
 			return this;
 		}
 
+		/**
+		 * DslJson will iterate over converter factories when requested type is unknown.
+		 * Registering reader converter factory allows for constructing JSON converter lazily.
+		 *
+		 * @param reader registered reader factory
+		 * @return itself
+		 */
 		public Settings<TContext> resolveReader(ConverterFactory<JsonReader.ReadObject> reader) {
 			if (reader == null) throw new IllegalArgumentException("reader can't be null");
 			readerFactories.add(reader);
 			return this;
 		}
 
+		/**
+		 * Load converters using `ServiceLoader.load(Configuration.class)`
+		 * Will scan through `META-INF/services/com.dslplatform.json.Configuration` file and register implementation during startup.
+		 * This will pick up compile time databindings if they are available in specific folder.
+		 * <p>
+		 * Note that gradle on Android has issues with preserving that file, in which case it can be provided manually.
+		 * DslJson will fall back to "expected" class name if it doesn't find anything during scanning.
+		 *
+		 * @return itself
+		 */
 		public Settings<TContext> includeServiceLoader() {
 			withServiceLoader = true;
 			for (Configuration c : ServiceLoader.load(Configuration.class)) {
@@ -159,6 +237,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 			return this;
 		}
 
+		/**
+		 * Configure DslJson with custom Configuration during startup.
+		 * Configurations are extension points for setting up readers/writers during DslJson initialization.
+		 *
+		 * @param conf custom extensibility point
+		 * @return itself
+		 */
 		public Settings<TContext> with(Configuration conf) {
 			if (conf == null) throw new IllegalArgumentException("conf can't be null");
 			configurations.add(conf);
@@ -295,11 +380,19 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 	}
 
+	/**
+	 * Simplistic string cache implementation.
+	 * It uses a fixed String[] structure in which it caches string value based on it's hash.
+	 * Eg, hash &amp; mask provide index into the structure. Different string with same hash will overwrite the previous one.
+	 */
 	public static class SimpleStringCache implements StringCache {
 
 		private final int mask;
 		private final String[] cache;
 
+		/**
+		 * Will use String[] with 1024 elements.
+		 */
 		public SimpleStringCache() {
 			this(10);
 		}
@@ -313,6 +406,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 			cache = new String[size];
 		}
 
+		/**
+		 * Calculates hash of the provided "string" and looks it up from the String[]
+		 * It it doesn't exists of a different string is already there a new String instance is created
+		 * and saved into the String[]
+		 *
+		 * @param chars buffer into which string was parsed
+		 * @param len the string length inside the buffer
+		 * @return String instance matching the char[]/int pair
+		 */
 		@Override
 		public String get(char[] chars, int len) {
 			long hash = 0x811c9dc5;
@@ -397,6 +499,21 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
 		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache);
+	}
+
+
+	/**
+	 * Create a reader bound to this DSL-JSON.
+	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 * Pass in initial string buffer.
+	 *
+	 * @param bytes  input bytes
+	 * @param length use input bytes up to specified length
+	 * @param tmp string parsing buffer
+	 * @return bound reader
+	 */
+	public JsonReader<TContext> newReader(byte[] bytes, int length, char[] tmp) {
+		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache);
 	}
 
 	/**
@@ -620,8 +737,10 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * </pre>
 	 *
 	 * @param manifest specified class
+	 * @param <T> specified type
 	 * @return found reader for specified class
 	 */
+	@SuppressWarnings("unchecked")
 	public <T> JsonReader.ReadObject<T> tryFindReader(final Class<T> manifest) {
 		return (JsonReader.ReadObject<T>) tryFindReader((Type) manifest);
 	}
@@ -684,11 +803,23 @@ public class DslJson<TContext> implements UnknownSerializer {
 		return ObjectConverter.deserializeObject(reader);
 	}
 
+	/**
+	 * Will be removed
+	 * @param reader JSON reader
+	 * @return deseralized list
+	 * @throws IOException error during parsing
+	 */
 	@Deprecated
 	public static ArrayList<Object> deserializeList(final JsonReader reader) throws IOException {
 		return ObjectConverter.deserializeList(reader);
 	}
 
+	/**
+	 * Will be removed
+	 * @param reader JSON reader
+	 * @return deserialized map
+	 * @throws IOException error during parsing
+	 */
 	@Deprecated
 	public static LinkedHashMap<String, Object> deserializeMap(final JsonReader reader) throws IOException {
 		return ObjectConverter.deserializeMap(reader);
@@ -808,6 +939,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return can read this type from JSON
 	 */
 	public final boolean canDeserialize(final Type manifest) {
+		if (tryFindReader(manifest) != null) {
+			return true;
+		}
 		if (manifest instanceof Class<?>) {
 			final Class<?> objectType = (Class<?>) manifest;
 			if (JsonObject.class.isAssignableFrom(objectType)) {
@@ -818,9 +952,6 @@ public class DslJson<TContext> implements UnknownSerializer {
 						&& !Collection.class.isAssignableFrom(objectType.getComponentType())
 						&& canDeserialize(objectType.getComponentType());
 			}
-		}
-		if (tryFindReader(manifest) != null) {
-			return true;
 		}
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
@@ -850,11 +981,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 
 	/**
 	 * Reusable deserialize API.
-	 * For maximum performance JsonReader should be reused (otherwise small buffer will be allocated for processing).
+	 * For maximum performance `JsonReader` should be reused (otherwise small buffer will be allocated for processing)
+	 * and `JsonReader.ReadObject` should be prepared (otherwise a lookup will be required).
 	 * <p>
 	 * This is mostly convenience API since it starts the processing of the JSON by calling getNextToken on JsonReader,
-	 * checks for null and calls converter.read(input)
+	 * checks for null and calls converter.read(input).
 	 *
+	 * @param <T> specified type
 	 * @param converter target reader
 	 * @param input     input JSON
 	 * @return deserialized instance
@@ -2004,9 +2137,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 
 	/**
 	 * Convenient serialize API.
-	 * In most cases JSON is serialized into target OutputStream.
-	 * This method will create a new instance of JsonWriter and serialize JSON into it.
-	 * At the end JsonWriter will be copied into resulting stream.
+	 * In most cases JSON is serialized into target `OutputStream`.
+	 * This method will create a new instance of `JsonWriter` and serialize JSON into it.
+	 * At the end `JsonWriter` will be copied into resulting stream.
 	 *
 	 * @param value  instance to serialize
 	 * @param stream where to write resulting JSON
@@ -2039,7 +2172,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * JsonWriter contains a growable byte[] where JSON will be serialized.
 	 * After serialization JsonWriter can be copied into OutputStream or it's byte[] can be obtained
 	 * <p>
-	 * For best performance reuse JsonWriter
+	 * For best performance reuse `JsonWriter` or even better call `JsonWriter.WriteObject` directly
 	 *
 	 * @param writer where to write resulting JSON
 	 * @param value  object instance to serialize

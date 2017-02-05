@@ -23,7 +23,8 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	 * Create reusable stream reader.
 	 * Prefer creating stream reader through DslJson#newReader since it will pass several arguments (such as key/string value cache)
 	 * First chunk will be populated.
-	 * First byte will not be read
+	 * First byte will not be read.
+	 * It will allocate new char[64] for string buffer
 	 *
 	 * @param stream input stream to read from
 	 * @param buffer buffer to hold chunk of stream
@@ -68,7 +69,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	/**
 	 * Prepare JsonStreamReader for processing another stream.
 	 * First chunk will be populated.
-	 * First byte will not be read
+	 * First byte will not be read.
 	 *
 	 * @param stream new stream to process
 	 * @throws IOException unable to read from stream

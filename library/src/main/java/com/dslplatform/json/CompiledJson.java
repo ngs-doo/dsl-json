@@ -9,7 +9,7 @@ import java.lang.annotation.*;
  * DslJson initialization.
  *
  * If classes with this annotation reference another class which doesn't have this annotation, annotation processor
- * will behave as they have @CompiledJson annotation.
+ * will behave as they have @CompiledJson annotation (this can be controlled via compiler option).
  * This can be used to create converters for objects which can't be modified.
  */
 @Target(ElementType.TYPE)

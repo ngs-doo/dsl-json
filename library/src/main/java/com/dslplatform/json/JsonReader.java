@@ -57,11 +57,20 @@ public class JsonReader<TContext> {
 		this.valuesCache = valuesCache;
 	}
 
+	/**
+	 * Prefer creating reader through DslJson#newReader since it will pass several arguments (such as key/string value cache)
+	 * First byte will not be read.
+	 * It will allocate new char[64] for string buffer.
+	 * Key and string vales cache will be null.
+	 *
+	 * @param buffer input JSON
+	 * @param context context
+	 */
 	public JsonReader(final byte[] buffer, final TContext context) {
 		this(new char[64], buffer, buffer.length, context, null, null);
 	}
 
-	JsonReader(final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) {
+	public JsonReader(final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) {
 		this(new char[64], buffer, buffer.length, context, keyCache, valuesCache);
 	}
 
@@ -648,7 +657,7 @@ public class JsonReader<TContext> {
 	 * will be removed
 	 *
 	 * @return not used anymore
-	 * @throws IOException will not throw
+	 * @throws IOException throws if invalid JSON detected
 	 */
 	@Deprecated
 	public String readNext() throws IOException {
@@ -701,6 +710,14 @@ public class JsonReader<TContext> {
 		T deserialize(JsonReader reader) throws IOException;
 	}
 
+	/**
+	 * Checks if 'null' value is at current position.
+	 * This means last read byte was 'n' and 'ull' are next three bytes.
+	 * If last byte was n but next three are not 'ull' it will throw since that is not a valid JSON construct.
+	 *
+	 * @return true if 'null' value is at current position
+	 * @throws IOException invalid 'null' value detected
+	 */
 	public final boolean wasNull() throws IOException {
 		if (last == 'n') {
 			if (currentIndex + 2 < length && buffer[currentIndex] == 'u'
@@ -714,6 +731,14 @@ public class JsonReader<TContext> {
 		return false;
 	}
 
+	/**
+	 * Checks if 'true' value is at current position.
+	 * This means last read byte was 't' and 'rue' are next three bytes.
+	 * If last byte was t but next three are not 'rue' it will throw since that is not a valid JSON construct.
+	 *
+	 * @return true if 'true' value is at current position
+	 * @throws IOException invalid 'true' value detected
+	 */
 	public final boolean wasTrue() throws IOException {
 		if (last == 't') {
 			if (currentIndex + 2 < length && buffer[currentIndex] == 'r'
@@ -727,6 +752,14 @@ public class JsonReader<TContext> {
 		return false;
 	}
 
+	/**
+	 * Checks if 'false' value is at current position.
+	 * This means last read byte was 'f' and 'alse' are next four bytes.
+	 * If last byte was f but next four are not 'alse' it will throw since that is not a valid JSON construct.
+	 *
+	 * @return true if 'false' value is at current position
+	 * @throws IOException invalid 'false' value detected
+	 */
 	public final boolean wasFalse() throws IOException {
 		if (last == 'f') {
 			if (currentIndex + 3 < length && buffer[currentIndex] == 'a'
