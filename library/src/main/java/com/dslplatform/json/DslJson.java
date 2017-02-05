@@ -608,6 +608,24 @@ public class DslJson<TContext> implements UnknownSerializer {
 		return found;
 	}
 
+	/**
+	 * Try to find registered reader for provided type.
+	 * If reader is not found, null will be returned.
+	 * Exact match must be found, type hierarchy will not be scanned for alternative writer.
+	 * <p>
+	 * If you wish to use alternative writer for specific type, register it manually with something along the lines of
+	 * <pre>
+	 *     DslJson dslJson = ...
+	 *     dslJson.registerReader(Interface.class, dslJson.tryFindWriter(Implementation.class));
+	 * </pre>
+	 *
+	 * @param manifest specified class
+	 * @return found reader for specified class
+	 */
+	public <T> JsonReader.ReadObject<T> tryFindReader(final Class<T> manifest) {
+		return (JsonReader.ReadObject<T>) tryFindReader((Type) manifest);
+	}
+
 	private static void findAllSignatures(final Class<?> manifest, final ArrayList<Class<?>> found) {
 		if (found.contains(manifest)) {
 			return;
@@ -831,6 +849,34 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	/**
+	 * Reusable deserialize API.
+	 * For maximum performance JsonReader should be reused (otherwise small buffer will be allocated for processing).
+	 * <p>
+	 * This is mostly convenience API since it starts the processing of the JSON by calling getNextToken on JsonReader,
+	 * checks for null and calls converter.read(input)
+	 *
+	 * @param converter target reader
+	 * @param input     input JSON
+	 * @return deserialized instance
+	 * @throws IOException error during deserialization
+	 */
+	public <T> T deserialize(
+			final JsonReader.ReadObject<T> converter,
+			final JsonReader<TContext> input) throws IOException {
+		if (converter == null) {
+			throw new IllegalArgumentException("converter can't be null");
+		}
+		if (input == null) {
+			throw new IllegalArgumentException("input can't be null");
+		}
+		input.getNextToken();
+		if (input.wasNull()) {
+			return null;
+		}
+		return converter.read(input);
+	}
+
+	/**
 	 * Convenient deserialize API for working with bytes.
 	 * Deserialize provided byte input into target object.
 	 * <p>
@@ -850,6 +896,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Class<TResult> manifest,
 			final byte[] body,
 			final int size) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (body == null) {
+			throw new IllegalArgumentException("body can't be null");
+		}
 		if (isNull(size, body)) {
 			return null;
 		}
@@ -916,6 +968,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final int size) throws IOException {
 		if (manifest instanceof Class<?>) {
 			return deserialize((Class<?>) manifest, body, size);
+		}
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (body == null) {
+			throw new IllegalArgumentException("body can't be null");
 		}
 		if (isNull(size, body)) {
 			return null;
@@ -1067,6 +1125,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Class<TResult> manifest,
 			final byte[] body,
 			final int size) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (body == null) {
+			throw new IllegalArgumentException("body can't be null");
+		}
 		if (isNull(size, body)) {
 			return null;
 		}
@@ -1134,6 +1198,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		if (buffer == null) {
+			throw new IllegalArgumentException("buffer can't be null");
+		}
 		final JsonStreamReader json = newReader(stream, buffer);
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
@@ -1195,6 +1268,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		if (buffer == null) {
+			throw new IllegalArgumentException("buffer can't be null");
+		}
 		final JsonStreamReader json = newReader(stream, buffer);
 		json.getNextToken();
 		if (json.wasNull()) {
@@ -1267,6 +1349,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (manifest instanceof Class<?>) {
 			return deserialize((Class<?>) manifest, stream, buffer);
 		}
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		if (buffer == null) {
+			throw new IllegalArgumentException("buffer can't be null");
+		}
 		final JsonStreamReader json = newReader(stream, buffer);
 		json.getNextToken();
 		if (json.wasNull()) {
@@ -1319,6 +1410,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		if (buffer == null) {
+			throw new IllegalArgumentException("buffer can't be null");
+		}
 		final JsonStreamReader json = newReader(stream, buffer);
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
@@ -1550,6 +1650,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Iterator<T> iterator,
 			final OutputStream stream,
 			final JsonWriter writer) throws IOException {
+		if (iterator == null) {
+			throw new IllegalArgumentException("iterator can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
 		stream.write(JsonWriter.ARRAY_START);
 		if (!iterator.hasNext()) {
 			stream.write(JsonWriter.ARRAY_END);
@@ -1618,6 +1724,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final Class<T> manifest,
 			final OutputStream stream,
 			final JsonWriter writer) throws IOException {
+		if (iterator == null) {
+			throw new IllegalArgumentException("iterator can't be null");
+		}
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
 		final JsonWriter buffer = writer == null ? new JsonWriter(this) : writer;
 		final JsonWriter.WriteObject instanceWriter = getOrCreateWriter(null, manifest);
 		stream.write(JsonWriter.ARRAY_START);
@@ -1678,6 +1793,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array, final int len) {
+		if (writer == null) {
+			throw new IllegalArgumentException("writer can't be null");
+		}
 		if (array == null) {
 			writer.writeNull();
 			return;
@@ -1704,6 +1822,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final List<T> list) {
+		if (writer == null) {
+			throw new IllegalArgumentException("writer can't be null");
+		}
 		if (list == null) {
 			writer.writeNull();
 			return;
@@ -1730,6 +1851,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final Collection<T> collection) {
+		if (writer == null) {
+			throw new IllegalArgumentException("writer can't be null");
+		}
 		if (collection == null) {
 			writer.writeNull();
 			return;
@@ -1774,6 +1898,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> boolean serialize(final JsonWriter writer, final Type manifest, final Object value) {
+		if (writer == null) {
+			throw new IllegalArgumentException("writer can't be null");
+		}
 		if (value == null) {
 			writer.writeNull();
 			return true;
@@ -1886,6 +2013,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @throws IOException error when unable to serialize instance
 	 */
 	public final void serialize(final Object value, final OutputStream stream) throws IOException {
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
 		if (value == null) {
 			stream.write(NULL);
 			return;
@@ -1916,6 +2046,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @throws IOException error when unable to serialize instance
 	 */
 	public final void serialize(final JsonWriter writer, final Object value) throws IOException {
+		if (writer == null) {
+			throw new IllegalArgumentException("writer can't be null");
+		}
 		if (value == null) {
 			writer.writeNull();
 			return;

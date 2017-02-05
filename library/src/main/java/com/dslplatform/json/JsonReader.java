@@ -38,7 +38,6 @@ public class JsonReader<TContext> {
 
 	private int length;
 	private final char[] tmp;
-	final int tmpLength;
 
 	public final TContext context;
 	protected final byte[] buffer;
@@ -50,7 +49,6 @@ public class JsonReader<TContext> {
 
 	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context, final StringCache keyCache, final StringCache valuesCache) {
 		this.tmp = tmp;
-		this.tmpLength = tmp.length;
 		this.buffer = buffer;
 		this.length = length;
 		this.context = context;
@@ -70,7 +68,7 @@ public class JsonReader<TContext> {
 	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
 		this(tmp, buffer, buffer.length, context, null, null);
 		if (tmp == null) {
-			throw new NullPointerException("tmp buffer provided as null.");
+			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
 	}
 
@@ -85,7 +83,7 @@ public class JsonReader<TContext> {
 	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final StringCache keyCache, final StringCache valuesCache) {
 		this(tmp, buffer, length, context, keyCache, valuesCache);
 		if (tmp == null) {
-			throw new NullPointerException("tmp buffer provided as null.");
+			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
 		if (length > buffer.length) {
 			throw new IllegalArgumentException("length can't be longer than buffer.length");
@@ -186,7 +184,7 @@ public class JsonReader<TContext> {
 		int i = 1;
 		int ci = currentIndex;
 		byte bb = last;
-		while (i < tmp.length && ci < length) {
+		while (ci < length) {
 			bb = buffer[ci++];
 			if (bb == ',' || bb == '}' || bb == ']') break;
 			i++;
@@ -197,10 +195,13 @@ public class JsonReader<TContext> {
 	}
 
 	final char[] prepareBuffer(final int start) {
-		final char[] _tmp = tmp;
+		final int remaining = length - start;
+		while (chars.length < remaining) {
+			chars = Arrays.copyOf(chars, chars.length * 2);
+		}
+		final char[] _tmp = chars;
 		final byte[] _buf = buffer;
-		final int max = Math.min(_tmp.length, _buf.length - start);
-		for (int i = 0; i < max; i++) {
+		for (int i = 0; i < remaining; i++) {
 			_tmp[i] = (char) _buf[start + i];
 		}
 		return _tmp;
@@ -222,6 +223,12 @@ public class JsonReader<TContext> {
 		return 0;
 	}
 
+	/**
+	 * Read simple ascii string. Will not use values cache to create instance.
+	 *
+	 * @return parsed string
+	 * @throws IOException unable to parse string
+	 */
 	public final String readSimpleString() throws IOException {
 		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
@@ -244,6 +251,13 @@ public class JsonReader<TContext> {
 		return new String(tmp, 0, i);
 	}
 
+	/**
+	 * Read simple "ascii string" into temporary buffer.
+	 * String length must be obtained through getTokenStart and getCurrentToken
+	 *
+	 * @return temporary buffer
+	 * @throws IOException unable to parse string
+	 */
 	public final char[] readSimpleQuote() throws IOException {
 		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
@@ -286,10 +300,11 @@ public class JsonReader<TContext> {
 			throw new IOException("JSON string must start with a double quote at: " + positionInStream());
 		}
 
-		byte bb = 0;
+		byte bb;
 		int ci = currentIndex;
+		char[] _tmp = chars;
 		try {
-			for (int i = 0; i < chars.length; i++) {
+			for (int i = 0; i < _tmp.length; i++) {
 				bb = buffer[ci++];
 				if (bb == '"') {
 					currentIndex = ci;
@@ -300,98 +315,106 @@ public class JsonReader<TContext> {
 				// there is no chance that we can decode the string without instantiating
 				// a temporary buffer, so quit this loop
 				if ((bb ^ '\\') < 1) break;
-				chars[i] = (char) bb;
+				_tmp[i] = (char) bb;
+			}
+			if (ci >= length) {
+				throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
 			}
 		} catch (ArrayIndexOutOfBoundsException ignore) {
-			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
+			if (length != buffer.length) {
+				throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
+			}
+			ci--;
+			_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
 		}
-		if (ci >= length) {
-			throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
-		}
-
+		int _tmpLen = _tmp.length;
 		currentIndex = ci;
-
 		int soFar = --currentIndex - startIndex;
 
-		do {
-			while (currentIndex < length) {
-				int bc = buffer[currentIndex++];
-				if (bc == '"') {
-					return soFar;
+		while (!isEndOfStream()) {
+			int bc = read();
+			if (bc == '"') {
+				return soFar;
+			}
+
+			if (bc == '\\') {
+				if (soFar >= _tmpLen - 6) {
+					_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
+					_tmpLen = _tmp.length;
 				}
+				bc = buffer[currentIndex++];
 
-				if (soFar >= chars.length - 3) {
-					chars = Arrays.copyOf(chars, chars.length * 2);
+				switch (bc) {
+					case 'b':
+						bc = '\b';
+						break;
+					case 't':
+						bc = '\t';
+						break;
+					case 'n':
+						bc = '\n';
+						break;
+					case 'f':
+						bc = '\f';
+						break;
+					case 'r':
+						bc = '\r';
+						break;
+					case '"':
+					case '/':
+					case '\\':
+						break;
+					case 'u':
+						bc = (hexToInt(buffer[currentIndex++]) << 12) +
+								(hexToInt(buffer[currentIndex++]) << 8) +
+								(hexToInt(buffer[currentIndex++]) << 4) +
+								hexToInt(buffer[currentIndex++]);
+						break;
+
+					default:
+						throw new IOException("Could not parse String at position: " + positionInStream() + ". Invalid escape combination detected: '\\" + bc + "'");
 				}
-
-				if (bc == '\\') {
-					bc = read();
-
-					switch (bc) {
-						case 'b':
-							bc = '\b';
-							break;
-						case 't':
-							bc = '\t';
-							break;
-						case 'n':
-							bc = '\n';
-							break;
-						case 'f':
-							bc = '\f';
-							break;
-						case 'r':
-							bc = '\r';
-							break;
-						case '"':
-						case '/':
-						case '\\':
-							break;
-						case 'u':
-							bc = (hexToInt(buffer[currentIndex++]) << 12) +
-									(hexToInt(buffer[currentIndex++]) << 8) +
-									(hexToInt(buffer[currentIndex++]) << 4) +
-									hexToInt(buffer[currentIndex++]);
-							break;
-
-						default:
-							throw new IOException("Could not parse String at position: " + positionInStream() + ". Invalid escape combination detected: '\\" + bc + "'");
-					}
-				} else if ((bc & 0x80) != 0) {
-					final int u2 = read();
-					if ((bc & 0xE0) == 0xC0) {
-						bc = ((bc & 0x1F) << 6) + (u2 & 0x3F);
+			} else if ((bc & 0x80) != 0) {
+				if (soFar >= _tmpLen - 4) {
+					_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
+					_tmpLen = _tmp.length;
+				}
+				final int u2 = buffer[currentIndex++];
+				if ((bc & 0xE0) == 0xC0) {
+					bc = ((bc & 0x1F) << 6) + (u2 & 0x3F);
+				} else {
+					final int u3 = buffer[currentIndex++];
+					if ((bc & 0xF0) == 0xE0) {
+						bc = ((bc & 0x0F) << 12) + ((u2 & 0x3F) << 6) + (u3 & 0x3F);
 					} else {
-						final int u3 = buffer[currentIndex++];
-						if ((bc & 0xF0) == 0xE0) {
-							bc = ((bc & 0x0F) << 12) + ((u2 & 0x3F) << 6) + (u3 & 0x3F);
+						final int u4 = buffer[currentIndex++];
+						if ((bc & 0xF8) == 0xF0) {
+							bc = ((bc & 0x07) << 18) + ((u2 & 0x3F) << 12) + ((u3 & 0x3F) << 6) + (u4 & 0x3F);
 						} else {
-							final int u4 = buffer[currentIndex++];
-							if ((bc & 0xF8) == 0xF0) {
-								bc = ((bc & 0x07) << 18) + ((u2 & 0x3F) << 12) + ((u3 & 0x3F) << 6) + (u4 & 0x3F);
-							} else {
-								// there are legal 5 & 6 byte combinations, but none are _valid_
+							// there are legal 5 & 6 byte combinations, but none are _valid_
+							throw new IOException("Invalid unicode character detected at: " + positionInStream());
+						}
+
+						if (bc >= 0x10000) {
+							// check if valid unicode
+							if (bc >= 0x110000) {
 								throw new IOException("Invalid unicode character detected at: " + positionInStream());
 							}
 
-							if (bc >= 0x10000) {
-								// check if valid unicode
-								if (bc >= 0x110000) {
-									throw new IOException("Invalid unicode character detected at: " + positionInStream());
-								}
-
-								// split surrogates
-								final int sup = bc - 0x10000;
-								chars[soFar++] = (char) ((sup >>> 10) + 0xd800);
-								chars[soFar++] = (char) ((sup & 0x3ff) + 0xdc00);
-							}
+							// split surrogates
+							final int sup = bc - 0x10000;
+							_tmp[soFar++] = (char) ((sup >>> 10) + 0xd800);
+							_tmp[soFar++] = (char) ((sup & 0x3ff) + 0xdc00);
 						}
 					}
 				}
-
-				chars[soFar++] = (char) bc;
+			} else if (soFar >= _tmpLen) {
+				_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
+				_tmpLen = _tmp.length;
 			}
-		} while (!isEndOfStream());
+
+			_tmp[soFar++] = (char) bc;
+		}
 		throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
 	}
 

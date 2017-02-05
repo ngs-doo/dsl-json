@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -173,6 +174,25 @@ public class StreamTest {
 		DslJson<Object> json = new DslJson<Object>();
 		String result = json.deserialize(String.class, is, new byte[512]);
 		Assert.assertEquals(largeString.substring(1, largeString.length() - 1), result);
+	}
+
+	@Test
+	public void canReadStringAtTheEndOfBuffer() throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 50; i++) {
+			sb.append(" ");
+		}
+		sb.append("\"");
+		for (int i = 0; i < 10; i++) {
+			sb.append("abcdefghijklmnopq");
+		}
+		sb.append("\"");
+		String largeString = sb.toString();
+		byte[] bytes = largeString.getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		String result = json.deserialize(String.class, is, new byte[64]);
+		Assert.assertEquals(largeString.trim().substring(1, largeString.trim().length() - 1), result);
 	}
 
 	@Test
@@ -389,17 +409,17 @@ public class StreamTest {
 
 			double _y_ = 0;
 			byte nextToken = reader.last();
-			if(nextToken != '}') {
+			if (nextToken != '}') {
 				int nameHash = reader.fillName();
 				nextToken = reader.getNextToken();
-				if(nextToken == 'n') {
+				if (nextToken == 'n') {
 					if (reader.wasNull()) {
 						nextToken = reader.getNextToken();
 					} else {
-						throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char)nextToken);
+						throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char) nextToken);
 					}
 				} else {
-					switch(nameHash) {
+					switch (nameHash) {
 
 						case -66302220:
 							_y_ = NumberConverter.deserializeDouble(reader);
@@ -414,15 +434,15 @@ public class StreamTest {
 					nextToken = reader.getNextToken();
 					nameHash = reader.fillName();
 					nextToken = reader.getNextToken();
-					if(nextToken == 'n') {
+					if (nextToken == 'n') {
 						if (reader.wasNull()) {
 							nextToken = reader.getNextToken();
 							continue;
 						} else {
-							throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char)nextToken);
+							throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char) nextToken);
 						}
 					}
-					switch(nameHash) {
+					switch (nameHash) {
 
 						case -66302220:
 							_y_ = NumberConverter.deserializeDouble(reader);
@@ -434,7 +454,7 @@ public class StreamTest {
 					}
 				}
 				if (nextToken != '}') {
-					throw new java.io.IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char)nextToken);
+					throw new java.io.IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char) nextToken);
 				}
 			}
 
@@ -478,5 +498,22 @@ public class StreamTest {
 			y += obj.y;
 		}
 		Assert.assertEquals(725.1708016933293d, y, 0);
+	}
+
+	@Test
+	public void canProcessStreamMultipleTimes() throws IOException, InterruptedException {
+		BigDecimal bd = new BigDecimal("01234567890123456789012345678901234567890123456789012345678901234567890");
+		String largeString = "\"" + bd + "\"";
+		byte[] bytes = largeString.getBytes();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		DslJson<Object> json = new DslJson<Object>();
+		JsonStreamReader<Object> input = json.newReader(is, new byte[1024]);
+		JsonReader.ReadObject<BigDecimal> converter = json.tryFindReader(BigDecimal.class);
+		for (int i = 0; i < 10; i++) {
+			BigDecimal value = json.deserialize(converter, input);
+			Assert.assertEquals(bd, value);
+			is.reset();
+			input.reset(is);
+		}
 	}
 }

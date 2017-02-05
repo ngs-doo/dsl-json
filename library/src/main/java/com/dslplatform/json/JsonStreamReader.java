@@ -37,10 +37,10 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	JsonStreamReader(final InputStream stream, final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) throws IOException {
 		super(new char[64], buffer, readFully(buffer, stream, 0), context, keyCache, valuesCache);
 		if (stream == null) {
-			throw new NullPointerException("stream provided as null.");
+			throw new IllegalArgumentException("stream provided as null.");
 		}
 		if (buffer == null) {
-			throw new NullPointerException("buffer provided as null.");
+			throw new IllegalArgumentException("buffer provided as null.");
 		}
 		this.stream = stream;
 		this.readLimit = length() >> 1;
@@ -66,7 +66,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	}
 
 	/**
-	 * Reset JsonStreamReader for processing another stream.
+	 * Prepare JsonStreamReader for processing another stream.
 	 * First chunk will be populated.
 	 * First byte will not be read
 	 *
@@ -75,7 +75,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	 */
 	public void reset(InputStream stream) throws IOException {
 		if (stream == null) {
-			throw new NullPointerException("stream provided as null.");
+			throw new IllegalArgumentException("stream provided as null.");
 		}
 		final int available = readFully(buffer, stream, 0);
 		readLimit = available >> 1;

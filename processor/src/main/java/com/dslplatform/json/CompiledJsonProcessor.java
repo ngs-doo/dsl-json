@@ -190,12 +190,14 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		final Set<StructInfo> implementations = new HashSet<StructInfo>();
 		final Map<String, String[]> properties = new HashMap<String, String[]>();
 		final Map<String, String> minifiedNames = new HashMap<String, String>();
+		final boolean skipUnknown;
 
-		StructInfo(TypeElement element, String name, ObjectType type, boolean isJsonObject) {
+		StructInfo(TypeElement element, String name, ObjectType type, boolean isJsonObject, boolean skipUnknown) {
 			this.element = element;
 			this.name = name;
 			this.type = type;
 			this.converter = isJsonObject ? "" : null;
+			this.skipUnknown = skipUnknown;
 		}
 
 		StructInfo(TypeElement converter, TypeElement target, String name) {
@@ -203,6 +205,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			this.name = name;
 			this.type = ObjectType.CLASS;
 			this.converter = converter.getQualifiedName().toString();
+			this.skipUnknown = true;
 		}
 	}
 
@@ -355,6 +358,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				} else {
 					dsl.append("    external Java JSON converter '").append(info.converter).append("';\n");
 				}
+			}
+			if (!info.skipUnknown) {
+				dsl.append("    external Java JSON fail on unknown;\n");
 			}
 			dsl.append("    external name Java '");
 			dsl.append(info.element.getQualifiedName());
@@ -630,7 +636,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private boolean hasIgnoredAnnotation(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
 		if (dslAnn != null) {
-			return booleanAnnotationValue(dslAnn, "ignore()");
+			return booleanAnnotationValue(dslAnn, "ignore()", false);
 		}
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (JsonIgnore.contains(ann.getAnnotationType().toString())) {
@@ -643,26 +649,26 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private boolean hasMandatoryAnnotation(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
 		if (dslAnn != null) {
-			return booleanAnnotationValue(dslAnn, "mandatory()");
+			return booleanAnnotationValue(dslAnn, "mandatory()", false);
 		}
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			String value = JsonRequired.get(ann.getAnnotationType().toString());
-			if (value != null && booleanAnnotationValue(ann, value)) {
+			if (value != null && booleanAnnotationValue(ann, value, false)) {
 				return true;
 			}
 		}
 		return false;
 	}
 
-	private static boolean booleanAnnotationValue(AnnotationMirror ann, String method) {
+	private static boolean booleanAnnotationValue(AnnotationMirror ann, String method, boolean defaultValue) {
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = ann.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
 			if (ee.toString().equals(method)) {
 				Object val = values.get(ee).getValue();
-				return val != null && (Boolean) val;
+				return val == null ? defaultValue : (Boolean) val;
 			}
 		}
-		return false;
+		return defaultValue;
 	}
 
 	private boolean isMinified(Element struct) {
@@ -861,9 +867,12 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		} else {
 			String name = "struct" + structs.size();
 			ObjectType type = isMixin ? ObjectType.MIXIN : element.getKind() == ElementKind.ENUM ? ObjectType.ENUM : ObjectType.CLASS;
-			if (!isJsonObject && annotationUsage != AnnotationUsage.IMPLICIT) {
+			boolean skipUnknown = true;
+			if (!isJsonObject) {
 				AnnotationMirror annotation = getAnnotation(element, compiledJsonType);
-				if (annotation == null) {
+				if (annotation != null) {
+					skipUnknown = booleanAnnotationValue(annotation, "skipUnknown()", true);
+				} else if (annotationUsage != AnnotationUsage.IMPLICIT) {
 					if (annotationUsage == AnnotationUsage.EXPLICIT) {
 						processingEnv.getMessager().printMessage(
 								Diagnostic.Kind.ERROR,
@@ -880,7 +889,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					}
 				}
 			}
-			StructInfo info = new StructInfo(element, name, type, isJsonObject);
+			StructInfo info = new StructInfo(element, name, type, isJsonObject, skipUnknown);
 			structs.put(element.asType().toString(), info);
 			if (isMinified(element)) {
 				prepareMinifiedNames(info);

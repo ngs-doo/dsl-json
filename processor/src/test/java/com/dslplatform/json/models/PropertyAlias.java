@@ -4,7 +4,7 @@ import com.dslplatform.json.CompiledJson;
 import com.dslplatform.json.JsonAttribute;
 import com.google.gson.annotations.SerializedName;
 
-@CompiledJson
+@CompiledJson(skipUnknown = false)
 public class PropertyAlias {
 	private int num;
 

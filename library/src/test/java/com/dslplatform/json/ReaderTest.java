@@ -31,8 +31,11 @@ public class ReaderTest {
 		Assert.assertEquals("number", jr.getLastName());
 	}
 
-	static class Implementation implements Interface {}
-	interface Interface {}
+	static class Implementation implements Interface {
+	}
+
+	interface Interface {
+	}
 
 	@Test
 	public void testReaderOnInterface() throws IOException {
@@ -103,5 +106,37 @@ public class ReaderTest {
 		Assert.assertEquals('"', reader.getNextToken());
 		Assert.assertEquals("d", reader.readKey());
 		Assert.assertEquals('}', reader.skip());
+	}
+
+	@Test
+	public void canReadStringAtTheEndOfLongBuffer() throws IOException, InterruptedException {
+		StringBuilder sb = new StringBuilder();
+		sb.append("\"");
+		for (int i = 0; i < 10; i++) {
+			sb.append("abcdefghijklmnopq");
+		}
+		sb.append("\"");
+		String largeString = sb.toString();
+		byte[] bytes = largeString.getBytes();
+		DslJson<Object> json = new DslJson<Object>();
+		try {
+			json.deserialize(String.class, bytes, bytes.length - 1);
+			Assert.fail();
+		} catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("at: 171"));
+		}
+	}
+
+	@Test
+	public void canReadStringAtTheEndOfShortBuffer() throws IOException, InterruptedException {
+		String largeString = "\"abcdefghijklmnopq\"";
+		byte[] bytes = largeString.getBytes();
+		DslJson<Object> json = new DslJson<Object>();
+		try {
+			json.deserialize(String.class, bytes, bytes.length - 1);
+			Assert.fail();
+		} catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("at: 18"));
+		}
 	}
 }

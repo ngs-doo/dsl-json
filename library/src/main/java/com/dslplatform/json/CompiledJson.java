@@ -23,4 +23,13 @@ public @interface CompiledJson {
 	 * @return should JSON properties use short names
 	 */
 	boolean minified() default false;
+
+	/**
+	 * When unknown property is encountered during object processing,
+	 * default behavior is to skip over it and go to the next property.
+	 * Instead of skipping IOException can be thrown to disallow unknown property.
+	 *
+	 * @return should skip unknown properties
+	 */
+	boolean skipUnknown() default true;
 }

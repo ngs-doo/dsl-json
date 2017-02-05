@@ -383,4 +383,22 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("string? field3 {  simple Java access;  }"));
 		Assert.assertTrue(dsl.contains("string? field4 {  simple Java access;  }"));
 	}
+
+	@Test
+	public void skipUnknownCheck() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(PropertyAlias.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("external Java JSON fail on unknown;"));
+	}
+
+	@Test
+	public void skipUnknownDefault() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ValidCtor.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertFalse(dsl.contains("external Java JSON fail on unknown;"));
+	}
 }

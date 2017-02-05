@@ -190,16 +190,15 @@ public abstract class NumberConverter {
 
 	private static NumberInfo readLongNumber(final JsonReader reader, final int start) throws IOException {
 		char[] tmp = reader.prepareBuffer(start);
-		int i = tmp.length;
-		tmp = Arrays.copyOf(tmp, tmp.length * 2);
+		int i = reader.length() - start;
 		while (!reader.isEndOfStream()) {
-			do {
+			while (i < tmp.length) {
 				final char ch = (char) reader.read();
 				tmp[i++] = ch;
 				if (reader.isEndOfStream() || !(ch >= '0' && ch < '9' || ch == '-' || ch == '+' || ch == '.' || ch == 'e' || ch == 'E')) {
 					return new NumberInfo(tmp, reader.isEndOfStream() ? i : i - 1);
 				}
-			} while (i < tmp.length);
+			}
 			tmp = Arrays.copyOf(tmp, tmp.length * 2);
 		}
 		return new NumberInfo(tmp, i);
@@ -215,12 +214,11 @@ public abstract class NumberConverter {
 		final int end = reader.getCurrentIndex();
 		final int len = end - start;
 		if (len > 18) {
-			if (len == reader.tmpLength) {
+			if (end == reader.length()) {
 				final NumberInfo tmp = readLongNumber(reader, start);
 				return parseDoubleGeneric(tmp.buffer, tmp.length, reader);
-			} else {
-				return parseDoubleGeneric(reader.prepareBuffer(start), len, reader);
 			}
+			return parseDoubleGeneric(reader.prepareBuffer(start), len, reader);
 		}
 		final byte[] buf = reader.buffer;
 		final byte ch = buf[start];
@@ -364,7 +362,7 @@ public abstract class NumberConverter {
 		final int end = reader.getCurrentIndex();
 		final int len = end - start;
 		if (len > 18) {
-			if (len == reader.tmpLength) {
+			if (end == reader.length()) {
 				final NumberInfo tmp = readLongNumber(reader, start);
 				return parseFloatGeneric(tmp.buffer, tmp.length, reader);
 			} else {
@@ -567,7 +565,11 @@ public abstract class NumberConverter {
 		if (reader.last() == '"') {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
-			return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).intValue();
+			try {
+				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).intValueExact();
+			} catch (ArithmeticException ignore) {
+				throw new IOException("Integer overflow detected at position: " + (reader.currentPosition + position));
+			}
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
@@ -853,7 +855,11 @@ public abstract class NumberConverter {
 		if (reader.last() == '"') {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
-			return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).longValue();
+			try {
+				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).longValueExact();
+			} catch (ArithmeticException ignore) {
+				throw new IOException("Long overflow detected at position: " + (reader.currentPosition + position));
+			}
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
@@ -928,9 +934,8 @@ public abstract class NumberConverter {
 
 	public static BigDecimal deserializeDecimal(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
-			final int position = reader.getCurrentIndex();
-			final char[] buf = reader.readSimpleQuote();
-			return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader);
+			final int len = reader.parseString();
+			return parseNumberGeneric(reader.chars, len, reader);
 		}
 		final int start = reader.scanNumber();
 		int end = reader.getCurrentIndex();
@@ -938,7 +943,7 @@ public abstract class NumberConverter {
 		if (len > 18) {
 			end = reader.findNonWhitespace(end);
 			len = end - start;
-			if (len == reader.tmpLength) {
+			if (end == reader.length()) {
 				final NumberInfo info = readLongNumber(reader, start);
 				return parseNumberGeneric(info.buffer, info.length, reader);
 			} else if (len > 18) {
@@ -1094,7 +1099,7 @@ public abstract class NumberConverter {
 		if (len > 18) {
 			end = reader.findNonWhitespace(end);
 			len = end - start;
-			if (len == reader.tmpLength) {
+			if (end == reader.length()) {
 				final NumberInfo tmp = readLongNumber(reader, start);
 				return tryLongFromBigDecimal(parseNumberGeneric(tmp.buffer, tmp.length, reader));
 			} else if (len > 18) {

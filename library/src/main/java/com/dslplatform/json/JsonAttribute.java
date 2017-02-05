@@ -24,7 +24,7 @@ public @interface JsonAttribute {
 	 * When mandatory is enabled, property will always be written in JSON.
 	 * If property is missing during parsing an IOException will be thrown.
 	 *
-	 * @return true for ignored property
+	 * @return true for mandatory property
 	 */
 	boolean mandatory() default false;
 
