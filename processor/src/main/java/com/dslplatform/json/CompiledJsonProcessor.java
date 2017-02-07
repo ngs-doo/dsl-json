@@ -190,14 +190,14 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		final Set<StructInfo> implementations = new HashSet<StructInfo>();
 		final Map<String, String[]> properties = new HashMap<String, String[]>();
 		final Map<String, String> minifiedNames = new HashMap<String, String>();
-		final boolean skipUnknown;
+		final Boolean onUnknown;
 
-		StructInfo(TypeElement element, String name, ObjectType type, boolean isJsonObject, boolean skipUnknown) {
+		StructInfo(TypeElement element, String name, ObjectType type, boolean isJsonObject, Boolean onUnknown) {
 			this.element = element;
 			this.name = name;
 			this.type = type;
 			this.converter = isJsonObject ? "" : null;
-			this.skipUnknown = skipUnknown;
+			this.onUnknown = onUnknown;
 		}
 
 		StructInfo(TypeElement converter, TypeElement target, String name) {
@@ -205,7 +205,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			this.name = name;
 			this.type = ObjectType.CLASS;
 			this.converter = converter.getQualifiedName().toString();
-			this.skipUnknown = true;
+			this.onUnknown = null;
 		}
 	}
 
@@ -302,6 +302,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		for (int i = 0; i < checks.length; i++) {
 			checks[i] = new TypeCheck();
 		}
+		int totalUnknowns = 0;
 		for (StructInfo info : structs.values()) {
 			if (info.type == ObjectType.ENUM) {
 				dsl.append("  enum ");
@@ -359,12 +360,20 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append("    external Java JSON converter '").append(info.converter).append("';\n");
 				}
 			}
-			if (!info.skipUnknown) {
-				dsl.append("    external Java JSON fail on unknown;\n");
-			}
+			totalUnknowns += info.onUnknown != null ? 1 : 0;
 			dsl.append("    external name Java '");
 			dsl.append(info.element.getQualifiedName());
 			dsl.append("';\n  }\n");
+		}
+		if (totalUnknowns != 0) {
+			dsl.append("  JSON serialization {\n");
+			for (StructInfo info : structs.values()) {
+				if (info.onUnknown == null) continue;
+				dsl.append("    in ").append(info.name);
+				dsl.append(info.onUnknown ? " fail on" : " ignore");
+				dsl.append(" unknown;\n");
+			}
+			dsl.append("}\n");
 		}
 		dsl.append("}");
 		return dsl.toString();
@@ -671,6 +680,18 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return defaultValue;
 	}
 
+	private Boolean onUnknownValue(AnnotationMirror annotation) {
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("onUnknown()")) {
+				Object val = values.get(ee).getValue();
+				if (val == null || "DEFAULT".equals(val.toString())) return null;
+				return "FAIL".equals(val.toString());
+			}
+		}
+		return null;
+	}
+
 	private boolean isMinified(Element struct) {
 		AnnotationMirror ann = getAnnotation(struct, compiledJsonType);
 		if (ann != null) {
@@ -867,11 +888,11 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		} else {
 			String name = "struct" + structs.size();
 			ObjectType type = isMixin ? ObjectType.MIXIN : element.getKind() == ElementKind.ENUM ? ObjectType.ENUM : ObjectType.CLASS;
-			boolean skipUnknown = true;
+			Boolean onUnknown = null;
 			if (!isJsonObject) {
 				AnnotationMirror annotation = getAnnotation(element, compiledJsonType);
 				if (annotation != null) {
-					skipUnknown = booleanAnnotationValue(annotation, "skipUnknown()", true);
+					onUnknown = onUnknownValue(annotation);
 				} else if (annotationUsage != AnnotationUsage.IMPLICIT) {
 					if (annotationUsage == AnnotationUsage.EXPLICIT) {
 						processingEnv.getMessager().printMessage(
@@ -889,7 +910,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					}
 				}
 			}
-			StructInfo info = new StructInfo(element, name, type, isJsonObject, skipUnknown);
+			StructInfo info = new StructInfo(element, name, type, isJsonObject, onUnknown);
 			structs.put(element.asType().toString(), info);
 			if (isMinified(element)) {
 				prepareMinifiedNames(info);

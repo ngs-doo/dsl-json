@@ -385,20 +385,21 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void skipUnknownCheck() {
+	public void failUnknownCheck() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(PropertyAlias.class);
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
-		Assert.assertTrue(dsl.contains("external Java JSON fail on unknown;"));
+		Assert.assertTrue(dsl.contains("JSON serialization"));
+		Assert.assertTrue(dsl.contains("fail on unknown;"));
 	}
 
 	@Test
-	public void skipUnknownDefault() {
+	public void onUnknownDefault() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ValidCtor.class);
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
-		Assert.assertFalse(dsl.contains("external Java JSON fail on unknown;"));
+		Assert.assertFalse(dsl.contains("JSON serialization"));
 	}
 }

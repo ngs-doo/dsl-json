@@ -25,11 +25,18 @@ public @interface CompiledJson {
 	boolean minified() default false;
 
 	/**
-	 * When unknown property is encountered during object processing,
-	 * default behavior is to skip over it and go to the next property.
-	 * Instead of skipping IOException can be thrown to disallow unknown property.
+	 * Specify how to handle unknown property during object processing.
+	 * On classes, default behavior is to skip over it and go to the next property.
+	 * In enums, default behavior is to fail instead of defaulting to first value.
+	 * Fail will result in an IOException, while skip will continue processing JSON.
 	 *
 	 * @return should skip unknown properties
 	 */
-	boolean skipUnknown() default true;
+	Behavior onUnknown() default Behavior.DEFAULT;
+
+	enum Behavior {
+		DEFAULT,
+		FAIL,
+		IGNORE;
+	}
 }
