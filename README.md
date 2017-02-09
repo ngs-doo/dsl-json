@@ -41,7 +41,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.4.3</version>
+      <version>1.4.4</version>
       <scope>provided</scope>
     </dependency>
 
@@ -49,8 +49,8 @@ For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.3.3'
-      apt 'com.dslplatform:dsl-json-processor:1.4.3'
+      compile 'com.dslplatform:dsl-json:1.4.0'
+      apt 'com.dslplatform:dsl-json-processor:1.4.4'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -99,9 +99,9 @@ Types without builtin mapping can be supported in three ways:
  * by defining custom conversion class and annotating it with `@JsonConverter`
  * by defining custom conversion class and referencing it from property with converter through `@JsonAttribute`
 
-Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L112)
+Custom converter for `java.util.Date` can be found in [example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L113)
 Annotation processor will check if custom type implementations have appropriate signatures.
-Converter for `java.util.ArrayList` can be found in [same example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L36)
+Converter for `java.util.ArrayList` can be found in [same example project](examples/Maven/src/main/java/com/dslplatform/maven/Example.java#L37)
 
 `@JsonConverter` which implements `Configuration` will also be registered in `META-INF/services` which makes it convenient to [setup initialization](examples/Maven/src/main/java/com/dslplatform/maven/ImmutablePerson.java#L48).
 
@@ -113,7 +113,8 @@ DSL-JSON property annotation supports several customizations/features:
  * alternativeNames - different incoming JSON attributes can be mapped into appropriate property. This can be used for simple features such as casing or for complex features such as model evolution
  * ignore - don't serialize specific property into JSON
  * nullable - tell compiler that this property can't be null. Compiler can remove some checks in that case for minuscule performance boost
- * hashMatch - DSL-JSON matches properties by hash values. If this option is turned off exact comparison will be performed which will add minuscule deserialization overhead, but invalid properties with same hash names will not be deserialized into "wrong" property. In case when model contains multiple properties with same hash values, compiler will inject exact comparison by default, regardless of this option value.
+ * mandatory - mandatory properties must exists in JSON. Even in omit-defaults mode. If property is not found, IOException will be thrown
+ * hashMatch - DSL-JSON matches properties by hash values. If this option is turned off exact comparison will be performed which will add minor deserialization overhead, but invalid properties with same hash names will not be deserialized into "wrong" property. In case when model contains multiple properties with same hash values, compiler will inject exact comparison by default, regardless of this option value.
  * converter - custom conversion per property. Can be used for formatting or any other custom handling of JSON processing for specific property
 
 ### External annotations
@@ -143,6 +144,10 @@ Existing bean properties and fields can be ignored using one of the supported an
  * org.codehaus.jackson.annotate.JsonIgnore
 
 Ignored properties will not be translated into DSL schema.
+
+#### Required properties
+
+Jackson `required = true` can be used to fail if property is missing in JSON:
 
 ## Serialization modes
 
@@ -177,7 +182,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.3.3</version>
+      <version>1.4.0</version>
     </dependency>
 
 ## Best practices
@@ -190,6 +195,7 @@ After serialization copy resulting buffer to stream with `.toStream(OutputStream
 
 `JsonReader` works on `byte[]` input. It's best to construct `JsonReader` with reusable `byte[]` and specifying `int` length.
 For `InputStream` `JsonStreamReader` can be used. For small messages it's better to use byte based reader instead of stream based reader.
+`JsonStreamReader` can be reused for new streams by calling `reset(InputStream)`.
 
 ## FAQ
 
@@ -204,3 +210,6 @@ For `InputStream` `JsonStreamReader` can be used. For small messages it's better
  
  ***Q***: Maven/Gradle are failing during compilation with `@CompiledJson`. What can I do about it?  
  ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/Maven/pom.xml#L35)
+
+ ***Q***: Annotation processor checks for new DSL compiler version on every compilation. How can I disable that?  
+ ***A***: If you specify custom `dsljson.compiler` processor option or put `dsl-compiler.exe` in project root it will use that one and will not check online for updates

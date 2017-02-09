@@ -8,7 +8,7 @@ import java.util.*;
 
 public class Example {
 
-	@CompiledJson
+	@CompiledJson(onUnknown = CompiledJson.Behavior.IGNORE) //ignore unknown properties (default for objects). to disallow unknown properties in JSON set it to FAIL which will result in exception instead
 	public static class Model {
 		@JsonAttribute(nullable = false) //indicate that field can't be null
 		public String string;
@@ -23,6 +23,7 @@ public class Example {
 		public List<Nested> nested;
 		public Abstract abs;//abstract classes or interfaces can be used
 		public ParentClass inheritance;
+		@JsonAttribute(mandatory = true) // mandatory adds check if property exist in JSON and will serialize it even in omit-defaults mode
 		public List<State> states;
 		public JsonObjectReference jsonObject; //object implementing JsonObject manage their own conversion. They must start with '{'
 		public List<JsonObjectReference> jsonObjects;
