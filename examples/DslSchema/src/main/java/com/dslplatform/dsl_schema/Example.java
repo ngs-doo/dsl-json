@@ -28,7 +28,8 @@ public class Example {
 			.setStates(Arrays.asList(State.HI, State.LOW))
 			.setDate(LocalDate.now())
 			.setDates(Arrays.asList(null, LocalDate.now()))
-			.setAbs(new Concrete().setX(11).setY(23));
+			.setAbs(new Concrete().setX(11).setY(23))
+			.setAbsList(Arrays.asList(null, new Concrete().setX(1).setY(2)));
 
 		//serialization directly to JsonWriter
 		instance.serialize(writer1, false);//second argument specifies serialization mode

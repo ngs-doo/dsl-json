@@ -73,4 +73,14 @@ public @interface JsonAttribute {
 	 * @return converter used for this property
 	 */
 	Class converter() default JsonAttribute.class;
+
+	/**
+	 * Abstract types used as properties by default include type signature information so they can be properly deserialized.
+	 * Type signature is included with as additional "$type":"actual.type.name" property (at the start of the object).
+	 * To disable inclusion of $type attribute, set this property to EXCLUDE.
+	 * This property overrides the value set on @CompiledJson
+	 *
+	 * @return should include type signature in JSON
+	 */
+	CompiledJson.TypeSignature typeSignature() default CompiledJson.TypeSignature.DEFAULT;
 }

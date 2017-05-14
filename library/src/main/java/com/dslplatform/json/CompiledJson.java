@@ -39,4 +39,27 @@ public @interface CompiledJson {
 		FAIL,
 		IGNORE;
 	}
+
+	/**
+	 * Abstract types used as properties by default include type signature information so they can be properly deserialized.
+	 * Type signature is included with as additional "$type":"actual.type.name" property (at the start of the object).
+	 * To disable inclusion of $type attribute, set this property to EXCLUDE.
+	 *
+	 * @return should include type signature in JSON
+	 */
+	TypeSignature typeSignature() default TypeSignature.DEFAULT;
+
+	enum TypeSignature {
+		DEFAULT,
+		EXCLUDE;
+	}
+
+	/**
+	 * Perform deserialization into a different type.
+	 * For abstract types it's often useful to specify a concrete implementation for deserialization.
+	 * This is required if $type attribute is missing from the JSON.
+	 *
+	 * @return deserialize into a specified signature
+	 */
+	Class deserializeAs() default CompiledJson.class;
 }

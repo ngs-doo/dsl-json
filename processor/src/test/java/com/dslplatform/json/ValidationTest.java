@@ -22,12 +22,20 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testMissingEmptyCtor() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 5, compileTestCase(MissingEmptyCtor.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(MissingEmptyCtor.class),
+				"therefore 'com.dslplatform.json.models.MissingEmptyCtor' requires public no argument constructor");
 	}
 
 	@Test
 	public void testNonPublicClass() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 3, compileTestCase(NonPublicClass.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				3,
+				compileTestCase(NonPublicClass.class),
+				"therefore 'com.dslplatform.json.NonPublicClass' must be public");
 	}
 
 	@Test
@@ -37,8 +45,11 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testUnsupportedPropertyType() {
-		Diagnostic diagnostic = assertCompilationReturned(Diagnostic.Kind.ERROR, 9, compileTestCase(InvalidType.class));
-		Assert.assertTrue(diagnostic.getMessage(Locale.ENGLISH).contains("Specified type not supported: 'char'"));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				9,
+				compileTestCase(InvalidType.class),
+				"Specified type not supported: 'char'");
 	}
 
 	@Test
@@ -63,7 +74,11 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testNestedNonStaticClass() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 6, compileTestCase(NestedNonStaticClass.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				6,
+				compileTestCase(NestedNonStaticClass.class),
+				"'com.dslplatform.json.models.NestedNonStaticClass.NonStaticClass' can't be a nested member. Only static nested classes are supported");
 	}
 
 	@Test
@@ -138,7 +153,11 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void duplicateAlias() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 10, compileTestCase(DuplicatePropertyAlias.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				10,
+				compileTestCase(DuplicatePropertyAlias.class),
+				"Duplicate alias detected on field: prop");
 	}
 
 	@Test
@@ -166,7 +185,11 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void missingImplementations() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 7, compileTestCase(UsesInterfaceType.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				7,
+				compileTestCase(UsesInterfaceType.class),
+				"Property iface is referencing interface (com.dslplatform.json.models.InterfaceType) which doesn't have registered implementations with @CompiledJson. At least one implementation of specified interface must be annotated with CompiledJson annotation");
 	}
 
 	@Test
@@ -179,6 +202,71 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.AbstractType';"));
 		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.ExtendsType';"));
 		Assert.assertTrue(dsl.contains("long y {  simple Java access;"));
+	}
+
+	@Test
+	public void supportsAbstractClassesWithConfiguration() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(UsesAbstractTypeWithConfiguration.class, ExtendsType.class, ExtendsTypeWithConfiguration.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("? abs1 {  simple Java access;  }"));
+		Assert.assertTrue(dsl.contains("?>? abs2 {  simple Java access;  exclude serialization signature;  }"));
+		Assert.assertTrue(dsl.contains("? abs3 {  simple Java access;  exclude serialization signature;  }"));
+		Assert.assertTrue(dsl.contains("? abs4 {  simple Java access;  }"));
+		Assert.assertTrue(dsl.contains("long y {  simple Java access;"));
+	}
+
+	@Test
+	public void nestedAbstractMustBeStatic() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(AbstractTypeWithNoStaticConcrete.class),
+				"Only public static nested classes are supported");
+	}
+
+	@Test
+	public void deserializeAsMustBeRelated() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(InterfaceIntoNonRelated.class),
+				"but specified deserializeAs target: 'com.dslplatform.json.models.InterfaceIntoNonRelated.Concrete' is not assignable to 'com.dslplatform.json.models.InterfaceIntoNonRelated'");
+	}
+
+	@Test
+	public void onlyAbstractCanBeUsedWithDeserializeAs() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(InvalidConcreteWithDeserializeAs.class),
+				"but specified deserializeAs target: 'com.dslplatform.json.models.InvalidConcreteWithDeserializeAs.Something' can only be specified for interfaces and abstract classes. 'com.dslplatform.json.models.InvalidConcreteWithDeserializeAs' is neither interface nor abstract class");
+	}
+
+	@Test
+	public void selfDeserializeAs() {
+		assertCompilationSuccessful(compileTestCase(DeserializeAsSelf.class));
+	}
+
+	@Test
+	public void mustTargetConcreteTypeOnDeserializeAs() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(InterfaceIntoInterface.class),
+				"deserializeAs target: 'com.dslplatform.json.models.InterfaceIntoInterface.Iface' must be a concrete type");
+	}
+
+	@Test
+	public void deserializeAsCheck() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(AbstractTypeIntoConcreteType.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("JSON serialization"));
+		Assert.assertTrue(dsl.contains("deserialize "));
+		Assert.assertTrue(dsl.contains(" as "));
 	}
 
 	@Test
@@ -359,7 +447,11 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void invalidPropertyConverter() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 13, compileTestCase(InvalidDecimalPropertyConverter.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				13,
+				compileTestCase(InvalidDecimalPropertyConverter.class),
+				"Specified converter: 'com.dslplatform.json.models.InvalidDecimalPropertyConverter.FormatDecimal2' has invalid type for JSON_READER field. It must be of type: 'com.dslplatform.json.JsonReader.ReadObject<java.math.BigDecimal>'");
 	}
 
 	@Test

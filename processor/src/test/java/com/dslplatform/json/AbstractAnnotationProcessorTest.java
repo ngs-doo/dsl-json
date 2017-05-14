@@ -183,7 +183,7 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * type {@link Kind#ERROR}.
 	 *
 	 * @param diagnostics the result of the compilation
-	 * @see #assertCompilationReturned(Kind, long, List)
+	 * @see #assertCompilationReturned(Kind, long, List, String)
 	 * @see #assertCompilationReturned(Kind[], long[], List)
 	 */
 	protected static void assertCompilationSuccessful(
@@ -206,7 +206,7 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * @param expectedLineNumbers     the line numbers at which the diagnostics are expected
 	 * @param diagnostics             the result of the compilation
 	 * @see #assertCompilationSuccessful(List)
-	 * @see #assertCompilationReturned(Kind, long, List)
+	 * @see #assertCompilationReturned(Kind, long, List, String)
 	 */
 	protected static void assertCompilationReturned(
 			Kind[] expectedDiagnosticKinds, long[] expectedLineNumbers,
@@ -215,8 +215,7 @@ public abstract class AbstractAnnotationProcessorTest {
 				&& (expectedDiagnosticKinds.length == expectedLineNumbers.length));
 
 		for (int i = 0; i < expectedDiagnosticKinds.length; i++) {
-			assertCompilationReturned(expectedDiagnosticKinds[i], expectedLineNumbers[i],
-					diagnostics);
+			assertCompilationReturned(expectedDiagnosticKinds[i], expectedLineNumbers[i], diagnostics, "");
 		}
 
 	}
@@ -230,12 +229,14 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * @param expectedDiagnosticKind the kind of diagnostic expected
 	 * @param expectedLineNumber     the line number at which the diagnostic is expected
 	 * @param diagnostics            the result of the compilation
+	 * @param contains               diagnostics results contains the message
 	 * @see #assertCompilationSuccessful(List)
 	 * @see #assertCompilationReturned(Kind[], long[], List)
 	 */
 	protected static Diagnostic assertCompilationReturned(
 			Kind expectedDiagnosticKind, long expectedLineNumber,
-			List<Diagnostic<? extends JavaFileObject>> diagnostics) {
+			List<Diagnostic<? extends JavaFileObject>> diagnostics,
+			String contains) {
 		assert ((expectedDiagnosticKind != null) && (diagnostics != null));
 		boolean expectedDiagnosticFound = false;
 
@@ -249,9 +250,9 @@ public abstract class AbstractAnnotationProcessorTest {
 			}
 
 		}
-
 		assertTrue("Expected a result of kind " + expectedDiagnosticKind
 				+ " at line " + expectedLineNumber, expectedDiagnosticFound);
+		assertTrue(detected.getMessage(Locale.ENGLISH).contains(contains));
 		return detected;
 	}
 

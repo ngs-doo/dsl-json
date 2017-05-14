@@ -8,6 +8,7 @@ module example {
 		int number;
 		List<Nested?> nested; //property can't be null elements can
 		Abstract abs; // reference to interface
+		List<Abstract?> absList;
 		List<State> states;
 		Date date; // non nullable java or joda date
 		List<Date?> dates;

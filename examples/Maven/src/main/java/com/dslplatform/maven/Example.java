@@ -21,7 +21,9 @@ public class Example {
 		public int number;
 		@JsonAttribute(alternativeNames = {"old_nested", "old_nested2"}) //several JSON attribute names can be deserialized into this field
 		public List<Nested> nested;
-		public Abstract abs;//abstract classes or interfaces can be used
+		@JsonAttribute(typeSignature = CompiledJson.TypeSignature.EXCLUDE) //$type attribute can be excluded from resulting JSON
+		public Abstract abs;//abstract classes or interfaces can be used which will also include $type attribute in JSON by default
+		public List<Abstract> absList;
 		public ParentClass inheritance;
 		@JsonAttribute(mandatory = true) // mandatory adds check if property exist in JSON and will serialize it even in omit-defaults mode
 		public List<State> states;
@@ -45,6 +47,7 @@ public class Example {
 			public float z;
 		}
 
+		@CompiledJson(deserializeAs = Concrete.class)//without deserializeAs deserializing Abstract would fails since it doesn't contain a $type due to it's exclusion in the above configuration
 		public static abstract class Abstract {
 			public int x;
 		}
@@ -191,6 +194,7 @@ public class Example {
 		concrete.x = 11;
 		concrete.y = 23;
 		instance.abs = concrete;
+		instance.absList = Arrays.<Model.Abstract>asList(concrete, null, concrete);
 		instance.decimal2 = BigDecimal.TEN;
 		instance.intList = new ArrayList<Integer>(Arrays.asList(123, 456));
 		instance.map = new HashMap<String, Object>();

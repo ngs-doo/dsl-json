@@ -15,11 +15,19 @@ public class PackageTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testPackageValidation() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 3, compileTestCase(NoPackage.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				3,
+				compileTestCase(NoPackage.class),
+				"but class 'NoPackage' is defined without a package name and cannot be accessed");
 	}
 
 	@Test
 	public void testPackageValidationForNested() {
-		assertCompilationReturned(Diagnostic.Kind.ERROR, 4, compileTestCase(NestedWithoutPackage.Nested.class));
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				4,
+				compileTestCase(NestedWithoutPackage.Nested.class),
+				"but class 'NestedWithoutPackage.Nested' is defined without a package name and cannot be accessed");
 	}
 }
