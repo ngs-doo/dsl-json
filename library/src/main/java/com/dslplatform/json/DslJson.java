@@ -1038,14 +1038,6 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (isNull(size, body)) {
 			return null;
 		}
-		if (size == 2 && body[0] == '{' && body[1] == '}' && !manifest.isInterface()) {
-			try {
-				return manifest.newInstance();
-			} catch (InstantiationException ignore) {
-			} catch (IllegalAccessException e) {
-				throw new IOException(e);
-			}
-		}
 		final JsonReader json = newReader(body, size);
 		json.getNextToken();
 		if (json.wasNull()) {
