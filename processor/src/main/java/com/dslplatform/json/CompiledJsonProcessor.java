@@ -477,7 +477,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				return;
 			}
 			info.properties.put(name, deserializationAliases);
-			StructInfo target = findReferenced(property.getValue().asType(), structs);
+			StructInfo target = findReferenced(javaTypeMirror, structs);
 			if (target != null && target.type == ObjectType.MIXIN && target.implementations.size() == 0) {
 				String what = target.element.getKind() == ElementKind.INTERFACE ? "interface" : "abstract class";
 				String one = target.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
@@ -1150,9 +1150,12 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		Map<String, VariableElement> setters = new HashMap<String, VariableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
+			boolean isPublicInterface = inheritance.getKind() == ElementKind.INTERFACE
+					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
 			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
 				String name = method.getSimpleName().toString();
-				boolean isAccessible = method.getModifiers().contains(Modifier.PUBLIC)
+				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
+						|| method.getModifiers().contains(Modifier.PUBLIC)
 						&& !method.getModifiers().contains(Modifier.STATIC)
 						&& !method.getModifiers().contains(Modifier.ABSTRACT);
 				if (name.length() < 4 || !isAccessible) {

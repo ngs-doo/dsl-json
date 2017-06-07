@@ -218,6 +218,19 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void supportsInterfacesWithConfiguration() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(UsesInterfaceWithConfiguration.class, Implements1Type.class, InterfaceTypeWithoutSignature.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("? if1;"));
+		Assert.assertTrue(dsl.contains("?>? if2 {  exclude serialization signature;  }"));
+		Assert.assertTrue(dsl.contains("? if3 {  exclude serialization signature;  }"));
+		Assert.assertTrue(dsl.contains("? if4 {  simple Java access;  }"));
+		Assert.assertTrue(dsl.contains("int i;"));
+	}
+
+	@Test
 	public void nestedAbstractMustBeStatic() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,

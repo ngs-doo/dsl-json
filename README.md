@@ -41,7 +41,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.4.6</version>
+      <version>1.4.7</version>
       <scope>provided</scope>
     </dependency>
 
@@ -50,7 +50,7 @@ For use in Android, Gradle can be configured with:
     apply plugin: 'android-apt'
     dependencies {
       compile 'com.dslplatform:dsl-json:1.4.2'
-      apt 'com.dslplatform:dsl-json-processor:1.4.6'
+      apt 'com.dslplatform:dsl-json-processor:1.4.7'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -164,7 +164,7 @@ Best serialization performance can be obtained with combination of minimal seria
 Independent benchmarks can validate the performance of DSL-JSON library:
 
  * [JVM serializers](https://github.com/eishay/jvm-serializers/wiki) - benchmark for all kind of JVM codecs. Shows DSL-JSON as fast as top binary codecs
- * [Techempower round 13](https://www.techempower.com/benchmarks/#section=data-r13&hw=ph&test=json) - servlet equiped with DSL-JSON tops the list
+ * [Techempower round 13](https://www.techempower.com/benchmarks/#section=data-r13&hw=ph&test=json) - servlet equipped with DSL-JSON tops the list
  * [Kostya JSON](https://github.com/kostya/benchmarks) - fastest performing Java JSON library
  * [JMH JSON benchmark](https://github.com/fabienrenaud/java-json-benchmark) - benchmarks for Java JSON libraries
 
@@ -214,3 +214,6 @@ For `InputStream` `JsonStreamReader` can be used. For small messages it's better
 
  ***Q***: Annotation processor checks for new DSL compiler version on every compilation. How can I disable that?  
  ***A***: If you specify custom `dsljson.compiler` processor option or put `dsl-compiler.exe` in project root it will use that one and will not check online for updates
+
+ ***Q***: What is this DSL Platform?  
+ ***A***: DSL Platform is a proprietary compiler written in C#. It's free to use, but access to source code is licensed. If you need access to compiler or need performance consulting [let us know](https://dsl-platform.com)
