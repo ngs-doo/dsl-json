@@ -1167,7 +1167,9 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				if (name.startsWith("get")
 						&& method.getParameters().size() == 0
 						&& method.getReturnType() != null) {
-					getters.put(property, method);
+					if (!getters.containsKey(property)) {
+						getters.put(property, method);
+					}
 				} else if (name.startsWith("set")
 						&& method.getParameters().size() == 1) {
 					setters.put(property, method.getParameters().get(0));

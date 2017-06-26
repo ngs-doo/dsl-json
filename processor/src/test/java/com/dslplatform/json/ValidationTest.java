@@ -231,6 +231,15 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void willReadJsonAttributeOfClass() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InterfaceTypeWithoutSignature.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("int i {  serialization name 'xyz';  }"));
+	}
+
+	@Test
 	public void nestedAbstractMustBeStatic() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
