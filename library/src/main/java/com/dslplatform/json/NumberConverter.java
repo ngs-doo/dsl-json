@@ -196,7 +196,7 @@ public abstract class NumberConverter {
 				final char ch = (char) reader.read();
 				tmp[i++] = ch;
 				if (reader.isEndOfStream() || !(ch >= '0' && ch < '9' || ch == '-' || ch == '+' || ch == '.' || ch == 'e' || ch == 'E')) {
-					return new NumberInfo(tmp, reader.isEndOfStream() ? i : i - 1);
+					return new NumberInfo(tmp, i);
 				}
 			}
 			tmp = Arrays.copyOf(tmp, tmp.length * 2);
@@ -402,7 +402,7 @@ public abstract class NumberConverter {
 					return parseFloatGeneric(reader.prepareBuffer(start), end - start, reader);
 				}
 			}
-			return value / (float) div;
+			return (float)((double)value / div);
 		}
 		return value;
 	}
@@ -430,7 +430,7 @@ public abstract class NumberConverter {
 					return parseFloatGeneric(reader.prepareBuffer(start), end - start, reader);
 				}
 			}
-			return value / (float) div;
+			return (float)((double)value / div);
 		}
 		return value;
 	}

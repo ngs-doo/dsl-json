@@ -30,8 +30,8 @@ public class JsonReader<TContext> {
 		WHITESPACE[-29 + 128] = true;
 	}
 
-	private int tokenStart;
-	private int nameEnd;
+	protected int tokenStart;
+	protected int nameEnd;
 	protected int currentIndex = 0;
 	protected long currentPosition = 0;
 	private byte last = ' ';
@@ -532,7 +532,7 @@ public class JsonReader<TContext> {
 		return hash;
 	}
 
-	public final int calcHash() throws IOException {
+	public int calcHash() throws IOException {
 		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
 		}
@@ -549,7 +549,7 @@ public class JsonReader<TContext> {
 		return (int) hash;
 	}
 
-	public final boolean wasLastName(final String name) {
+	public boolean wasLastName(final String name) {
 		if (name.length() != nameEnd - tokenStart - 1) {
 			return false;
 		}
@@ -561,7 +561,7 @@ public class JsonReader<TContext> {
 		return true;
 	}
 
-	public final String getLastName() throws IOException {
+	public String getLastName() throws IOException {
 		return new String(buffer, tokenStart, nameEnd - tokenStart - 1, "UTF-8");
 	}
 

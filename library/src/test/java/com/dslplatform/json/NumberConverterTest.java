@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
@@ -14,7 +15,8 @@ public class NumberConverterTest {
 	public void rangeCheckInt() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
 
 		final int from = -10000000;
 		final int to = 10000000;
@@ -25,11 +27,18 @@ public class NumberConverterTest {
 			// serialization
 			NumberConverter.serialize(value, sw);
 
-			sr.reset(sw.size());
-			sr.read();
+			jr.reset(sw.size());
+			jr.read();
 
-			final long valueParsed = NumberConverter.deserializeLong(sr);
-			Assert.assertEquals(value, valueParsed);
+			final long valueParsed1 = NumberConverter.deserializeLong(jr);
+			Assert.assertEquals(value, valueParsed1);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.reset(is);
+			jsr.read();
+
+			final long valueParsed2 = NumberConverter.deserializeLong(jsr);
+			Assert.assertEquals(value, valueParsed2);
 		}
 	}
 
@@ -37,22 +46,30 @@ public class NumberConverterTest {
 	public void rangeCheckLong() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
 
-		final int from = -10000000;
-		final int to = 10000000;
+		final long from = -10000000000L;
+		final long to = 10000000000L;
 
-		for (int value = from; value <= to; value += 33) {
+		for (long value = from; value <= to; value += 33333) {
 			sw.reset();
 
 			// serialization
 			NumberConverter.serialize(value, sw);
 
-			sr.reset(sw.size());
-			sr.read();
+			jr.reset(sw.size());
+			jr.read();
 
-			final long valueParsed = NumberConverter.deserializeInt(sr);
-			Assert.assertEquals(value, valueParsed);
+			final long valueParsed1 = NumberConverter.deserializeLong(jr);
+			Assert.assertEquals(value, valueParsed1);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.reset(is);
+			jsr.read();
+
+			final long valueParsed2 = NumberConverter.deserializeLong(jsr);
+			Assert.assertEquals(value, valueParsed2);
 		}
 	}
 
@@ -60,23 +77,31 @@ public class NumberConverterTest {
 	public void rangeCheckDecimal() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
 
-		final int from = -10000000;
-		final int to = 10000000;
+		final int from = -100000000;
+		final int to = 100000000;
 
-		for (int value = from; value <= to; value += 33) {
+		for (int value = from; value <= to; value += 333) {
 			sw.reset();
 
 			// serialization
 			BigDecimal bd = BigDecimal.valueOf(value / 100);
 			NumberConverter.serialize(bd, sw);
 
-			sr.reset(sw.size());
-			sr.read();
+			jr.reset(sw.size());
+			jr.read();
 
-			final BigDecimal valueParsed = NumberConverter.deserializeDecimal(sr);
-			Assert.assertEquals(bd, valueParsed);
+			final BigDecimal valueParsed1 = NumberConverter.deserializeDecimal(jr);
+			Assert.assertEquals(bd, valueParsed1);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.reset(is);
+			jsr.read();
+
+			final BigDecimal valueParsed2 = NumberConverter.deserializeDecimal(jsr);
+			Assert.assertEquals(bd, valueParsed2);
 		}
 	}
 
@@ -84,23 +109,32 @@ public class NumberConverterTest {
 	public void rangeCheckDouble() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
 
 		final int from = -10000000;
 		final int to = 10000000;
+		final double[] dividers = { 1d, 10d, 100d, 1000d, 10000d, 100000d };
 
-		for (int value = from; value <= to; value += 33) {
+		for (int value = from, i = 0; value <= to; value += 33, i++) {
 			sw.reset();
 
 			// serialization
-			double d = value / 100.0;
+			double d = value / dividers[i%dividers.length];
 			NumberConverter.serialize(d, sw);
 
-			sr.reset(sw.size());
-			sr.read();
+			jr.reset(sw.size());
+			jr.read();
 
-			final double valueParsed = NumberConverter.deserializeDouble(sr);
-			Assert.assertEquals(d, valueParsed, 0);
+			final double valueParsed1 = NumberConverter.deserializeDouble(jr);
+			Assert.assertEquals(d, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.reset(is);
+			jsr.read();
+
+			final double valueParsed2 = NumberConverter.deserializeDouble(jsr);
+			Assert.assertEquals(d, valueParsed2, 0);
 		}
 	}
 
@@ -108,23 +142,32 @@ public class NumberConverterTest {
 	public void rangeCheckFloat() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
 
 		final int from = -10000000;
 		final int to = 10000000;
+		final float[] dividers = { 1f, 10f, 100f, 1000f, 10000f };
 
-		for (int value = from; value <= to; value += 33) {
+		for (int value = from, i = 0; value <= to; value += 33, i++) {
 			sw.reset();
 
 			// serialization
-			float f = value / 100.0f;
+			float f = value / dividers[i%dividers.length];
 			NumberConverter.serialize(f, sw);
 
-			sr.reset(sw.size());
-			sr.read();
+			jr.reset(sw.size());
+			jr.read();
 
-			final float valueParsed = NumberConverter.deserializeFloat(sr);
-			Assert.assertEquals(f, valueParsed, 0);
+			final float valueParsed1 = NumberConverter.deserializeFloat(jr);
+			Assert.assertEquals(f, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.reset(is);
+			jsr.read();
+
+			final float valueParsed2 = NumberConverter.deserializeFloat(jsr);
+			Assert.assertEquals(f, valueParsed2, 0);
 		}
 	}
 
@@ -207,10 +250,14 @@ public class NumberConverterTest {
 
 			final JsonReader<Object> jr = new JsonReader<Object>(body, null);
 			jr.getNextToken();
-			final long parsed = NumberConverter.deserializeLong(jr);
+			final long parsed1 = NumberConverter.deserializeLong(jr);
+			final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(body), new byte[64], null);
+			jsr.getNextToken();
+			final long parsed2 = NumberConverter.deserializeLong(jsr);
 
 			final long check = Long.valueOf(sciForm);
-			Assert.assertEquals(check, parsed);
+			Assert.assertEquals(check, parsed1);
+			Assert.assertEquals(check, parsed2);
 
 			sciForm += '0';
 		}
@@ -307,15 +354,23 @@ public class NumberConverterTest {
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
 
 		// init
-		sr.reset(sw.size());
-		sr.read();
-		sr.read();
+		jr.reset(sw.size());
+		jr.read();
+		jr.read();
 
-		int[] numbers = NumberConverter.deserializeIntArray(sr);
-		Assert.assertArrayEquals(input, numbers);
+		int[] numbers1 = NumberConverter.deserializeIntArray(jr);
+		Assert.assertArrayEquals(input, numbers1);
+
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		// init
+		jsr.read();
+		jsr.read();
+
+		int[] numbers2 = NumberConverter.deserializeIntArray(jsr);
+		Assert.assertArrayEquals(input, numbers2);
 	}
 
 	@Test
@@ -329,59 +384,85 @@ public class NumberConverterTest {
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
 
 		// init
-		sr.reset(sw.size());
-		sr.read();
-		sr.read();
+		jr.reset(sw.size());
+		jr.read();
+		jr.read();
 
-		long[] numbers = NumberConverter.deserializeLongArray(sr);
-		Assert.assertArrayEquals(input, numbers);
+		long[] numbers1 = NumberConverter.deserializeLongArray(jr);
+		Assert.assertArrayEquals(input, numbers1);
+
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		// init
+		jsr.read();
+		jsr.read();
+
+		long[] numbers2 = NumberConverter.deserializeLongArray(jsr);
+		Assert.assertArrayEquals(input, numbers2);
 	}
 
 	@Test
 	public void primitiveFloatArrDeser() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(null);
+		final float[] multiplier = { 1f, 1.11f, 1.111f, 1.1111f, 1.11111f };
 
 		final float[] input = new float[60000];
 		for (int i = 0; i < input.length; i++) {
-			input[i] = 1.0f * i;
+			input[i] = i * multiplier[i%multiplier.length];
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
 
 		// init
-		sr.reset(sw.size());
-		sr.read();
-		sr.read();
+		jr.reset(sw.size());
+		jr.read();
+		jr.read();
 
-		float[] numbers = NumberConverter.deserializeFloatArray(sr);
-		Assert.assertArrayEquals(input, numbers, 0);
+		float[] numbers1 = NumberConverter.deserializeFloatArray(jr);
+		Assert.assertArrayEquals(input, numbers1, 0);
+
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		// init
+		jsr.read();
+		jsr.read();
+
+		float[] numbers2 = NumberConverter.deserializeFloatArray(jsr);
+		Assert.assertArrayEquals(input, numbers2, 0);
 	}
 
 	@Test
 	public void primitiveDoubleArrDeser() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(null);
+		final double[] multiplier = { 1d, 1.11d, 1.111d, 1.1111d, 1.11111d, 1.111111d, 1.1111111d };
 
 		final double[] input = new double[60000];
 		for (int i = 0; i < input.length; i++) {
-			input[i] = i;
+			input[i] = i * multiplier[i%multiplier.length];
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> sr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
 
 		// init
-		sr.reset(sw.size());
-		sr.read();
-		sr.read();
+		jr.reset(sw.size());
+		jr.read();
+		jr.read();
 
-		double[] numbers = NumberConverter.deserializeDoubleArray(sr);
-		Assert.assertArrayEquals(input, numbers, 0);
+		double[] numbers1 = NumberConverter.deserializeDoubleArray(jr);
+		Assert.assertArrayEquals(input, numbers1, 0.00000000001d);
+
+		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		// init
+		jsr.read();
+		jsr.read();
+
+		double[] numbers2 = NumberConverter.deserializeDoubleArray(jsr);
+		Assert.assertArrayEquals(input, numbers2, 0.00000000001d);
 	}
 
 	@Test
@@ -390,6 +471,10 @@ public class NumberConverterTest {
 		JsonReader reader = new JsonReader(input.getBytes(), null);
 		reader.getNextToken();
 		Number number = NumberConverter.deserializeNumber(reader);
+		Assert.assertTrue(number instanceof Long);
+		reader = new JsonStreamReader(new ByteArrayInputStream(input.getBytes()), new byte[64], null);
+		reader.getNextToken();
+		number = NumberConverter.deserializeNumber(reader);
 		Assert.assertTrue(number instanceof Long);
 	}
 

@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Map;
 
@@ -11,7 +12,11 @@ public class ReaderTest {
 	@Test
 	public void testLastName() throws IOException {
 		final byte[] buf = "\"number\":1234".getBytes("UTF-8");
-		final JsonReader<Object> jr = new JsonReader<Object>(buf, null);
+		testLastName(new JsonReader<Object>(buf, null));
+		testLastName(new JsonStreamReader<Object>(new ByteArrayInputStream(buf), new byte[64], null));
+	}
+
+	private void testLastName(JsonReader<Object> jr) throws IOException {
 		jr.getNextToken();
 		jr.fillName();
 		Assert.assertEquals("number", jr.getLastName());
@@ -24,7 +29,11 @@ public class ReaderTest {
 	@Test
 	public void testCalcHashNameEndSameAsFillName() throws IOException {
 		final byte[] buf = "\"number\":1234".getBytes("UTF-8");
-		final JsonReader<Object> jr = new JsonReader<Object>(buf, null);
+		testCalcHashNameEndSameAsFillName(new JsonReader<Object>(buf, null));
+		testCalcHashNameEndSameAsFillName(new JsonStreamReader<Object>(new ByteArrayInputStream(buf), new byte[64], null));
+	}
+
+	private void testCalcHashNameEndSameAsFillName(JsonReader<Object> jr) throws IOException {
 		jr.getNextToken();
 		jr.calcHash();
 		Assert.assertTrue(jr.wasLastName("number"));
@@ -125,6 +134,12 @@ public class ReaderTest {
 		} catch (IOException e) {
 			Assert.assertTrue(e.getMessage().contains("at: 171"));
 		}
+		try {
+			json.deserialize(String.class, new ByteArrayInputStream(bytes, 0, bytes.length - 1), new byte[64]);
+			Assert.fail();
+		} catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("at: 171"));
+		}
 	}
 
 	@Test
@@ -134,6 +149,12 @@ public class ReaderTest {
 		DslJson<Object> json = new DslJson<Object>();
 		try {
 			json.deserialize(String.class, bytes, bytes.length - 1);
+			Assert.fail();
+		} catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("at: 18"));
+		}
+		try {
+			json.deserialize(String.class, new ByteArrayInputStream(bytes, 0, bytes.length - 1), new byte[64]);
 			Assert.fail();
 		} catch (IOException e) {
 			Assert.assertTrue(e.getMessage().contains("at: 18"));

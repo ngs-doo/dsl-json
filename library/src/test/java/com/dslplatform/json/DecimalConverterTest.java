@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
@@ -62,26 +63,32 @@ public class DecimalConverterTest {
 
 		final byte[] buf = VALUES.getBytes(Charset.forName("ISO-8859-1"));
 		final JsonReader jr = new JsonReader(buf, null);
+		final JsonStreamReader jsr = new JsonStreamReader(new ByteArrayInputStream(buf), new byte[64], null);
 
 		// first digit in values
 		Assert.assertEquals('0', jr.getNextToken());
+		Assert.assertEquals('0', jsr.getNextToken());
 
 		for (int i = 0; i < count - 1; i++) {
 			if (i > 0) {
 				jr.getNextToken();//','
+				jsr.getNextToken();//','
 				jr.getNextToken();//' '
+				jsr.getNextToken();//' '
 			}
 
 			// setup
 			final BigDecimal direct = new BigDecimal(values[i]);
 
 			// deserialiaztion
-			final BigDecimal current = NumberConverter.deserializeDecimal(jr);
+			final BigDecimal current1 = NumberConverter.deserializeDecimal(jr);
+			final BigDecimal current2 = NumberConverter.deserializeDecimal(jsr);
 
 			//check
-			final boolean equality = direct.compareTo(current) == 0;
-			if (!equality) {
-				Assert.fail("Parsed BigDecimal was not equal to the test value; expected " + direct + ", but actual was " + current + ". Used value: " + values[i]);
+			if (direct.compareTo(current1) != 0) {
+				Assert.fail("Parsed BigDecimal was not equal to the test value; expected " + direct + ", but actual was " + current1 + ". Used value: " + values[i]);
+			} else if (direct.compareTo(current2) != 0) {
+				Assert.fail("Parsed BigDecimal was not equal to the test value; expected " + direct + ", but actual was " + current2 + ". Used value: " + values[i]);
 			}
 		}
 	}
@@ -98,10 +105,16 @@ public class DecimalConverterTest {
 
 			final JsonReader jr = new JsonReader<Object>(body, null);
 			jr.getNextToken();
-			final BigDecimal parsed = NumberConverter.deserializeDecimal(jr);
+			final BigDecimal parsed1 = NumberConverter.deserializeDecimal(jr);
 
-			if (parsed.compareTo(check) != 0) {
-				Assert.fail("Mismatch in decimals; expected " + check + ", but actual was " + parsed);
+			final JsonStreamReader jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(body), new byte[64], null);
+			jsr.getNextToken();
+			final BigDecimal parsed2 = NumberConverter.deserializeDecimal(jsr);
+
+			if (parsed1.compareTo(check) != 0) {
+				Assert.fail("Mismatch in decimals; expected " + check + ", but actual was " + parsed1);
+			} else if (parsed2.compareTo(check) != 0) {
+				Assert.fail("Mismatch in decimals; expected " + check + ", but actual was " + parsed2);
 			}
 		}
 	}
@@ -115,7 +128,7 @@ public class DecimalConverterTest {
 
 		DslJson<Object> json = new DslJson<Object>();
 
-		final BigDecimal result = json.deserialize(BigDecimal.class, body, body.length);
+		final BigDecimal result = Common.deserialize(json, BigDecimal.class, body, body.length);
 		Assert.assertEquals(check, result);
 	}
 
@@ -128,7 +141,7 @@ public class DecimalConverterTest {
 
 		DslJson<Object> json = new DslJson<Object>();
 
-		final BigDecimal result = json.deserialize(BigDecimal.class, body, body.length);
+		final BigDecimal result = Common.deserialize(json, BigDecimal.class, body, body.length);
 		Assert.assertEquals(check, result);
 	}
 
@@ -146,6 +159,11 @@ public class DecimalConverterTest {
 		} catch (IOException e) {
 			Assert.assertTrue(e.getMessage().contains("at: 72"));
 		}
+		try {
+			json.deserialize(BigDecimal.class, new ByteArrayInputStream(body, 0, body.length), new byte[64]);
+		} catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("at: 72"));
+		}
 	}
 
 	@Test
@@ -159,6 +177,10 @@ public class DecimalConverterTest {
 		} catch (IOException e) {
 			Assert.assertTrue(e.getMessage().contains("Integer overflow"));
 		}
+		try {
+			json.deserialize(Integer.class, new ByteArrayInputStream(body, 0, body.length), new byte[64]);
+		} catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("Integer overflow"));
+		}
 	}
-
 }

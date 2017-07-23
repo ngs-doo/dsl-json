@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Iterator;
 
 /**
@@ -18,6 +19,8 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 
 	private InputStream stream;
 	private int readLimit;
+	//always leave some room for reading special stuff, so that buffer contains enough padding for such optimizations
+	private final int bufferLenWithExtraSpace;
 
 	/**
 	 * Create reusable stream reader.
@@ -44,7 +47,9 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 			throw new IllegalArgumentException("buffer provided as null.");
 		}
 		this.stream = stream;
-		this.readLimit = length() >> 1;
+		int len = length();
+		this.bufferLenWithExtraSpace = buffer.length - 38; //currently maximum padding is for uuid
+		this.readLimit = len < bufferLenWithExtraSpace ? len : bufferLenWithExtraSpace;
 	}
 
 	/**
@@ -79,7 +84,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 			throw new IllegalArgumentException("stream provided as null.");
 		}
 		final int available = readFully(buffer, stream, 0);
-		readLimit = available >> 1;
+		readLimit = available < bufferLenWithExtraSpace ? available : bufferLenWithExtraSpace;
 		currentPosition = 0;
 		reset(available);
 	}
@@ -94,7 +99,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 	 */
 	public byte read() throws IOException {
 		if (currentIndex > readLimit) {
-			final int len = buffer.length - currentIndex;
+			final int len = length() - currentIndex;
 			System.arraycopy(buffer, currentIndex, buffer, 0, len);
 			final int available = readFully(buffer, stream, len);
 			currentPosition += currentIndex;
@@ -102,7 +107,7 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 				readLimit = length() - currentIndex;
 				reset(readLimit);
 			} else {
-				readLimit = available >> 1;
+				readLimit = available < bufferLenWithExtraSpace ? available : bufferLenWithExtraSpace;
 				reset(available);
 			}
 		}
@@ -130,6 +135,79 @@ public final class JsonStreamReader<TContext> extends JsonReader<TContext> {
 			return DatatypeConverter.parseBase64Binary(new String(chars, 0, len));
 		}
 		return super.readBase64();
+	}
+
+	private int lastNameLen;
+
+	public String getLastName() throws IOException {
+		if (nameEnd == -1) {
+			return new String(chars, 0, lastNameLen);
+		}
+		return super.getLastName();
+	}
+
+	public boolean wasLastName(final String name) {
+		if (nameEnd == -1) {
+			if (name.length() != lastNameLen) {
+				return false;
+			}
+			for (int i = 0; i < name.length(); i++) {
+				if (name.charAt(i) != chars[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+		return super.wasLastName(name);
+	}
+
+	public int calcHash() throws IOException {
+		if (last() != '"') {
+			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last());
+		}
+		tokenStart = currentIndex;
+		int ci = currentIndex;
+		long hash = 0x811c9dc5;
+		while (ci < readLimit) {
+			final byte b = buffer[ci];
+			if (b == '"') break;
+			ci++;
+			hash ^= b;
+			hash *= 0x1000193;
+		}
+		if (ci >= readLimit) {
+			return calcHashAndCopyName(hash, ci);
+		}
+		nameEnd = currentIndex = ci + 1;
+		return (int) hash;
+	}
+
+	private int calcHashAndCopyName(long hash, int ci) throws IOException {
+		int soFar = ci - tokenStart;
+		long startPosition = currentPosition - soFar;
+		while (chars.length < soFar) {
+			chars = Arrays.copyOf(chars, chars.length * 2);
+		}
+		int i = 0;
+		for (; i < soFar; i++) {
+			chars[i] = (char) buffer[i + tokenStart];
+		}
+		currentIndex = ci;
+		do {
+			final byte b = read();
+			if (b == '"') {
+				nameEnd = -1;
+				lastNameLen = i;
+				return (int) hash;
+			}
+			if (i == chars.length) {
+				chars = Arrays.copyOf(chars, chars.length * 2);
+			}
+			chars[i++] = (char) b;
+			hash ^= b;
+			hash *= 0x1000193;
+		} while (!isEndOfStream());
+		throw new IOException("JSON string was not closed with a double quote at: " + startPosition);
 	}
 
 	private static class RereadStream extends InputStream {

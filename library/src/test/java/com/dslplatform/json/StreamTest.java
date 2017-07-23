@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -514,6 +515,93 @@ public class StreamTest {
 			Assert.assertEquals(bd, value);
 			is.reset();
 			input.reset(is);
+		}
+	}
+
+	@Test
+	public void getLastNameOnBufferEdgeWithHalfBuffer() throws IOException, InterruptedException {
+		String jsonString = "{'name':'123123123123123123123123123123123123123123123123123123123','split_in_buffer':4234234234234234}".replace("'", "\"");
+		ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
+		DslJson<Object> json = new DslJson<Object>();
+		JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+		Assert.assertEquals('{', input.getNextToken());
+		Assert.assertEquals('"', input.getNextToken());
+		Assert.assertEquals(-1925595674, input.fillName());
+		Assert.assertEquals("name", input.getLastName());
+		Assert.assertEquals('"', input.getNextToken());
+		Assert.assertEquals("123123123123123123123123123123123123123123123123123123123", input.readString());
+		Assert.assertEquals(',', input.getNextToken());
+		Assert.assertEquals('"', input.getNextToken());
+		Assert.assertEquals(1120105078, input.fillName());
+		Assert.assertEquals("split_in_buffer", input.getLastName());
+	}
+
+	@Test
+	public void getLastNameOnBufferVariousStringSizes() throws IOException, InterruptedException {
+		DslJson<Object> json = new DslJson<Object>();
+		for(int i = 1;i < 512; i++) {
+			char[] one = new char[i];
+			Arrays.fill(one, '1');
+			String nameValue = new String(one);
+			String jsonString = ("{'name':'" + nameValue + "','split_in_buffer':4234234234234234}").replace("'", "\"");
+			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
+			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+			Assert.assertEquals('{', input.getNextToken());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals(-1925595674, input.fillName());
+			Assert.assertEquals("name", input.getLastName());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals(nameValue, input.readString());
+			Assert.assertEquals(',', input.getNextToken());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals(1120105078, input.fillName());
+			Assert.assertEquals("split_in_buffer", input.getLastName());
+		}
+	}
+
+	@Test
+	public void getLastNameOnBufferVariousSpaceSizes() throws IOException, InterruptedException {
+		DslJson<Object> json = new DslJson<Object>();
+		for(int i = 1;i < 512; i++) {
+			char[] space = new char[i];
+			Arrays.fill(space, ' ');
+			String spaceValue = new String(space);
+			String jsonString = ("{'name':'123456'" + spaceValue + ",'split_in_buffer':4234234234234234}").replace("'", "\"");
+			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
+			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+			Assert.assertEquals('{', input.getNextToken());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals(-1925595674, input.fillName());
+			Assert.assertEquals("name", input.getLastName());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals("123456", input.readString());
+			Assert.assertEquals(',', input.getNextToken());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals(1120105078, input.fillName());
+			Assert.assertEquals("split_in_buffer", input.getLastName());
+		}
+	}
+
+	@Test
+	public void getLastNameWithVeryLongName() throws IOException, InterruptedException {
+		DslJson<Object> json = new DslJson<Object>();
+		for(int i = 1; i < 512; i++) {
+			char[] space = new char[i];
+			Arrays.fill(space, ' ');
+			String spaceValue = new String(space);
+			String jsonString = ("{'name':'123456'" + spaceValue + ",'split_in_buffer_with_very_long_name_more_than_buffer_size':4234234234234234}").replace("'", "\"");
+			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
+			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+			Assert.assertEquals('{', input.getNextToken());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals(-1925595674, input.fillName());
+			Assert.assertEquals("name", input.getLastName());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals("123456", input.readString());
+			Assert.assertEquals(',', input.getNextToken());
+			Assert.assertEquals('"', input.getNextToken());
+			Assert.assertEquals(-725988800, input.fillName());
+			Assert.assertEquals("split_in_buffer_with_very_long_name_more_than_buffer_size", input.getLastName());
 		}
 	}
 }

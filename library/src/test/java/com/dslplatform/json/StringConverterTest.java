@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 public class StringConverterTest {
@@ -55,8 +56,11 @@ public class StringConverterTest {
 			// deserialization
 			final byte[] buf = text.getBytes("UTF-8");
 			final JsonReader<Object> jr = new JsonReader<Object>(buf, null);
+			final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(buf), new byte[64], null);
 			Assert.assertEquals(jr.read(), '"');
-			final String read = jr.readString();
+			Assert.assertEquals(jsr.read(), '"');
+			final String read1 = jr.readString();
+			final String read2 = jsr.readString();
 			Assert.assertEquals(buf.length, jr.getCurrentIndex()); // test for end of stream
 
 			// check without unicode escapes or replacements, as they will not be present in the result string
@@ -65,7 +69,8 @@ public class StringConverterTest {
 					value,
 					ch);
 
-			Assert.assertEquals(expected, read);
+			Assert.assertEquals(expected, read1);
+			Assert.assertEquals(expected, read2);
 		}
 	}
 
