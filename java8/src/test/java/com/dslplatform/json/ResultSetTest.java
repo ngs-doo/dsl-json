@@ -7,7 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.sql.*;
 
-public class TestResultSet {
+public class ResultSetTest {
 
 	@Test
 	public void simpleResultSet() throws IOException, SQLException, ClassNotFoundException {

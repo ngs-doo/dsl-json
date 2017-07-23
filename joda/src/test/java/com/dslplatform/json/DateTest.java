@@ -6,7 +6,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-public class TestJson {
+public class DateTest {
 
 	@Test
 	public void dateTimeOffsetConversion() throws IOException {
