@@ -77,6 +77,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	protected final StringCache valuesCache;
 	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
+	private final ThreadLocal<JsonWriter> localWriter;
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
@@ -307,8 +308,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 *
 	 * @param settings DSL-JSON configuration
 	 */
-	public DslJson(Settings<TContext> settings) {
+	public DslJson(final Settings<TContext> settings) {
 		if (settings == null) throw new IllegalArgumentException("settings can't be null");
+		final DslJson<TContext> self = this;
+		this.localWriter = new ThreadLocal<JsonWriter>() {
+			@Override
+			protected JsonWriter initialValue() {
+				return new JsonWriter(2048, self);
+			}
+		};
 		this.context = settings.context;
 		this.fallback = settings.fallback;
 		this.omitDefaults = settings.omitDefaults;
@@ -1649,6 +1657,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 	};
 
+	private final JsonWriter.WriteObject NULL_WRITER = new JsonWriter.WriteObject() {
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			writer.writeNull();
+		}
+	};
+
 	@SuppressWarnings("unchecked")
 	private JsonWriter.WriteObject getOrCreateWriter(final Object instance, final Class<?> instanceManifest) throws IOException {
 		if (instance instanceof JsonObject) {
@@ -2029,16 +2044,14 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (value == null) {
 			writer.writeNull();
 			return true;
-		}
-		if (value instanceof JsonObject) {
+		} else if (value instanceof JsonObject) {
 			((JsonObject) value).serialize(writer, omitDefaults);
 			return true;
-		}
-		if (value instanceof JsonObject[]) {
+		} else if (value instanceof JsonObject[]) {
 			serialize(writer, (JsonObject[]) value);
 			return true;
 		}
-		final JsonWriter.WriteObject<Object> simpleWriter = (JsonWriter.WriteObject<Object>) tryFindWriter(manifest);
+		final JsonWriter.WriteObject simpleWriter = tryFindWriter(manifest);
 		if (simpleWriter != null) {
 			simpleWriter.write(writer, value);
 			return true;
@@ -2091,29 +2104,60 @@ public class DslJson<TContext> implements UnknownSerializer {
 			}
 			Class<?> baseType = null;
 			final Iterator iterator = items.iterator();
+			final boolean isList = items instanceof List;
+			final List<Object> values = isList ? (List) items : new ArrayList<Object>();
+			final ArrayList<JsonWriter.WriteObject> writers = new ArrayList<JsonWriter.WriteObject>();
+			Class<?> lastElementType = null;
+			JsonWriter.WriteObject lastWriter = null;
+			boolean hasUnknownWriter = false;
 			//TODO: pick lowest common denominator!?
 			do {
 				final Object item = iterator.next();
+				if (!isList) {
+					values.add(item);
+				}
 				if (item != null) {
-					Class<?> elementType = item.getClass();
+					final Class<?> elementType = item.getClass();
 					if (elementType != baseType) {
 						if (baseType == null || elementType.isAssignableFrom(baseType)) {
 							baseType = elementType;
 						}
 					}
+					if (lastElementType != elementType) {
+						lastElementType = elementType;
+						lastWriter = tryFindWriter(elementType);
+					}
+					writers.add(lastWriter);
+					hasUnknownWriter = hasUnknownWriter || lastWriter == null;
+				} else {
+					writers.add(NULL_WRITER);
 				}
 			} while (iterator.hasNext());
-			if (baseType == null) {
+			if (baseType != null && JsonObject.class.isAssignableFrom(baseType)) {
 				writer.writeByte(JsonWriter.ARRAY_START);
-				writer.writeNull();
-				for (int i = 1; i < items.size(); i++) {
-					writer.writeAscii(",null");
+				final Iterator iter = values.iterator();
+				final JsonObject first = (JsonObject) iter.next();
+				if (first != null) first.serialize(writer, omitDefaults);
+				else writer.writeNull();
+				while (iter.hasNext()) {
+					writer.writeByte(JsonWriter.COMMA);
+					final JsonObject next = (JsonObject) iter.next();
+					if (next != null) next.serialize(writer, omitDefaults);
+					else writer.writeNull();
 				}
 				writer.writeByte(JsonWriter.ARRAY_END);
 				return true;
 			}
-			if (JsonObject.class.isAssignableFrom(baseType)) {
-				serialize(writer, (Collection<JsonObject>) items);
+			if (!hasUnknownWriter) {
+				writer.writeByte(JsonWriter.ARRAY_START);
+				final Iterator iter = values.iterator();
+				int cur = 1;
+				writers.get(0).write(writer, iter.next());
+				while (iter.hasNext()) {
+					writer.writeByte(JsonWriter.COMMA);
+					writers.get(cur++).write(writer, iter.next());
+				}
+				writer.writeByte(JsonWriter.ARRAY_END);
 				return true;
 			}
 			final JsonWriter.WriteObject<Object> elementWriter = (JsonWriter.WriteObject<Object>) tryFindWriter(baseType);
@@ -2130,8 +2174,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Convenient serialize API.
 	 * In most cases JSON is serialized into target `OutputStream`.
-	 * This method will create a new instance of `JsonWriter` and serialize JSON into it.
-	 * At the end `JsonWriter` will be copied into resulting stream.
+	 * This method will reuse thread local instance of `JsonWriter` and serialize JSON into it.
 	 *
 	 * @param value  instance to serialize
 	 * @param stream where to write resulting JSON
@@ -2145,7 +2188,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 			stream.write(NULL);
 			return;
 		}
-		final JsonWriter jw = new JsonWriter(this);
+		final JsonWriter jw = localWriter.get();
+		jw.reset(stream);
 		final Class<?> manifest = value.getClass();
 		if (!serialize(jw, manifest, value)) {
 			if (fallback == null) {
@@ -2153,7 +2197,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 			}
 			fallback.serialize(value, stream);
 		} else {
-			jw.toStream(stream);
+			jw.flush();
+			jw.reset(null);
 		}
 	}
 

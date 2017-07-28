@@ -8,4 +8,8 @@ public class SerializationException extends RuntimeException {
 	public SerializationException(Throwable cause) {
 		super(cause);
 	}
+
+	public SerializationException(String reason, Throwable cause) {
+		super(reason, cause);
+	}
 }

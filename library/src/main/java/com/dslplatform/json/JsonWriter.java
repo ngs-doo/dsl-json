@@ -2,29 +2,37 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Writer;
 import java.nio.charset.Charset;
 import java.util.*;
 
 /**
- * DslJson writes JSON into an byte[] target.
- * This class is used for growing such byte[] buffer
- * and providing other low level methods for JSON serialization.
+ * DslJson writes JSON into JsonWriter which has two primary modes of operation:
+ *
+ *  * targeting specific output stream
+ *  * buffering the entire response in memory
+ *
+ * In both cases JsonWriter writes into an byte[] buffer.
+ * If stream is used as target, it will copy buffer into the stream whenever there is no more room in buffer for new data.
+ * If stream is not used as target, it will grow the buffer to hold the encoded result.
+ * To use stream as target reset(OutputStream) must be called before processing.
+ * This class provides low level methods for JSON serialization.
  * <p>
- * After the processing is done, JSON can be copied to target OutputStream or resulting byte[] can be used directly.
+ * After the processing is done,
+ * in case then stream was used as target, flush() must be called to copy the remaining of the buffer into stream.
+ * When entire response was buffered in memory, buffer can be copied to stream or resulting byte[] can be used directly.
  * <p>
- * For maximum performance JsonWriter instances should be reused.
+ * For maximum performance JsonWriter instances should be reused (to avoid allocation of new byte[] buffer instances).
  * They should not be shared across threads (concurrently) so for Thread reuse it's best to use patterns such as ThreadLocal.
  */
-public final class JsonWriter extends Writer {
+public final class JsonWriter {
 
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
 
 	final byte[] ensureCapacity(final int free) {
-		if (position + free >= result.length) {
-			result = Arrays.copyOf(result, result.length + (result.length << 1) + free);
+		if (position + free >= buffer.length) {
+			buffer = Arrays.copyOf(buffer, buffer.length + (buffer.length << 1) + free);
 		}
-		return result;
+		return buffer;
 	}
 
 	void advance(int size) {
@@ -32,7 +40,8 @@ public final class JsonWriter extends Writer {
 	}
 
 	private int position;
-	private byte[] result;
+	private OutputStream target;
+	private byte[] buffer;
 
 	private final UnknownSerializer unknownSerializer;
 
@@ -53,54 +62,108 @@ public final class JsonWriter extends Writer {
 		this(new byte[size], unknownSerializer);
 	}
 
-	JsonWriter(final byte[] result, final UnknownSerializer unknownSerializer) {
-		this.result = result;
+	JsonWriter(final byte[] buffer, final UnknownSerializer unknownSerializer) {
+		this.buffer = buffer;
 		this.unknownSerializer = unknownSerializer;
 	}
 
+	/**
+	 * Helper for writing JSON object start: {
+	 */
 	public static final byte OBJECT_START = '{';
+	/**
+	 * Helper for writing JSON object end: }
+	 */
 	public static final byte OBJECT_END = '}';
+	/**
+	 * Helper for writing JSON array start: [
+	 */
 	public static final byte ARRAY_START = '[';
+	/**
+	 * Helper for writing JSON array end: ]
+	 */
 	public static final byte ARRAY_END = ']';
+	/**
+	 * Helper for writing comma separator: ,
+	 */
 	public static final byte COMMA = ',';
+	/**
+	 * Helper for writing semicolon: :
+	 */
 	public static final byte SEMI = ':';
+	/**
+	 * Helper for writing JSON quote: "
+	 */
 	public static final byte QUOTE = '"';
+	/**
+	 * Helper for writing JSON escape: \\
+	 */
 	public static final byte ESCAPE = '\\';
 
+	private void enlargeOrFlush(final int size, final int padding) {
+		if (target != null) {
+			try {
+				target.write(buffer, 0, size);
+			} catch (IOException ex) {
+				throw new SerializationException("Unable to write to target stream.", ex);
+			}
+			position = 0;
+			if (padding > buffer.length) {
+				buffer = Arrays.copyOf(buffer, buffer.length + buffer.length / 2 + padding);
+			}
+		} else {
+			buffer = Arrays.copyOf(buffer, buffer.length + buffer.length / 2 + padding);
+		}
+	}
+
+	/**
+	 * Optimized method for writing 'null' into the JSON.
+	 */
 	public final void writeNull() {
 		final int s = position;
 		position += 4;
-		if (position >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2);
+		if (position >= buffer.length) {
+			enlargeOrFlush(position - 4, 0);
 		}
-		final byte[] _result = result;
+		final byte[] _result = buffer;
 		_result[s] = 'n';
 		_result[s + 1] = 'u';
 		_result[s + 2] = 'l';
 		_result[s + 3] = 'l';
 	}
 
-	public final void writeByte(final byte c) {
-		if (position == result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2);
+	/**
+	 * Write a single byte into the JSON.
+	 *
+	 * @param value byte to write into the JSON
+	 */
+	public final void writeByte(final byte value) {
+		if (position == buffer.length) {
+			enlargeOrFlush(position, 0);
 		}
-		result[position++] = c;
+		buffer[position++] = value;
 	}
 
-	public final void writeString(final String str) {
-		final int len = str.length();
-		if (position + (len << 2) + (len << 1) + 2 >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2 + (len << 2) + (len << 1) + 2);
+	/**
+	 * Write a quoted string into the JSON.
+	 * String will be appropriately escaped according to JSON escaping rules.
+	 *
+	 * @param value string to write
+	 */
+	public final void writeString(final String value) {
+		final int len = value.length();
+		if (position + (len << 2) + (len << 1) + 2 >= buffer.length) {
+			enlargeOrFlush(position, (len << 2) + (len << 1) + 2);
 		}
-		final byte[] _result = result;
+		final byte[] _result = buffer;
 		_result[position] = QUOTE;
 		int cur = position + 1;
 		for (int i = 0; i < len; i++) {
-			final char c = str.charAt(i);
+			final char c = value.charAt(i);
 			if (c > 31 && c != '"' && c != '\\' && c < 126) {
 				_result[cur++] = (byte) c;
 			} else {
-				writeQuotedString(str, i, cur, len);
+				writeQuotedString(value, i, cur, len);
 				return;
 			}
 		}
@@ -109,7 +172,7 @@ public final class JsonWriter extends Writer {
 	}
 
 	private void writeQuotedString(final String str, int i, int cur, final int len) {
-		final byte[] _result = this.result;
+		final byte[] _result = this.buffer;
 		for (; i < len; i++) {
 			final char c = str.charAt(i);
 			if (c == '"') {
@@ -281,112 +344,194 @@ public final class JsonWriter extends Writer {
 		position = cur + 1;
 	}
 
+	/**
+	 * Write string consisting of only ascii characters.
+	 * String will not be escaped according to JSON escaping rules.
+	 *
+	 * @param value ascii string
+	 */
 	@SuppressWarnings("deprecation")
-	public final void writeAscii(final String str) {
-		final int len = str.length();
-		if (position + len >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2 + len);
+	public final void writeAscii(final String value) {
+		final int len = value.length();
+		if (position + len >= buffer.length) {
+			enlargeOrFlush(position, len);
 		}
-		str.getBytes(0, len, result, position);
+		value.getBytes(0, len, buffer, position);
 		position += len;
 	}
 
+	/**
+	 * Write part of string consisting of only ascii characters.
+	 * String will not be escaped according to JSON escaping rules.
+	 *
+	 * @param value ascii string
+	 * @param len part of the provided string to use
+	 */
 	@SuppressWarnings("deprecation")
-	public final void writeAscii(final String str, final int len) {
-		if (position + len >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2 + len);
+	public final void writeAscii(final String value, final int len) {
+		if (position + len >= buffer.length) {
+			enlargeOrFlush(position, len);
 		}
-		str.getBytes(0, len, result, position);
+		value.getBytes(0, len, buffer, position);
 		position += len;
 	}
 
+	/**
+	 * Copy bytes into JSON as is.
+	 * Provided buffer can't be null.
+	 *
+	 * @param buf byte buffer to copy
+	 */
 	public final void writeAscii(final byte[] buf) {
 		final int len = buf.length;
-		if (position + len >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2 + len);
+		if (position + len >= buffer.length) {
+			enlargeOrFlush(position, len);
 		}
 		final int p = position;
-		final byte[] _result = result;
+		final byte[] _result = buffer;
 		for (int i = 0; i < buf.length; i++) {
 			_result[p + i] = buf[i];
 		}
 		position += len;
 	}
 
+	/**
+	 * Copy part of byte buffer into JSON as is.
+	 * Provided buffer can't be null.
+	 *
+	 * @param buf byte buffer to copy
+	 * @param len part of buffer to copy
+	 */
 	public final void writeAscii(final byte[] buf, final int len) {
-		if (position + len >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2 + len);
+		if (position + len >= buffer.length) {
+			enlargeOrFlush(position, len);
 		}
 		final int p = position;
-		final byte[] _result = result;
+		final byte[] _result = buffer;
 		for (int i = 0; i < len; i++) {
 			_result[p + i] = buf[i];
 		}
 		position += len;
 	}
 
-	public final void writeBinary(final byte[] buf) {
-		if (position + (buf.length << 1) + 2 >= result.length) {
-			result = Arrays.copyOf(result, result.length + result.length / 2 + (buf.length << 1) + 2);
+	/**
+	 * Encode bytes as Base 64.
+	 * Provided value can't be null.
+	 *
+	 * @param value bytes to encode
+	 */
+	public final void writeBinary(final byte[] value) {
+		if (position + (value.length << 1) + 2 >= buffer.length) {
+			enlargeOrFlush(position, (value.length << 1) + 2);
 		}
-		result[position++] = '"';
-		position += Base64.encodeToBytes(buf, result, position);
-		result[position++] = '"';
+		buffer[position++] = '"';
+		position += Base64.encodeToBytes(value, buffer, position);
+		buffer[position++] = '"';
 	}
 
 	@Override
 	public String toString() {
-		return new String(result, 0, position, UTF_8);
+		return new String(buffer, 0, position, UTF_8);
 	}
 
+	/**
+	 * Content of buffer can be copied to another array of appropriate size.
+	 * This method can't be used when targeting output stream.
+	 * Ideally it should be avoided if possible, since it will create an array copy.
+	 * It's better to use getByteBuffer and size instead.
+	 *
+	 * @return copy of the buffer up to the current position
+	 */
 	public final byte[] toByteArray() {
-		return Arrays.copyOf(result, position);
+		if (target != null) {
+			throw new SerializationException("Method is not available when targeting stream");
+		}
+		return Arrays.copyOf(buffer, position);
 	}
 
+	/**
+	 * When JsonWriter does not target stream, this method should be used to copy content of the buffer into target stream.
+	 * It will also reset the buffer position to 0 so writer can be continued to be used even without a call to reset().
+	 *
+	 * @param stream target stream
+	 * @throws IOException propagates from stream.write
+	 */
 	public final void toStream(final OutputStream stream) throws IOException {
-		stream.write(result, 0, position);
+		if (target != null) {
+			throw new SerializationException("Method should not be used when targeting streams. Instead use flush() to copy what's remaining in the buffer");
+		}
+		stream.write(buffer, 0, position);
+		position = 0;
 	}
 
+	/**
+	 * Current buffer.
+	 * If buffer grows, a new instance will be created and old one will not be used anymore.
+	 *
+	 * @return current buffer
+	 */
 	public final byte[] getByteBuffer() {
-		return result;
+		return buffer;
 	}
 
+	/**
+	 * Current position in the buffer. When stream is not used, this is also equivalent
+	 * to the size of the resulting JSON in bytes
+	 *
+	 * @return position in the populated buffer
+	 */
 	public final int size() {
 		return position;
 	}
 
+	/**
+	 * Resets the writer - same as calling reset(OutputStream = null)
+	 */
 	public final void reset() {
-		position = 0;
+		reset(null);
 	}
 
-	@Override
-	public void write(int c) throws IOException {
-		if (c < 127) {
-			writeByte((byte) c);
-		} else {
-			write(new char[]{(char) c}, 0, 1);
+	/**
+	 * Resets the writer - specifies the target stream and sets the position in buffer to 0.
+	 * If stream is set to null, JsonWriter will work in growing byte[] buffer mode (entire response will be buffered in memory).
+	 *
+	 * @param stream sets/clears the target stream
+	 */
+	public final void reset(OutputStream stream) {
+		position = 0;
+		target = stream;
+	}
+
+	/**
+	 * If stream was used, copies the buffer to stream and resets the position in buffer to 0.
+	 * It will not reset the stream as target,
+	 * meaning new usages of the JsonWriter will try to use the already provided stream.
+	 * It will not do anything if stream was not used
+	 *
+	 * To reset the stream to null use reset() or reset(OutputStream) methods.
+	 */
+	public void flush() {
+		if (target != null && position != 0) {
+			try {
+				target.write(buffer, 0, position);
+			} catch (IOException ex) {
+				throw new SerializationException("Unable to write to target stream.", ex);
+			}
+			position = 0;
 		}
 	}
 
-	@Override
-	public void write(char[] cbuf, int off, int len) {
-		String append = new String(cbuf, off, len);
-		writeAscii(append.getBytes(UTF_8));
-	}
-
-	@Override
-	public void write(String str, int off, int len) {
-		String append = str.substring(off, off + len);
-		writeAscii(append.getBytes(UTF_8));
-	}
-
-	@Override
-	public void flush() throws IOException {
-	}
-
-	@Override
+	/**
+	 * This is deprecated method which exists only for backward compatibility
+	 *
+	 * @throws java.io.IOException unable to write to target stream
+	 */
+	@Deprecated
 	public void close() throws IOException {
-		position = 0;
+		if (target != null && position != 0) {
+			target.write(buffer, 0, position);
+			position = 0;
+		}
 	}
 
 	/**
@@ -399,6 +544,13 @@ public final class JsonWriter extends Writer {
 		void write(JsonWriter writer, T value);
 	}
 
+	/**
+	 * Convenience method for serializing array of JsonObject's.
+	 * Array can't be null nor can't contain null values (it will result in NullPointerException).
+	 *
+	 * @param array input objects
+	 * @param <T> type of objects
+	 */
 	public <T extends JsonObject> void serialize(final T[] array) {
 		writeByte(ARRAY_START);
 		if (array.length != 0) {
@@ -411,6 +563,15 @@ public final class JsonWriter extends Writer {
 		writeByte(ARRAY_END);
 	}
 
+	/**
+	 * Convenience method for serializing only part of JsonObject's array.
+	 * Useful when array is reused and only part of it needs to be serialized.
+	 * Array can't be null nor can't contain null values (it will result in NullPointerException).
+	 *
+	 * @param array input objects
+	 * @param len size of array which should be serialized
+	 * @param <T> type of objects
+	 */
 	public <T extends JsonObject> void serialize(final T[] array, final int len) {
 		writeByte(ARRAY_START);
 		if (array.length != 0 && len != 0) {
@@ -423,6 +584,16 @@ public final class JsonWriter extends Writer {
 		writeByte(ARRAY_END);
 	}
 
+	/**
+	 * Convenience method for serializing list of JsonObject's.
+	 * List can't be null nor can't contain null values (it will result in NullPointerException).
+	 * It will use list .get(index) method to access the object.
+	 * When using .get(index) is not appropriate,
+	 * it's better to call the serialize(Collection&lt;JsonObject&gt;) method instead.
+	 *
+	 * @param list input objects
+	 * @param <T> type of objects
+	 */
 	public <T extends JsonObject> void serialize(final List<T> list) {
 		writeByte(ARRAY_START);
 		if (list.size() != 0) {
@@ -435,7 +606,16 @@ public final class JsonWriter extends Writer {
 		writeByte(ARRAY_END);
 	}
 
-	public <T> void serialize(final T[] array, final WriteObject<T> writer) {
+	/**
+	 * Convenience method for serializing array through instance serializer (WriteObject).
+	 * Array can be null and can contain null values.
+	 * Instance serializer will not be invoked for null values
+	 *
+	 * @param array array to serialize
+	 * @param encoder instance serializer
+	 * @param <T> type of object
+	 */
+	public <T> void serialize(final T[] array, final WriteObject<T> encoder) {
 		if (array == null) {
 			writeNull();
 			return;
@@ -444,7 +624,7 @@ public final class JsonWriter extends Writer {
 		if (array.length != 0) {
 			T item = array[0];
 			if (item != null) {
-				writer.write(this, item);
+				encoder.write(this, item);
 			} else {
 				writeNull();
 			}
@@ -452,7 +632,7 @@ public final class JsonWriter extends Writer {
 				writeByte(COMMA);
 				item = array[i];
 				if (item != null) {
-					writer.write(this, item);
+					encoder.write(this, item);
 				} else {
 					writeNull();
 				}
@@ -461,7 +641,19 @@ public final class JsonWriter extends Writer {
 		writeByte(ARRAY_END);
 	}
 
-	public <T> void serialize(final List<T> list, final WriteObject<T> writer) {
+	/**
+	 * Convenience method for serializing list through instance serializer (WriteObject).
+	 * List can be null and can contain null values.
+	 * Instance serializer will not be invoked for null values
+	 * It will use list .get(index) method to access the object.
+	 * When using .get(index) is not appropriate,
+	 * it's better to call the serialize(Collection&lt;JsonObject&gt;, WriteObject) method instead.
+	 *
+	 * @param list list to serialize
+	 * @param encoder instance serializer
+	 * @param <T> type of object
+	 */
+	public <T> void serialize(final List<T> list, final WriteObject<T> encoder) {
 		if (list == null) {
 			writeNull();
 			return;
@@ -470,7 +662,7 @@ public final class JsonWriter extends Writer {
 		if (list.size() != 0) {
 			T item = list.get(0);
 			if (item != null) {
-				writer.write(this, item);
+				encoder.write(this, item);
 			} else {
 				writeNull();
 			}
@@ -478,7 +670,7 @@ public final class JsonWriter extends Writer {
 				writeByte(COMMA);
 				item = list.get(i);
 				if (item != null) {
-					writer.write(this, item);
+					encoder.write(this, item);
 				} else {
 					writeNull();
 				}
@@ -487,7 +679,16 @@ public final class JsonWriter extends Writer {
 		writeByte(ARRAY_END);
 	}
 
-	public <T> void serialize(final Collection<T> collection, final WriteObject<T> writer) {
+	/**
+	 * Convenience method for serializing collection through instance serializer (WriteObject).
+	 * Collection can be null and can contain null values.
+	 * Instance serializer will not be invoked for null values
+	 *
+	 * @param collection collection to serialize
+	 * @param encoder instance serializer
+	 * @param <T> type of object
+	 */
+	public <T> void serialize(final Collection<T> collection, final WriteObject<T> encoder) {
 		if (collection == null) {
 			writeNull();
 			return;
@@ -497,7 +698,7 @@ public final class JsonWriter extends Writer {
 			final Iterator<T> it = collection.iterator();
 			T item = it.next();
 			if (item != null) {
-				writer.write(this, item);
+				encoder.write(this, item);
 			} else {
 				writeNull();
 			}
@@ -505,7 +706,7 @@ public final class JsonWriter extends Writer {
 				writeByte(COMMA);
 				item = it.next();
 				if (item != null) {
-					writer.write(this, item);
+					encoder.write(this, item);
 				} else {
 					writeNull();
 				}
@@ -514,6 +715,14 @@ public final class JsonWriter extends Writer {
 		writeByte(ARRAY_END);
 	}
 
+	/**
+	 * Generic object serializer which is used for "unknown schema" objects.
+	 * It will throw SerializationException in case if it doesn't know how to serialize provided instance.
+	 * Will delegate the serialization to UnknownSerializer, which in most cases is the DslJson instance from which the writer was created.
+	 * This enables it to use DslJson configuration and serialize using custom serializers (when they are provided).
+	 *
+	 * @param value instance to serialize
+	 */
 	public void serializeObject(final Object value) {
 		if (value == null) {
 			writeNull();

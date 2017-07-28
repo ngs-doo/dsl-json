@@ -520,7 +520,7 @@ public class StreamTest {
 
 	@Test
 	public void getLastNameOnBufferEdgeWithHalfBuffer() throws IOException, InterruptedException {
-		String jsonString = "{'name':'123123123123123123123123123123123123123123123123123123123','split_in_buffer':4234234234234234}".replace("'", "\"");
+		String jsonString = "{\"name\":\"123123123123123123123123123123123123123123123123123123123\",\"split_in_buffer\":4234234234234234}";
 		ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
 		DslJson<Object> json = new DslJson<Object>();
 		JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
@@ -543,7 +543,7 @@ public class StreamTest {
 			char[] one = new char[i];
 			Arrays.fill(one, '1');
 			String nameValue = new String(one);
-			String jsonString = ("{'name':'" + nameValue + "','split_in_buffer':4234234234234234}").replace("'", "\"");
+			String jsonString = ("{\"name\":\"" + nameValue + "\",\"split_in_buffer\":4234234234234234}");
 			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
 			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
 			Assert.assertEquals('{', input.getNextToken());
@@ -566,7 +566,7 @@ public class StreamTest {
 			char[] space = new char[i];
 			Arrays.fill(space, ' ');
 			String spaceValue = new String(space);
-			String jsonString = ("{'name':'123456'" + spaceValue + ",'split_in_buffer':4234234234234234}").replace("'", "\"");
+			String jsonString = ("{\"name\":\"123456\"" + spaceValue + ",\"split_in_buffer\":4234234234234234}");
 			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
 			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
 			Assert.assertEquals('{', input.getNextToken());
@@ -589,7 +589,7 @@ public class StreamTest {
 			char[] space = new char[i];
 			Arrays.fill(space, ' ');
 			String spaceValue = new String(space);
-			String jsonString = ("{'name':'123456'" + spaceValue + ",'split_in_buffer_with_very_long_name_more_than_buffer_size':4234234234234234}").replace("'", "\"");
+			String jsonString = ("{\"name\":\"123456\"" + spaceValue + ",\"split_in_buffer_with_very_long_name_more_than_buffer_size\":4234234234234234}");
 			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
 			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
 			Assert.assertEquals('{', input.getNextToken());
