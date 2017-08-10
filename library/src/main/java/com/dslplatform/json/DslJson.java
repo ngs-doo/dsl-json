@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>
  * Usage example:
  * <pre>
- *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&lt;();
+ *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
  *     dsl.serialize(instance, OutputStream);
  *     POJO pojo = dsl.deserialize(POJO.class, InputStream, new byte[1024]);
  * </pre>
