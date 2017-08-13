@@ -15,6 +15,9 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class StreamTest {
+
+	private final DslJson<Object> dslJson = new DslJson<Object>();
+
 	@Test
 	public void testIteratingMapFromStream() throws IOException {
 		StringBuilder sb = new StringBuilder();
@@ -273,10 +276,10 @@ public class StreamTest {
 			buffer[i] = (byte) (i + 1);
 		}
 		ByteArrayInputStream is = new ByteArrayInputStream(buffer);
-		JsonStreamReader<Object> json = new JsonStreamReader<Object>(is, new byte[64], null);
+		JsonReader<Object> json = dslJson.newReader(is, new byte[64]);
 		Assert.assertEquals(1, json.getNextToken());
 		Assert.assertEquals(2, json.getNextToken());
-		InputStream reread1 = json.streamFromStart();
+		InputStream reread1 = new DslJson.RereadStream(json.buffer, is);
 		Assert.assertEquals(1, reread1.read());
 		Assert.assertEquals(2, reread1.read());
 		byte[] tmp = new byte[2];
@@ -487,7 +490,7 @@ public class StreamTest {
 		byte[] bytes = sb.toString().getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
 		DslJson<Object> json = new DslJson<Object>();
-		JsonStreamReader reader = json.newReader(is, new byte[1024]);
+		JsonReader reader = json.newReader(is, new byte[1024]);
 		reader.getNextToken(); // {
 		reader.getNextToken(); // "
 		reader.readKey(); // coordinates
@@ -508,13 +511,13 @@ public class StreamTest {
 		byte[] bytes = largeString.getBytes();
 		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
 		DslJson<Object> json = new DslJson<Object>();
-		JsonStreamReader<Object> input = json.newReader(is, new byte[1024]);
+		JsonReader<Object> input = json.newReader(is, new byte[1024]);
 		JsonReader.ReadObject<BigDecimal> converter = json.tryFindReader(BigDecimal.class);
 		for (int i = 0; i < 10; i++) {
 			BigDecimal value = json.deserialize(converter, input);
 			Assert.assertEquals(bd, value);
 			is.reset();
-			input.reset(is);
+			input.process(is);
 		}
 	}
 
@@ -523,7 +526,7 @@ public class StreamTest {
 		String jsonString = "{\"name\":\"123123123123123123123123123123123123123123123123123123123\",\"split_in_buffer\":4234234234234234}";
 		ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
 		DslJson<Object> json = new DslJson<Object>();
-		JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+		JsonReader<Object> input = json.newReader(is, new byte[64]);
 		Assert.assertEquals('{', input.getNextToken());
 		Assert.assertEquals('"', input.getNextToken());
 		Assert.assertEquals(-1925595674, input.fillName());
@@ -545,7 +548,7 @@ public class StreamTest {
 			String nameValue = new String(one);
 			String jsonString = ("{\"name\":\"" + nameValue + "\",\"split_in_buffer\":4234234234234234}");
 			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
-			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+			JsonReader<Object> input = json.newReader(is, new byte[64]);
 			Assert.assertEquals('{', input.getNextToken());
 			Assert.assertEquals('"', input.getNextToken());
 			Assert.assertEquals(-1925595674, input.fillName());
@@ -568,7 +571,7 @@ public class StreamTest {
 			String spaceValue = new String(space);
 			String jsonString = ("{\"name\":\"123456\"" + spaceValue + ",\"split_in_buffer\":4234234234234234}");
 			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
-			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+			JsonReader<Object> input = json.newReader(is, new byte[64]);
 			Assert.assertEquals('{', input.getNextToken());
 			Assert.assertEquals('"', input.getNextToken());
 			Assert.assertEquals(-1925595674, input.fillName());
@@ -591,7 +594,7 @@ public class StreamTest {
 			String spaceValue = new String(space);
 			String jsonString = ("{\"name\":\"123456\"" + spaceValue + ",\"split_in_buffer_with_very_long_name_more_than_buffer_size\":4234234234234234}");
 			ByteArrayInputStream is = new ByteArrayInputStream(jsonString.getBytes());
-			JsonStreamReader<Object> input = json.newReader(is, new byte[64]);
+			JsonReader<Object> input = json.newReader(is, new byte[64]);
 			Assert.assertEquals('{', input.getNextToken());
 			Assert.assertEquals('"', input.getNextToken());
 			Assert.assertEquals(-1925595674, input.fillName());

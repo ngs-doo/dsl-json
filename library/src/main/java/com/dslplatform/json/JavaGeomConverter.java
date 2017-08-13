@@ -195,6 +195,7 @@ public abstract class JavaGeomConverter {
 
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Point> deserializePointCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(PointReader);
 	}
@@ -203,6 +204,7 @@ public abstract class JavaGeomConverter {
 		reader.deserializeCollection(PointReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Point> deserializePointNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(PointReader);
 	}
@@ -333,6 +335,7 @@ public abstract class JavaGeomConverter {
 		return javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(content));
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<BufferedImage> deserializeImageCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(ImageReader);
 	}
@@ -341,6 +344,7 @@ public abstract class JavaGeomConverter {
 		reader.deserializeCollection(ImageReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<BufferedImage> deserializeImageNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(ImageReader);
 	}

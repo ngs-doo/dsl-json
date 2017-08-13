@@ -56,6 +56,7 @@ public abstract class StringConverter {
 		return reader.readString();
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<String> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(Reader);
 	}
@@ -64,6 +65,7 @@ public abstract class StringConverter {
 		reader.deserializeCollection(Reader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<String> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(Reader);
 	}

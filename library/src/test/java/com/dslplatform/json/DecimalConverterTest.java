@@ -29,6 +29,8 @@ public class DecimalConverterTest {
 					"-12.0E+1, -12.0E+12, -12.12e-0, -12.12e-1, -12.12e-12, -12.12e+0, -12.12e+1, -12.12e+12, -12.12E-0, -12.12E-1," +
 					"-12.12E-12, -12.12E+0, -12.12E+1, -12.12E+12 ";
 
+	private final DslJson<Object> dslJson = new DslJson<Object>();
+
 	@Test
 	public void testSerialization() throws IOException {
 		// setup
@@ -62,8 +64,8 @@ public class DecimalConverterTest {
 		final int count = values.length;
 
 		final byte[] buf = VALUES.getBytes(Charset.forName("ISO-8859-1"));
-		final JsonReader jr = new JsonReader(buf, null);
-		final JsonStreamReader jsr = new JsonStreamReader(new ByteArrayInputStream(buf), new byte[64], null);
+		final JsonReader jr = dslJson.newReader(buf);
+		final JsonReader jsr = dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]);
 
 		// first digit in values
 		Assert.assertEquals('0', jr.getNextToken());
@@ -103,11 +105,11 @@ public class DecimalConverterTest {
 			final String plainForm = check.toPlainString();
 			final byte[] body = plainForm.getBytes(Charset.forName("ISO-8859-1"));
 
-			final JsonReader jr = new JsonReader<Object>(body, null);
+			final JsonReader jr = dslJson.newReader(body);
 			jr.getNextToken();
 			final BigDecimal parsed1 = NumberConverter.deserializeDecimal(jr);
 
-			final JsonStreamReader jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(body), new byte[64], null);
+			final JsonReader jsr = dslJson.newReader(new ByteArrayInputStream(body), new byte[64]);
 			jsr.getNextToken();
 			final BigDecimal parsed2 = NumberConverter.deserializeDecimal(jsr);
 

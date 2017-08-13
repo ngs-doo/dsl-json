@@ -510,7 +510,7 @@ public final class JsonWriter {
 	 *
 	 * To reset the stream to null use reset() or reset(OutputStream) methods.
 	 */
-	public void flush() {
+	public final void flush() {
 		if (target != null && position != 0) {
 			try {
 				target.write(buffer, 0, position);

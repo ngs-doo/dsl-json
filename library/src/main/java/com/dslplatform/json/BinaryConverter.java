@@ -33,6 +33,7 @@ public abstract class BinaryConverter {
 		return reader.readBase64();
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<byte[]> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(Base64Reader);
 	}
@@ -41,6 +42,7 @@ public abstract class BinaryConverter {
 		reader.deserializeCollection(Base64Reader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<byte[]> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(Base64Reader);
 	}

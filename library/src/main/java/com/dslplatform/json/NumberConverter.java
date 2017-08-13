@@ -9,7 +9,6 @@ import java.util.Collection;
 public abstract class NumberConverter {
 
 	private final static int[] DIGITS = new int[1000];
-	private final static double[] POW_10 = new double[18];
 	static final JsonReader.ReadObject<Double> DoubleReader = new JsonReader.ReadObject<Double>() {
 		@Override
 		public Double read(JsonReader reader) throws IOException {
@@ -83,11 +82,6 @@ public abstract class NumberConverter {
 					+ (((i / 100) + '0') << 16)
 					+ ((((i / 10) % 10) + '0') << 8)
 					+ i % 10 + '0';
-		}
-		long tenPow = 1;
-		for (int i = 0; i < POW_10.length; i++) {
-			POW_10[i] = tenPow;
-			tenPow = tenPow * 10;
 		}
 	}
 
@@ -300,6 +294,7 @@ public abstract class NumberConverter {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Double> deserializeDoubleCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(DoubleReader);
 	}
@@ -308,6 +303,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(DoubleReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Double> deserializeDoubleNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(DoubleReader);
 	}
@@ -320,7 +316,7 @@ public abstract class NumberConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else {
-			serialize(value.floatValue(), sw);
+			serialize(value, sw);
 		}
 	}
 
@@ -447,6 +443,7 @@ public abstract class NumberConverter {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Float> deserializeFloatCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(FloatReader);
 	}
@@ -455,6 +452,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(FloatReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Float> deserializeFloatNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(FloatReader);
 	}
@@ -467,7 +465,7 @@ public abstract class NumberConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else {
-			serialize(value.intValue(), sw);
+			serialize(value, sw);
 		}
 	}
 
@@ -568,7 +566,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).intValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new IOException("Integer overflow detected at position: " + (reader.currentPosition + position));
+				throw new IOException("Integer overflow detected at position: " + (reader.positionInStream() - reader.getCurrentIndex() + position));
 			}
 		}
 		final int start = reader.scanNumber();
@@ -619,6 +617,7 @@ public abstract class NumberConverter {
 		return value;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Integer> deserializeIntCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(IntReader);
 	}
@@ -699,6 +698,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(IntReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Integer> deserializeIntNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(IntReader);
 	}
@@ -711,7 +711,7 @@ public abstract class NumberConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else {
-			serialize(value.longValue(), sw);
+			serialize(value, sw);
 		}
 	}
 
@@ -858,7 +858,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).longValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new IOException("Long overflow detected at position: " + (reader.currentPosition + position));
+				throw new IOException("Long overflow detected at position: " + (reader.positionInStream() - reader.getCurrentIndex() + position));
 			}
 		}
 		final int start = reader.scanNumber();
@@ -904,6 +904,7 @@ public abstract class NumberConverter {
 		throw new IOException("Error parsing long number at position: " + reader.positionInStream(end - start) + ". Found decimal value: " + v);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Long> deserializeLongCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(LongReader);
 	}
@@ -912,6 +913,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(LongReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Long> deserializeLongNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(LongReader);
 	}
@@ -1233,6 +1235,7 @@ public abstract class NumberConverter {
 		return BigDecimal.valueOf(value);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<BigDecimal> deserializeDecimalCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(DecimalReader);
 	}
@@ -1241,6 +1244,7 @@ public abstract class NumberConverter {
 		reader.deserializeCollection(DecimalReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<BigDecimal> deserializeDecimalNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(DecimalReader);
 	}

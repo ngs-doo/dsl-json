@@ -49,6 +49,7 @@ public abstract class NetConverter {
 		return URI.create(reader.readString());
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<URI> deserializeUriCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(UriReader);
 	}
@@ -57,6 +58,7 @@ public abstract class NetConverter {
 		reader.deserializeCollection(UriReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<URI> deserializeUriNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(UriReader);
 	}
@@ -83,6 +85,7 @@ public abstract class NetConverter {
 		return InetAddress.getByName(reader.readSimpleString());
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<InetAddress> deserializeIpCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(AddressReader);
 	}
@@ -91,6 +94,7 @@ public abstract class NetConverter {
 		reader.deserializeCollection(AddressReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<InetAddress> deserializeIpNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(AddressReader);
 	}

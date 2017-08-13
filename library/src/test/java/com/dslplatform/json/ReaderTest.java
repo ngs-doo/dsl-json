@@ -9,11 +9,13 @@ import java.util.Map;
 
 public class ReaderTest {
 
+	private final DslJson<Object> dslJson = new DslJson<Object>();
+
 	@Test
 	public void testLastName() throws IOException {
 		final byte[] buf = "\"number\":1234".getBytes("UTF-8");
-		testLastName(new JsonReader<Object>(buf, null));
-		testLastName(new JsonStreamReader<Object>(new ByteArrayInputStream(buf), new byte[64], null));
+		testLastName(dslJson.newReader(buf));
+		testLastName(dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]));
 	}
 
 	private void testLastName(JsonReader<Object> jr) throws IOException {
@@ -29,8 +31,8 @@ public class ReaderTest {
 	@Test
 	public void testCalcHashNameEndSameAsFillName() throws IOException {
 		final byte[] buf = "\"number\":1234".getBytes("UTF-8");
-		testCalcHashNameEndSameAsFillName(new JsonReader<Object>(buf, null));
-		testCalcHashNameEndSameAsFillName(new JsonStreamReader<Object>(new ByteArrayInputStream(buf), new byte[64], null));
+		testCalcHashNameEndSameAsFillName(dslJson.newReader(buf));
+		testCalcHashNameEndSameAsFillName(dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]));
 	}
 
 	private void testCalcHashNameEndSameAsFillName(JsonReader<Object> jr) throws IOException {

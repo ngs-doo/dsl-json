@@ -11,12 +11,14 @@ import java.util.*;
 
 public class NumberConverterTest {
 
+	private final DslJson<Object> dslJson = new DslJson<Object>();
+
 	@Test
 	public void rangeCheckInt() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		final int from = -10000000;
 		final int to = 10000000;
@@ -27,14 +29,13 @@ public class NumberConverterTest {
 			// serialization
 			NumberConverter.serialize(value, sw);
 
-			jr.reset(sw.size());
+			jr.process(null, sw.size());
 			jr.read();
 
 			final long valueParsed1 = NumberConverter.deserializeLong(jr);
 			Assert.assertEquals(value, valueParsed1);
 
-			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
-			jsr.reset(is);
+			jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
 			jsr.read();
 
 			final long valueParsed2 = NumberConverter.deserializeLong(jsr);
@@ -46,8 +47,8 @@ public class NumberConverterTest {
 	public void rangeCheckLong() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		final long from = -10000000000L;
 		final long to = 10000000000L;
@@ -58,14 +59,14 @@ public class NumberConverterTest {
 			// serialization
 			NumberConverter.serialize(value, sw);
 
-			jr.reset(sw.size());
+			jr.process(null, sw.size());
 			jr.read();
 
 			final long valueParsed1 = NumberConverter.deserializeLong(jr);
 			Assert.assertEquals(value, valueParsed1);
 
 			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
-			jsr.reset(is);
+			jsr.process(is);
 			jsr.read();
 
 			final long valueParsed2 = NumberConverter.deserializeLong(jsr);
@@ -77,8 +78,8 @@ public class NumberConverterTest {
 	public void rangeCheckDecimal() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		final int from = -100000000;
 		final int to = 100000000;
@@ -90,14 +91,14 @@ public class NumberConverterTest {
 			BigDecimal bd = BigDecimal.valueOf(value / 100);
 			NumberConverter.serialize(bd, sw);
 
-			jr.reset(sw.size());
+			jr.process(null, sw.size());
 			jr.read();
 
 			final BigDecimal valueParsed1 = NumberConverter.deserializeDecimal(jr);
 			Assert.assertEquals(bd, valueParsed1);
 
 			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
-			jsr.reset(is);
+			jsr.process(is);
 			jsr.read();
 
 			final BigDecimal valueParsed2 = NumberConverter.deserializeDecimal(jsr);
@@ -109,8 +110,8 @@ public class NumberConverterTest {
 	public void rangeCheckDouble() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		final int from = -10000000;
 		final int to = 10000000;
@@ -123,14 +124,14 @@ public class NumberConverterTest {
 			double d = value / dividers[i%dividers.length];
 			NumberConverter.serialize(d, sw);
 
-			jr.reset(sw.size());
+			jr.process(null, sw.size());
 			jr.read();
 
 			final double valueParsed1 = NumberConverter.deserializeDouble(jr);
 			Assert.assertEquals(d, valueParsed1, 0);
 
 			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
-			jsr.reset(is);
+			jsr.process(is);
 			jsr.read();
 
 			final double valueParsed2 = NumberConverter.deserializeDouble(jsr);
@@ -142,8 +143,8 @@ public class NumberConverterTest {
 	public void rangeCheckFloat() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), null);
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(new byte[0]), new byte[64], null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		final int from = -10000000;
 		final int to = 10000000;
@@ -156,14 +157,14 @@ public class NumberConverterTest {
 			float f = value / dividers[i%dividers.length];
 			NumberConverter.serialize(f, sw);
 
-			jr.reset(sw.size());
+			jr.process(null, sw.size());
 			jr.read();
 
 			final float valueParsed1 = NumberConverter.deserializeFloat(jr);
 			Assert.assertEquals(f, valueParsed1, 0);
 
 			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
-			jsr.reset(is);
+			jsr.process(is);
 			jsr.read();
 
 			final float valueParsed2 = NumberConverter.deserializeFloat(jsr);
@@ -248,12 +249,13 @@ public class NumberConverterTest {
 			// space to prevent end of stream gotcha
 			final byte[] body = (sciForm + " ").getBytes(Charset.forName("ISO-8859-1"));
 
-			final JsonReader<Object> jr = new JsonReader<Object>(body, null);
+			final JsonReader<Object> jr = dslJson.newReader(body);
 			jr.getNextToken();
 			final long parsed1 = NumberConverter.deserializeLong(jr);
-			final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(body), new byte[64], null);
-			jsr.getNextToken();
-			final long parsed2 = NumberConverter.deserializeLong(jsr);
+			jr.process(new byte[64], 64);
+			jr.process(new ByteArrayInputStream(body));
+			jr.getNextToken();
+			final long parsed2 = NumberConverter.deserializeLong(jr);
 
 			final long check = Long.valueOf(sciForm);
 			Assert.assertEquals(check, parsed1);
@@ -291,12 +293,12 @@ public class NumberConverterTest {
 		final Long minIntAsLong = Long.valueOf(Integer.MIN_VALUE);
 		final BigDecimal maxIntWithDecimalAsBigDecimal = BigDecimal.valueOf(Integer.MAX_VALUE).setScale(1);
 		final BigDecimal minIntWithDecimalAsBigDecimal = BigDecimal.valueOf(Integer.MIN_VALUE).setScale(1);
-		final Long positive18DigitLong = Long.valueOf(876543210987654321L);
-		final Long negative18DigitLong = Long.valueOf(-876543210987654321L);
+		final Long positive18DigitLong = 876543210987654321L;
+		final Long negative18DigitLong = -876543210987654321L;
 		final BigDecimal positive18DigitAndOneDecimal = BigDecimal.valueOf(876543210987654321L).setScale(1);
 		final BigDecimal negative18DigitAndOneDecimal  = BigDecimal.valueOf(-876543210987654321L).setScale(1);
-		final Long maxLong = Long.valueOf(Long.MAX_VALUE);
-		final Long minLong = Long.valueOf(Long.MIN_VALUE);
+		final Long maxLong = Long.MAX_VALUE;
+		final Long minLong = Long.MIN_VALUE;
 		final BigDecimal maxLongPlusOneAsBigDecimal = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
 		final BigDecimal minLongMinusOneAsBigDecimal = BigDecimal.valueOf(Long.MIN_VALUE).subtract(BigDecimal.ONE);
 
@@ -354,17 +356,18 @@ public class NumberConverterTest {
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		// init
-		jr.reset(sw.size());
+		jr.process(null, sw.size());
 		jr.read();
 		jr.read();
 
 		int[] numbers1 = NumberConverter.deserializeIntArray(jr);
 		Assert.assertArrayEquals(input, numbers1);
 
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
 		// init
 		jsr.read();
 		jsr.read();
@@ -384,17 +387,18 @@ public class NumberConverterTest {
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		// init
-		jr.reset(sw.size());
+		jr.process(null, sw.size());
 		jr.read();
 		jr.read();
 
 		long[] numbers1 = NumberConverter.deserializeLongArray(jr);
 		Assert.assertArrayEquals(input, numbers1);
 
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
 		// init
 		jsr.read();
 		jsr.read();
@@ -415,17 +419,18 @@ public class NumberConverterTest {
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		// init
-		jr.reset(sw.size());
+		jr.process(null, sw.size());
 		jr.read();
 		jr.read();
 
 		float[] numbers1 = NumberConverter.deserializeFloatArray(jr);
 		Assert.assertArrayEquals(input, numbers1, 0);
 
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
 		// init
 		jsr.read();
 		jsr.read();
@@ -446,17 +451,18 @@ public class NumberConverterTest {
 		}
 
 		NumberConverter.serialize(input, sw);
-		final JsonReader<Object> jr = new JsonReader<Object>(sw.getByteBuffer(), sw.size());
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		// init
-		jr.reset(sw.size());
+		jr.process(null, sw.size());
 		jr.read();
 		jr.read();
 
 		double[] numbers1 = NumberConverter.deserializeDoubleArray(jr);
 		Assert.assertArrayEquals(input, numbers1, 0.00000000001d);
 
-		final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()), new byte[64], null);
+		jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
 		// init
 		jsr.read();
 		jsr.read();
@@ -468,20 +474,20 @@ public class NumberConverterTest {
 	@Test
 	public void shortWhitespaceGuard() throws IOException {
 		String input = "1234  ";
-		JsonReader reader = new JsonReader(input.getBytes(), null);
-		reader.getNextToken();
-		Number number = NumberConverter.deserializeNumber(reader);
+		final JsonReader<Object> jr = dslJson.newReader(input.getBytes());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(input.getBytes()), new byte[64]);
+		jr.getNextToken();
+		Number number = NumberConverter.deserializeNumber(jr);
 		Assert.assertTrue(number instanceof Long);
-		reader = new JsonStreamReader(new ByteArrayInputStream(input.getBytes()), new byte[64], null);
-		reader.getNextToken();
-		number = NumberConverter.deserializeNumber(reader);
+		jsr.getNextToken();
+		number = NumberConverter.deserializeNumber(jsr);
 		Assert.assertTrue(number instanceof Long);
 	}
 
 	@Test
 	public void longWhitespaceGuard() throws IOException {
 		String input = "1234        \t\n\r               ";
-		JsonReader reader = new JsonReader(input.getBytes(), null);
+		final JsonReader<Object> reader = dslJson.newReader(input.getBytes());
 		reader.getNextToken();
 		Number number = NumberConverter.deserializeNumber(reader);
 		Assert.assertTrue(number instanceof Long);
@@ -490,7 +496,7 @@ public class NumberConverterTest {
 	@Test
 	public void overflowDetection() throws IOException {
 		String input = "1234567890123456        \t\n\r               ";
-		JsonReader reader = new JsonReader(input.getBytes(), null);
+		JsonReader<Object> reader = dslJson.newReader(input.getBytes());
 		reader.getNextToken();
 		try {
 			NumberConverter.deserializeInt(reader);
@@ -499,7 +505,7 @@ public class NumberConverterTest {
 			Assert.assertTrue(e.getMessage().contains("Integer overflow"));
 		}
 		input = "-1234567890123456        \t\n\r               ";
-		reader = new JsonReader(input.getBytes(), null);
+		reader = dslJson.newReader(input.getBytes());
 		reader.getNextToken();
 		try {
 			NumberConverter.deserializeInt(reader);

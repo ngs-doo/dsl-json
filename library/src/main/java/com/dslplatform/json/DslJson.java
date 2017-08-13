@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>
  * For best performance use serialization API with JsonWriter which is reused.
  * For best deserialization performance prefer byte[] API instead of InputStream API.
- * If InputStream API is used, reuse the buffer instance or reuse the whole JsonStreamReader by calling reset(InputStream)
+ * If InputStream API is used, reuse the buffer instance or reuse the whole JsonReader by calling process(InputStream)
  * <p>
  * During deserialization TContext can be used to pass data into deserialized classes.
  * This is useful when deserializing domain objects which require state or service provider.
@@ -78,6 +78,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
 	private final ThreadLocal<JsonWriter> localWriter;
+	private final ThreadLocal<JsonReader> localReader;
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
@@ -314,7 +315,14 @@ public class DslJson<TContext> implements UnknownSerializer {
 		this.localWriter = new ThreadLocal<JsonWriter>() {
 			@Override
 			protected JsonWriter initialValue() {
-				return new JsonWriter(2048, self);
+				return new JsonWriter(4096, self);
+			}
+		};
+		this.localReader = new ThreadLocal<JsonReader>() {
+			@Override
+			@SuppressWarnings("deprecation")
+			protected JsonReader initialValue() {
+				return new JsonReader<TContext>(new byte[4096], self.context, self.keyCache, self.valuesCache);
 			}
 		};
 		this.context = settings.context;
@@ -489,10 +497,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Create a reader bound to this DSL-JSON.
 	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 * This reader can be reused via process method.
 	 *
 	 * @param bytes input bytes
 	 * @return bound reader
 	 */
+	@SuppressWarnings("deprecation")
 	public JsonReader<TContext> newReader(byte[] bytes) {
 		return new JsonReader<TContext>(bytes, context, keyCache, valuesCache);
 	}
@@ -500,11 +510,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Create a reader bound to this DSL-JSON.
 	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 * This reader can be reused via process method.
 	 *
 	 * @param bytes  input bytes
 	 * @param length use input bytes up to specified length
 	 * @return bound reader
 	 */
+	@SuppressWarnings("deprecation")
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
 		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache);
 	}
@@ -514,12 +526,14 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * Create a reader bound to this DSL-JSON.
 	 * Bound reader can reuse key cache (which is used during Map deserialization)
 	 * Pass in initial string buffer.
+	 * This reader can be reused via process method.
 	 *
 	 * @param bytes  input bytes
 	 * @param length use input bytes up to specified length
 	 * @param tmp string parsing buffer
 	 * @return bound reader
 	 */
+	@SuppressWarnings("deprecation")
 	public JsonReader<TContext> newReader(byte[] bytes, int length, char[] tmp) {
 		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache);
 	}
@@ -527,15 +541,18 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Create a reader bound to this DSL-JSON.
 	 * Bound reader can reuse key cache (which is used during Map deserialization)
-	 * Stream readers can be reused (using reset method).
+	 * Created reader can be reused (using process method).
+	 * This is convenience method for creating a new reader and binding it to stream.
 	 *
 	 * @param stream input stream
 	 * @param buffer temporary buffer
 	 * @return bound reader
 	 * @throws java.io.IOException unable to read from stream
 	 */
-	public JsonStreamReader<TContext> newReader(InputStream stream, byte[] buffer) throws IOException {
-		return new JsonStreamReader<TContext>(stream, buffer, context, keyCache, valuesCache);
+	public JsonReader<TContext> newReader(InputStream stream, byte[] buffer) throws IOException {
+		final JsonReader<TContext> reader = newReader(buffer);
+		reader.process(stream);
+		return reader;
 	}
 
 	/**
@@ -580,7 +597,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		json.registerWriter(Element.class, XmlConverter.Writer);
 	}
 
-	protected static boolean isNull(final int size, final byte[] body) {
+	private static boolean isNull(final int size, final byte[] body) {
 		return size == 4
 				&& body[0] == 'n'
 				&& body[1] == 'u'
@@ -685,12 +702,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 				return writer;
 			}
 		}
+		if (manifest instanceof Class<?> == false) {
+			return null;
+		}
 		Class<?> found = writerMap.get(manifest);
 		if (found != null) {
 			return jsonWriters.get(found);
-		}
-		if (manifest instanceof Class<?> == false) {
-			return null;
 		}
 		Class<?> container = (Class<?>) manifest;
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
@@ -1046,7 +1063,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (isNull(size, body)) {
 			return null;
 		}
-		final JsonReader json = newReader(body, size);
+		//TODO: ideally we should release reference to provided byte buffer
+		final JsonReader json = localReader.get().process(body, size);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -1111,7 +1129,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (isNull(size, body)) {
 			return null;
 		}
-		final JsonReader json = newReader(body, size);
+		//TODO: ideally we should release reference to provided byte buffer
+		final JsonReader json = localReader.get().process(body, size);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -1270,7 +1289,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (size == 2 && body[0] == '[' && body[1] == ']') {
 			return new ArrayList<TResult>(0);
 		}
-		final JsonReader json = newReader(body, size);
+		//TODO: ideally we should release reference to provided byte buffer
+		final JsonReader json = localReader.get().process(body, size);
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
 				return null;
@@ -1306,9 +1326,14 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	/**
+	 * This is deprecated to avoid using it.
+	 * Use deserializeList method without the buffer argument instead.
+	 *
 	 * Convenient deserialize list API for working with streams.
 	 * Deserialize provided stream input into target object.
 	 * Use buffer for internal conversion from stream into byte[] for partial processing.
+	 * This method creates a new instance of JsonReader.
+	 * There is also deserializeList without the buffer which reuses thread local reader.
 	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
@@ -1340,7 +1365,46 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (buffer == null) {
 			throw new IllegalArgumentException("buffer can't be null");
 		}
-		final JsonStreamReader json = newReader(stream, buffer);
+		return deserializeList(manifest, newReader(stream, buffer), stream);
+	}
+
+	/**
+	 * Convenient deserialize list API for working with streams.
+	 * Deserialize provided stream input into target object.
+	 * <p>
+	 * Since JSON is often though of as a series of char,
+	 * most libraries will convert inputs into a sequence of chars and do processing on them.
+	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
+	 * <p>
+	 * When working on InputStream DslJson will process JSON in chunks of byte[] inputs.
+	 * <p>
+	 *
+	 * @param manifest  target type
+	 * @param stream    input JSON
+	 * @param <TResult> target element type
+	 * @return deserialized list
+	 * @throws IOException error during deserialization
+	 */
+	@SuppressWarnings("unchecked")
+	public <TResult> List<TResult> deserializeList(
+			final Class<TResult> manifest,
+			final InputStream stream) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		//
+		final JsonReader json = localReader.get().process(stream);
+		return deserializeList(manifest, json, stream);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <TResult> List<TResult> deserializeList(
+			final Class<TResult> manifest,
+			JsonReader<TContext> json,
+			InputStream stream) throws IOException {
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
 				return null;
@@ -1356,13 +1420,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 				return (List<TResult>) json.deserializeNullableCollection(reader);
 			}
 		}
-		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
+		final JsonReader.ReadObject simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
 			return json.deserializeNullableCollection(simpleReader);
 		}
 		if (fallback != null) {
 			final Object array = Array.newInstance(manifest, 0);
-			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), json.streamFromStart());
+			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), new RereadStream(json.buffer, stream));
 			if (result == null) {
 				return null;
 			}
@@ -1378,7 +1442,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Convenient deserialize API for working with streams.
 	 * Deserialize provided stream input into target object.
-	 * Use buffer for internal conversion from stream into byte[] for partial processing.
+	 * This method accepts a buffer and will create a new reader using provided buffer.
+	 * This buffer is used for internal conversion from stream into byte[] for partial processing.
+	 * There is also method without the buffer which reuses local thread reader for processing.
 	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
@@ -1410,7 +1476,47 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (buffer == null) {
 			throw new IllegalArgumentException("buffer can't be null");
 		}
-		final JsonStreamReader json = newReader(stream, buffer);
+		return deserialize(manifest, newReader(stream, buffer), stream);
+	}
+
+	/**
+	 * Convenient deserialize API for working with streams.
+	 * Deserialize provided stream input into target object.
+	 * This method reuses thread local reader for processing input stream.
+	 * <p>
+	 * Since JSON is often though of as a series of char,
+	 * most libraries will convert inputs into a sequence of chars and do processing on them.
+	 * DslJson will treat input as a sequence of bytes which allows for various optimizations.
+	 * <p>
+	 * When working on InputStream DslJson will process JSON in chunks of byte[] inputs.
+	 * <p>
+	 *
+	 * @param manifest  target type
+	 * @param stream    input JSON
+	 * @param <TResult> target type
+	 * @return deserialized instance
+	 * @throws IOException error during deserialization
+	 */
+	@SuppressWarnings("unchecked")
+	public <TResult> TResult deserialize(
+			final Class<TResult> manifest,
+			final InputStream stream) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		//TODO: ideally we should release reference to provided stream
+		final JsonReader json = localReader.get().process(stream);
+		return deserialize(manifest, json, stream);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <TResult> TResult deserialize(
+			final Class<TResult> manifest,
+			final JsonReader json,
+			final InputStream stream) throws IOException {
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -1450,7 +1556,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 			}
 		}
 		if (fallback != null) {
-			return (TResult) fallback.deserialize(context, manifest, json.streamFromStart());
+			return (TResult) fallback.deserialize(context, manifest, new RereadStream(json.buffer, stream));
 		}
 		throw createErrorMessage(manifest);
 	}
@@ -1459,6 +1565,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * Deserialize API for working with streams.
 	 * Deserialize provided stream input into target object.
 	 * Use buffer for internal conversion from stream into byte[] for partial processing.
+	 * This method creates a new instance of JsonReader for processing the stream.
+	 * There is also a method without the byte[] buffer which reuses thread local reader.
 	 * <p>
 	 * Since JSON is often though of as a series of char,
 	 * most libraries will convert inputs into a sequence of chars and do processing on them.
@@ -1491,7 +1599,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (buffer == null) {
 			throw new IllegalArgumentException("buffer can't be null");
 		}
-		final JsonStreamReader json = newReader(stream, buffer);
+		final JsonReader json = newReader(stream, buffer);
 		json.getNextToken();
 		if (json.wasNull()) {
 			return null;
@@ -1499,10 +1607,91 @@ public class DslJson<TContext> implements UnknownSerializer {
 		final Object result = deserializeWith(manifest, json);
 		if (result != null) return result;
 		if (fallback != null) {
-			return fallback.deserialize(context, manifest, json.streamFromStart());
+			return fallback.deserialize(context, manifest, new RereadStream(buffer, stream));
 		}
 		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
+	}
+
+	/**
+	 * Deserialize API for working with streams.
+	 * Deserialize provided stream input into target object.
+	 * This method reuses thread local reader for processing JSON input.
+	 * <p>
+	 * Since JSON is often though of as a series of char,
+	 * most libraries will convert inputs into a sequence of chars and do processing on them.
+	 * <p>
+	 * When working on InputStream DslJson will process JSON in chunks of byte[] inputs.
+	 * <p>
+	 *
+	 * @param manifest target type
+	 * @param stream   input JSON
+	 * @return deserialized instance
+	 * @throws IOException error during deserialization
+	 */
+	public Object deserialize(
+			final Type manifest,
+			final InputStream stream) throws IOException {
+		if (manifest instanceof Class<?>) {
+			return deserialize((Class<?>) manifest, stream);
+		}
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		final JsonReader json = localReader.get().process(stream);
+		json.getNextToken();
+		if (json.wasNull()) {
+			return null;
+		}
+		final Object result = deserializeWith(manifest, json);
+		if (result != null) return result;
+		if (fallback != null) {
+			return fallback.deserialize(context, manifest, new RereadStream(json.buffer, stream));
+		}
+		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
+	}
+
+	static class RereadStream extends InputStream {
+		private final byte[] buffer;
+		private final InputStream stream;
+		private boolean usingBuffer;
+		private int position;
+
+		RereadStream(byte[] buffer, InputStream stream) {
+			this.buffer = buffer;
+			this.stream = stream;
+			usingBuffer = true;
+		}
+
+		@Override
+		public int read() throws IOException {
+			if (usingBuffer) {
+				if (position < buffer.length) {
+					return buffer[position++];
+				} else usingBuffer = false;
+			}
+			return stream.read();
+		}
+
+		@Override
+		public int read(byte[] buf) throws IOException {
+			if (usingBuffer) {
+				return super.read(buf);
+			}
+			return stream.read(buf);
+		}
+
+		@Override
+		public int read(byte[] buf, int off, int len) throws IOException {
+			if (usingBuffer) {
+				return super.read(buf, off, len);
+			}
+			return stream.read(buf, off, len);
+		}
 	}
 
 	private static final Iterator EMPTY_ITERATOR = new Iterator() {
@@ -1525,6 +1714,44 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * Streaming API for collection deserialization.
 	 * DslJson will create iterator based on provided manifest info.
 	 * It will attempt to deserialize from stream on each next() invocation.
+	 * This method requires buffer instance for partial stream processing.
+	 * It will create a new instance of JsonReader.
+	 * There is also a method without the buffer which will reuse thread local reader.
+	 * <p>
+	 * Useful for processing very large streams if only one instance from collection is required at once.
+	 * <p>
+	 * Stream will be processed in chunks of specified buffer byte[].
+	 * It will block on reading until buffer is full or end of stream is detected.
+	 *
+	 * @param manifest  type info
+	 * @param stream    JSON data stream
+	 * @param <TResult> type info
+	 * @return Iterator to instances deserialized from input JSON
+	 * @throws IOException if reader is not found or there is an error processing input stream
+	 */
+	@SuppressWarnings("unchecked")
+	public <TResult> Iterator<TResult> iterateOver(
+			final Class<TResult> manifest,
+			final InputStream stream) throws IOException {
+		if (manifest == null) {
+			throw new IllegalArgumentException("manifest can't be null");
+		}
+		if (stream == null) {
+			throw new IllegalArgumentException("stream can't be null");
+		}
+		final JsonReader json = localReader.get();
+		json.process(stream);
+		return iterateOver(manifest, json, stream);
+	}
+
+
+	/**
+	 * Streaming API for collection deserialization.
+	 * DslJson will create iterator based on provided manifest info.
+	 * It will attempt to deserialize from stream on each next() invocation.
+	 * This method requires buffer instance for partial stream processing.
+	 * It will create a new instance of JsonReader.
+	 * There is also a method without the buffer which will reuse thread local reader.
 	 * <p>
 	 * Useful for processing very large streams if only one instance from collection is required at once.
 	 * <p>
@@ -1552,7 +1779,14 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (buffer == null) {
 			throw new IllegalArgumentException("buffer can't be null");
 		}
-		final JsonStreamReader json = newReader(stream, buffer);
+		return iterateOver(manifest, newReader(stream, buffer), stream);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <TResult> Iterator<TResult> iterateOver(
+			final Class<TResult> manifest,
+			final JsonReader json,
+			final InputStream stream) throws IOException {
 		if (json.getNextToken() != '[') {
 			if (json.wasNull()) {
 				return null;
@@ -1574,7 +1808,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 		if (fallback != null) {
 			final Object array = Array.newInstance(manifest, 0);
-			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), json.streamFromStart());
+			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), new RereadStream(json.buffer, stream));
 			if (result == null) {
 				return null;
 			}

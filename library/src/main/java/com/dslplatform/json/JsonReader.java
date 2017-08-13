@@ -1,19 +1,24 @@
 package com.dslplatform.json;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 
 /**
- * Object for processing JSON from byte[].
+ * Object for processing JSON from byte[] and InputStream.
  * DSL-JSON works on byte level (instead of char level).
  * Deserialized instances can obtain TContext information provided with this reader.
+ * <p>
+ * JsonReader can be reused by calling process methods.
  *
  * @param <TContext> context passed to deserialized object instances
  */
-public class JsonReader<TContext> {
+public final class JsonReader<TContext> {
 
 	private static final boolean[] WHITESPACE = new boolean[256];
 
@@ -30,31 +35,100 @@ public class JsonReader<TContext> {
 		WHITESPACE[-29 + 128] = true;
 	}
 
-	protected int tokenStart;
-	protected int nameEnd;
-	protected int currentIndex = 0;
-	protected long currentPosition = 0;
+	private int tokenStart;
+	private int nameEnd;
+	private int currentIndex = 0;
+	private long currentPosition = 0;
 	private byte last = ' ';
 
 	private int length;
 	private final char[] tmp;
 
 	public final TContext context;
-	protected final byte[] buffer;
-
+	protected byte[] buffer;
 	protected char[] chars;
+
+	private InputStream stream;
+	private int readLimit;
+	//always leave some room for reading special stuff, so that buffer contains enough padding for such optimizations
+	private int bufferLenWithExtraSpace;
 
 	private final StringCache keyCache;
 	private final StringCache valuesCache;
 
-	protected JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context, final StringCache keyCache, final StringCache valuesCache) {
+	private JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context, final StringCache keyCache, final StringCache valuesCache) {
 		this.tmp = tmp;
 		this.buffer = buffer;
 		this.length = length;
+		this.bufferLenWithExtraSpace = buffer.length - 38; //currently maximum padding is for uuid
 		this.context = context;
 		this.chars = tmp;
 		this.keyCache = keyCache;
 		this.valuesCache = valuesCache;
+	}
+
+	/**
+	 * Will be removed. Exists only for backward compatibility
+	 * @param stream process stream
+	 * @throws IOException error reading from stream
+	 */
+	@Deprecated
+	public final void reset(final InputStream stream) throws IOException {
+		process(stream);
+	}
+
+	/**
+	 * Will be removed. Exists only for backward compatibility
+	 * @param size size of byte[] input to use
+	 */
+	@Deprecated
+	final void reset(final int size) {
+		process(null, size);
+	}
+
+	/**
+	 * Bind input stream for processing.
+	 * Stream will be processed in byte[] chunks.
+	 * If stream is null, reference to stream will be released.
+	 *
+	 * @param stream set input stream
+	 * @return itself
+	 * @throws IOException unable to read from stream
+	 */
+	public final JsonReader<TContext> process(final InputStream stream) throws IOException {
+		this.currentPosition = 0;
+		this.currentIndex = 0;
+		this.stream = stream;
+		if (stream != null) {
+			this.readLimit = this.length < bufferLenWithExtraSpace ? this.length : bufferLenWithExtraSpace;
+			final int available = readFully(buffer, stream, 0);
+			readLimit = available < bufferLenWithExtraSpace ? available : bufferLenWithExtraSpace;
+			this.length = available;
+		}
+		return this;
+	}
+
+	/**
+	 * Bind byte[] buffer for processing.
+	 * If this method is used in combination with process(InputStream) this buffer will be used for processing chunks of stream.
+	 * If null is sent for byte[] buffer, new length for valid input will be set for existing buffer.
+	 *
+	 * @param newBuffer new buffer to use for processing
+	 * @param newLength length of buffer which can be used
+	 * @return itself
+	 */
+	public final JsonReader<TContext> process(final byte[] newBuffer, final int newLength) {
+		if (newBuffer != null) {
+			this.buffer = newBuffer;
+			this.bufferLenWithExtraSpace = buffer.length - 38; //currently maximum padding is for uuid
+		}
+		if (newLength > buffer.length) {
+			throw new IllegalArgumentException("length can't be longer than buffer.length");
+		}
+		currentIndex = 0;
+		this.length = newLength;
+		this.stream = null;
+		return this;
 	}
 
 	/**
@@ -66,14 +140,17 @@ public class JsonReader<TContext> {
 	 * @param buffer input JSON
 	 * @param context context
 	 */
+	@Deprecated
 	public JsonReader(final byte[] buffer, final TContext context) {
 		this(new char[64], buffer, buffer.length, context, null, null);
 	}
 
+	@Deprecated
 	public JsonReader(final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) {
 		this(new char[64], buffer, buffer.length, context, keyCache, valuesCache);
 	}
 
+	@Deprecated
 	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
 		this(tmp, buffer, buffer.length, context, null, null);
 		if (tmp == null) {
@@ -81,14 +158,17 @@ public class JsonReader<TContext> {
 		}
 	}
 
+	@Deprecated
 	public JsonReader(final byte[] buffer, final int length, final TContext context) {
 		this(buffer, length, context, new char[64]);
 	}
 
+	@Deprecated
 	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp) {
 		this(buffer, length, context, tmp, null, null);
 	}
 
+	@Deprecated
 	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final StringCache keyCache, final StringCache valuesCache) {
 		this(tmp, buffer, length, context, keyCache, valuesCache);
 		if (tmp == null) {
@@ -110,16 +190,21 @@ public class JsonReader<TContext> {
 		return length;
 	}
 
-	void reset(int newLength) {
-		currentIndex = 0;
-		this.length = newLength;
-	}
-
 	private final static Charset UTF_8 = Charset.forName("UTF-8");
 
 	@Override
 	public String toString() {
 		return new String(buffer, 0, length, UTF_8);
+	}
+
+	private static int readFully(final byte[] buffer, final InputStream stream, final int offset) throws IOException {
+		int read;
+		int position = offset;
+		while (position < buffer.length
+				&& (read = stream.read(buffer, position, buffer.length - position)) != -1) {
+			position += read;
+		}
+		return position;
 	}
 
 	/**
@@ -129,15 +214,45 @@ public class JsonReader<TContext> {
 	 * @return next byte
 	 * @throws IOException when end of JSON input
 	 */
-	public byte read() throws IOException {
+	public final byte read() throws IOException {
+		if (stream != null && currentIndex > readLimit) {
+			final int len = length - currentIndex;
+			System.arraycopy(buffer, currentIndex, buffer, 0, len);
+			final int available = readFully(buffer, stream, len);
+			currentPosition += currentIndex;
+			if (available == len) {
+				readLimit = length - currentIndex;
+				length = readLimit;
+				currentIndex = 0;
+			} else {
+				readLimit = available < bufferLenWithExtraSpace ? available : bufferLenWithExtraSpace;
+				this.length = available;
+				currentIndex = 0;
+			}
+		}
 		if (currentIndex >= length) {
 			throw new IOException("Unexpected end of JSON input");
 		}
 		return last = buffer[currentIndex++];
 	}
 
-	boolean isEndOfStream() throws IOException {
-		return length == currentIndex;
+	final boolean isEndOfStream() throws IOException {
+		if (stream == null) {
+			return length == currentIndex;
+		}
+		if (length != currentIndex) {
+			return false;
+		}
+		final int len = buffer.length - currentIndex;
+		System.arraycopy(buffer, currentIndex, buffer, 0, len);
+		int position = readFully(buffer, stream, len);
+		if (position == len) {
+			return true;
+		}
+		currentPosition += currentIndex;
+		length = position;
+		currentIndex = 0;
+		return position == 0;
 	}
 
 	/**
@@ -312,31 +427,25 @@ public class JsonReader<TContext> {
 		byte bb;
 		int ci = currentIndex;
 		char[] _tmp = chars;
-		try {
-			for (int i = 0; i < _tmp.length; i++) {
-				bb = buffer[ci++];
-				if (bb == '"') {
-					currentIndex = ci;
-					return i;
-				}
-				// If we encounter a backslash, which is a beginning of an escape sequence
-				// or a high bit was set - indicating an UTF-8 encoded multibyte character,
-				// there is no chance that we can decode the string without instantiating
-				// a temporary buffer, so quit this loop
-				if ((bb ^ '\\') < 1) break;
-				_tmp[i] = (char) bb;
+		final int remaining = length - currentIndex;
+		int _tmpLen = _tmp.length < remaining ? _tmp.length : remaining;
+		int i = 0;
+		while (i < _tmpLen) {
+			bb = buffer[ci++];
+			if (bb == '"') {
+				currentIndex = ci;
+				return i;
 			}
-			if (ci >= length) {
-				throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
-			}
-		} catch (ArrayIndexOutOfBoundsException ignore) {
-			if (length != buffer.length) {
-				throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
-			}
-			ci--;
+			// If we encounter a backslash, which is a beginning of an escape sequence
+			// or a high bit was set - indicating an UTF-8 encoded multibyte character,
+			// there is no chance that we can decode the string without instantiating
+			// a temporary buffer, so quit this loop
+			if ((bb ^ '\\') < 1) break;
+			_tmp[i++] = (char) bb;
+		}
+		if (i == _tmp.length) {
 			_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
 		}
-		int _tmpLen = _tmp.length;
 		currentIndex = ci;
 		int soFar = --currentIndex - startIndex;
 
@@ -532,24 +641,79 @@ public class JsonReader<TContext> {
 		return hash;
 	}
 
-	public int calcHash() throws IOException {
+	public final int calcHash() throws IOException {
 		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
 		}
 		tokenStart = currentIndex;
 		int ci = currentIndex;
 		long hash = 0x811c9dc5;
-		while (ci < buffer.length) {
-			final byte b = buffer[ci++];
-			if (b == '"') break;
-			hash ^= b;
-			hash *= 0x1000193;
+		if (stream != null) {
+			while (ci < readLimit) {
+				final byte b = buffer[ci];
+				if (b == '"') break;
+				ci++;
+				hash ^= b;
+				hash *= 0x1000193;
+			}
+			if (ci >= readLimit) {
+				return calcHashAndCopyName(hash, ci);
+			}
+			nameEnd = currentIndex = ci + 1;
+		} else {
+			while (ci < buffer.length) {
+				final byte b = buffer[ci++];
+				if (b == '"') break;
+				hash ^= b;
+				hash *= 0x1000193;
+			}
+			nameEnd = currentIndex = ci;
 		}
-		nameEnd = currentIndex = ci;
 		return (int) hash;
 	}
 
-	public boolean wasLastName(final String name) {
+	private int lastNameLen;
+
+	private int calcHashAndCopyName(long hash, int ci) throws IOException {
+		int soFar = ci - tokenStart;
+		long startPosition = currentPosition - soFar;
+		while (chars.length < soFar) {
+			chars = Arrays.copyOf(chars, chars.length * 2);
+		}
+		int i = 0;
+		for (; i < soFar; i++) {
+			chars[i] = (char) buffer[i + tokenStart];
+		}
+		currentIndex = ci;
+		do {
+			final byte b = read();
+			if (b == '"') {
+				nameEnd = -1;
+				lastNameLen = i;
+				return (int) hash;
+			}
+			if (i == chars.length) {
+				chars = Arrays.copyOf(chars, chars.length * 2);
+			}
+			chars[i++] = (char) b;
+			hash ^= b;
+			hash *= 0x1000193;
+		} while (!isEndOfStream());
+		throw new IOException("JSON string was not closed with a double quote at: " + startPosition);
+	}
+
+	public final boolean wasLastName(final String name) {
+		if (stream != null && nameEnd == -1) {
+			if (name.length() != lastNameLen) {
+				return false;
+			}
+			for (int i = 0; i < name.length(); i++) {
+				if (name.charAt(i) != chars[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
 		if (name.length() != nameEnd - tokenStart - 1) {
 			return false;
 		}
@@ -561,7 +725,10 @@ public class JsonReader<TContext> {
 		return true;
 	}
 
-	public String getLastName() throws IOException {
+	public final String getLastName() throws IOException {
+		if (stream != null && nameEnd == -1) {
+			return new String(chars, 0, lastNameLen);
+		}
 		return new String(buffer, tokenStart, nameEnd - tokenStart - 1, "UTF-8");
 	}
 
@@ -666,7 +833,11 @@ public class JsonReader<TContext> {
 		return new String(buffer, start, currentIndex - start - 1, "UTF-8");
 	}
 
-	public byte[] readBase64() throws IOException {
+	public final byte[] readBase64() throws IOException {
+		if (stream != null && Base64.findEnd(buffer, currentIndex) == buffer.length) {
+			final int len = parseString();
+			return DatatypeConverter.parseBase64Binary(new String(chars, 0, len));
+		}
 		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + " at base64 start. Found " + (char) last);
 		}
@@ -686,7 +857,7 @@ public class JsonReader<TContext> {
 	 * @return parsed key value
 	 * @throws IOException unable to parse string input
 	 */
-	public String readKey() throws IOException {
+	public final String readKey() throws IOException {
 		final int len = parseString();
 		final String key = keyCache != null ? keyCache.get(chars, len) : new String(chars, 0, len);
 		if (getNextToken() != ':') {
@@ -862,5 +1033,118 @@ public class JsonReader<TContext> {
 			} else throw new IOException("Expecting '{' at position " + positionInStream() + ". Found " + (char) last);
 		}
 		checkArrayEnd();
+	}
+
+	public final <T> Iterator<T> iterateOver(final JsonReader.ReadObject<T> reader) throws IOException {
+		return new WithReader<T>(reader, this);
+	}
+
+	public final <T extends JsonObject> Iterator<T> iterateOver(final JsonReader.ReadJsonObject<T> reader) throws IOException {
+		return new WithObjectReader<T>(reader, this);
+	}
+
+	private static class WithReader<T> implements Iterator<T> {
+		private final JsonReader.ReadObject<T> reader;
+		private final JsonReader json;
+
+		private boolean hasNext;
+
+		WithReader(JsonReader.ReadObject<T> reader, JsonReader json) {
+			this.reader = reader;
+			this.json = json;
+			hasNext = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return hasNext;
+		}
+
+		@Override
+		public void remove() {
+		}
+
+		@Override
+		public T next() {
+			try {
+				byte nextToken = json.last();
+				final T instance;
+				if (nextToken == 'n') {
+					if (json.wasNull()) {
+						instance = null;
+					} else {
+						throw json.expecting("null");
+					}
+				} else {
+					instance = reader.read(json);
+				}
+				hasNext = json.getNextToken() == ',';
+				if (hasNext) {
+					json.getNextToken();
+				} else {
+					if (json.last() != ']') {
+						throw json.expecting("]");
+					}
+					//TODO: ideally we should release stream bound to reader
+				}
+				return instance;
+			} catch (IOException e) {
+				throw new SerializationException(e);
+			}
+		}
+	}
+
+	private static class WithObjectReader<T extends JsonObject> implements Iterator<T> {
+		private final JsonReader.ReadJsonObject<T> reader;
+		private final JsonReader json;
+
+		private boolean hasNext;
+
+		WithObjectReader(JsonReader.ReadJsonObject<T> reader, JsonReader json) {
+			this.reader = reader;
+			this.json = json;
+			hasNext = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return hasNext;
+		}
+
+		@Override
+		public void remove() {
+		}
+
+		@Override
+		public T next() {
+			try {
+				byte nextToken = json.last();
+				final T instance;
+				if (nextToken == 'n') {
+					if (json.wasNull()) {
+						instance = null;
+					} else {
+						throw json.expecting("null");
+					}
+				} else if (nextToken == '{') {
+					json.getNextToken();
+					instance = reader.deserialize(json);
+				} else {
+					throw json.expecting("{");
+				}
+				hasNext = json.getNextToken() == ',';
+				if (hasNext) {
+					json.getNextToken();
+				} else {
+					if (json.last() != ']') {
+						throw json.expecting("]");
+					}
+					//TODO: ideally we should release stream bound to reader
+				}
+				return instance;
+			} catch (IOException e) {
+				throw new SerializationException(e);
+			}
+		}
 	}
 }

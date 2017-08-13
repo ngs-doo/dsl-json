@@ -80,6 +80,7 @@ public abstract class BoolConverter {
 		return Arrays.copyOf(buffer, i);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Boolean> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(BooleanReader);
 	}
@@ -88,6 +89,7 @@ public abstract class BoolConverter {
 		reader.deserializeCollection(BooleanReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Boolean> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(BooleanReader);
 	}

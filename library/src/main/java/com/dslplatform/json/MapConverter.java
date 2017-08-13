@@ -72,6 +72,7 @@ public abstract class MapConverter {
 		return res;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, String>> deserializeCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeCollection(TypedMapReader);
 	}
@@ -80,6 +81,7 @@ public abstract class MapConverter {
 		reader.deserializeCollection(TypedMapReader, res);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, String>> deserializeNullableCollection(final JsonReader reader) throws IOException {
 		return reader.deserializeNullableCollection(TypedMapReader);
 	}

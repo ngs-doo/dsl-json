@@ -7,6 +7,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 public class StringConverterTest {
+
+	private final DslJson<Object> dslJson = new DslJson<Object>();
+
 	@Test
 	public void testCharacterParsing() throws IOException {
 		// setup
@@ -55,8 +58,8 @@ public class StringConverterTest {
 
 			// deserialization
 			final byte[] buf = text.getBytes("UTF-8");
-			final JsonReader<Object> jr = new JsonReader<Object>(buf, null);
-			final JsonStreamReader<Object> jsr = new JsonStreamReader<Object>(new ByteArrayInputStream(buf), new byte[64], null);
+			final JsonReader<Object> jr = dslJson.newReader(buf);
+			final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]);
 			Assert.assertEquals(jr.read(), '"');
 			Assert.assertEquals(jsr.read(), '"');
 			final String read1 = jr.readString();
