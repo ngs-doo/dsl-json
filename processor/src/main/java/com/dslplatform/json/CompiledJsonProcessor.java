@@ -158,7 +158,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private enum AnnotationUsage {
 		EXPLICIT,
 		IMPLICIT,
-		NON_JAVA;
+		NON_JAVA
 	}
 
 	private static class CompileOptions {

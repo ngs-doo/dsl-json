@@ -1,13 +1,12 @@
 package com.dslplatform.json;
 
+import javax.management.ReflectionException;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * Object for processing JSON from byte[] and InputStream.
@@ -55,8 +54,18 @@ public final class JsonReader<TContext> {
 
 	private final StringCache keyCache;
 	private final StringCache valuesCache;
+	private final HashMap<Type, ReadObject<?>> readers;
+	private final HashMap<Type, BindObject<?>> binders;
 
-	private JsonReader(final char[] tmp, final byte[] buffer, final int length, final TContext context, final StringCache keyCache, final StringCache valuesCache) {
+	private JsonReader(
+			final char[] tmp,
+			final byte[] buffer,
+			final int length,
+			final TContext context,
+			final StringCache keyCache,
+			final StringCache valuesCache,
+			final HashMap<Type, ReadObject<?>> readers,
+			final HashMap<Type, BindObject<?>> binders) {
 		this.tmp = tmp;
 		this.buffer = buffer;
 		this.length = length;
@@ -65,7 +74,80 @@ public final class JsonReader<TContext> {
 		this.chars = tmp;
 		this.keyCache = keyCache;
 		this.valuesCache = valuesCache;
+		this.readers = readers;
+		this.binders = binders;
 	}
+
+	/**
+	 * Prefer creating reader through DslJson#newReader since it will pass several arguments (such as key/string value cache)
+	 * First byte will not be read.
+	 * It will allocate new char[64] for string buffer.
+	 * Key and string vales cache will be null.
+	 *
+	 * @param buffer input JSON
+	 * @param context context
+	 */
+	@Deprecated
+	public JsonReader(final byte[] buffer, final TContext context) {
+		this(new char[64], buffer, buffer.length, context, null, null, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+	}
+
+	@Deprecated
+	public JsonReader(final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) {
+		this(new char[64], buffer, buffer.length, context, keyCache, valuesCache, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+	}
+
+	@Deprecated
+	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
+		this(tmp, buffer, buffer.length, context, null, null, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+		if (tmp == null) {
+			throw new IllegalArgumentException("tmp buffer provided as null.");
+		}
+	}
+
+	@Deprecated
+	public JsonReader(final byte[] buffer, final int length, final TContext context) {
+		this(buffer, length, context, new char[64]);
+	}
+
+	@Deprecated
+	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp) {
+		this(buffer, length, context, tmp, null, null);
+	}
+
+	@Deprecated
+	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final StringCache keyCache, final StringCache valuesCache) {
+		this(tmp, buffer, length, context, keyCache, valuesCache, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+		if (tmp == null) {
+			throw new IllegalArgumentException("tmp buffer provided as null.");
+		}
+		if (length > buffer.length) {
+			throw new IllegalArgumentException("length can't be longer than buffer.length");
+		} else if (length < buffer.length) {
+			buffer[length] = '\0';
+		}
+	}
+
+	JsonReader(
+			final byte[] buffer,
+			final int length,
+			final TContext context,
+			final char[] tmp,
+			final StringCache keyCache,
+			final StringCache valuesCache,
+			final HashMap<Type, ReadObject<?>> readers,
+			final HashMap<Type, BindObject<?>> binders) {
+		this(tmp, buffer, length, context, keyCache, valuesCache, readers, binders);
+		if (tmp == null) {
+			throw new IllegalArgumentException("tmp buffer provided as null.");
+		}
+		if (length > buffer.length) {
+			throw new IllegalArgumentException("length can't be longer than buffer.length");
+		} else if (length < buffer.length) {
+			buffer[length] = '\0';
+		}
+	}
+
 
 	/**
 	 * Will be removed. Exists only for backward compatibility
@@ -129,56 +211,6 @@ public final class JsonReader<TContext> {
 		this.length = newLength;
 		this.stream = null;
 		return this;
-	}
-
-	/**
-	 * Prefer creating reader through DslJson#newReader since it will pass several arguments (such as key/string value cache)
-	 * First byte will not be read.
-	 * It will allocate new char[64] for string buffer.
-	 * Key and string vales cache will be null.
-	 *
-	 * @param buffer input JSON
-	 * @param context context
-	 */
-	@Deprecated
-	public JsonReader(final byte[] buffer, final TContext context) {
-		this(new char[64], buffer, buffer.length, context, null, null);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) {
-		this(new char[64], buffer, buffer.length, context, keyCache, valuesCache);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
-		this(tmp, buffer, buffer.length, context, null, null);
-		if (tmp == null) {
-			throw new IllegalArgumentException("tmp buffer provided as null.");
-		}
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final int length, final TContext context) {
-		this(buffer, length, context, new char[64]);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp) {
-		this(buffer, length, context, tmp, null, null);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final StringCache keyCache, final StringCache valuesCache) {
-		this(tmp, buffer, length, context, keyCache, valuesCache);
-		if (tmp == null) {
-			throw new IllegalArgumentException("tmp buffer provided as null.");
-		}
-		if (length > buffer.length) {
-			throw new IllegalArgumentException("length can't be longer than buffer.length");
-		} else if (length < buffer.length) {
-			buffer[length] = '\0';
-		}
 	}
 
 	/**
@@ -877,6 +909,16 @@ public final class JsonReader<TContext> {
 		T read(JsonReader reader) throws IOException;
 	}
 
+	/**
+	 * Existing instances can be provided as target for deserialization.
+	 * Annotation processor creates custom deserializers at compile time and registers them into DslJson.
+	 *
+	 * @param <T> type
+	 */
+	public interface BindObject<T> {
+		T bind(JsonReader reader, T instance) throws IOException;
+	}
+
 	public interface ReadJsonObject<T extends JsonObject> {
 		T deserialize(JsonReader reader) throws IOException;
 	}
@@ -945,12 +987,145 @@ public final class JsonReader<TContext> {
 		return false;
 	}
 
-	public final void checkArrayEnd() throws IOException {
-		if (last != ']') {
-			if (currentIndex >= length)
-				throw new IOException("Unexpected end of JSON in collection at: " + positionInStream());
+	/**
+	 * Will advance to next token and check if it's comma
+	 *
+	 * @throws IOException it's not comma
+	 */
+	public final void comma() throws IOException {
+		if (getNextToken() != ',') {
+			if (currentIndex >= length) throw new IOException("Unexpected end in JSON at: " + positionInStream());
+			else throw new IOException("Expecting ',' at position " + positionInStream() + ". Found " + (char) last);
+		}
+	}
+
+	/**
+	 * Will advance to next token and check if it's semicolon
+	 *
+	 * @throws IOException it's not semicolon
+	 */
+	public final void semicolon() throws IOException {
+		if (getNextToken() != ':') {
+			if (currentIndex >= length) throw new IOException("Unexpected end in JSON at: " + positionInStream());
+			else throw new IOException("Expecting ':' at position " + positionInStream() + ". Found " + (char) last);
+		}
+	}
+
+	/**
+	 * Will advance to next token and check if it's array start
+	 *
+	 * @throws IOException it's not array start
+	 */
+	public final void startArray() throws IOException {
+		if (getNextToken() != '[') {
+			if (currentIndex >= length) throw new IOException("Unexpected start of collection in JSON at: " + positionInStream());
+			else throw new IOException("Expecting '[' at position " + positionInStream() + ". Found " + (char) last);
+		}
+	}
+
+	/**
+	 * Will advance to next token and check if it's array end
+	 *
+	 * @throws IOException it's not array end
+	 */
+	public final void endArray() throws IOException {
+		if (getNextToken() != ']') {
+			if (currentIndex >= length) throw new IOException("Unexpected end of collection in JSON at: " + positionInStream());
 			else throw new IOException("Expecting ']' at position " + positionInStream() + ". Found " + (char) last);
 		}
+	}
+
+	/**
+	 * Will advance to next token and check if it's object start
+	 *
+	 * @throws IOException it's not object start
+	 */
+	public final void startObject() throws IOException {
+		if (getNextToken() != '{') {
+			if (currentIndex >= length) throw new IOException("Unexpected start of object in JSON at: " + positionInStream());
+			else throw new IOException("Expecting '{' at position " + positionInStream() + ". Found " + (char) last);
+		}
+	}
+
+	/**
+	 * Will advance to next token and check it it's object end
+	 *
+	 * @throws IOException it's not object end
+	 */
+	public final void endObject() throws IOException {
+		if (getNextToken() != '}') {
+			if (currentIndex >= length) throw new IOException("Unexpected end of object in JSON at: " + positionInStream());
+			else throw new IOException("Expecting '}' at position " + positionInStream() + ". Found " + (char) last);
+		}
+	}
+
+	/**
+	 * Check if the last read token is an array end
+	 *
+	 * @throws IOException it's not array end
+	 */
+	public final void checkArrayEnd() throws IOException {
+		if (last != ']') {
+			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in collection at: " + positionInStream());
+			else throw new IOException("Expecting ']' at position " + positionInStream() + ". Found " + (char) last);
+		}
+	}
+
+	private Object readNull(Class<?> manifest) throws IOException {
+		if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
+		if (manifest.isPrimitive()) {
+			if (manifest == int.class) return 0;
+			else if (manifest == long.class) return 0L;
+			else if (manifest == short.class) return (short)0;
+			else if (manifest == byte.class) return (byte)0;
+			else if (manifest == float.class) return 0f;
+			else if (manifest == double.class) return 0d;
+			else if (manifest == boolean.class) return false;
+			else if (manifest == char.class) return '\0';
+		}
+		return null;
+	}
+
+	/**
+	 * Will advance to next token and read the JSON into specified type
+	 *
+	 * @param manifest type to read into
+	 * @param <T> type
+	 * @return new instance from input JSON
+	 * @throws IOException unable to process JSON
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T> T next(Class<T> manifest) throws IOException {
+		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (this.getNextToken() == 'n') {
+			return (T)readNull(manifest);
+		}
+		final ReadObject<T> reader = (ReadObject<T>) readers.get(manifest);
+		if (reader == null) {
+			throw new IllegalArgumentException("Reader not found for " + manifest + ". Check if reader was registered");
+		}
+		return reader.read(this);
+	}
+
+	/**
+	 * Will advance to next token and bind the JSON to provided instance
+	 *
+	 * @param manifest type to read into
+	 * @param instance instance to bind
+	 * @param <T> type
+	 * @return bound instance
+	 * @throws IOException unable to process JSON
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T> T next(Class<T> manifest, T instance) throws IOException {
+		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (this.getNextToken() == 'n') {
+			return (T)readNull(manifest);
+		}
+		if (instance == null) throw new IllegalArgumentException("instance can't be null");
+		final BindObject<T> binder = (BindObject<T>)binders.get(manifest);
+		if (binder == null) throw new IllegalArgumentException("Binder not found for " + manifest + ". Check if binder was registered");
+		return binder.bind(this, instance);
 	}
 
 	public final <T, S extends T> ArrayList<T> deserializeCollection(final ReadObject<S> readObject) throws IOException {

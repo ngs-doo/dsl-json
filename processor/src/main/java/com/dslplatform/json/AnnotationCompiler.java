@@ -101,7 +101,7 @@ abstract class AnnotationCompiler {
 			Targets.Option target = options.useAndroid
 					? Targets.Option.ANDORID_EXTERNAL_JSON
 					: Targets.Option.JAVA_EXTERNAL_JSON;
-			ctx.put("library:" + Targets.Option.JAVA_EXTERNAL_JSON.toString(), "1.4.4");
+			ctx.put("library:" + Targets.Option.JAVA_EXTERNAL_JSON.toString(), "1.5.0");
 			ctx.put(target.toString(), null);
 			ctx.put(DslPath.INSTANCE, temp.getAbsolutePath());
 			ctx.put(DisablePrompt.INSTANCE, null);

@@ -162,4 +162,79 @@ public class ReaderTest {
 			Assert.assertTrue(e.getMessage().contains("at: 18"));
 		}
 	}
+
+	@Test
+	public void readerFromLookup() throws IOException, InterruptedException {
+		String input = "\"abcdefghijklmnopq\"";
+		byte[] bytes = input.getBytes();
+		DslJson<Object> json = new DslJson<Object>();
+		JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
+		String output = reader.next(String.class);
+		Assert.assertEquals("abcdefghijklmnopq", output);
+	}
+
+	@Test
+	public void readerMultipleFromLookup() throws IOException, InterruptedException {
+		String input = "[\"abc\",123,null,456]";
+		byte[] bytes = input.getBytes();
+		DslJson<Object> json = new DslJson<Object>();
+		JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
+		reader.startArray();
+		String str1 = reader.next(String.class);
+		reader.comma();
+		int num2 = reader.next(int.class);
+		reader.comma();
+		String str3 = reader.next(String.class);
+		reader.comma();
+		long num4 = reader.next(long.class);
+		reader.endArray();
+		Assert.assertEquals("abc", str1);
+		Assert.assertEquals(123, num2);
+		Assert.assertNull(str3);
+		Assert.assertEquals(456L, num4);
+	}
+
+	@Test
+	public void readerNullIntoInt() throws IOException, InterruptedException {
+		String input = " null";
+		byte[] bytes = input.getBytes();
+		DslJson<Object> json = new DslJson<Object>();
+		JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
+		int num = reader.next(int.class);
+		Assert.assertEquals(0, num);
+	}
+
+	class MyBind {
+		public int i;
+		public String s;
+	}
+
+	@Test
+	public void bindObject() throws IOException, InterruptedException {
+		String input = "{\"i\":12,\"s\":\"abc\"}";
+		byte[] bytes = input.getBytes();
+		DslJson<Object> json = new DslJson<Object>();
+		json.registerBinder(MyBind.class, new JsonReader.BindObject<MyBind>() {
+			@Override
+			public MyBind bind(JsonReader reader, MyBind instance) throws IOException {
+				JsonReader<Object> typedReader = reader;
+				Assert.assertEquals('{', reader.last());
+				Assert.assertEquals("i", reader.next(String.class));
+				reader.semicolon();
+				instance.i = typedReader.next(int.class);
+				reader.comma();
+				Assert.assertEquals("s", reader.next(String.class));
+				reader.semicolon();
+				instance.s = typedReader.next(String.class);
+				reader.endObject();
+				return instance;
+			}
+		});
+		JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
+		MyBind instance = new MyBind();
+		MyBind bound = reader.next(MyBind.class, instance);
+		Assert.assertEquals(12, bound.i);
+		Assert.assertEquals("abc", bound.s);
+		Assert.assertSame(instance, bound);
+	}
 }

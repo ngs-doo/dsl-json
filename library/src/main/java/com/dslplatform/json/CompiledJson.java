@@ -37,7 +37,7 @@ public @interface CompiledJson {
 	enum Behavior {
 		DEFAULT,
 		FAIL,
-		IGNORE;
+		IGNORE
 	}
 
 	/**
@@ -51,7 +51,7 @@ public @interface CompiledJson {
 
 	enum TypeSignature {
 		DEFAULT,
-		EXCLUDE;
+		EXCLUDE
 	}
 
 	/**

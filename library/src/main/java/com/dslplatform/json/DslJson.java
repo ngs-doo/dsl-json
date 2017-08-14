@@ -33,24 +33,27 @@ import java.util.concurrent.ConcurrentMap;
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
  *     dsl.serialize(instance, OutputStream);
- *     POJO pojo = dsl.deserialize(POJO.class, InputStream, new byte[1024]);
+ *     POJO pojo = dsl.deserialize(POJO.class, InputStream);
  * </pre>
  * <p>
- * For best performance use serialization API with JsonWriter which is reused.
+ * For best performance use serialization API with JsonWriter and byte[] as target.
+ * JsonWriter is reused via thread local variable. When custom JsonWriter's are used, reusing them will yield maximum performance.
+ * JsonWriter can be reused via reset methods.
  * For best deserialization performance prefer byte[] API instead of InputStream API.
- * If InputStream API is used, reuse the buffer instance or reuse the whole JsonReader by calling process(InputStream)
+ * JsonReader is reused via thread local variable. When custom JsonReaders are used, reusing them will yield maximum performance.
+ * JsonReader can be reused via process methods.
  * <p>
  * During deserialization TContext can be used to pass data into deserialized classes.
  * This is useful when deserializing domain objects which require state or service provider.
  * For example DSL Platform entities require service locator to be able to perform lazy load.
  * <p>
- * DslJson doesn't have a String or Reader API since it's optimized for processing bytes.
+ * DslJson doesn't have a String or Reader API since it's optimized for processing bytes and streams.
  * If you wish to process String, use String.getBytes("UTF-8") as argument for DslJson
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
  *     JsonWriter writer = dsl.newWriter();
  *     dsl.serialize(writer, instance);
- *     String json = writer.toString(); //JSON as string
+ *     String json = writer.toString(); //JSON as string - avoid using JSON as Strings whenever possible
  *     byte[] input = json.getBytes("UTF-8");
  *     POJO pojo = dsl.deserialize(POJO.class, input, input.length);
  * </pre>
@@ -77,6 +80,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	protected final StringCache valuesCache;
 	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
+	protected final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
 	private final ThreadLocal<JsonWriter> localWriter;
 	private final ThreadLocal<JsonReader> localReader;
 
@@ -110,6 +114,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		private final List<Configuration> configurations = new ArrayList<Configuration>();
 		private final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 		private final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
+		private final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
 
 		/**
 		 * Pass in context for DslJson.
@@ -222,6 +227,19 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 
 		/**
+		 * DslJson will iterate over converter factories when requested type is unknown.
+		 * Registering binder converter factory allows for constructing JSON converter lazily.
+		 *
+		 * @param binder registered binder factory
+		 * @return itself
+		 */
+		public Settings<TContext> resolveBinder(ConverterFactory<JsonReader.BindObject> binder) {
+			if (binder == null) throw new IllegalArgumentException("binder can't be null");
+			binderFactories.add(binder);
+			return this;
+		}
+
+		/**
 		 * Load converters using `ServiceLoader.load(Configuration.class)`
 		 * Will scan through `META-INF/services/com.dslplatform.json.Configuration` file and register implementation during startup.
 		 * This will pick up compile time databindings if they are available in specific folder.
@@ -320,9 +338,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		};
 		this.localReader = new ThreadLocal<JsonReader>() {
 			@Override
-			@SuppressWarnings("deprecation")
 			protected JsonReader initialValue() {
-				return new JsonReader<TContext>(new byte[4096], self.context, self.keyCache, self.valuesCache);
+				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self.readers, self.binders);
 			}
 		};
 		this.context = settings.context;
@@ -332,6 +349,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		this.valuesCache = settings.valuesCache;
 		this.writerFactories.addAll(settings.writerFactories);
 		this.readerFactories.addAll(settings.readerFactories);
+		this.binderFactories.addAll(settings.binderFactories);
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
 		registerReader(boolean.class, BoolConverter.BooleanReader);
@@ -499,12 +517,22 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * Bound reader can reuse key cache (which is used during Map deserialization)
 	 * This reader can be reused via process method.
 	 *
+	 * @return bound reader
+	 */
+	public JsonReader<TContext> newReader() {
+		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, readers, binders);
+	}
+
+	/**
+	 * Create a reader bound to this DSL-JSON.
+	 * Bound reader can reuse key cache (which is used during Map deserialization)
+	 * This reader can be reused via process method.
+	 *
 	 * @param bytes input bytes
 	 * @return bound reader
 	 */
-	@SuppressWarnings("deprecation")
 	public JsonReader<TContext> newReader(byte[] bytes) {
-		return new JsonReader<TContext>(bytes, context, keyCache, valuesCache);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders);
 	}
 
 	/**
@@ -516,9 +544,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param length use input bytes up to specified length
 	 * @return bound reader
 	 */
-	@SuppressWarnings("deprecation")
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
-		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache);
+		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, readers, binders);
 	}
 
 
@@ -533,9 +560,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param tmp string parsing buffer
 	 * @return bound reader
 	 */
-	@SuppressWarnings("deprecation")
 	public JsonReader<TContext> newReader(byte[] bytes, int length, char[] tmp) {
-		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache);
+		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, readers, binders);
 	}
 
 	/**
@@ -567,7 +593,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	@Deprecated
 	public JsonReader<TContext> newReader(String input) {
 		final byte[] bytes = input.getBytes(UTF8);
-		return new JsonReader<TContext>(bytes, context, keyCache, valuesCache);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders);
 	}
 
 	private static void loadDefaultConverters(final DslJson json, final String name) {
@@ -605,10 +631,11 @@ public class DslJson<TContext> implements UnknownSerializer {
 				&& body[3] == 'l';
 	}
 
-	private final ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>> jsonObjectReaders =
+	private final ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>> objectReaders =
 			new ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>>();
 
-	private final HashMap<Type, JsonReader.ReadObject<?>> jsonReaders = new HashMap<Type, JsonReader.ReadObject<?>>();
+	private final HashMap<Type, JsonReader.ReadObject<?>> readers = new HashMap<Type, JsonReader.ReadObject<?>>();
+	private final HashMap<Type, JsonReader.BindObject<?>> binders = new HashMap<Type, JsonReader.BindObject<?>>();
 
 	/**
 	 * Register custom reader for specific type (JSON -&gt; instance conversion).
@@ -625,7 +652,26 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param <S>      type or subtype
 	 */
 	public <T, S extends T> void registerReader(final Class<T> manifest, final JsonReader.ReadObject<S> reader) {
-		jsonReaders.put(manifest, reader);
+		readers.put(manifest, reader);
+	}
+
+	/**
+	 * Register custom binder for specific type (JSON -&gt; instance conversion).
+	 * Binder is used for conversion from input byte[] -&gt; existing target object instance.
+	 * It's similar to reader, with the difference that it accepts target instance.
+	 * <p>
+	 * Types registered through @CompiledJson annotation should be registered automatically through
+	 * ServiceLoader.load method and you should not be registering them manually.
+	 * <p>
+	 * If null is registered for a binder this will disable binding of specified type
+	 *
+	 * @param manifest specified type
+	 * @param binder   provide custom implementation for binding JSON to an object instance
+	 * @param <T>      type
+	 * @param <S>      type or subtype
+	 */
+	public <T, S extends T> void registerBinder(final Class<T> manifest, final JsonReader.BindObject<S> binder) {
+		binders.put(manifest, binder);
 	}
 
 	/**
@@ -641,7 +687,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param reader   provide custom implementation for reading JSON into an object instance
 	 */
 	public void registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
-		jsonReaders.put(manifest, reader);
+		readers.put(manifest, reader);
 	}
 
 	private final HashMap<Type, JsonWriter.WriteObject<?>> jsonWriters = new HashMap<Type, JsonWriter.WriteObject<?>>();
@@ -737,12 +783,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return found reader for specified type
 	 */
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
-		JsonReader.ReadObject found = jsonReaders.get(manifest);
+		JsonReader.ReadObject found = readers.get(manifest);
 		if (found == null) {
 			for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
 				found = rdr.tryCreate(manifest, this);
 				if (found != null) {
-					jsonReaders.put(manifest, found);
+					readers.put(manifest, found);
 					break;
 				}
 			}
@@ -787,7 +833,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	@SuppressWarnings("unchecked")
 	protected final JsonReader.ReadJsonObject<JsonObject> getObjectReader(final Class<?> manifest) {
 		try {
-			JsonReader.ReadJsonObject<JsonObject> reader = jsonObjectReaders.get(manifest);
+			JsonReader.ReadJsonObject<JsonObject> reader = objectReaders.get(manifest);
 			if (reader == null) {
 				try {
 					reader = (JsonReader.ReadJsonObject<JsonObject>) manifest.getField("JSON_READER").get(null);
@@ -795,7 +841,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 					//log error!?
 					return null;
 				}
-				jsonObjectReaders.putIfAbsent(manifest, reader);
+				objectReaders.putIfAbsent(manifest, reader);
 			}
 			return reader;
 		} catch (final Exception ignore) {
@@ -1243,7 +1289,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(manifest, signatures);
 		for (final Class<?> sig : signatures) {
-			if (jsonReaders.containsKey(sig)) {
+			if (readers.containsKey(sig)) {
 				if (sig.equals(manifest)) {
 					return new IOException("Reader for provided type: " + manifest + " is disabled and fallback serialization is not registered (converter is registered as null).\n" +
 							"Try initializing system with custom fallback or don't register null for " + manifest);
