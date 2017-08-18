@@ -248,24 +248,29 @@ public final class JsonReader<TContext> {
 	 */
 	public final byte read() throws IOException {
 		if (stream != null && currentIndex > readLimit) {
-			final int len = length - currentIndex;
-			System.arraycopy(buffer, currentIndex, buffer, 0, len);
-			final int available = readFully(buffer, stream, len);
-			currentPosition += currentIndex;
-			if (available == len) {
-				readLimit = length - currentIndex;
-				length = readLimit;
-				currentIndex = 0;
-			} else {
-				readLimit = available < bufferLenWithExtraSpace ? available : bufferLenWithExtraSpace;
-				this.length = available;
-				currentIndex = 0;
-			}
+			prepareNextBlock();
 		}
 		if (currentIndex >= length) {
 			throw new IOException("Unexpected end of JSON input");
 		}
 		return last = buffer[currentIndex++];
+	}
+
+	private int prepareNextBlock() throws IOException {
+		final int len = length - currentIndex;
+		System.arraycopy(buffer, currentIndex, buffer, 0, len);
+		final int available = readFully(buffer, stream, len);
+		currentPosition += currentIndex;
+		if (available == len) {
+			readLimit = length - currentIndex;
+			length = readLimit;
+			currentIndex = 0;
+		} else {
+			readLimit = available < bufferLenWithExtraSpace ? available : bufferLenWithExtraSpace;
+			this.length = available;
+			currentIndex = 0;
+		}
+		return available;
 	}
 
 	final boolean isEndOfStream() throws IOException {
@@ -275,16 +280,7 @@ public final class JsonReader<TContext> {
 		if (length != currentIndex) {
 			return false;
 		}
-		final int len = buffer.length - currentIndex;
-		System.arraycopy(buffer, currentIndex, buffer, 0, len);
-		int position = readFully(buffer, stream, len);
-		if (position == len) {
-			return true;
-		}
-		currentPosition += currentIndex;
-		length = position;
-		currentIndex = 0;
-		return position == 0;
+		return prepareNextBlock() == 0;
 	}
 
 	/**
@@ -350,14 +346,13 @@ public final class JsonReader<TContext> {
 		return tokenStart;
 	}
 
-	final char[] prepareBuffer(final int start) {
-		final int remaining = length - start;
-		while (chars.length < remaining) {
+	final char[] prepareBuffer(final int start, final int len) {
+		while (chars.length < len) {
 			chars = Arrays.copyOf(chars, chars.length * 2);
 		}
 		final char[] _tmp = chars;
 		final byte[] _buf = buffer;
-		for (int i = 0; i < remaining; i++) {
+		for (int i = 0; i < len; i++) {
 			_tmp[i] = (char) _buf[start + i];
 		}
 		return _tmp;

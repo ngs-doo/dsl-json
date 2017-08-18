@@ -148,6 +148,19 @@ public class DecimalConverterTest {
 	}
 
 	@Test
+	public void longNumberMoreThanTwiceBuffer() throws IOException {
+		final BigDecimal check = new BigDecimal("0.123456789012345678901234567890123456789012345678901234567890123456789123456789012345678901234567890123456789012345678901234567890123456789123456789012345678901234567890123456789012345678901234567890123456789");
+
+		final String plainForm = check.toPlainString();
+		final byte[] body = plainForm.getBytes("UTF-8");
+
+		DslJson<Object> json = new DslJson<Object>();
+
+		final BigDecimal result = Common.deserialize(json, BigDecimal.class, body, body.length);
+		Assert.assertEquals(check, result);
+	}
+
+	@Test
 	public void missingQuoteEnd() throws IOException {
 		final BigDecimal check = new BigDecimal("0.123456789012345678901234567890123456789012345678901234567890123456789");
 
