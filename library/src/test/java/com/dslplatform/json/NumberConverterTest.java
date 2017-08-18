@@ -83,12 +83,14 @@ public class NumberConverterTest {
 
 		final int from = -100000000;
 		final int to = 100000000;
+		final double[] dividers = {1, 10, 0.1, 100, 0.01, 1000, 0.001 };
+		int x = 0;
 
 		for (int value = from; value <= to; value += 333) {
 			sw.reset();
 
 			// serialization
-			BigDecimal bd = BigDecimal.valueOf(value / 100);
+			BigDecimal bd = BigDecimal.valueOf(value / dividers[x++%dividers.length]);
 			NumberConverter.serialize(bd, sw);
 
 			jr.process(null, sw.size());
@@ -512,6 +514,246 @@ public class NumberConverterTest {
 			Assert.fail();
 		}catch (IOException e) {
 			Assert.assertTrue(e.getMessage().contains("Integer overflow"));
+		}
+	}
+
+	@Test
+	public void doubleRandom() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40, null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		final Random rnd = new Random(0);
+
+		for (int i = 0; i < 1000000; i++) {
+			sw.reset();
+
+			// serialization
+			double d = rnd.nextDouble();
+			NumberConverter.serialize(d, sw);
+
+			jr.process(null, sw.size());
+			jr.read();
+
+			final double valueParsed1 = NumberConverter.deserializeDouble(jr);
+			Assert.assertEquals(d, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.process(is);
+			jsr.read();
+
+			final double valueParsed2 = NumberConverter.deserializeDouble(jsr);
+			Assert.assertEquals(d, valueParsed2, 0);
+		}
+	}
+
+	@Test
+	public void doubleIntRandom() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40, null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		final Random rnd = new Random(0);
+
+		for (int i = 0; i < 1000000; i++) {
+			sw.reset();
+
+			// serialization
+			double d = rnd.nextDouble() * rnd.nextInt();
+			NumberConverter.serialize(d, sw);
+
+			jr.process(null, sw.size());
+			jr.read();
+
+			final double valueParsed1 = NumberConverter.deserializeDouble(jr);
+			Assert.assertEquals(d, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.process(is);
+			jsr.read();
+
+			final double valueParsed2 = NumberConverter.deserializeDouble(jsr);
+			Assert.assertEquals(d, valueParsed2, 0);
+		}
+	}
+
+	@Test
+	public void floatRandom() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40, null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		final Random rnd = new Random(0);
+
+		for (int i = 0; i < 1000000; i++) {
+			sw.reset();
+
+			// serialization
+			float f = rnd.nextFloat();
+			NumberConverter.serialize(f, sw);
+
+			jr.process(null, sw.size());
+			jr.read();
+
+			final float valueParsed1 = NumberConverter.deserializeFloat(jr);
+			Assert.assertEquals(f, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.process(is);
+			jsr.read();
+
+			final float valueParsed2 = NumberConverter.deserializeFloat(jsr);
+			Assert.assertEquals(f, valueParsed2, 0);
+		}
+	}
+
+	@Test
+	public void floatIntRandom() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(40, null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		final Random rnd = new Random(0);
+
+		for (int i = 0; i < 1000000; i++) {
+			sw.reset();
+
+			// serialization
+			float d = (float)rnd.nextDouble() * rnd.nextInt();
+			NumberConverter.serialize(d, sw);
+
+			jr.process(null, sw.size());
+			jr.read();
+
+			final float valueParsed1 = NumberConverter.deserializeFloat(jr);
+			Assert.assertEquals(d, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.process(is);
+			jsr.read();
+
+			final float valueParsed2 = NumberConverter.deserializeFloat(jsr);
+			Assert.assertEquals(d, valueParsed2, 0);
+		}
+	}
+
+	private void prepareJson(JsonReader<Object> reader, byte[] input) throws IOException {
+		reader.process(input, input.length);
+		reader.read();
+		reader.read();
+		reader.fillName();
+		reader.read();
+	}
+
+	private double checkDoubleError(JsonReader<Object> reader, String error) {
+		double res = 0;
+		try {
+			res = NumberConverter.deserializeDouble(reader);
+			if (error != null) Assert.fail("Expecting " + error);
+		} catch (Exception ex) {
+			Assert.assertTrue(ex.getMessage().startsWith(error));
+		}
+		return res;
+	}
+
+	private float checkFloatError(JsonReader<Object> reader, String error) {
+		float res = 0;
+		try {
+			res = NumberConverter.deserializeFloat(reader);
+			if (error != null) Assert.fail("Expecting " + error);
+		} catch (Exception ex) {
+			Assert.assertTrue(ex.getMessage().startsWith(error));
+		}
+		return res;
+	}
+
+	private BigDecimal checkDecimalError(JsonReader<Object> reader, String error) {
+		BigDecimal res = null;
+		try {
+			res = NumberConverter.deserializeDecimal(reader);
+			if (error != null) Assert.fail("Expecting " + error);
+		} catch (Exception ex) {
+			Assert.assertTrue(ex.getMessage().startsWith(error));
+		}
+		return res;
+	}
+
+	private int checkIntError(JsonReader<Object> reader, String error) {
+		int res = 0;
+		try {
+			res = NumberConverter.deserializeInt(reader);
+			if (error != null) Assert.fail("Expecting " + error);
+		} catch (Exception ex) {
+			Assert.assertTrue(ex.getMessage().startsWith(error));
+		}
+		return res;
+	}
+
+	private long checkLongError(JsonReader<Object> reader, String error) {
+		long res = 0;
+		try {
+			res = NumberConverter.deserializeLong(reader);
+			if (error != null) Assert.fail("Expecting " + error);
+		} catch (Exception ex) {
+			Assert.assertTrue(ex.getMessage().startsWith(error));
+		}
+		return res;
+	}
+
+	@Test
+	public void emptyParsing() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		byte[] empty = "{\"x\":}".getBytes("UTF-8");
+		byte[] space = "{\"x\": }".getBytes("UTF-8");
+		byte[] plus = "{\"x\":+ }".getBytes("UTF-8");
+		byte[] minus = "{\"x\":- }".getBytes("UTF-8");
+
+		byte[][] input = {empty, space, plus, minus};
+
+		for(byte[] it : input) {
+			prepareJson(jr, it);
+			checkDoubleError(jr, "Error parsing double at position: 5");
+			prepareJson(jr, it);
+			checkFloatError(jr, "Error parsing float number at position: 5");
+			prepareJson(jr, it);
+			checkDecimalError(jr, "Error parsing number at position: 5");
+			prepareJson(jr, it);
+			checkIntError(jr, "Error parsing number at position: 5");
+			prepareJson(jr, it);
+			checkLongError(jr, "Error parsing number at position: 5");
+		}
+	}
+
+	@Test
+	public void zeroParsing() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		byte[] doubleZero = "{\"x\":00}".getBytes("UTF-8");
+		byte[] positiveZero = "{\"x\":+00}".getBytes("UTF-8");
+		byte[] negativeZero = "{\"x\":-00}".getBytes("UTF-8");
+		byte[] zeroWithSpace = "{\"x\":0 }".getBytes("UTF-8");
+		byte[] negativeZeroWithSpace = "{\"x\":-0 }".getBytes("UTF-8");
+
+		byte[][] input = {doubleZero, positiveZero, negativeZero, zeroWithSpace, negativeZeroWithSpace};
+
+		for(byte[] it : input) {
+			prepareJson(jr, it);
+			Assert.assertEquals(0d, checkDoubleError(jr, null), 0);
+			prepareJson(jr, it);
+			Assert.assertEquals(0f, checkFloatError(jr, null), 0);
+			prepareJson(jr, it);
+			Assert.assertEquals(BigDecimal.ZERO, checkDecimalError(jr, null));
+			prepareJson(jr, it);
+			Assert.assertEquals(0, checkIntError(jr, null));
+			prepareJson(jr, it);
+			Assert.assertEquals(0L, checkLongError(jr, null));
 		}
 	}
 }
