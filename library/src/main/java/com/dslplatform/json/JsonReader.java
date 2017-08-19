@@ -1,6 +1,5 @@
 package com.dslplatform.json;
 
-import javax.management.ReflectionException;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.InputStream;

@@ -306,44 +306,32 @@ public class NumberConverterTest {
 
 		String input = "{\n" +
 				"\"maxIntAsLong\":" +          maxIntAsLong + ",\n" +
-				"\"maxIntAsLongWithSign\":+" + maxIntAsLong + ",\n" +
 				"\"minIntAsLong\":" +          minIntAsLong + ",\n" +
 				"\"maxIntWithDecimalAsBigDecimal\":" +          maxIntWithDecimalAsBigDecimal + ",\n" +
-				"\"maxIntWithDecimalAsBigDecimalWithSign\":+" + maxIntWithDecimalAsBigDecimal + ",\n" +
 				"\"minIntWithDecimalAsBigDecimal\":" +          minIntWithDecimalAsBigDecimal + ",\n" +
 				"\"positive18DigitLong\":" +          positive18DigitLong + ",\n" +
-				"\"positive18DigitLongWithSign\":+" + positive18DigitLong + ",\n" +
 				"\"negative18DigitLong\":" +          negative18DigitLong + ",\n" +
 				"\"positive18DigitAndOneDecimal\":" +          positive18DigitAndOneDecimal + ",\n" +
-				"\"positive18DigitAndOneDecimalWithSign\":+" + positive18DigitAndOneDecimal + ",\n" +
 				"\"negative18DigitAndOneDecimal\":" +          negative18DigitAndOneDecimal + ",\n" +
 				"\"maxLong\":" +          maxLong + ",\n" +
-				"\"maxLongWithSign\":+" + maxLong + ",\n" +
 				"\"minLong\":" +          minLong + ",\n" +
 				"\"maxLongPlusOneAsBigDecimal\":" +          maxLongPlusOneAsBigDecimal + ",\n" +
-				"\"maxLongPlusOneAsBigDecimalWithSign\":+" + maxLongPlusOneAsBigDecimal + ",\n" +
 				"\"minLongMinusOneAsBigDecimal\":" +         minLongMinusOneAsBigDecimal + "\n" +
 		"}";
 
 		DslJson json = new DslJson();
 		Map result = (Map) json.deserialize(Map.class, input.getBytes("UTF-8"), input.length());
 		Assert.assertEquals(maxIntAsLong, result.get("maxIntAsLong"));
-		Assert.assertEquals(maxIntAsLong, result.get("maxIntAsLongWithSign"));
 		Assert.assertEquals(minIntAsLong, result.get("minIntAsLong"));
  		Assert.assertEquals(maxIntWithDecimalAsBigDecimal, result.get("maxIntWithDecimalAsBigDecimal"));
-		Assert.assertEquals(maxIntWithDecimalAsBigDecimal, result.get("maxIntWithDecimalAsBigDecimalWithSign"));
 		Assert.assertEquals(minIntWithDecimalAsBigDecimal, result.get("minIntWithDecimalAsBigDecimal"));
 		Assert.assertEquals(positive18DigitLong, result.get("positive18DigitLong"));
-		Assert.assertEquals(positive18DigitLong, result.get("positive18DigitLongWithSign"));
 		Assert.assertEquals(negative18DigitLong, result.get("negative18DigitLong"));
 		Assert.assertEquals(positive18DigitAndOneDecimal, result.get("positive18DigitAndOneDecimal"));
-		Assert.assertEquals(positive18DigitAndOneDecimal, result.get("positive18DigitAndOneDecimalWithSign"));
 		Assert.assertEquals(negative18DigitAndOneDecimal, result.get("negative18DigitAndOneDecimal"));
 		Assert.assertEquals(maxLong, result.get("maxLong"));
-		Assert.assertEquals(maxLong, result.get("maxLongWithSign"));
 		Assert.assertEquals(minLong, result.get("minLong"));
 		Assert.assertEquals(maxLongPlusOneAsBigDecimal, result.get("maxLongPlusOneAsBigDecimal"));
-		Assert.assertEquals(maxLongPlusOneAsBigDecimal, result.get("maxLongPlusOneAsBigDecimalWithSign"));
 		Assert.assertEquals(minLongMinusOneAsBigDecimal, result.get("minLongMinusOneAsBigDecimal"));
 	}
 
@@ -704,44 +692,61 @@ public class NumberConverterTest {
 		return res;
 	}
 
+	private Number checkNumberError(JsonReader<Object> reader, String error) {
+		Number res = null;
+		try {
+			res = NumberConverter.deserializeNumber(reader);
+			if (error != null) Assert.fail("Expecting " + error);
+		} catch (Exception ex) {
+			Assert.assertTrue(ex.getMessage().startsWith(error));
+		}
+		return res;
+	}
+
 	@Test
 	public void emptyParsing() throws IOException {
 		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
-		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		byte[] empty = "{\"x\":}".getBytes("UTF-8");
 		byte[] space = "{\"x\": }".getBytes("UTF-8");
-		byte[] plus = "{\"x\":+ }".getBytes("UTF-8");
-		byte[] minus = "{\"x\":- }".getBytes("UTF-8");
+		byte[] plus = "{\"x\":+}".getBytes("UTF-8");
+		byte[] minus = "{\"x\":-}".getBytes("UTF-8");
+		byte[] e = "{\"x\":e}".getBytes("UTF-8");
+		byte[] plusSpace = "{\"x\":+ }".getBytes("UTF-8");
+		byte[] minusSpace = "{\"x\":- }".getBytes("UTF-8");
+		byte[] eSpace = "{\"x\":E }".getBytes("UTF-8");
+		byte[] dot = "{\"x\":.}".getBytes("UTF-8");
+		byte[] doubleMinus = "{\"x\":--0}".getBytes("UTF-8");
+		byte[] doubleMinusSpace = "{\"x\":--0}".getBytes("UTF-8");
 
-		byte[][] input = {empty, space, plus, minus};
+		byte[][] input = {empty, space, plus, minus, e, plusSpace, minusSpace, eSpace, dot, doubleMinus, doubleMinusSpace};
 
 		for(byte[] it : input) {
 			prepareJson(jr, it);
-			checkDoubleError(jr, "Error parsing double at position: 5");
+			checkDoubleError(jr, "Error parsing number at position: 5");
 			prepareJson(jr, it);
-			checkFloatError(jr, "Error parsing float number at position: 5");
+			checkFloatError(jr, "Error parsing number at position: 5");
 			prepareJson(jr, it);
 			checkDecimalError(jr, "Error parsing number at position: 5");
 			prepareJson(jr, it);
 			checkIntError(jr, "Error parsing number at position: 5");
 			prepareJson(jr, it);
 			checkLongError(jr, "Error parsing number at position: 5");
+			prepareJson(jr, it);
+			checkNumberError(jr, "Error parsing number at position: 5");
 		}
 	}
 
 	@Test
 	public void zeroParsing() throws IOException {
 		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
-		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		byte[] doubleZero = "{\"x\":00}".getBytes("UTF-8");
-		byte[] positiveZero = "{\"x\":+00}".getBytes("UTF-8");
 		byte[] negativeZero = "{\"x\":-00}".getBytes("UTF-8");
 		byte[] zeroWithSpace = "{\"x\":0 }".getBytes("UTF-8");
 		byte[] negativeZeroWithSpace = "{\"x\":-0 }".getBytes("UTF-8");
 
-		byte[][] input = {doubleZero, positiveZero, negativeZero, zeroWithSpace, negativeZeroWithSpace};
+		byte[][] input = {doubleZero, negativeZero, zeroWithSpace, negativeZeroWithSpace};
 
 		for(byte[] it : input) {
 			prepareJson(jr, it);
@@ -754,6 +759,79 @@ public class NumberConverterTest {
 			Assert.assertEquals(0, checkIntError(jr, null));
 			prepareJson(jr, it);
 			Assert.assertEquals(0L, checkLongError(jr, null));
+			prepareJson(jr, it);
+			Assert.assertEquals(0, checkNumberError(jr, null).intValue());
+		}
+	}
+
+	@Test
+	public void wrongSpaceParsing() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+
+		byte[] doubleZero = "{\"x\":0 0}".getBytes("UTF-8");
+		byte[] doubleDot1 = "{\"x\":0.0.}".getBytes("UTF-8");
+		byte[] doubleDot2 = "{\"x\":0..0}".getBytes("UTF-8");
+		byte[] dotNoNumber1 = "{\"x\":.0}".getBytes("UTF-8");
+		byte[] dotNoNumber2 = "{\"x\":0.}".getBytes("UTF-8");
+
+		byte[][] input = {doubleZero, doubleDot1, doubleDot2, dotNoNumber1, dotNoNumber2};
+
+		for(byte[] it : input) {
+			prepareJson(jr, it);
+			checkDoubleError(jr, "Error parsing number at position: 5");
+			prepareJson(jr, it);
+			checkFloatError(jr, "Error parsing number at position: 5");
+			prepareJson(jr, it);
+			checkDecimalError(jr, "Error parsing number at position: 5");
+			prepareJson(jr, it);
+			checkIntError(jr, "Error parsing number at position: 5");
+			prepareJson(jr, it);
+			checkLongError(jr, "Error parsing number at position: 5");
+		}
+	}
+
+	@Test
+	public void specialFloats() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		String[] values = {
+				Float.toString(Float.MAX_VALUE / 10),
+				Float.toString(Float.MIN_VALUE * 10),
+				Float.toString(Float.MIN_VALUE / 10),
+				Float.toString(Float.MIN_VALUE),
+				Float.toString(Float.MAX_VALUE),
+				"1E46",
+				"1e-46",
+				"0.00000000000000001",
+				"0.000000000000000001",
+				"0.0000000000000000001",
+				"0.0000000000000000000000000000001",
+				"0.00000000000000000000000000000000000000000001",
+				"0.000000000000000000000000000000000000000000001",
+				"0.0000000000000000000000000000000000000000000001",
+				"0.7706706532754006",
+				"0.7706706532754006 ",
+				"0.77067065327",
+				"0.77067065327 "
+		};
+
+		for (String d : values) {
+			float f = Float.parseFloat(d);
+
+			byte[] input = d.getBytes("UTF-8");
+			jr.process(input, input.length);
+			jr.read();
+
+			final float valueParsed1 = NumberConverter.deserializeFloat(jr);
+			Assert.assertEquals(f, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(input, 0, input.length);
+			jsr.process(is);
+			jsr.read();
+
+			final float valueParsed2 = NumberConverter.deserializeFloat(jsr);
+			Assert.assertEquals(f, valueParsed2, 0);
 		}
 	}
 }

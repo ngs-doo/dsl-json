@@ -50,9 +50,36 @@ public class DecimalConverterTest {
 
 			// check
 			final BigDecimal current = new BigDecimal(jw.toString());
-			final boolean equality = direct.compareTo(current) == 0;
-			if (!equality) {
+			if (direct.compareTo(current) != 0) {
 				Assert.fail("Written BigDecimal was not equal to the test value; " + direct + " != " + current);
+			}
+		}
+		for (int i = 0; i < count - 1; i++) {
+			// setup
+			final double direct = Double.parseDouble(values[i]);
+			jw.reset();
+
+			// serialization
+			NumberConverter.serialize(direct, jw);
+
+			// check
+			final double current = Double.parseDouble(jw.toString());
+			if (direct != current) {
+				Assert.fail("Written double was not equal to the test value; " + direct + " != " + current);
+			}
+		}
+		for (int i = 0; i < count - 1; i++) {
+			// setup
+			final float direct = Float.parseFloat(values[i]);
+			jw.reset();
+
+			// serialization
+			NumberConverter.serialize(direct, jw);
+
+			// check
+			final float current = Float.parseFloat(jw.toString());
+			if (direct != current) {
+				Assert.fail("Written float was not equal to the test value; " + direct + " != " + current);
 			}
 		}
 	}
@@ -64,8 +91,8 @@ public class DecimalConverterTest {
 		final int count = values.length;
 
 		final byte[] buf = VALUES.getBytes(Charset.forName("ISO-8859-1"));
-		final JsonReader jr = dslJson.newReader(buf);
-		final JsonReader jsr = dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]);
+		JsonReader jr = dslJson.newReader(buf);
+		JsonReader jsr = dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]);
 
 		// first digit in values
 		Assert.assertEquals('0', jr.getNextToken());
@@ -91,6 +118,66 @@ public class DecimalConverterTest {
 				Assert.fail("Parsed BigDecimal was not equal to the test value; expected " + direct + ", but actual was " + current1 + ". Used value: " + values[i]);
 			} else if (direct.compareTo(current2) != 0) {
 				Assert.fail("Parsed BigDecimal was not equal to the test value; expected " + direct + ", but actual was " + current2 + ". Used value: " + values[i]);
+			}
+		}
+
+		jr = dslJson.newReader(buf);
+		jsr = dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]);
+
+		// first digit in values
+		Assert.assertEquals('0', jr.getNextToken());
+		Assert.assertEquals('0', jsr.getNextToken());
+
+		for (int i = 0; i < count - 1; i++) {
+			if (i > 0) {
+				jr.getNextToken();//','
+				jsr.getNextToken();//','
+				jr.getNextToken();//' '
+				jsr.getNextToken();//' '
+			}
+
+			// setup
+			final double direct = Double.parseDouble(values[i]);
+
+			// deserialiaztion
+			final double current1 = NumberConverter.deserializeDouble(jr);
+			final double current2 = NumberConverter.deserializeDouble(jsr);
+
+			//check
+			if (direct != current1) {
+				Assert.fail("Parsed double was not equal to the test value; expected " + direct + ", but actual was " + current1 + ". Used value: " + values[i]);
+			} else if (direct != current2) {
+				Assert.fail("Parsed double was not equal to the test value; expected " + direct + ", but actual was " + current2 + ". Used value: " + values[i]);
+			}
+		}
+
+		jr = dslJson.newReader(buf);
+		jsr = dslJson.newReader(new ByteArrayInputStream(buf), new byte[64]);
+
+		// first digit in values
+		Assert.assertEquals('0', jr.getNextToken());
+		Assert.assertEquals('0', jsr.getNextToken());
+
+		for (int i = 0; i < count - 1; i++) {
+			if (i > 0) {
+				jr.getNextToken();//','
+				jsr.getNextToken();//','
+				jr.getNextToken();//' '
+				jsr.getNextToken();//' '
+			}
+
+			// setup
+			final float direct = Float.parseFloat(values[i]);
+
+			// deserialiaztion
+			final float current1 = NumberConverter.deserializeFloat(jr);
+			final float current2 = NumberConverter.deserializeFloat(jsr);
+
+			//check
+			if (direct != current1) {
+				Assert.fail("Parsed float was not equal to the test value; expected " + direct + ", but actual was " + current1 + ". Used value: " + values[i]);
+			} else if (direct != current2) {
+				Assert.fail("Parsed float was not equal to the test value; expected " + direct + ", but actual was " + current2 + ". Used value: " + values[i]);
 			}
 		}
 	}
