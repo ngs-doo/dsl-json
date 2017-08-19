@@ -81,6 +81,10 @@ public class DslJson<TContext> implements UnknownSerializer {
 	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
 	protected final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
+	private final JsonReader.DoublePrecision doublePrecision;
+	private final JsonReader.UnknownNumberParsing unknownNumbers;
+	private final int maxNumberDigits;
+	private final int maxStringSize;
 	private final ThreadLocal<JsonWriter> localWriter;
 	private final ThreadLocal<JsonReader> localReader;
 
@@ -111,6 +115,10 @@ public class DslJson<TContext> implements UnknownSerializer {
 		private StringCache keyCache = new SimpleStringCache();
 		private StringCache valuesCache;
 		private boolean withServiceLoader;
+		private JsonReader.DoublePrecision doublePrecision = JsonReader.DoublePrecision.DEFAULT;
+		private JsonReader.UnknownNumberParsing unknownNumbers = JsonReader.UnknownNumberParsing.LONG_AND_BIGDECIMAL;
+		private int maxNumberDigits = 512;
+		private int maxStringSize = 128 * 1024 * 1024;
 		private final List<Configuration> configurations = new ArrayList<Configuration>();
 		private final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 		private final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
@@ -258,6 +266,63 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 
 		/**
+		 * By default doubles are not deserialized into an exact value in some rare edge cases.
+		 *
+		 * @param precision type of double deserialization
+		 * @return itself
+		 */
+		public Settings<TContext> doublePrecision(JsonReader.DoublePrecision precision) {
+			if (precision == null) throw new IllegalArgumentException("precision can't be null");
+			this.doublePrecision = precision;
+			return this;
+		}
+
+		/**
+		 * When processing JSON without a schema numbers can be deserialized in various ways:
+		 *
+		 *  - as longs and decimals
+		 *  - as longs and doubles
+		 *  - as decimals only
+		 *  - as doubles only
+		 *
+		 *  Default is as long and BigDecimal
+		 *
+		 * @param unknownNumbers how to deserialize numbers without a schema
+		 * @return itself
+		 */
+		public Settings<TContext> unknownNumbers(JsonReader.UnknownNumberParsing unknownNumbers) {
+			if (unknownNumbers == null) throw new IllegalArgumentException("unknownNumbers can't be null");
+			this.unknownNumbers = unknownNumbers;
+			return this;
+		}
+
+		/**
+		 * Specify maximum allowed size for digits buffer. Default is 512.
+		 * Digits buffer is used when processing strange/large input numbers.
+		 *
+		 * @param size maximum allowed size for digit buffer
+		 * @return itself
+		 */
+		public Settings<TContext> limitDigitsBuffer(int size) {
+			if (size < 1) throw new IllegalArgumentException("size can't be smaller than 1");
+			this.maxNumberDigits = size;
+			return this;
+		}
+
+		/**
+		 * Specify maximum allowed size for string buffer. Default is 128MB
+		 * To protect against malicious inputs, maximum allowed string buffer can be reduced.
+		 *
+		 * @param size maximum size of buffer in bytes
+		 * @return itself
+		 */
+		public Settings<TContext> limitStringBuffer(int size) {
+			if (size < 1) throw new IllegalArgumentException("size can't be smaller than 1");
+			this.maxNumberDigits = size;
+			return this;
+		}
+
+		/**
 		 * Configure DslJson with custom Configuration during startup.
 		 * Configurations are extension points for setting up readers/writers during DslJson initialization.
 		 *
@@ -339,7 +404,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		this.localReader = new ThreadLocal<JsonReader>() {
 			@Override
 			protected JsonReader initialValue() {
-				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self.readers, self.binders);
+				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self.readers, self.binders, self.doublePrecision, self.unknownNumbers, self.maxNumberDigits, self.maxStringSize);
 			}
 		};
 		this.context = settings.context;
@@ -347,6 +412,10 @@ public class DslJson<TContext> implements UnknownSerializer {
 		this.omitDefaults = settings.omitDefaults;
 		this.keyCache = settings.keyCache;
 		this.valuesCache = settings.valuesCache;
+		this.unknownNumbers = settings.unknownNumbers;
+		this.doublePrecision = settings.doublePrecision;
+		this.maxNumberDigits = settings.maxNumberDigits;
+		this.maxStringSize = settings.maxStringSize;
 		this.writerFactories.addAll(settings.writerFactories);
 		this.readerFactories.addAll(settings.readerFactories);
 		this.binderFactories.addAll(settings.binderFactories);
@@ -520,7 +589,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader() {
-		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, readers, binders);
+		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -532,7 +601,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes) {
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -545,7 +614,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
-		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, readers, binders);
+		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 
@@ -561,7 +630,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length, char[] tmp) {
-		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, readers, binders);
+		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -593,7 +662,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	@Deprecated
 	public JsonReader<TContext> newReader(String input) {
 		final byte[] bytes = input.getBytes(UTF8);
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	private static void loadDefaultConverters(final DslJson json, final String name) {
@@ -1978,7 +2047,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 				} else if (elementManifest == float.class) {
 					return FLOAT_ARRAY_WRITER;
 				} else if (elementManifest == double.class) {
-					return SHORT_ARRAY_WRITER;
+					return DOUBLE_ARRAY_WRITER;
 				} else {
 					return CHAR_ARRAY_WRITER;
 				}
@@ -2313,11 +2382,10 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param writer   where to write resulting JSON
 	 * @param manifest type manifest
 	 * @param value    instance to serialize
-	 * @param <T>      type
 	 * @return successful serialization
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> boolean serialize(final JsonWriter writer, final Type manifest, final Object value) {
+	public boolean serialize(final JsonWriter writer, final Type manifest, final Object value) {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
 		}

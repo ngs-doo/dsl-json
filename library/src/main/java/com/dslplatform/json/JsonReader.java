@@ -56,6 +56,32 @@ public final class JsonReader<TContext> {
 	private final HashMap<Type, ReadObject<?>> readers;
 	private final HashMap<Type, BindObject<?>> binders;
 
+	public enum DoublePrecision {
+		EXACT(0),
+		HIGH(1),
+		DEFAULT(3),
+		LOW(4);
+
+		final int level;
+
+		DoublePrecision(int level) {
+			this.level = level;
+		}
+	}
+
+	public enum UnknownNumberParsing {
+		LONG_AND_BIGDECIMAL,
+		LONG_AND_DOUBLE,
+		BIGDECIMAL,
+		DOUBLE
+	}
+
+	protected final DoublePrecision doublePrecision;
+	protected final int doubleLengthLimit;
+	protected final UnknownNumberParsing unknownNumbers;
+	protected final int maxNumberDigits;
+	private final int maxStringSize;
+
 	private JsonReader(
 			final char[] tmp,
 			final byte[] buffer,
@@ -64,7 +90,11 @@ public final class JsonReader<TContext> {
 			final StringCache keyCache,
 			final StringCache valuesCache,
 			final HashMap<Type, ReadObject<?>> readers,
-			final HashMap<Type, BindObject<?>> binders) {
+			final HashMap<Type, BindObject<?>> binders,
+			final DoublePrecision doublePrecision,
+			final UnknownNumberParsing unknownNumbers,
+			final int maxNumberDigits,
+			final int maxStringSize) {
 		this.tmp = tmp;
 		this.buffer = buffer;
 		this.length = length;
@@ -75,6 +105,11 @@ public final class JsonReader<TContext> {
 		this.valuesCache = valuesCache;
 		this.readers = readers;
 		this.binders = binders;
+		this.doublePrecision = doublePrecision;
+		this.unknownNumbers = unknownNumbers;
+		this.maxNumberDigits = maxNumberDigits;
+		this.maxStringSize = maxStringSize;
+		this.doubleLengthLimit = 15 + doublePrecision.level;
 	}
 
 	/**
@@ -88,17 +123,17 @@ public final class JsonReader<TContext> {
 	 */
 	@Deprecated
 	public JsonReader(final byte[] buffer, final TContext context) {
-		this(new char[64], buffer, buffer.length, context, null, null, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+		this(buffer, context, null, null);
 	}
 
 	@Deprecated
 	public JsonReader(final byte[] buffer, final TContext context, StringCache keyCache, StringCache valuesCache) {
-		this(new char[64], buffer, buffer.length, context, keyCache, valuesCache, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+		this(buffer, buffer.length, context, new char[64], keyCache, valuesCache);
 	}
 
 	@Deprecated
 	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
-		this(tmp, buffer, buffer.length, context, null, null, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+		this(buffer, buffer.length, context, tmp);
 		if (tmp == null) {
 			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
@@ -116,7 +151,7 @@ public final class JsonReader<TContext> {
 
 	@Deprecated
 	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final StringCache keyCache, final StringCache valuesCache) {
-		this(tmp, buffer, length, context, keyCache, valuesCache, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0));
+		this(tmp, buffer, length, context, keyCache, valuesCache, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0), DoublePrecision.DEFAULT, UnknownNumberParsing.LONG_AND_BIGDECIMAL, 512, 256 * 1024 * 1024);
 		if (tmp == null) {
 			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
@@ -135,8 +170,12 @@ public final class JsonReader<TContext> {
 			final StringCache keyCache,
 			final StringCache valuesCache,
 			final HashMap<Type, ReadObject<?>> readers,
-			final HashMap<Type, BindObject<?>> binders) {
-		this(tmp, buffer, length, context, keyCache, valuesCache, readers, binders);
+			final HashMap<Type, BindObject<?>> binders,
+			final DoublePrecision doublePrecision,
+			final UnknownNumberParsing unknownNumbers,
+			final int maxNumberDigits,
+			final int maxStringSize) {
+		this(tmp, buffer, length, context, keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 		if (tmp == null) {
 			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
@@ -483,7 +522,9 @@ public final class JsonReader<TContext> {
 
 			if (bc == '\\') {
 				if (soFar >= _tmpLen - 6) {
-					_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
+					final int newSize = chars.length * 2;
+					if (newSize > maxStringSize) throw new IOException("Unable to process input JSON. Maximum string size limit exceeded: " + maxStringSize);
+					_tmp = chars = Arrays.copyOf(chars, newSize);
 					_tmpLen = _tmp.length;
 				}
 				bc = buffer[currentIndex++];

@@ -11,7 +11,7 @@ import java.util.*;
 
 public class NumberConverterTest {
 
-	private final DslJson<Object> dslJson = new DslJson<Object>();
+	private final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>().doublePrecision(JsonReader.DoublePrecision.EXACT));
 
 	@Test
 	public void rangeCheckInt() throws IOException {
@@ -507,7 +507,6 @@ public class NumberConverterTest {
 
 	@Test
 	public void doubleRandom() throws IOException {
-		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
 		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
@@ -538,7 +537,6 @@ public class NumberConverterTest {
 
 	@Test
 	public void doubleIntRandom() throws IOException {
-		// setup
 		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
 		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
@@ -813,7 +811,12 @@ public class NumberConverterTest {
 				"0.7706706532754006",
 				"0.7706706532754006 ",
 				"0.77067065327",
-				"0.77067065327 "
+				"0.77067065327 ",
+				"1000000000000000000000000",
+				"100000000000000000000000000000000000000",
+				"1000000000000000000000000000000000000000",
+				"100000000000000000000000000000000000000.000000000000000000000001",
+				"100000000000000000000000000000000000000.000000000000000000000001e-10"
 		};
 
 		for (String d : values) {
@@ -832,6 +835,58 @@ public class NumberConverterTest {
 
 			final float valueParsed2 = NumberConverter.deserializeFloat(jsr);
 			Assert.assertEquals(f, valueParsed2, 0);
+		}
+	}
+
+	@Test
+	public void doubleRoundingError() throws IOException {
+		final JsonWriter sw = new JsonWriter(40, null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		double[] values = {
+				-740342.9473267009d,
+				-74034294.73267009d,
+				-7403429.473267009d, //TODO: doesn't work on default
+				-7403429.4732670095d,
+				0.6374174253501083d, //TODO: doesn't work on default
+				0.6374174253501084d, //TODO: doesn't work on default
+				-9.514467982939291E8d,
+				0.9644868606768501d,
+				0.96448686067685d,
+				2.716906186888657d,
+				98.48415401998089d,
+				98.48415401998088d,
+				-9603443.683176761d,
+				7.551599396638066E8d,
+				8.484850737442602E8,
+				-99.86965d,
+				0.984841540199809d,
+				0.9848415401998091d,
+				1.111538368674174E9d,
+				1.1115383686741738E9d,
+				0.730967787376657d,
+				0.7309677873766569d,
+				Double.MIN_VALUE, Double.MAX_VALUE
+		};
+
+		for (double d : values) {
+			sw.reset();
+
+			NumberConverter.serialize(d, sw);
+
+			jr.process(null, sw.size());
+			jr.read();
+
+			final double valueParsed1 = NumberConverter.deserializeDouble(jr);
+			Assert.assertEquals(d, valueParsed1, 0);
+
+			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.process(is);
+			jsr.read();
+
+			final double valueParsed2 = NumberConverter.deserializeDouble(jsr);
+			Assert.assertEquals(d, valueParsed2, 0);
 		}
 	}
 }
