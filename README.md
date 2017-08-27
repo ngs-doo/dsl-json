@@ -20,6 +20,7 @@ Java JSON library designed for performance. Built for invasive software composit
  * no runtime overhead - both schema and annotation based POJOs are prepared at compile time
  * no unsafe code - library doesn't rely on Java UNSAFE/internal methods
  * legacy name mapping - multiple versions of JSON property names can be mapped into a single POJO using alternativeNames annotation
+ * binding to an existing instance - during deserialization an existing instance can be provided to reduce GC
 
 ## Schema based serialization
 
@@ -41,7 +42,7 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.4.8</version>
+      <version>1.5.0</version>
       <scope>provided</scope>
     </dependency>
 
@@ -49,8 +50,8 @@ For use in Android, Gradle can be configured with:
 
     apply plugin: 'android-apt'
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.4.3'
-      apt 'com.dslplatform:dsl-json-processor:1.4.8'
+      compile 'com.dslplatform:dsl-json:1.5.0'
+      apt 'com.dslplatform:dsl-json-processor:1.5.0'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -164,7 +165,6 @@ Best serialization performance can be obtained with combination of minimal seria
 Independent benchmarks can validate the performance of DSL-JSON library:
 
  * [JVM serializers](https://github.com/eishay/jvm-serializers/wiki) - benchmark for all kind of JVM codecs. Shows DSL-JSON as fast as top binary codecs
- * [Techempower round 13](https://www.techempower.com/benchmarks/#section=data-r13&hw=ph&test=json) - servlet equipped with DSL-JSON tops the list
  * [Kostya JSON](https://github.com/kostya/benchmarks) - fastest performing Java JSON library
  * [JMH JSON benchmark](https://github.com/fabienrenaud/java-json-benchmark) - benchmarks for Java JSON libraries
 
@@ -183,20 +183,49 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.4.3</version>
+      <version>1.5.0</version>
     </dependency>
 
 ## Best practices
 
-Reusing reader/writer.
+### Reusing reader/writer.
 
-`JsonWriter` should be reused since it contains growable `byte[]` buffer for encoding objects into JSON.
-For thread reuse use something like `ThreadLocal<JsonWriter>`.
-After serialization copy resulting buffer to stream with `.toStream(OutputStream)` method.
+`JsonWriter` It has two modes of operations:
+ 
+ * populating the entire output into `byte[]`
+ * targeting output stream and flushing local `byte[]` to target output stream
+ 
+`JsonWriter` can be reused via `reset` methods which binds it to specified target.
+When used directly it should be always created via `newWriter` method on `DslJson` instance. 
+Several `DslJson` serialize methods will reuse the writer via thread local variable.
+When using `JsonWriter` via the first mode, result can be copied to stream via `.toStream(OutputStream)` method.
 
-`JsonReader` works on `byte[]` input. It's best to construct `JsonReader` with reusable `byte[]` and specifying `int` length.
-For `InputStream` `JsonStreamReader` can be used. For small messages it's better to use byte based reader instead of stream based reader.
-`JsonStreamReader` can be reused for new streams by calling `reset(InputStream)`.
+    DslJson<Object> json = ... // always reuse
+    OutputStream stream = ... // stream with JSON in UTF-8
+    json.serialize(pojo, stream); //will use thread local writer
+    
+`JsonReader` can process `byte[]` or `InputStream` inputs. It can be reused via the `process` methods. 
+When calling `DslJson` deserialize methods often exists in two flavors:
+
+ * with `byte[]` argument, in which case a new `JsonReader` will be created, but for best performance `byte[]` should be reused
+ * without `byte[]` argument in which case thread local reader will be reused 
+  
+For small messages it's better to use `byte[]` API. When reader is used directly it should be always created via `newReader` method on `DslJson` instance.
+
+    DslJson<Object> json = ... // always reuse
+    InputStream stream = ... // stream with JSON in UTF-8
+    POJO instance = json.deserialize(POJO.class, stream); //will use thread local reader
+
+### Binding
+
+`JsonReader` has `iterateOver` method for exposing input collection as consumable iterator.
+Also, since v1.5 binding API is available which can reuse instances for deserialization.
+
+    DslJson<Object> json = new DslJson<Object>(); //always reuse
+    byte[] bytes = "{\"number\":123}".getBytes("UTF-8");
+    JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
+    POJO instance = new POJO(); //can be reused
+    POJO bound = reader.next(POJO.class, instance); //bound is the same as instance above
 
 ## FAQ
 

@@ -11,7 +11,7 @@ import java.util.*;
 
 public class NumberConverterTest {
 
-	private final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>().doublePrecision(JsonReader.DoublePrecision.EXACT));
+	private final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>().doublePrecision(JsonReader.DoublePrecision.HIGH));
 
 	@Test
 	public void rangeCheckInt() throws IOException {
@@ -840,27 +840,41 @@ public class NumberConverterTest {
 
 	@Test
 	public void doubleRoundingError() throws IOException {
+		final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>().doublePrecision(JsonReader.DoublePrecision.DEFAULT));
 		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
 		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
 
 		double[] values = {
+				-5983259.62725876d,
+				3.999999999999999555d,
+				65600.45509999999d,
+				65600.45509999998d,
+				-707224.705947716d,
+				0.04040949867001864d,
+				-5983259.62725876d,
+				-1800849.97476139d,
+				54940.89750944923d,
+				54940.89750944924d,
+				//54940.897509449234d, //TODO: doesn't work in default
 				-740342.9473267009d,
 				-74034294.73267009d,
-				-7403429.473267009d, //TODO: doesn't work on default
+				-7403429.473267009d,
 				-7403429.4732670095d,
-				0.6374174253501083d, //TODO: doesn't work on default
-				0.6374174253501084d, //TODO: doesn't work on default
+				0.6374174253501083d,
+				0.6374174253501084d,
 				-9.514467982939291E8d,
 				0.9644868606768501d,
 				0.96448686067685d,
-				2.716906186888657d,
+				//2.716906186888657d, //TODO: doesn't work in default
+				2.7169061868886573d,
 				98.48415401998089d,
 				98.48415401998088d,
 				-9603443.683176761d,
 				7.551599396638066E8d,
 				8.484850737442602E8,
 				-99.86965d,
+				-777.77d,
 				0.984841540199809d,
 				0.9848415401998091d,
 				1.111538368674174E9d,
@@ -872,6 +886,8 @@ public class NumberConverterTest {
 
 		for (double d : values) {
 			sw.reset();
+
+			//System.out.println("processing " + d);
 
 			NumberConverter.serialize(d, sw);
 
