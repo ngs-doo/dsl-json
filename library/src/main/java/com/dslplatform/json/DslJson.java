@@ -725,6 +725,22 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	/**
+	 * Register custom reader for specific type (JSON -&gt; instance conversion).
+	 * Reader is used for conversion from input byte[] -&gt; target object instance
+	 * <p>
+	 * Types registered through @CompiledJson annotation should be registered automatically through
+	 * ServiceLoader.load method and you should not be registering them manually.
+	 * <p>
+	 * If null is registered for a reader this will disable deserialization of specified type
+	 *
+	 * @param manifest specified type
+	 * @param reader   provide custom implementation for reading JSON into an object instance
+	 */
+	public void registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
+		readers.put(manifest, reader);
+	}
+
+	/**
 	 * Register custom binder for specific type (JSON -&gt; instance conversion).
 	 * Binder is used for conversion from input byte[] -&gt; existing target object instance.
 	 * It's similar to reader, with the difference that it accepts target instance.
@@ -744,19 +760,20 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	/**
-	 * Register custom reader for specific type (JSON -&gt; instance conversion).
-	 * Reader is used for conversion from input byte[] -&gt; target object instance
+	 * Register custom binder for specific type (JSON -&gt; instance conversion).
+	 * Binder is used for conversion from input byte[] -&gt; existing target object instance.
+	 * It's similar to reader, with the difference that it accepts target instance.
 	 * <p>
 	 * Types registered through @CompiledJson annotation should be registered automatically through
 	 * ServiceLoader.load method and you should not be registering them manually.
 	 * <p>
-	 * If null is registered for a reader this will disable deserialization of specified type
+	 * If null is registered for a binder this will disable binding of specified type
 	 *
 	 * @param manifest specified type
-	 * @param reader   provide custom implementation for reading JSON into an object instance
+	 * @param binder   provide custom implementation for binding JSON to an object instance
 	 */
-	public void registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
-		readers.put(manifest, reader);
+	public void registerBinder(final Type manifest, final JsonReader.BindObject<?> binder) {
+		binders.put(manifest, binder);
 	}
 
 	private final HashMap<Type, JsonWriter.WriteObject<?>> jsonWriters = new HashMap<Type, JsonWriter.WriteObject<?>>();
@@ -840,12 +857,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 	/**
 	 * Try to find registered reader for provided type.
 	 * If reader is not found, null will be returned.
-	 * Exact match must be found, type hierarchy will not be scanned for alternative writer.
+	 * Exact match must be found, type hierarchy will not be scanned for alternative readers.
 	 * <p>
-	 * If you wish to use alternative writer for specific type, register it manually with something along the lines of
+	 * If you wish to use alternative reader for specific type, register it manually with something along the lines of
 	 * <pre>
 	 *     DslJson dslJson = ...
-	 *     dslJson.registerReader(Interface.class, dslJson.tryFindWriter(Implementation.class));
+	 *     dslJson.registerReader(Interface.class, dslJson.tryFindReader(Implementation.class));
 	 * </pre>
 	 *
 	 * @param manifest specified type
@@ -866,14 +883,42 @@ public class DslJson<TContext> implements UnknownSerializer {
 	}
 
 	/**
-	 * Try to find registered reader for provided type.
-	 * If reader is not found, null will be returned.
-	 * Exact match must be found, type hierarchy will not be scanned for alternative writer.
+	 * Try to find registered binder for provided type.
+	 * If binder is not found, null will be returned.
+	 * Exact match must be found, type hierarchy will not be scanned for alternative binders.
 	 * <p>
-	 * If you wish to use alternative writer for specific type, register it manually with something along the lines of
+	 * If you wish to use alternative binder for specific type, register it manually with something along the lines of
 	 * <pre>
 	 *     DslJson dslJson = ...
-	 *     dslJson.registerReader(Interface.class, dslJson.tryFindWriter(Implementation.class));
+	 *     dslJson.registerBinder(Interface.class, dslJson.tryFindBinder(Implementation.class));
+	 * </pre>
+	 *
+	 * @param manifest specified type
+	 * @return found reader for specified type
+	 */
+	public JsonReader.BindObject<?> tryFindBinder(final Type manifest) {
+		JsonReader.BindObject found = binders.get(manifest);
+		if (found == null) {
+			for (ConverterFactory<JsonReader.BindObject> bnd : binderFactories) {
+				found = bnd.tryCreate(manifest, this);
+				if (found != null) {
+					binders.put(manifest, found);
+					break;
+				}
+			}
+		}
+		return found;
+	}
+
+	/**
+	 * Try to find registered reader for provided type.
+	 * If reader is not found, null will be returned.
+	 * Exact match must be found, type hierarchy will not be scanned for alternative reader.
+	 * <p>
+	 * If you wish to use alternative reader for specific type, register it manually with something along the lines of
+	 * <pre>
+	 *     DslJson dslJson = ...
+	 *     dslJson.registerReader(Interface.class, dslJson.tryFindReader(Implementation.class));
 	 * </pre>
 	 *
 	 * @param manifest specified class
@@ -883,6 +928,26 @@ public class DslJson<TContext> implements UnknownSerializer {
 	@SuppressWarnings("unchecked")
 	public <T> JsonReader.ReadObject<T> tryFindReader(final Class<T> manifest) {
 		return (JsonReader.ReadObject<T>) tryFindReader((Type) manifest);
+	}
+
+	/**
+	 * Try to find registered binder for provided type.
+	 * If binder is not found, null will be returned.
+	 * Exact match must be found, type hierarchy will not be scanned for alternative binder.
+	 * <p>
+	 * If you wish to use alternative binder for specific type, register it manually with something along the lines of
+	 * <pre>
+	 *     DslJson dslJson = ...
+	 *     dslJson.registerBinder(Interface.class, dslJson.tryFindBinder(Implementation.class));
+	 * </pre>
+	 *
+	 * @param manifest specified class
+	 * @param <T> specified type
+	 * @return found reader for specified class
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> JsonReader.BindObject<T> tryFindBinder(final Class<T> manifest) {
+		return (JsonReader.BindObject<T>) tryFindBinder((Type) manifest);
 	}
 
 	private static void findAllSignatures(final Class<?> manifest, final ArrayList<Class<?>> found) {

@@ -1302,7 +1302,7 @@ public abstract class NumberConverter {
 				if (ch == 'e' || ch == 'E') break;
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
-					if (reader.allWhitespace(i, end)) return BigDecimal.valueOf(value, i - dp - 1);
+					if (reader.allWhitespace(i, end)) return BigDecimal.valueOf(value, i - dp);
 					return tryLongFromBigDecimal(reader.prepareBuffer(start, end - start), end - start, reader);
 				}
 				value = (value << 3) + (value << 1) + ind;
@@ -1364,7 +1364,7 @@ public abstract class NumberConverter {
 				if (ch == 'e' || ch == 'E') break;
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
-					if (reader.allWhitespace(i, end)) return BigDecimal.valueOf(value, i - dp - 1);
+					if (reader.allWhitespace(i, end)) return BigDecimal.valueOf(value, i - dp);
 					return tryLongFromBigDecimal(reader.prepareBuffer(start, end - start), end - start, reader);
 				}
 				value = (value << 3) + (value << 1) - ind;

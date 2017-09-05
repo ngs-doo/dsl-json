@@ -1143,6 +1143,23 @@ public final class JsonReader<TContext> {
 	}
 
 	/**
+	 * Will advance to next token and read the JSON into specified type
+	 *
+	 * @param reader reader to use
+	 * @param <T> type
+	 * @return new instance from input JSON
+	 * @throws IOException unable to process JSON
+	 */
+	public final <T> T next(ReadObject<T> reader) throws IOException {
+		if (reader == null) throw new IllegalArgumentException("reader can't be null");
+		if (this.getNextToken() == 'n') {
+			if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
+			return null;
+		}
+		return reader.read(this);
+	}
+
+	/**
 	 * Will advance to next token and bind the JSON to provided instance
 	 *
 	 * @param manifest type to read into
@@ -1154,12 +1171,32 @@ public final class JsonReader<TContext> {
 	@SuppressWarnings("unchecked")
 	public final <T> T next(Class<T> manifest, T instance) throws IOException {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (instance == null) throw new IllegalArgumentException("instance can't be null");
 		if (this.getNextToken() == 'n') {
 			return (T)readNull(manifest);
 		}
-		if (instance == null) throw new IllegalArgumentException("instance can't be null");
 		final BindObject<T> binder = (BindObject<T>)binders.get(manifest);
 		if (binder == null) throw new IllegalArgumentException("Binder not found for " + manifest + ". Check if binder was registered");
+		return binder.bind(this, instance);
+	}
+
+	/**
+	 * Will advance to next token and bind the JSON to provided instance
+	 *
+	 * @param binder binder to use
+	 * @param instance instance to bind
+	 * @param <T> type
+	 * @return bound instance
+	 * @throws IOException unable to process JSON
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T> T next(final BindObject<T> binder, final T instance) throws IOException {
+		if (binder == null) throw new IllegalArgumentException("binder can't be null");
+		if (instance == null) throw new IllegalArgumentException("instance can't be null");
+		if (this.getNextToken() == 'n') {
+			if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
+			return null;
+		}
 		return binder.bind(this, instance);
 	}
 

@@ -236,5 +236,12 @@ public class ReaderTest {
 		Assert.assertEquals(12, bound.i);
 		Assert.assertEquals("abc", bound.s);
 		Assert.assertSame(instance, bound);
+
+		reader = json.newReader().process(bytes, bytes.length);
+		JsonReader.BindObject<MyBind> binder = json.tryFindBinder(MyBind.class);
+		bound = reader.next(binder, instance);
+		Assert.assertEquals(12, bound.i);
+		Assert.assertEquals("abc", bound.s);
+		Assert.assertSame(instance, bound);
 	}
 }

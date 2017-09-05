@@ -25,6 +25,6 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:23.3.0'
 
-    compile 'com.dslplatform:dsl-json:1.5.0'
+    compile 'com.dslplatform:dsl-json:1.5.1'
     apt 'com.dslplatform:dsl-json-processor:1.5.0'
 }

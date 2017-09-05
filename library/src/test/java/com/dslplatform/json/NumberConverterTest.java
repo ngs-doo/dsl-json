@@ -23,7 +23,7 @@ public class NumberConverterTest {
 		final int from = -10000000;
 		final int to = 10000000;
 
-		for (long value = from; value <= to; value += 33) {
+		for (int value = from; value <= to; value += 33) {
 			sw.reset();
 
 			// serialization
@@ -31,14 +31,12 @@ public class NumberConverterTest {
 
 			jr.process(null, sw.size());
 			jr.read();
-
-			final long valueParsed1 = NumberConverter.deserializeLong(jr);
+			final int valueParsed1 = NumberConverter.deserializeInt(jr);
 			Assert.assertEquals(value, valueParsed1);
 
 			jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
 			jsr.read();
-
-			final long valueParsed2 = NumberConverter.deserializeLong(jsr);
+			final int valueParsed2 = NumberConverter.deserializeInt(jsr);
 			Assert.assertEquals(value, valueParsed2);
 		}
 	}
@@ -61,16 +59,23 @@ public class NumberConverterTest {
 
 			jr.process(null, sw.size());
 			jr.read();
-
 			final long valueParsed1 = NumberConverter.deserializeLong(jr);
 			Assert.assertEquals(value, valueParsed1);
 
-			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
-			jsr.process(is);
-			jsr.read();
+			jr.process(null, sw.size());
+			jr.read();
+			final Number numberParsed1 = NumberConverter.deserializeNumber(jr);
+			Assert.assertEquals(value, numberParsed1);
 
+			jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
+			jsr.read();
 			final long valueParsed2 = NumberConverter.deserializeLong(jsr);
 			Assert.assertEquals(value, valueParsed2);
+
+			jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
+			jsr.read();
+			final Number numberParsed2 = NumberConverter.deserializeNumber(jsr);
+			Assert.assertEquals(value, numberParsed2);
 		}
 	}
 
@@ -95,16 +100,21 @@ public class NumberConverterTest {
 
 			jr.process(null, sw.size());
 			jr.read();
-
 			final BigDecimal valueParsed1 = NumberConverter.deserializeDecimal(jr);
 			Assert.assertEquals(bd, valueParsed1);
+			jr.process(null, sw.size());
+			jr.read();
+			final Number numberParsed1 = NumberConverter.deserializeNumber(jr);
+			Assert.assertEquals(bd, BigDecimal.valueOf(numberParsed1.doubleValue()));
 
-			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
-			jsr.process(is);
+			jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
 			jsr.read();
-
 			final BigDecimal valueParsed2 = NumberConverter.deserializeDecimal(jsr);
 			Assert.assertEquals(bd, valueParsed2);
+			jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
+			jsr.read();
+			final Number numberParsed2 = NumberConverter.deserializeNumber(jsr);
+			Assert.assertEquals(bd, BigDecimal.valueOf(numberParsed2.doubleValue()));
 		}
 	}
 
@@ -128,9 +138,12 @@ public class NumberConverterTest {
 
 			jr.process(null, sw.size());
 			jr.read();
-
 			final double valueParsed1 = NumberConverter.deserializeDouble(jr);
 			Assert.assertEquals(d, valueParsed1, 0);
+			jr.process(null, sw.size());
+			jr.read();
+			final Number numberParsed1 = NumberConverter.deserializeNumber(jr);
+			Assert.assertEquals(d, numberParsed1.doubleValue(), 0);
 
 			final ByteArrayInputStream is = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
 			jsr.process(is);
@@ -138,6 +151,10 @@ public class NumberConverterTest {
 
 			final double valueParsed2 = NumberConverter.deserializeDouble(jsr);
 			Assert.assertEquals(d, valueParsed2, 0);
+			jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
+			jsr.read();
+			final Number numberParsed2 = NumberConverter.deserializeNumber(jsr);
+			Assert.assertEquals(d, numberParsed2.doubleValue(), 0);
 		}
 	}
 
@@ -904,5 +921,130 @@ public class NumberConverterTest {
 			final double valueParsed2 = NumberConverter.deserializeDouble(jsr);
 			Assert.assertEquals(d, valueParsed2, 0);
 		}
+	}
+
+	@Test
+	public void zeroSpaceEndParsing() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+
+		byte[] positive = "{\"x\":0 }".getBytes("UTF-8");
+		byte[] negative = "{\"x\":-0 }".getBytes("UTF-8");
+
+		byte[][] inputs = {positive, negative};
+		for (byte[] input : inputs) {
+			prepareJson(jr, input);
+			Assert.assertEquals(0d, checkDoubleError(jr, null), 0);
+			prepareJson(jr, input);
+			Assert.assertEquals(0f, checkFloatError(jr, null), 0);
+			prepareJson(jr, input);
+			Assert.assertEquals(BigDecimal.ZERO, checkDecimalError(jr, null));
+			prepareJson(jr, input);
+			Assert.assertEquals(0, checkIntError(jr, null));
+			prepareJson(jr, input);
+			Assert.assertEquals(0L, checkLongError(jr, null));
+			prepareJson(jr, input);
+			Assert.assertEquals(0L, checkNumberError(jr, null));
+		}
+	}
+
+	@Test
+	public void decimalSpaceEndParsing() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+
+		byte[] positive = "{\"x\":11.1 }".getBytes("UTF-8");
+		prepareJson(jr, positive);
+		Assert.assertEquals(11.1d, checkDoubleError(jr, null), 0);
+		prepareJson(jr, positive);
+		Assert.assertEquals(11.1f, checkFloatError(jr, null), 0);
+		prepareJson(jr, positive);
+		Assert.assertEquals(BigDecimal.valueOf(11.1), checkDecimalError(jr, null));
+		prepareJson(jr, positive);
+		checkIntError(jr, "Error parsing number at position: 5");
+		prepareJson(jr, positive);
+		checkLongError(jr, "Error parsing number at position: 5");
+		prepareJson(jr, positive);
+		Assert.assertEquals(BigDecimal.valueOf(11.1), checkNumberError(jr, null));
+
+		byte[] negative = "{\"x\":-11.1 }".getBytes("UTF-8");
+		prepareJson(jr, negative);
+		Assert.assertEquals(-11.1d, checkDoubleError(jr, null), 0);
+		prepareJson(jr, negative);
+		Assert.assertEquals(-11.1f, checkFloatError(jr, null), 0);
+		prepareJson(jr, negative);
+		Assert.assertEquals(BigDecimal.valueOf(-11.1), checkDecimalError(jr, null));
+		prepareJson(jr, negative);
+		checkIntError(jr, "Error parsing number at position: 5");
+		prepareJson(jr, negative);
+		checkLongError(jr, "Error parsing number at position: 5");
+		prepareJson(jr, negative);
+		Assert.assertEquals(BigDecimal.valueOf(-11.1), checkNumberError(jr, null));
+	}
+
+	@Test
+	public void exponentSpaceEndParsing() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+
+		byte[] positive = "{\"x\":1e2 }".getBytes("UTF-8");
+
+		prepareJson(jr, positive);
+		Assert.assertEquals(1e2d, checkDoubleError(jr, null), 0);
+		prepareJson(jr, positive);
+		Assert.assertEquals(1e2f, checkFloatError(jr, null), 0);
+		prepareJson(jr, positive);
+		Assert.assertEquals(0, BigDecimal.valueOf(1e2).compareTo(checkDecimalError(jr, null)));
+		prepareJson(jr, positive);
+		Assert.assertEquals(100, checkIntError(jr, null));
+		prepareJson(jr, positive);
+		Assert.assertEquals(100L, checkLongError(jr, null));
+		prepareJson(jr, positive);
+		Assert.assertEquals(0, BigDecimal.valueOf(1e2).compareTo((BigDecimal)checkNumberError(jr, null)));
+
+		byte[] negative = "{\"x\":-1e2 }".getBytes("UTF-8");
+		prepareJson(jr, negative);
+		Assert.assertEquals(-1e2d, checkDoubleError(jr, null), 0);
+		prepareJson(jr, negative);
+		Assert.assertEquals(-1e2f, checkFloatError(jr, null), 0);
+		prepareJson(jr, negative);
+		Assert.assertEquals(0, BigDecimal.valueOf(-1e2).compareTo(checkDecimalError(jr, null)));
+		prepareJson(jr, negative);
+		Assert.assertEquals(-100, checkIntError(jr, null));
+		prepareJson(jr, negative);
+		Assert.assertEquals(-100L, checkLongError(jr, null));
+		prepareJson(jr, negative);
+		Assert.assertEquals(0, BigDecimal.valueOf(-1e2).compareTo((BigDecimal)checkNumberError(jr, null)));
+	}
+
+	@Test
+	public void exponentWithDecimalSpaceEndParsing() throws IOException {
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+
+		byte[] positive = "{\"x\":1.2e3 }".getBytes("UTF-8");
+
+		prepareJson(jr, positive);
+		Assert.assertEquals(1.2e3d, checkDoubleError(jr, null), 0);
+		prepareJson(jr, positive);
+		Assert.assertEquals(1.2e3f, checkFloatError(jr, null), 0);
+		prepareJson(jr, positive);
+		Assert.assertEquals(0, BigDecimal.valueOf(1.2e3).compareTo(checkDecimalError(jr, null)));
+		prepareJson(jr, positive);
+		Assert.assertEquals(1200, checkIntError(jr, null));
+		prepareJson(jr, positive);
+		Assert.assertEquals(1200L, checkLongError(jr, null));
+		prepareJson(jr, positive);
+		Assert.assertEquals(0, BigDecimal.valueOf(1.2e3).compareTo((BigDecimal)checkNumberError(jr, null)));
+
+		byte[] negative = "{\"x\":-1.2e3 }".getBytes("UTF-8");
+		prepareJson(jr, negative);
+		Assert.assertEquals(-1.2e3d, checkDoubleError(jr, null), 0);
+		prepareJson(jr, negative);
+		Assert.assertEquals(-1.2e3f, checkFloatError(jr, null), 0);
+		prepareJson(jr, negative);
+		Assert.assertEquals(0, BigDecimal.valueOf(-1.2e3).compareTo(checkDecimalError(jr, null)));
+		prepareJson(jr, negative);
+		Assert.assertEquals(-1200, checkIntError(jr, null));
+		prepareJson(jr, negative);
+		Assert.assertEquals(-1200L, checkLongError(jr, null));
+		prepareJson(jr, negative);
+		Assert.assertEquals(0, BigDecimal.valueOf(-1.2e3).compareTo((BigDecimal)checkNumberError(jr, null)));
 	}
 }
