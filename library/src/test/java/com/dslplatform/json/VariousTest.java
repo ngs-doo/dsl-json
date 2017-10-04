@@ -6,6 +6,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 
 public class VariousTest {
 
@@ -42,5 +43,19 @@ public class VariousTest {
 				jw
 		);
 		Assert.assertEquals("{\"x\":[[\"Hello\"]]}", jw.toString());
+	}
+
+	@Test
+	public void stringIndexIssue() throws IOException {
+		try {
+			String json = "{ \"a\": 1, \"b\": { \"c\": { \"d\": \"e\" } } }";
+			DslJson<Object> dsl = new DslJson<Object>();
+			dsl.deserialize(Map.class, json.getBytes("UTF-8"), 11);
+			Assert.fail("Expecting end of JSON error");
+		} catch (StringIndexOutOfBoundsException e) {
+			Assert.fail("Expecting end of JSON error");
+		} catch (IOException e) {
+			Assert.assertTrue(e.getMessage().contains("Unable to parse input at position 11"));
+		}
 	}
 }

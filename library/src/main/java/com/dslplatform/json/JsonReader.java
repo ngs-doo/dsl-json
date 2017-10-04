@@ -487,6 +487,8 @@ public final class JsonReader<TContext> {
 		if (last != '"') {
 			//TODO: count special chars in separate counter
 			throw new IOException("JSON string must start with a double quote at: " + positionInStream());
+		} else if (currentIndex == length) {
+			throw new IOException("Unable to parse input at position " + positionInStream() + ". Premature end of JSON input");
 		}
 
 		byte bb;
