@@ -1,6 +1,5 @@
 package com.dslplatform.json;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -905,7 +904,11 @@ public final class JsonReader<TContext> {
 	public final byte[] readBase64() throws IOException {
 		if (stream != null && Base64.findEnd(buffer, currentIndex) == buffer.length) {
 			final int len = parseString();
-			return DatatypeConverter.parseBase64Binary(new String(chars, 0, len));
+			final byte[] input = new byte[len];
+			for (int i = 0; i < input.length; i++) {
+				input[i] = (byte) chars[i];
+			}
+			return Base64.decodeFast(input, 0, len);
 		}
 		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + " at base64 start. Found " + (char) last);

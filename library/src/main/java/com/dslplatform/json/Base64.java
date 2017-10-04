@@ -138,20 +138,22 @@ abstract class Base64 {
 		int sIx = start, eIx = end - 1;    // Start and end index after trimming.
 
 		// Trim illegal chars from start
-		while (sIx < eIx && IA[sArr[sIx] & 0xff] < 0)
+		while (sIx < eIx && IA[sArr[sIx] & 0xff] < 0) {
 			sIx++;
+		}
 
 		// Trim illegal chars from end
-		while (eIx > 0 && IA[sArr[eIx] & 0xff] < 0)
+		while (eIx > 0 && IA[sArr[eIx] & 0xff] < 0) {
 			eIx--;
+		}
 
 		// get the padding count (=) (0, 1 or 2)
-		int pad = sArr[eIx] == '=' ? (sArr[eIx - 1] == '=' ? 2 : 1) : 0;  // Count '=' at end.
-		int cCnt = eIx - sIx + 1;   // Content count including possible separators
-		int sepCnt = sLen > 76 ? (sArr[76] == '\r' ? cCnt / 78 : 0) << 1 : 0;
+		final int pad = sArr[eIx] == '=' ? (sArr[eIx - 1] == '=' ? 2 : 1) : 0;  // Count '=' at end.
+		final int cCnt = eIx - sIx + 1;   // Content count including possible separators
+		final int sepCnt = sLen > 76 ? (sArr[76] == '\r' ? cCnt / 78 : 0) << 1 : 0;
 
-		int len = ((cCnt - sepCnt) * 6 >> 3) - pad; // The number of decoded bytes
-		byte[] dArr = new byte[len];       // Preallocate byte[] of exact length
+		final int len = ((cCnt - sepCnt) * 6 >> 3) - pad; // The number of decoded bytes
+		final byte[] dArr = new byte[len];       // Preallocate byte[] of exact length
 
 		// Decode all but the last 0 - 2 bytes.
 		int d = 0;
@@ -174,11 +176,13 @@ abstract class Base64 {
 		if (d < len) {
 			// Decode last 1-3 bytes (incl '=') into 1-3 bytes
 			int i = 0;
-			for (int j = 0; sIx <= eIx - pad; j++)
+			for (int j = 0; sIx <= eIx - pad; j++) {
 				i |= IA[sArr[sIx++]] << (18 - j * 6);
+			}
 
-			for (int r = 16; d < len; r -= 8)
+			for (int r = 16; d < len; r -= 8) {
 				dArr[d++] = (byte) (i >> r);
+			}
 		}
 
 		return dArr;
