@@ -79,7 +79,7 @@ public final class JsonReader<TContext> {
 	protected final int doubleLengthLimit;
 	protected final UnknownNumberParsing unknownNumbers;
 	protected final int maxNumberDigits;
-	private final int maxStringSize;
+	private final int maxStringBuffer;
 
 	private JsonReader(
 			final char[] tmp,
@@ -93,7 +93,7 @@ public final class JsonReader<TContext> {
 			final DoublePrecision doublePrecision,
 			final UnknownNumberParsing unknownNumbers,
 			final int maxNumberDigits,
-			final int maxStringSize) {
+			final int maxStringBuffer) {
 		this.tmp = tmp;
 		this.buffer = buffer;
 		this.length = length;
@@ -107,7 +107,7 @@ public final class JsonReader<TContext> {
 		this.doublePrecision = doublePrecision;
 		this.unknownNumbers = unknownNumbers;
 		this.maxNumberDigits = maxNumberDigits;
-		this.maxStringSize = maxStringSize;
+		this.maxStringBuffer = maxStringBuffer;
 		this.doubleLengthLimit = 15 + doublePrecision.level;
 	}
 
@@ -173,8 +173,8 @@ public final class JsonReader<TContext> {
 			final DoublePrecision doublePrecision,
 			final UnknownNumberParsing unknownNumbers,
 			final int maxNumberDigits,
-			final int maxStringSize) {
-		this(tmp, buffer, length, context, keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+			final int maxStringBuffer) {
+		this(tmp, buffer, length, context, keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringBuffer);
 		if (tmp == null) {
 			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
@@ -510,7 +510,10 @@ public final class JsonReader<TContext> {
 			_tmp[i++] = (char) bb;
 		}
 		if (i == _tmp.length) {
-			_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
+			final int newSize = chars.length * 2;
+			if (newSize > maxStringBuffer) throw new IOException("Unable to process input JSON. Maximum string buffer limit exceeded: " + maxStringBuffer);
+			_tmp = chars = Arrays.copyOf(chars, newSize);
+			_tmpLen = _tmp.length;
 		}
 		currentIndex = ci;
 		int soFar = --currentIndex - startIndex;
@@ -524,7 +527,7 @@ public final class JsonReader<TContext> {
 			if (bc == '\\') {
 				if (soFar >= _tmpLen - 6) {
 					final int newSize = chars.length * 2;
-					if (newSize > maxStringSize) throw new IOException("Unable to process input JSON. Maximum string size limit exceeded: " + maxStringSize);
+					if (newSize > maxStringBuffer) throw new IOException("Unable to process input JSON. Maximum string buffer limit exceeded: " + maxStringBuffer);
 					_tmp = chars = Arrays.copyOf(chars, newSize);
 					_tmpLen = _tmp.length;
 				}
@@ -562,7 +565,9 @@ public final class JsonReader<TContext> {
 				}
 			} else if ((bc & 0x80) != 0) {
 				if (soFar >= _tmpLen - 4) {
-					_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
+					final int newSize = chars.length * 2;
+					if (newSize > maxStringBuffer) throw new IOException("Unable to process input JSON. Maximum string buffer limit exceeded: " + maxStringBuffer);
+					_tmp = chars = Arrays.copyOf(chars, newSize);
 					_tmpLen = _tmp.length;
 				}
 				final int u2 = buffer[currentIndex++];
@@ -595,7 +600,9 @@ public final class JsonReader<TContext> {
 					}
 				}
 			} else if (soFar >= _tmpLen) {
-				_tmp = chars = Arrays.copyOf(chars, chars.length * 2);
+				final int newSize = chars.length * 2;
+				if (newSize > maxStringBuffer) throw new IOException("Unable to process input JSON. Maximum string buffer limit exceeded: " + maxStringBuffer);
+				_tmp = chars = Arrays.copyOf(chars, newSize);
 				_tmpLen = _tmp.length;
 			}
 

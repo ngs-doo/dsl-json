@@ -118,7 +118,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		private JsonReader.DoublePrecision doublePrecision = JsonReader.DoublePrecision.DEFAULT;
 		private JsonReader.UnknownNumberParsing unknownNumbers = JsonReader.UnknownNumberParsing.LONG_AND_BIGDECIMAL;
 		private int maxNumberDigits = 512;
-		private int maxStringSize = 128 * 1024 * 1024;
+		private int maxStringBuffer = 128 * 1024 * 1024;
 		private final List<Configuration> configurations = new ArrayList<Configuration>();
 		private final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 		private final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
@@ -318,7 +318,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		 */
 		public Settings<TContext> limitStringBuffer(int size) {
 			if (size < 1) throw new IllegalArgumentException("size can't be smaller than 1");
-			this.maxNumberDigits = size;
+			this.maxStringBuffer = size;
 			return this;
 		}
 
@@ -415,7 +415,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		this.unknownNumbers = settings.unknownNumbers;
 		this.doublePrecision = settings.doublePrecision;
 		this.maxNumberDigits = settings.maxNumberDigits;
-		this.maxStringSize = settings.maxStringSize;
+		this.maxStringSize = settings.maxStringBuffer;
 		this.writerFactories.addAll(settings.writerFactories);
 		this.readerFactories.addAll(settings.readerFactories);
 		this.binderFactories.addAll(settings.binderFactories);
