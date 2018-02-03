@@ -40,10 +40,12 @@ public final class JsonWriter {
 	}
 
 	private int position;
+	private long flushed;
 	private OutputStream target;
 	private byte[] buffer;
 
 	private final UnknownSerializer unknownSerializer;
+	private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
 
 	/**
 	 * Prefer creating JsonWriter through DslJson#newWriter
@@ -108,6 +110,7 @@ public final class JsonWriter {
 				throw new SerializationException("Unable to write to target stream.", ex);
 			}
 			position = 0;
+			flushed += size;
 			if (padding > buffer.length) {
 				buffer = Arrays.copyOf(buffer, buffer.length + buffer.length / 2 + padding);
 			}
@@ -429,6 +432,28 @@ public final class JsonWriter {
 		buffer[position++] = '"';
 	}
 
+	final void writeDouble(final double value) {
+		if (value == Double.POSITIVE_INFINITY) {
+			writeAscii("\"Infinity\"");
+		} else if (value == Double.NEGATIVE_INFINITY) {
+			writeAscii("\"-Infinity\"");
+		} else if (value != value) {
+			writeAscii("\"NaN\"");
+		} else if (value == 0.0) {
+			writeAscii("0.0");
+		} else {
+			if (Grisu3.tryConvert(value, doubleBuilder)) {
+				if (position + 24 >= buffer.length) {
+					enlargeOrFlush(position, 24);
+				}
+				final int len = doubleBuilder.copyTo(buffer, position);
+				position += len;
+			} else {
+				writeAscii(Double.toString(value));
+			}
+		}
+	}
+
 	@Override
 	public String toString() {
 		return new String(buffer, 0, position, UTF_8);
@@ -461,6 +486,7 @@ public final class JsonWriter {
 			throw new SerializationException("Method should not be used when targeting streams. Instead use flush() to copy what's remaining in the buffer");
 		}
 		stream.write(buffer, 0, position);
+		flushed += position;
 		position = 0;
 	}
 
@@ -485,6 +511,15 @@ public final class JsonWriter {
 	}
 
 	/**
+	 * Total bytes currently flushed to stream
+	 *
+	 * @return bytes flushed
+	 */
+	public final long flushed() {
+		return flushed;
+	}
+
+	/**
 	 * Resets the writer - same as calling reset(OutputStream = null)
 	 */
 	public final void reset() {
@@ -500,6 +535,7 @@ public final class JsonWriter {
 	public final void reset(OutputStream stream) {
 		position = 0;
 		target = stream;
+		flushed = 0;
 	}
 
 	/**
@@ -517,6 +553,7 @@ public final class JsonWriter {
 			} catch (IOException ex) {
 				throw new SerializationException("Unable to write to target stream.", ex);
 			}
+			flushed += position;
 			position = 0;
 		}
 	}
@@ -531,6 +568,7 @@ public final class JsonWriter {
 		if (target != null && position != 0) {
 			target.write(buffer, 0, position);
 			position = 0;
+			flushed = 0;
 		}
 	}
 

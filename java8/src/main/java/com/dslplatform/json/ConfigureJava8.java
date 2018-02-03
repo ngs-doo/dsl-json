@@ -1,5 +1,7 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.runtime.OptionalAnalyzer;
+
 import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,23 +21,28 @@ public class ConfigureJava8 implements Configuration {
 		json.registerWriter(java.sql.Date.class, new JsonWriter.WriteObject<java.sql.Date>() {
 			@Override
 			public void write(JsonWriter writer, java.sql.Date value) {
-				JavaTimeConverter.serialize(value.toLocalDate(), writer);
+				if (value == null) writer.writeNull();
+				else JavaTimeConverter.serialize(value.toLocalDate(), writer);
 			}
 		});
 		json.registerReader(java.sql.Timestamp.class, rdr -> java.sql.Timestamp.from(JavaTimeConverter.deserializeDateTime(rdr).toInstant()));
 		json.registerWriter(java.sql.Timestamp.class, new JsonWriter.WriteObject<java.sql.Timestamp>() {
 			@Override
 			public void write(JsonWriter writer, java.sql.Timestamp value) {
-				JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
+				if (value == null) writer.writeNull();
+				else JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
 			}
 		});
 		json.registerReader(java.util.Date.class, rdr -> java.util.Date.from(JavaTimeConverter.deserializeDateTime(rdr).toInstant()));
 		json.registerWriter(java.util.Date.class, new JsonWriter.WriteObject<java.util.Date>() {
 			@Override
 			public void write(JsonWriter writer, java.util.Date value) {
-				JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
+				if (value == null) writer.writeNull();
+				else JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
 			}
 		});
 		json.registerWriter(ResultSet.class, ResultSetConverter.Writer);
+		json.writerFactories.add(OptionalAnalyzer.CONVERTER);
+		json.readerFactories.add(OptionalAnalyzer.CONVERTER);
 	}
 }

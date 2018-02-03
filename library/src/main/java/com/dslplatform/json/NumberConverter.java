@@ -165,15 +165,7 @@ public abstract class NumberConverter {
 	}
 
 	public static void serialize(final double value, final JsonWriter sw) {
-		if (value == Double.POSITIVE_INFINITY) {
-			sw.writeAscii("\"Infinity\"");
-		} else if (value == Double.NEGATIVE_INFINITY) {
-			sw.writeAscii("\"-Infinity\"");
-		} else if (value != value) {
-			sw.writeAscii("\"NaN\"");
-		} else {
-			sw.writeAscii(Double.toString(value));//TODO: better implementation required
-		}
+		sw.writeDouble(value);
 	}
 
 	public static void serialize(final double[] value, final JsonWriter sw) {

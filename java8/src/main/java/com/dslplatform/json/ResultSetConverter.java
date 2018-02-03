@@ -22,7 +22,7 @@ public abstract class ResultSetConverter {
 		}
 	};
 
-	public static <T> void serialize(
+	public static void serialize(
 			final ResultSet rs,
 			final JsonWriter buffer,
 			final OutputStream stream) throws SQLException, IOException {
@@ -83,7 +83,7 @@ public abstract class ResultSetConverter {
 		void write(ResultSet rs, JsonWriter buffer) throws SQLException;
 	}
 
-	public static <T> Writer createWriter(
+	public static Writer createWriter(
 			final ResultSetMetaData metaData,
 			final int index) throws SQLException {
 		switch (metaData.getColumnType(index)) {
