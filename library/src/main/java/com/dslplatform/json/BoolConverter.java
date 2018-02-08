@@ -13,10 +13,31 @@ public abstract class BoolConverter {
 			return deserialize(reader);
 		}
 	};
+	static final JsonReader.ReadObject<Boolean> NullableBooleanReader = new JsonReader.ReadObject<Boolean>() {
+		@Override
+		public Boolean read(JsonReader reader) throws IOException {
+			return reader.wasNull() ? null : deserialize(reader);
+		}
+	};
 	static final JsonWriter.WriteObject<Boolean> BooleanWriter = new JsonWriter.WriteObject<Boolean>() {
 		@Override
 		public void write(JsonWriter writer, Boolean value) {
 			serializeNullable(value, writer);
+		}
+	};
+	static final JsonReader.ReadObject<boolean[]> BooleanArrayReader = new JsonReader.ReadObject<boolean[]>() {
+		@Override
+		public boolean[] read(JsonReader reader) throws IOException {
+			if (reader.wasNull()) return null;
+			if (reader.last() != '[') throw reader.expecting("[");
+			reader.getNextToken();
+			return deserializeBoolArray(reader);
+		}
+	};
+	static final JsonWriter.WriteObject<boolean[]> BooleanArrayWriter = new JsonWriter.WriteObject<boolean[]>() {
+		@Override
+		public void write(JsonWriter writer, boolean[] value) {
+			serialize(value, writer);
 		}
 	};
 

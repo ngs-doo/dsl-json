@@ -13,11 +13,11 @@ public abstract class JavaTimeConverter {
 	public static final OffsetDateTime MIN_DATE_TIME_UTC = OffsetDateTime.of(MIN_LOCAL_DATE_TIME, ZoneOffset.UTC);
 	public static final LocalDate MIN_LOCAL_DATE = LocalDate.of(1, 1, 1);
 
-	static final JsonReader.ReadObject<LocalDate> LocalDateReader = JavaTimeConverter::deserializeLocalDate;
+	static final JsonReader.ReadObject<LocalDate> LocalDateReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeLocalDate(rdr);
 	static final JsonWriter.WriteObject<LocalDate> LocalDateWriter = (writer, value) -> serializeNullable(value, writer);
-	static final JsonReader.ReadObject<OffsetDateTime> DateTimeReader = JavaTimeConverter::deserializeDateTime;
+	static final JsonReader.ReadObject<OffsetDateTime> DateTimeReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeDateTime(rdr);
 	static final JsonWriter.WriteObject<OffsetDateTime> DateTimeWriter = (writer, value) -> serializeNullable(value, writer);
-	static final JsonReader.ReadObject<LocalDateTime> LocalDateTimeReader = JavaTimeConverter::deserializeLocalDateTime;
+	static final JsonReader.ReadObject<LocalDateTime> LocalDateTimeReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeLocalDateTime(rdr);
 	static final JsonWriter.WriteObject<LocalDateTime> LocalDateTimeWriter = (writer, value) -> serializeNullable(value, writer);
 
 	public static void serializeNullable(final OffsetDateTime value, final JsonWriter sw) {

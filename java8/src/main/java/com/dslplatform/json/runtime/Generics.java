@@ -96,7 +96,9 @@ abstract class Generics {
 		}
 	}
 
-	public static ParameterizedType makeGenericType(Class<?> container, Type[] arguments) {
+	private static ParameterizedType makeGenericType(final Class<?> container, final Type[] arguments) {
+		if (container == null) throw new IllegalArgumentException("container can't be null");
+		if (arguments == null || arguments.length < 1) throw new IllegalArgumentException("arguments must have at least one element");
 		final StringBuilder sb = new StringBuilder();
 		sb.append(container.getTypeName());
 		sb.append("<");
@@ -114,6 +116,4 @@ abstract class Generics {
 		}
 		return found;
 	}
-
-
 }

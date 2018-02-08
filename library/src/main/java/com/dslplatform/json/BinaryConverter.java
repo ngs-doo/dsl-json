@@ -9,7 +9,7 @@ public abstract class BinaryConverter {
 	static final JsonReader.ReadObject<byte[]> Base64Reader = new JsonReader.ReadObject<byte[]>() {
 		@Override
 		public byte[] read(JsonReader reader) throws IOException {
-			return deserialize(reader);
+			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<byte[]> Base64Writer = new JsonWriter.WriteObject<byte[]>() {

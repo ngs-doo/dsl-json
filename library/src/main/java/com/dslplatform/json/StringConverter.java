@@ -10,6 +10,7 @@ public abstract class StringConverter {
 	static final JsonReader.ReadObject<String> Reader = new JsonReader.ReadObject<String>() {
 		@Override
 		public String read(JsonReader reader) throws IOException {
+			if (reader.wasNull()) return null;
 			return reader.readString();
 		}
 	};

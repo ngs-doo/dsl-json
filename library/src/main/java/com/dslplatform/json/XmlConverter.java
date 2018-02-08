@@ -20,7 +20,7 @@ public abstract class XmlConverter {
 	static final JsonReader.ReadObject<Element> Reader = new JsonReader.ReadObject<Element>() {
 		@Override
 		public Element read(JsonReader reader) throws IOException {
-			return deserialize(reader);
+			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<Element> Writer = new JsonWriter.WriteObject<Element>() {

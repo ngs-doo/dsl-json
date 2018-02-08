@@ -52,7 +52,7 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 						if (!reader.wasLastName(ri.name)) continue;
 					}
 					reader.getNextToken();
-					ri.reader.bind(reader, instance);
+					ri.value.bind(reader, instance);
 					processed = true;
 					break;
 				}

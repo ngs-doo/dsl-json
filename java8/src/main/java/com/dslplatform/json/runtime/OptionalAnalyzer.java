@@ -36,12 +36,12 @@ public abstract class OptionalAnalyzer {
 		json.registerReader(manifest, tmpReader);
 		final JsonWriter.WriteObject<T> writer = json.tryFindWriter(content);
 		final JsonReader.ReadObject<T> reader = json.tryFindReader(content);
-		if (writer == null || reader == null) {
+		if (Object.class != content && writer == null || reader == null) {
 			json.registerWriter(manifest, null);
 			json.registerReader(manifest, null);
 			return null;
 		}
-		final OptionalDescription<T> converter = new OptionalDescription<>(content == Object.class ? json : null, writer, reader);
+		final OptionalDescription<T> converter = new OptionalDescription<>(json, Object.class == content ? null : writer, reader);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
 		return converter;

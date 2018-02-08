@@ -49,7 +49,7 @@ Annotation processor can be added as Maven dependency with:
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.5.2'
+      compile 'com.dslplatform:dsl-json:1.6.0'
       annotationProcessor 'com.dslplatform:dsl-json-processor:1.5.0'
     }
 
@@ -182,8 +182,16 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.5.2</version>
+      <version>1.6.0</version>
     </dependency>
+
+## Runtime analysis
+
+Java8 library has builtin runtime analysis support, so library can be used without compile time databinding. 
+Runtime analysis works by lazy type resolution from registered converters, eg:
+
+    private final DslJson.Settings settings = runtime.Settings.withRuntime().includeServiceLoader();
+    private final DslJson<Object> json = new DslJson<Object>(settings);
 
 ## Best practices
 

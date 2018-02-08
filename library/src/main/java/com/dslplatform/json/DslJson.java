@@ -60,9 +60,10 @@ import java.util.concurrent.ConcurrentMap;
  *
  * @param <TContext> used for library specialization. If unsure, use Object
  */
-public class DslJson<TContext> implements UnknownSerializer {
+public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
+	private static final Object unknownValue = new Object();
 
 	/**
 	 * The context of this instance.
@@ -404,7 +405,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		this.localReader = new ThreadLocal<JsonReader>() {
 			@Override
 			protected JsonReader initialValue() {
-				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self.readers, self.binders, self.doublePrecision, self.unknownNumbers, self.maxNumberDigits, self.maxStringSize);
+				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self, self.doublePrecision, self.unknownNumbers, self.maxNumberDigits, self.maxStringSize);
 			}
 		};
 		this.context = settings.context;
@@ -422,8 +423,10 @@ public class DslJson<TContext> implements UnknownSerializer {
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
 		registerReader(boolean.class, BoolConverter.BooleanReader);
-		registerReader(Boolean.class, BoolConverter.BooleanReader);
 		registerWriter(boolean.class, BoolConverter.BooleanWriter);
+		registerReader(boolean[].class, BoolConverter.BooleanArrayReader);
+		registerWriter(boolean[].class, BoolConverter.BooleanArrayWriter);
+		registerReader(Boolean.class, BoolConverter.NullableBooleanReader);
 		registerWriter(Boolean.class, BoolConverter.BooleanWriter);
 		if (settings.javaSpecifics) {
 			registerJavaSpecifics(this);
@@ -451,19 +454,33 @@ public class DslJson<TContext> implements UnknownSerializer {
 		registerWriter(InetAddress.class, NetConverter.AddressWriter);
 		registerReader(double.class, NumberConverter.DoubleReader);
 		registerWriter(double.class, NumberConverter.DoubleWriter);
-		registerReader(Double.class, NumberConverter.DoubleReader);
+		registerReader(double[].class, NumberConverter.DoubleArrayReader);
+		registerWriter(double[].class, NumberConverter.DoubleArrayWriter);
+		registerReader(Double.class, NumberConverter.NullableDoubleReader);
 		registerWriter(Double.class, NumberConverter.DoubleWriter);
 		registerReader(float.class, NumberConverter.FloatReader);
 		registerWriter(float.class, NumberConverter.FloatWriter);
-		registerReader(Float.class, NumberConverter.FloatReader);
+		registerReader(float[].class, NumberConverter.FloatArrayReader);
+		registerWriter(float[].class, NumberConverter.FloatArrayWriter);
+		registerReader(Float.class, NumberConverter.NullableFloatReader);
 		registerWriter(Float.class, NumberConverter.FloatWriter);
 		registerReader(int.class, NumberConverter.IntReader);
 		registerWriter(int.class, NumberConverter.IntWriter);
-		registerReader(Integer.class, NumberConverter.IntReader);
+		registerReader(int[].class, NumberConverter.IntArrayReader);
+		registerWriter(int[].class, NumberConverter.IntArrayWriter);
+		registerReader(Integer.class, NumberConverter.NullableIntReader);
 		registerWriter(Integer.class, NumberConverter.IntWriter);
+		registerReader(short.class, NumberConverter.ShortReader);
+		registerWriter(short.class, NumberConverter.ShortWriter);
+		registerReader(short[].class, NumberConverter.ShortArrayReader);
+		registerWriter(short[].class, NumberConverter.ShortArrayWriter);
+		registerReader(Short.class, NumberConverter.NullableShortReader);
+		registerWriter(Short.class, NumberConverter.ShortWriter);
 		registerReader(long.class, NumberConverter.LongReader);
 		registerWriter(long.class, NumberConverter.LongWriter);
-		registerReader(Long.class, NumberConverter.LongReader);
+		registerReader(long[].class, NumberConverter.LongArrayReader);
+		registerWriter(long[].class, NumberConverter.LongArrayWriter);
+		registerReader(Long.class, NumberConverter.NullableLongReader);
 		registerWriter(Long.class, NumberConverter.LongWriter);
 		registerReader(BigDecimal.class, NumberConverter.DecimalReader);
 		registerWriter(BigDecimal.class, NumberConverter.DecimalWriter);
@@ -526,7 +543,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 				hash *= 0x1000193;
 			}
 			final int index = (int) hash & mask;
-			String value = cache[index];
+			final String value = cache[index];
 			if (value == null) return createAndPut(index, chars, len);
 			if (value.length() != len) return createAndPut(index, chars, len);
 			for (int i = 0; i < value.length(); i++) {
@@ -536,7 +553,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 
 		private String createAndPut(int index, char[] chars, int len) {
-			String value = new String(chars, 0, len);
+			final String value = new String(chars, 0, len);
 			cache[index] = value;
 			return value;
 		}
@@ -589,7 +606,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader() {
-		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -601,7 +618,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes) {
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -614,7 +631,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
-		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 
@@ -630,7 +647,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length, char[] tmp) {
-		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -662,7 +679,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 	@Deprecated
 	public JsonReader<TContext> newReader(String input) {
 		final byte[] bytes = input.getBytes(UTF8);
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	private static void loadDefaultConverters(final DslJson json, final String name) {
@@ -692,19 +709,11 @@ public class DslJson<TContext> implements UnknownSerializer {
 		json.registerWriter(Element.class, XmlConverter.Writer);
 	}
 
-	private static boolean isNull(final int size, final byte[] body) {
-		return size == 4
-				&& body[0] == 'n'
-				&& body[1] == 'u'
-				&& body[2] == 'l'
-				&& body[3] == 'l';
-	}
-
 	private final ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>> objectReaders =
 			new ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>>();
 
-	private final HashMap<Type, JsonReader.ReadObject<?>> readers = new HashMap<Type, JsonReader.ReadObject<?>>();
-	private final HashMap<Type, JsonReader.BindObject<?>> binders = new HashMap<Type, JsonReader.BindObject<?>>();
+	private final ConcurrentHashMap<Type, JsonReader.ReadObject<?>> readers = new ConcurrentHashMap<Type, JsonReader.ReadObject<?>>();
+	private final ConcurrentHashMap<Type, JsonReader.BindObject<?>> binders = new ConcurrentHashMap<Type, JsonReader.BindObject<?>>();
 
 	/**
 	 * Register custom reader for specific type (JSON -&gt; instance conversion).
@@ -721,7 +730,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param <S>      type or subtype
 	 */
 	public <T, S extends T> void registerReader(final Class<T> manifest, final JsonReader.ReadObject<S> reader) {
-		readers.put(manifest, reader);
+		if (reader == null) readers.remove(manifest);
+		else readers.put(manifest, reader);
 	}
 
 	/**
@@ -737,7 +747,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param reader   provide custom implementation for reading JSON into an object instance
 	 */
 	public void registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
-		readers.put(manifest, reader);
+		if (reader == null) readers.remove(manifest);
+		else readers.put(manifest, reader);
 	}
 
 	/**
@@ -756,7 +767,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param <S>      type or subtype
 	 */
 	public <T, S extends T> void registerBinder(final Class<T> manifest, final JsonReader.BindObject<S> binder) {
-		binders.put(manifest, binder);
+		if (binder == null) binders.remove(manifest);
+		else binders.put(manifest, binder);
 	}
 
 	/**
@@ -773,7 +785,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param binder   provide custom implementation for binding JSON to an object instance
 	 */
 	public void registerBinder(final Type manifest, final JsonReader.BindObject<?> binder) {
-		binders.put(manifest, binder);
+		if (binder == null) binders.remove(manifest);
+		else binders.put(manifest, binder);
 	}
 
 	private final HashMap<Type, JsonWriter.WriteObject<?>> jsonWriters = new HashMap<Type, JsonWriter.WriteObject<?>>();
@@ -792,8 +805,13 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param <T>      type
 	 */
 	public <T> void registerWriter(final Class<T> manifest, final JsonWriter.WriteObject<T> writer) {
-		writerMap.put(manifest, manifest);
-		jsonWriters.put(manifest, writer);
+		if (writer == null) {
+			writerMap.remove(manifest);
+			jsonWriters.remove(manifest);
+		} else {
+			writerMap.put(manifest, manifest);
+			jsonWriters.put(manifest, writer);
+		}
 	}
 
 	/**
@@ -809,7 +827,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 	 * @param writer   provide custom implementation for writing JSON from object instance
 	 */
 	public void registerWriter(final Type manifest, final JsonWriter.WriteObject<?> writer) {
-		jsonWriters.put(manifest, writer);
+		if (writer == null) jsonWriters.remove(manifest);
+		else jsonWriters.put(manifest, writer);
 	}
 
 	private final ConcurrentMap<Class<?>, Class<?>> writerMap = new ConcurrentHashMap<Class<?>, Class<?>>();
@@ -1208,9 +1227,6 @@ public class DslJson<TContext> implements UnknownSerializer {
 			throw new IllegalArgumentException("input can't be null");
 		}
 		input.getNextToken();
-		if (input.wasNull()) {
-			return null;
-		}
 		return converter.read(input);
 	}
 
@@ -1240,19 +1256,15 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (body == null) {
 			throw new IllegalArgumentException("body can't be null");
 		}
-		if (isNull(size, body)) {
-			return null;
-		}
 		//TODO: ideally we should release reference to provided byte buffer
 		final JsonReader json = localReader.get().process(body, size);
 		json.getNextToken();
-		if (json.wasNull()) {
-			return null;
-		}
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
 			if (objectReader != null) {
-				if (json.last() == '{') {
+				if (json.wasNull()) {
+					return null;
+				} else if (json.last() == '{') {
 					json.getNextToken();
 					return (TResult) objectReader.deserialize(json);
 				} else throw json.expecting("{");
@@ -1263,7 +1275,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 			return (TResult) simpleReader.read(json);
 		}
 		if (manifest.isArray()) {
-			if (json.last() != '[') {
+			if (json.wasNull()) {
+				return null;
+			} else if (json.last() != '[') {
 				throw json.expecting("[");
 			}
 			final Class<?> elementManifest = manifest.getComponentType();
@@ -1306,17 +1320,11 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (body == null) {
 			throw new IllegalArgumentException("body can't be null");
 		}
-		if (isNull(size, body)) {
-			return null;
-		}
 		//TODO: ideally we should release reference to provided byte buffer
 		final JsonReader json = localReader.get().process(body, size);
 		json.getNextToken();
-		if (json.wasNull()) {
-			return null;
-		}
 		final Object result = deserializeWith(manifest, json);
-		if (result != null) return result;
+		if (result != unknownValue) return result;
 		if (fallback != null) {
 			return fallback.deserialize(context, manifest, body, size);
 		}
@@ -1336,7 +1344,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 				final Type content = pt.getActualTypeArguments()[0];
 				final Class<?> container = (Class<?>) pt.getRawType();
 				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
-					if (json.last() != '[') {
+					if (json.wasNull()) {
+						return null;
+					} else if (json.last() != '[') {
 						throw json.expecting("[");
 					}
 					if (json.getNextToken() == ']') {
@@ -1368,7 +1378,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 				}
 			}
 		} else if (manifest instanceof GenericArrayType) {
-			if (json.last() != '[') {
+			if (json.wasNull()) {
+				return null;
+			} else if (json.last() != '[') {
 				throw json.expecting("[");
 			}
 			final Type content = ((GenericArrayType) manifest).getGenericComponentType();
@@ -1390,7 +1402,7 @@ public class DslJson<TContext> implements UnknownSerializer {
 				}
 			}
 		}
-		return null;
+		return unknownValue;
 	}
 
 	private static Object returnAsArray(final Type content, final ArrayList<?> result) {
@@ -1463,10 +1475,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 		if (body == null) {
 			throw new IllegalArgumentException("body can't be null");
 		}
-		if (isNull(size, body)) {
+		if (size == 4 && body[0] == 'n' && body[1] == 'u'&& body[2] == 'l' && body[3] == 'l') {
 			return null;
-		}
-		if (size == 2 && body[0] == '[' && body[1] == ']') {
+		} else if (size == 2 && body[0] == '[' && body[1] == ']') {
 			return new ArrayList<TResult>(0);
 		}
 		//TODO: ideally we should release reference to provided byte buffer
@@ -1698,13 +1709,12 @@ public class DslJson<TContext> implements UnknownSerializer {
 			final JsonReader json,
 			final InputStream stream) throws IOException {
 		json.getNextToken();
-		if (json.wasNull()) {
-			return null;
-		}
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
 			if (objectReader != null) {
-				if (json.last() == '{') {
+				if (json.wasNull()) {
+					return null;
+				} else if (json.last() == '{') {
 					json.getNextToken();
 					return (TResult) objectReader.deserialize(json);
 				} else throw json.expecting("{");
@@ -1715,7 +1725,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 			return (TResult) simpleReader.read(json);
 		}
 		if (manifest.isArray()) {
-			if (json.last() != '[') {
+			if (json.wasNull()) {
+				return null;
+			} else if (json.last() != '[') {
 				throw json.expecting("[");
 			}
 			final Class<?> elementManifest = manifest.getComponentType();
@@ -1781,11 +1793,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 		final JsonReader json = newReader(stream, buffer);
 		json.getNextToken();
-		if (json.wasNull()) {
-			return null;
-		}
 		final Object result = deserializeWith(manifest, json);
-		if (result != null) return result;
+		if (result != unknownValue) return result;
 		if (fallback != null) {
 			return fallback.deserialize(context, manifest, new RereadStream(buffer, stream));
 		}
@@ -1823,11 +1832,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 		final JsonReader json = localReader.get().process(stream);
 		json.getNextToken();
-		if (json.wasNull()) {
-			return null;
-		}
 		final Object result = deserializeWith(manifest, json);
-		if (result != null) return result;
+		if (result != unknownValue) return result;
 		if (fallback != null) {
 			return fallback.deserialize(context, manifest, new RereadStream(json.buffer, stream));
 		}
@@ -2015,55 +2021,6 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 	};
 
-	private static final JsonWriter.WriteObject BOOL_ARRAY_WRITER = new JsonWriter.WriteObject() {
-		@Override
-		public void write(JsonWriter writer, Object value) {
-			BoolConverter.serialize((boolean[]) value, writer);
-		}
-	};
-
-	private static final JsonWriter.WriteObject INT_ARRAY_WRITER = new JsonWriter.WriteObject() {
-		@Override
-		public void write(JsonWriter writer, Object value) {
-			NumberConverter.serialize((int[]) value, writer);
-		}
-	};
-
-	private static final JsonWriter.WriteObject LONG_ARRAY_WRITER = new JsonWriter.WriteObject() {
-		@Override
-		public void write(JsonWriter writer, Object value) {
-			NumberConverter.serialize((long[]) value, writer);
-		}
-	};
-
-	private static final JsonWriter.WriteObject SHORT_ARRAY_WRITER = new JsonWriter.WriteObject() {
-		@Override
-		public void write(JsonWriter writer, Object value) {
-			NumberConverter.serialize((short[]) value, writer);
-		}
-	};
-
-	private static final JsonWriter.WriteObject FLOAT_ARRAY_WRITER = new JsonWriter.WriteObject() {
-		@Override
-		public void write(JsonWriter writer, Object value) {
-			NumberConverter.serialize((float[]) value, writer);
-		}
-	};
-
-	private static final JsonWriter.WriteObject DOUBLE_ARRAY_WRITER = new JsonWriter.WriteObject() {
-		@Override
-		public void write(JsonWriter writer, Object value) {
-			NumberConverter.serialize((double[]) value, writer);
-		}
-	};
-
-	private static final JsonWriter.WriteObject BYTE_ARRAY_WRITER = new JsonWriter.WriteObject() {
-		@Override
-		public void write(JsonWriter writer, Object value) {
-			BinaryConverter.serialize((byte[]) value, writer);
-		}
-	};
-
 	private static final JsonWriter.WriteObject CHAR_ARRAY_WRITER = new JsonWriter.WriteObject() {
 		@Override
 		public void write(JsonWriter writer, Object value) {
@@ -2098,24 +2055,8 @@ public class DslJson<TContext> implements UnknownSerializer {
 		}
 		if (manifest.isArray()) {
 			final Class<?> elementManifest = manifest.getComponentType();
-			if (elementManifest.isPrimitive()) {
-				if (elementManifest == boolean.class) {
-					return BOOL_ARRAY_WRITER;
-				} else if (elementManifest == int.class) {
-					return INT_ARRAY_WRITER;
-				} else if (elementManifest == long.class) {
-					return LONG_ARRAY_WRITER;
-				} else if (elementManifest == byte.class) {
-					return BYTE_ARRAY_WRITER;
-				} else if (elementManifest == short.class) {
-					return SHORT_ARRAY_WRITER;
-				} else if (elementManifest == float.class) {
-					return FLOAT_ARRAY_WRITER;
-				} else if (elementManifest == double.class) {
-					return DOUBLE_ARRAY_WRITER;
-				} else {
-					return CHAR_ARRAY_WRITER;
-				}
+			if (char.class == elementManifest) {
+				return CHAR_ARRAY_WRITER;
 			} else {
 				final JsonWriter.WriteObject elementWriter = tryFindWriter(elementManifest);
 				if (elementWriter != null) {
@@ -2479,27 +2420,9 @@ public class DslJson<TContext> implements UnknownSerializer {
 				return true;
 			}
 			final Class<?> elementManifest = container.getComponentType();
-			if (elementManifest.isPrimitive()) {
-				if (elementManifest == boolean.class) {
-					BoolConverter.serialize((boolean[]) value, writer);
-				} else if (elementManifest == int.class) {
-					NumberConverter.serialize((int[]) value, writer);
-				} else if (elementManifest == long.class) {
-					NumberConverter.serialize((long[]) value, writer);
-				} else if (elementManifest == byte.class) {
-					BinaryConverter.serialize((byte[]) value, writer);
-				} else if (elementManifest == short.class) {
-					NumberConverter.serialize((short[]) value, writer);
-				} else if (elementManifest == float.class) {
-					NumberConverter.serialize((float[]) value, writer);
-				} else if (elementManifest == double.class) {
-					NumberConverter.serialize((double[]) value, writer);
-				} else if (elementManifest == char.class) {
-					//TODO? char[] !?
-					StringConverter.serialize(new String((char[]) value), writer);
-				} else {
-					return false;
-				}
+			if (char.class == elementManifest) {
+				//TODO? char[] !?
+				StringConverter.serialize(new String((char[]) value), writer);
 				return true;
 			} else {
 				final JsonWriter.WriteObject<Object> elementWriter = (JsonWriter.WriteObject<Object>) tryFindWriter(elementManifest);

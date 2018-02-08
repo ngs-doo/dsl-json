@@ -2,7 +2,6 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.*;
 
@@ -52,8 +51,7 @@ public final class JsonReader<TContext> {
 
 	private final StringCache keyCache;
 	private final StringCache valuesCache;
-	private final HashMap<Type, ReadObject<?>> readers;
-	private final HashMap<Type, BindObject<?>> binders;
+	private final TypeLookup typeLookup;
 
 	public enum DoublePrecision {
 		EXACT(0),
@@ -88,8 +86,7 @@ public final class JsonReader<TContext> {
 			final TContext context,
 			final StringCache keyCache,
 			final StringCache valuesCache,
-			final HashMap<Type, ReadObject<?>> readers,
-			final HashMap<Type, BindObject<?>> binders,
+			final TypeLookup typeLookup,
 			final DoublePrecision doublePrecision,
 			final UnknownNumberParsing unknownNumbers,
 			final int maxNumberDigits,
@@ -102,8 +99,7 @@ public final class JsonReader<TContext> {
 		this.chars = tmp;
 		this.keyCache = keyCache;
 		this.valuesCache = valuesCache;
-		this.readers = readers;
-		this.binders = binders;
+		this.typeLookup = typeLookup;
 		this.doublePrecision = doublePrecision;
 		this.unknownNumbers = unknownNumbers;
 		this.maxNumberDigits = maxNumberDigits;
@@ -150,7 +146,7 @@ public final class JsonReader<TContext> {
 
 	@Deprecated
 	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp, final StringCache keyCache, final StringCache valuesCache) {
-		this(tmp, buffer, length, context, keyCache, valuesCache, new HashMap<Type, ReadObject<?>>(0), new HashMap<Type, BindObject<?>>(0), DoublePrecision.DEFAULT, UnknownNumberParsing.LONG_AND_BIGDECIMAL, 512, 256 * 1024 * 1024);
+		this(tmp, buffer, length, context, keyCache, valuesCache, null, DoublePrecision.DEFAULT, UnknownNumberParsing.LONG_AND_BIGDECIMAL, 512, 256 * 1024 * 1024);
 		if (tmp == null) {
 			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
@@ -168,13 +164,12 @@ public final class JsonReader<TContext> {
 			final char[] tmp,
 			final StringCache keyCache,
 			final StringCache valuesCache,
-			final HashMap<Type, ReadObject<?>> readers,
-			final HashMap<Type, BindObject<?>> binders,
+			final TypeLookup typeLookup,
 			final DoublePrecision doublePrecision,
 			final UnknownNumberParsing unknownNumbers,
 			final int maxNumberDigits,
 			final int maxStringBuffer) {
-		this(tmp, buffer, length, context, keyCache, valuesCache, readers, binders, doublePrecision, unknownNumbers, maxNumberDigits, maxStringBuffer);
+		this(tmp, buffer, length, context, keyCache, valuesCache, typeLookup, doublePrecision, unknownNumbers, maxNumberDigits, maxStringBuffer);
 		if (tmp == null) {
 			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
@@ -1118,7 +1113,7 @@ public final class JsonReader<TContext> {
 		}
 	}
 
-	private Object readNull(Class<?> manifest) throws IOException {
+	private Object readNull(final Class<?> manifest) throws IOException {
 		if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
 		if (manifest.isPrimitive()) {
 			if (manifest == int.class) return 0;
@@ -1142,12 +1137,13 @@ public final class JsonReader<TContext> {
 	 * @throws IOException unable to process JSON
 	 */
 	@SuppressWarnings("unchecked")
-	public final <T> T next(Class<T> manifest) throws IOException {
+	public final <T> T next(final Class<T> manifest) throws IOException {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (typeLookup == null) throw new IllegalArgumentException("typeLookup is not defined for this JsonReader. Unable to lookup specified type " + manifest);
 		if (this.getNextToken() == 'n') {
 			return (T)readNull(manifest);
 		}
-		final ReadObject<T> reader = (ReadObject<T>) readers.get(manifest);
+		final ReadObject<T> reader = typeLookup.tryFindReader(manifest);
 		if (reader == null) {
 			throw new IllegalArgumentException("Reader not found for " + manifest + ". Check if reader was registered");
 		}
@@ -1162,7 +1158,7 @@ public final class JsonReader<TContext> {
 	 * @return new instance from input JSON
 	 * @throws IOException unable to process JSON
 	 */
-	public final <T> T next(ReadObject<T> reader) throws IOException {
+	public final <T> T next(final ReadObject<T> reader) throws IOException {
 		if (reader == null) throw new IllegalArgumentException("reader can't be null");
 		if (this.getNextToken() == 'n') {
 			if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
@@ -1181,13 +1177,14 @@ public final class JsonReader<TContext> {
 	 * @throws IOException unable to process JSON
 	 */
 	@SuppressWarnings("unchecked")
-	public final <T> T next(Class<T> manifest, T instance) throws IOException {
+	public final <T> T next(final Class<T> manifest, final T instance) throws IOException {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (instance == null) throw new IllegalArgumentException("instance can't be null");
+		if (typeLookup == null) throw new IllegalArgumentException("typeLookup is not defined for this JsonReader. Unable to lookup specified type " + manifest);
 		if (this.getNextToken() == 'n') {
 			return (T)readNull(manifest);
 		}
-		final BindObject<T> binder = (BindObject<T>)binders.get(manifest);
+		final BindObject<T> binder = typeLookup.tryFindBinder(manifest);
 		if (binder == null) throw new IllegalArgumentException("Binder not found for " + manifest + ". Check if binder was registered");
 		return binder.bind(this, instance);
 	}

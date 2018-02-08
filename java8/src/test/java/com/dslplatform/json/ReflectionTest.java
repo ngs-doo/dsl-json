@@ -1,29 +1,20 @@
 package com.dslplatform.json;
 
-import com.dslplatform.json.runtime.BeanAnalyzer;
-import com.dslplatform.json.runtime.ImmutableAnalyzer;
-import com.dslplatform.json.runtime.OptionalAnalyzer;
+import com.dslplatform.json.runtime.*;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Optional;
+import java.util.*;
 
 public class ReflectionTest {
 
-	private final DslJson.Settings settings = new DslJson.Settings()
-			.resolveWriter(OptionalAnalyzer.CONVERTER)
-			.resolveReader(OptionalAnalyzer.CONVERTER)
-			.resolveWriter(ImmutableAnalyzer.CONVERTER)
-			.resolveReader(ImmutableAnalyzer.CONVERTER)
-			.resolveWriter(BeanAnalyzer.CONVERTER)
-			.resolveBinder(BeanAnalyzer.CONVERTER)
-			.resolveReader(BeanAnalyzer.CONVERTER);
-	private final DslJson<Object> json = new DslJson<Object>(settings);
+	private final DslJson<Object> json = new DslJson<Object>(Settings.withRuntime().includeServiceLoader());
 
 	public static class SimpleClass {
 		public int x;
@@ -86,6 +77,14 @@ public class ReflectionTest {
 		}
 	}
 
+	private <T> T deserialize(TypeDefinition<T> td, InputStream is) throws IOException {
+		return (T)json.deserialize(td.type, is);
+	}
+
+	private <T> T deserialize(TypeDefinition<T> td, byte[] bytes) throws IOException {
+		return (T)json.deserialize(td.type, bytes, bytes.length);
+	}
+
 	@Test
 	public void checkGeneric() throws IOException {
 		Generic<String> str = new Generic<>();
@@ -93,7 +92,7 @@ public class ReflectionTest {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		json.serialize(str, baos);
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		Generic<String> sc2 = (Generic<String>)json.deserialize(new TypeDefinition<Generic<String>>(){}.type, bais);
+		Generic<String> sc2 = deserialize(new TypeDefinition<Generic<String>>(){}, bais);
 		Assert.assertEquals(str.property, sc2.property);
 	}
 
@@ -136,7 +135,7 @@ public class ReflectionTest {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		json.serialize(im1, baos);
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		Opt<String> im2 = (Opt<String>)json.deserialize(new TypeDefinition<Opt<String>>(){}.type, bais);
+		Opt<String> im2 = deserialize(new TypeDefinition<Opt<String>>(){}, bais);
 		Assert.assertEquals(im2.x, im1.x);
 		Assert.assertEquals(im2.x.get(), im1.x.get());
 		Assert.assertEquals(im2.s, im1.s);
@@ -144,4 +143,144 @@ public class ReflectionTest {
 		Assert.assertEquals(im2.self, im1.self);
 	}
 
+	public static class MyBind {
+		private int i;
+		public int i() { return i; }
+		public void i(int value) { i = value; }
+		private String s;
+		public String s() { return s; }
+		public void s(String value) { s = value; }
+	}
+
+	@Test
+	public void bindObject() throws IOException {
+		String input = "{\"i\":12,\"s\":\"abc\"}";
+		byte[] bytes = input.getBytes();
+		JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
+		MyBind instance = new MyBind();
+		MyBind bound = reader.next(MyBind.class, instance);
+		Assert.assertEquals(12, bound.i);
+		Assert.assertEquals("abc", bound.s);
+		Assert.assertSame(instance, bound);
+
+		reader = json.newReader().process(bytes, bytes.length);
+		JsonReader.BindObject<MyBind> binder = json.tryFindBinder(MyBind.class);
+		bound = reader.next(binder, instance);
+		Assert.assertEquals(12, bound.i);
+		Assert.assertEquals("abc", bound.s);
+		Assert.assertSame(instance, bound);
+
+		reader = json.newReader().process(bytes, bytes.length);
+		JsonReader.ReadObject<MyBind> rdr = json.tryFindReader(MyBind.class);
+		instance = reader.next(rdr);
+		Assert.assertEquals(12, instance.i);
+		Assert.assertEquals("abc", instance.s);
+	}
+
+
+	public enum MyEnum {
+		A,
+		B;
+	}
+
+	@Test
+	public void canUseEnum() throws IOException {
+		String input = "[\"A\",\"B\"]";
+		byte[] bytes = input.getBytes();
+		Enum[] enums = json.deserialize(MyEnum[].class, bytes, bytes.length);
+		Assert.assertArrayEquals(new MyEnum[]{MyEnum.A, MyEnum.B}, enums);
+
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(new MyEnum[]{MyEnum.B, null, MyEnum.A}, baos);
+		Assert.assertEquals("[\"B\",null,\"A\"]", baos.toString("UTF-8"));
+	}
+
+	public static class MyEnumLists {
+		public List<MyEnum> enums1;
+		private List<MyEnum> enums2;
+		public void setEnums2(List<MyEnum> value) {
+			enums2 = value;
+		}
+		public List<MyEnum> getEnums2() {
+			return enums2;
+		}
+	}
+
+	@Test
+	public void canUseEnumLists() throws IOException {
+		MyEnumLists me1 = new MyEnumLists();
+		me1.enums1 = Arrays.asList(MyEnum.A, MyEnum.B);
+		me1.setEnums2(new ArrayList<>());
+		me1.getEnums2().add(MyEnum.B);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(me1, baos);
+
+		byte[] bytes = baos.toByteArray();
+		MyEnumLists me2 = json.deserialize(MyEnumLists.class, bytes, bytes.length);
+		Assert.assertEquals(me1.enums1, me2.enums1);
+		Assert.assertEquals(me1.enums2, me2.enums2);
+	}
+
+	@Test
+	public void enumAsMapKey() throws IOException {
+		Map<MyEnum, Object> map = new HashMap<>();
+		map.put(MyEnum.B, 1L);
+		map.put(MyEnum.A, "abc");
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(map, baos);
+
+		byte[] bytes = baos.toByteArray();
+		Map deser = json.deserialize(map.getClass(), bytes, bytes.length);
+		Assert.assertEquals(2, deser.size());
+		Assert.assertEquals(1L, deser.get("B"));
+		Assert.assertEquals("abc", deser.get("A"));
+
+		Map<MyEnum, Object> ts = deserialize(new TypeDefinition<Map<MyEnum, Object>>(){}, bytes);
+		Assert.assertEquals(map, ts);
+	}
+
+	public static class ObjCol {
+		public Collection collection;
+	}
+
+	@Test
+	public void unknownCollectionElements() throws IOException {
+		ObjCol col = new ObjCol();
+		col.collection = Arrays.asList(1L, "abc", null, true);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(col, baos);
+
+		byte[] bytes = baos.toByteArray();
+		ObjCol deser = json.deserialize(ObjCol.class, bytes, bytes.length);
+		Assert.assertEquals(col.collection, deser.collection);
+	}
+
+	public static class ImmutableDefaults {
+		public final double d;
+		public final float f;
+		public final int i;
+		public final short s;
+		public final long l;
+		public final byte b;
+		public ImmutableDefaults(double d, float f, int i, short s, long l, byte b) {
+			this.d = d;
+			this.f = f;
+			this.i = i;
+			this.s = s;
+			this.l = l;
+			this.b = b;
+		}
+	}
+
+	@Test
+	public void primitiveDefaults() throws IOException {
+		byte[] bytes = "{}".getBytes();
+		ImmutableDefaults def = json.deserialize(ImmutableDefaults.class, bytes, bytes.length);
+		Assert.assertEquals(0.0, def.d, 0);
+		Assert.assertEquals(0.0, def.f, 0);
+		Assert.assertEquals(0, def.i);
+		Assert.assertEquals(0, def.s);
+		Assert.assertEquals(0L, def.l);
+		Assert.assertEquals((byte)0, def.b);
+	}
 }

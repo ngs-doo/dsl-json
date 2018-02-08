@@ -8,27 +8,14 @@ public abstract class ObjectConverter {
 	private static final JsonReader.ReadObject<Map<String, Object>> TypedMapReader = new JsonReader.ReadObject<Map<String, Object>>() {
 		@Override
 		public Map<String, Object> read(JsonReader reader) throws IOException {
-			return deserializeMap(reader);
-		}
-	};
-	private static final JsonReader.ReadObject<Object> ObjectReader = new JsonReader.ReadObject<Object>() {
-		@Override
-		public Object read(JsonReader reader) throws IOException {
-			return deserializeObject(reader);
-		}
-	};
-	@SuppressWarnings("rawtypes")
-	static final JsonReader.ReadObject<Collection> CollectionReader = new JsonReader.ReadObject<Collection>() {
-		@Override
-		public Collection read(JsonReader reader) throws IOException {
-			return deserializeList(reader);
+			return reader.wasNull() ? null : deserializeMap(reader);
 		}
 	};
 	@SuppressWarnings("rawtypes")
 	static final JsonReader.ReadObject<LinkedHashMap> MapReader = new JsonReader.ReadObject<LinkedHashMap>() {
 		@Override
 		public LinkedHashMap read(JsonReader reader) throws IOException {
-			return deserializeMap(reader);
+			return reader.wasNull() ? null : deserializeMap(reader);
 		}
 	};
 

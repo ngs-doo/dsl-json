@@ -6,12 +6,12 @@ class ReadPropertyInfo<T> {
 	public final String name;
 	public final int hash;
 	public final boolean exactName;
-	public final T reader;
+	public final T value;
 
-	ReadPropertyInfo(String name, boolean exactName, T reader) {
+	ReadPropertyInfo(String name, boolean exactName, T value) {
 		this.name = name;
 		this.exactName = exactName;
-		this.reader = reader;
+		this.value = value;
 		long hash = 0x811c9dc5;
 		for (int x = 0; x < name.length(); x++) {
 			hash ^= (byte) name.charAt(x);
@@ -28,7 +28,7 @@ class ReadPropertyInfo<T> {
 				for (int j = 0; j < readers.length; j++) {
 					final ReadPropertyInfo si = readers[j];
 					if (si.hash == ri.hash && !si.exactName) {
-						readers[j] = new ReadPropertyInfo<>(ri.name, true, ri.reader);
+						readers[j] = new ReadPropertyInfo<>(ri.name, true, ri.value);
 					}
 				}
 			}

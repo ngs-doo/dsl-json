@@ -8,9 +8,7 @@ import com.dslplatform.json.SerializationException;
 import java.io.IOException;
 import java.lang.reflect.*;
 import java.nio.charset.Charset;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.*;
 
 public abstract class ImmutableAnalyzer {
 
@@ -41,10 +39,14 @@ public abstract class ImmutableAnalyzer {
 				|| (raw.getModifiers() & Modifier.PUBLIC) == 0) {
 			return null;
 		}
-		final Constructor<?>[] ctors = raw.getDeclaredConstructors();
-		if (ctors.length != 1) return null;
-		final Constructor<?> ctor = ctors[0];
-		if (ctor.getParameterCount() == 0 || (ctor.getModifiers() & Modifier.PUBLIC) == 0) return null;
+		final ArrayList<Constructor<?>> ctors = new ArrayList<>();
+		for(Constructor<?> ctor : raw.getDeclaredConstructors()) {
+			if ((ctor.getModifiers() & Modifier.PUBLIC) == 1 && ctor.getParameterCount() > 0) {
+				ctors.add(ctor);
+			}
+		}
+		if (ctors.size() != 1) return null;
+		final Constructor<?> ctor = ctors.get(0);
 		json.registerWriter(manifest, tmpWriter);
 		json.registerReader(manifest, tmpReader);
 		final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();
@@ -66,9 +68,7 @@ public abstract class ImmutableAnalyzer {
 			writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
 			names = fields.keySet().toArray(new String[0]);
 		} else {
-			json.registerWriter(manifest, null);
-			json.registerReader(manifest, null);
-			return null;
+			return unregister(manifest, json);
 		}
 		final ReadPropertyInfo<JsonReader.ReadObject>[] readProps = new ReadPropertyInfo[ctorParams.length];
 		final Object[] defArgs = new Object[ctorParams.length];
@@ -77,11 +77,16 @@ public abstract class ImmutableAnalyzer {
 			readProps[i] = new ReadPropertyInfo<>(names[i], false, new WriteCtor(json, concreteType, ctor));
 			final JsonReader.ReadObject defReader = json.tryFindReader(concreteType);
 			if (defReader != null) {
-				try {
-					final JsonReader nullJson = json.newReader(new byte[]{'n', 'u', 'l', 'l'});
-					nullJson.read();
-					defArgs[i] = defReader.read(nullJson);
-				} catch (Exception ignore) {
+				if (ctorParams[i].getType().isPrimitive()) {
+					defArgs[i] = Array.get(Array.newInstance(ctorParams[i].getType(), 1), 0);
+				} else {
+					try {
+						final JsonReader nullJson = json.newReader(new byte[]{'n', 'u', 'l', 'l'});
+						nullJson.read();
+						defArgs[i] = defReader.read(nullJson);
+					} catch (Exception ex) {
+						return unregister(manifest, json);
+					}
 				}
 			}
 		}
@@ -101,6 +106,12 @@ public abstract class ImmutableAnalyzer {
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
 		return converter;
+	}
+
+	private static <T> ImmutableDescription<T> unregister(Type manifest, DslJson json) {
+		json.registerWriter(manifest, null);
+		json.registerReader(manifest, null);
+		return null;
 	}
 
 	private static class WriteCtor implements JsonReader.ReadObject {
@@ -141,7 +152,7 @@ public abstract class ImmutableAnalyzer {
 		ReadField(final DslJson json, final Field field, final Type type) {
 			this.json = json;
 			this.field = field;
-			this.type = type;
+			this.type = Object.class.equals(type) ? null : type;
 			quotedName = ("\"" + field.getName() + "\":").getBytes(utf8);
 			this.alwaysSerialize = !json.omitDefaults;
 		}

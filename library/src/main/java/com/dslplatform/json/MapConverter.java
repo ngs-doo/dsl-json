@@ -8,7 +8,7 @@ public abstract class MapConverter {
 	private static final JsonReader.ReadObject<Map<String, String>> TypedMapReader = new JsonReader.ReadObject<Map<String, String>>() {
 		@Override
 		public Map<String, String> read(JsonReader reader) throws IOException {
-			return deserialize(reader);
+			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
 

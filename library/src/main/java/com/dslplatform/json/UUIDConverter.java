@@ -11,7 +11,7 @@ public abstract class UUIDConverter {
 	static final JsonReader.ReadObject<UUID> Reader = new JsonReader.ReadObject<UUID>() {
 		@Override
 		public UUID read(JsonReader reader) throws IOException {
-			return deserialize(reader);
+			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<UUID> Writer = new JsonWriter.WriteObject<UUID>() {

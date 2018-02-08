@@ -48,7 +48,7 @@ final class ImmutableDescription<T> extends WriteDescription<T> implements JsonR
 						if (!reader.wasLastName(ri.name)) continue;
 					}
 					reader.getNextToken();
-					args[i] = ri.reader.read(reader);
+					args[i] = ri.value.read(reader);
 					processed = true;
 					break;
 				}

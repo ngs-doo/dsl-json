@@ -18,7 +18,7 @@ public final class OptionalDescription<T> implements JsonWriter.WriteObject<Opti
 			final DslJson json,
 			final JsonWriter.WriteObject<T> writer,
 			final JsonReader.ReadObject<T> reader) {
-		if (writer == null) throw new IllegalArgumentException("writer can't be null");
+		if (json == null) throw new IllegalArgumentException("json can't be null");
 		if (reader == null) throw new IllegalArgumentException("reader can't be null");
 		this.json = json;
 		this.optWriter = writer;
@@ -28,7 +28,8 @@ public final class OptionalDescription<T> implements JsonWriter.WriteObject<Opti
 	@Override
 	public void write(JsonWriter writer, Optional<T> value) {
 		if (value == null || !value.isPresent()) writer.writeNull();
-		else if (json != null) {
+		else if (optWriter != null) optWriter.write(writer, value.get());
+		else {
 			final T unpacked = value.get();
 			if (unpacked == null) writer.writeNull();
 			else {
@@ -36,7 +37,7 @@ public final class OptionalDescription<T> implements JsonWriter.WriteObject<Opti
 				if (jw == null) throw new SerializationException("Unable to find writer for " + unpacked.getClass());
 				jw.write(writer, unpacked);
 			}
-		} else optWriter.write(writer, value.get());
+		}
 	}
 
 	@Override

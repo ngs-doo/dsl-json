@@ -20,7 +20,7 @@ public abstract class JodaTimeConverter {
 	static final JsonReader.ReadObject<LocalDate> LocalDateReader = new JsonReader.ReadObject<LocalDate>() {
 		@Override
 		public LocalDate read(final JsonReader reader) throws IOException {
-			return deserializeLocalDate(reader);
+			return reader.wasNull() ? null : deserializeLocalDate(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<LocalDate> LocalDateWriter = new JsonWriter.WriteObject<LocalDate>() {
@@ -32,7 +32,7 @@ public abstract class JodaTimeConverter {
 	static final JsonReader.ReadObject<DateTime> DateTimeReader = new JsonReader.ReadObject<DateTime>() {
 		@Override
 		public DateTime read(JsonReader reader) throws IOException {
-			return deserializeDateTime(reader);
+			return reader.wasNull() ? null : deserializeDateTime(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<DateTime> DateTimeWriter = new JsonWriter.WriteObject<DateTime>() {

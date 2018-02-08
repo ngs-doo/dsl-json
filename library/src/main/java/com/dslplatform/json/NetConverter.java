@@ -11,7 +11,7 @@ public abstract class NetConverter {
 	static final JsonReader.ReadObject<URI> UriReader = new JsonReader.ReadObject<URI>() {
 		@Override
 		public URI read(JsonReader reader) throws IOException {
-			return deserializeUri(reader);
+			return reader.wasNull() ? null : deserializeUri(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<URI> UriWriter = new JsonWriter.WriteObject<URI>() {
@@ -23,7 +23,7 @@ public abstract class NetConverter {
 	static final JsonReader.ReadObject<InetAddress> AddressReader = new JsonReader.ReadObject<InetAddress>() {
 		@Override
 		public InetAddress read(JsonReader reader) throws IOException {
-			return deserializeIp(reader);
+			return reader.wasNull() ? null : deserializeIp(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<InetAddress> AddressWriter = new JsonWriter.WriteObject<InetAddress>() {

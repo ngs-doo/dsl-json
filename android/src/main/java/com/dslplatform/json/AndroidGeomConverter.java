@@ -12,7 +12,7 @@ public abstract class AndroidGeomConverter {
 	static final JsonReader.ReadObject<PointF> LocationReader = new JsonReader.ReadObject<PointF>() {
 		@Override
 		public PointF read(JsonReader reader) throws IOException {
-			return deserializeLocation(reader);
+			return reader.wasNull() ? null : deserializeLocation(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<PointF> LocationWriter = new JsonWriter.WriteObject<PointF>() {
@@ -24,7 +24,7 @@ public abstract class AndroidGeomConverter {
 	static final JsonReader.ReadObject<Point> PointReader = new JsonReader.ReadObject<Point>() {
 		@Override
 		public Point read(JsonReader reader) throws IOException {
-			return deserializePoint(reader);
+			return reader.wasNull() ? null : deserializePoint(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<Point> PointWriter = new JsonWriter.WriteObject<Point>() {
@@ -36,7 +36,7 @@ public abstract class AndroidGeomConverter {
 	static final JsonReader.ReadObject<Rect> RectangleReader = new JsonReader.ReadObject<Rect>() {
 		@Override
 		public Rect read(JsonReader reader) throws IOException {
-			return deserializeRectangle(reader);
+			return reader.wasNull() ? null : deserializeRectangle(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<Rect> RectangleWriter = new JsonWriter.WriteObject<Rect>() {
@@ -48,7 +48,7 @@ public abstract class AndroidGeomConverter {
 	static final JsonReader.ReadObject<Bitmap> ImageReader = new JsonReader.ReadObject<Bitmap>() {
 		@Override
 		public Bitmap read(JsonReader reader) throws IOException {
-			return deserializeImage(reader);
+			return reader.wasNull() ? null : deserializeImage(reader);
 		}
 	};
 	static final JsonWriter.WriteObject<Bitmap> ImageWriter = new JsonWriter.WriteObject<Bitmap>() {

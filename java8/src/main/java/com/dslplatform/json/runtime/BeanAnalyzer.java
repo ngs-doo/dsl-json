@@ -7,6 +7,7 @@ import java.lang.reflect.*;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public abstract class BeanAnalyzer {
 
@@ -31,6 +32,7 @@ public abstract class BeanAnalyzer {
 
 	private static <T> BeanDescription<T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
 		if (raw.isArray()
+				|| Object.class == manifest
 				|| Collection.class.isAssignableFrom(raw)
 				|| (raw.getModifiers() & Modifier.ABSTRACT) != 0
 				|| (raw.getDeclaringClass() != null && (raw.getModifiers() & Modifier.STATIC) == 0)) {
@@ -43,8 +45,8 @@ public abstract class BeanAnalyzer {
 		}
 		json.registerWriter(manifest, tmpWriter);
 		json.registerReader(manifest, tmpReader);
-		final HashMap<String, JsonWriter.WriteObject> foundWrite = new HashMap<>();
-		final HashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead = new HashMap<>();
+		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
+		final LinkedHashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
 		for (final Field f : raw.getFields()) {
 			analyzeField(json, foundWrite, foundRead, f, genericMappings);
@@ -72,7 +74,7 @@ public abstract class BeanAnalyzer {
 		ReadField(final DslJson json, final Field field, final Type type) {
 			this.json = json;
 			this.field = field;
-			this.type = type.equals(Object.class) ? null : type;
+			this.type = Object.class == type ? null : type;
 			quotedName = ("\"" + field.getName() + "\":").getBytes(utf8);
 			this.alwaysSerialize = !json.omitDefaults;
 		}
@@ -149,8 +151,8 @@ public abstract class BeanAnalyzer {
 
 	private static void analyzeField(
 			final DslJson json,
-			final HashMap<String, JsonWriter.WriteObject> foundWrite,
-			final HashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead,
+			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
+			final LinkedHashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead,
 			final Field field,
 			final HashMap<Type, Type> genericMappings) {
 		if (canRead(field.getModifiers()) && canWrite(field.getModifiers())) {
@@ -174,7 +176,7 @@ public abstract class BeanAnalyzer {
 		ReadMethod(final DslJson json, final Method method, final String name, final Type type) {
 			this.json = json;
 			this.method = method;
-			this.type = type.equals(Object.class) ? null : type;
+			this.type = Object.class == type ? null : type;
 			quotedName = ("\"" + name + "\":").getBytes(utf8);
 			alwaysSerialize = !json.omitDefaults;
 		}
@@ -251,8 +253,8 @@ public abstract class BeanAnalyzer {
 			final Method mget,
 			final Class<?> manifest,
 			final DslJson json,
-			final HashMap<String, JsonWriter.WriteObject> foundWrite,
-			final HashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead,
+			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
+			final LinkedHashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead,
 			final HashMap<Type, Type> genericMappings) {
 		if (mget.getParameterTypes().length != 0) return;
 		final String setName = mget.getName().startsWith("get") ? "set" + mget.getName().substring(3) : mget.getName();
