@@ -2271,6 +2271,14 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		stream.write(JsonWriter.ARRAY_END);
 	}
 
+	/**
+	 * Use writer.serialize instead
+	 *
+	 * @param writer writer
+	 * @param array items
+	 * @param <T> type
+	 */
+	@Deprecated
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {
 		if (array == null) {
 			writer.writeNull();
@@ -2297,6 +2305,15 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		writer.writeByte(JsonWriter.ARRAY_END);
 	}
 
+	/**
+	 * Use writer.serialize instead
+	 *
+	 * @param writer writer
+	 * @param array items
+	 * @param len part of array
+	 * @param <T> type
+	 */
+	@Deprecated
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array, final int len) {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
@@ -2326,6 +2343,14 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		writer.writeByte(JsonWriter.ARRAY_END);
 	}
 
+	/**
+	 * Use writer.serialize instead
+	 *
+	 * @param writer writer
+	 * @param list items
+	 * @param <T> type
+	 */
+	@Deprecated
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final List<T> list) {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
@@ -2355,6 +2380,14 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		writer.writeByte(JsonWriter.ARRAY_END);
 	}
 
+	/**
+	 * Use writer.serialize instead
+	 *
+	 * @param writer writer
+	 * @param collection items
+	 * @param <T> type
+	 */
+	@Deprecated
 	public <T extends JsonObject> void serialize(final JsonWriter writer, final Collection<T> collection) {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
