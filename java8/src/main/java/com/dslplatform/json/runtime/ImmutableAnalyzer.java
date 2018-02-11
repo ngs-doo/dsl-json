@@ -47,8 +47,8 @@ public abstract class ImmutableAnalyzer {
 		}
 		if (ctors.size() != 1) return null;
 		final Constructor<?> ctor = ctors.get(0);
-		json.registerWriter(manifest, tmpWriter);
-		json.registerReader(manifest, tmpReader);
+		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, tmpWriter);
+		final JsonReader.ReadObject oldReader = json.registerReader(manifest, tmpReader);
 		final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();
 		final LinkedHashMap<String, JsonWriter.WriteObject> methods = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
@@ -68,7 +68,9 @@ public abstract class ImmutableAnalyzer {
 			writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
 			names = fields.keySet().toArray(new String[0]);
 		} else {
-			return unregister(manifest, json);
+			json.registerWriter(manifest, oldWriter);
+			json.registerReader(manifest, oldReader);
+			return null;
 		}
 		final ReadPropertyInfo<JsonReader.ReadObject>[] readProps = new ReadPropertyInfo[ctorParams.length];
 		final Object[] defArgs = new Object[ctorParams.length];
@@ -84,8 +86,10 @@ public abstract class ImmutableAnalyzer {
 						final JsonReader nullJson = json.newReader(new byte[]{'n', 'u', 'l', 'l'});
 						nullJson.read();
 						defArgs[i] = defReader.read(nullJson);
-					} catch (Exception ex) {
-						return unregister(manifest, json);
+					} catch (Exception ignore) {
+						json.registerWriter(manifest, oldWriter);
+						json.registerReader(manifest, oldReader);
+						return null;
 					}
 				}
 			}
@@ -106,12 +110,6 @@ public abstract class ImmutableAnalyzer {
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
 		return converter;
-	}
-
-	private static <T> ImmutableDescription<T> unregister(Type manifest, DslJson json) {
-		json.registerWriter(manifest, null);
-		json.registerReader(manifest, null);
-		return null;
 	}
 
 	private static class WriteCtor implements JsonReader.ReadObject {

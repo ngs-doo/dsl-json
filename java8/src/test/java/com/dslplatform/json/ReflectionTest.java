@@ -283,4 +283,16 @@ public class ReflectionTest {
 		Assert.assertEquals(0L, def.l);
 		Assert.assertEquals((byte)0, def.b);
 	}
+
+	@Test
+	public void testNestedCollection() throws IOException {
+		JsonWriter jw = json.newWriter();
+		json.serializeMap(
+				Collections.singletonMap("x",
+						Collections.singletonList(Collections.singletonList("Hello"))
+				),
+				jw
+		);
+		Assert.assertEquals("{\"x\":[[\"Hello\"]]}", jw.toString());
+	}
 }

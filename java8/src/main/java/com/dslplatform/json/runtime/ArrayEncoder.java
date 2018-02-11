@@ -1,32 +1,20 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.SerializationException;
 
-import java.io.IOException;
-import java.util.ArrayList;
+public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]> {
 
-public final class ArrayDescription<T> implements JsonWriter.WriteObject<T[]>, JsonReader.ReadObject<T[]> {
-
-	private final T[] emptyInstance;
 	private final DslJson json;
 	private final JsonWriter.WriteObject<T> elementWriter;
-	private final JsonReader.ReadObject<T> elementReader;
 
-	public ArrayDescription(
-			final T[] emptyInstance,
+	public ArrayEncoder(
 			final DslJson json,
-			final JsonWriter.WriteObject<T> writer,
-			final JsonReader.ReadObject<T> reader) {
-		if (emptyInstance == null) throw new IllegalArgumentException("emptyInstance can't be null");
+			final JsonWriter.WriteObject<T> writer) {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
-		if (reader == null) throw new IllegalArgumentException("reader can't be null");
-		this.emptyInstance = emptyInstance;
 		this.json = json;
 		this.elementWriter = writer;
-		this.elementReader = reader;
 	}
 
 	private static final byte[] EMPTY = {'[', ']'};
@@ -69,24 +57,5 @@ public final class ArrayDescription<T> implements JsonWriter.WriteObject<T[]>, J
 			}
 			writer.writeByte(JsonWriter.ARRAY_END);
 		}
-	}
-
-	@Override
-	public T[] read(JsonReader reader) throws IOException {
-		if (reader.wasNull()) return null;
-		if (reader.last() != '[') {
-			throw new IOException("Expecting '[' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
-		}
-		if (reader.getNextToken() == ']') return emptyInstance;
-		final ArrayList<T> list = new ArrayList<>(4);
-		list.add(elementReader.read(reader));
-		while (reader.getNextToken() == ','){
-			reader.getNextToken();
-			list.add(elementReader.read(reader));
-		}
-		if (reader.last() != ']') {
-			throw new IOException("Expecting ']' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
-		}
-		return list.toArray(emptyInstance);
 	}
 }

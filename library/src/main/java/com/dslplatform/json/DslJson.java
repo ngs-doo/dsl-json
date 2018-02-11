@@ -745,10 +745,15 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 *
 	 * @param manifest specified type
 	 * @param reader   provide custom implementation for reading JSON into an object instance
+	 * @return old registered value
 	 */
-	public void registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
-		if (reader == null) readers.remove(manifest);
-		else readers.put(manifest, reader);
+	public JsonReader.ReadObject registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
+		if (reader == null) return readers.remove(manifest);
+		try {
+			return readers.get(manifest);
+		} finally {
+			readers.put(manifest, reader);
+		}
 	}
 
 	/**
@@ -825,10 +830,15 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 *
 	 * @param manifest specified type
 	 * @param writer   provide custom implementation for writing JSON from object instance
+	 * @return old registered value
 	 */
-	public void registerWriter(final Type manifest, final JsonWriter.WriteObject<?> writer) {
-		if (writer == null) jsonWriters.remove(manifest);
-		else jsonWriters.put(manifest, writer);
+	public JsonWriter.WriteObject registerWriter(final Type manifest, final JsonWriter.WriteObject<?> writer) {
+		if (writer == null) return jsonWriters.remove(manifest);
+		try {
+			return jsonWriters.get(manifest);
+		} finally {
+			jsonWriters.put(manifest, writer);
+		}
 	}
 
 	private final ConcurrentMap<Class<?>, Class<?>> writerMap = new ConcurrentHashMap<Class<?>, Class<?>>();

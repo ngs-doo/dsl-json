@@ -43,8 +43,8 @@ public abstract class BeanAnalyzer {
 		} catch (InstantiationException | IllegalAccessException ignore) {
 			return null;
 		}
-		json.registerWriter(manifest, tmpWriter);
-		json.registerReader(manifest, tmpReader);
+		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, tmpWriter);
+		final JsonReader.ReadObject oldReader = json.registerReader(manifest, tmpReader);
 		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
 		final LinkedHashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
@@ -54,6 +54,7 @@ public abstract class BeanAnalyzer {
 		for (final Method m : raw.getMethods()) {
 			analyzeMethods(m, raw, json, foundWrite, foundRead, genericMappings);
 		}
+		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
 		final ReadPropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new ReadPropertyInfo[0]);
 		final BeanDescription<T> converter = new BeanDescription<T>(manifest, raw::newInstance, writeProps, readProps);

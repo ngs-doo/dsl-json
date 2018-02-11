@@ -64,7 +64,7 @@ public class ConfigureJava8 implements Configuration {
 		json.registerReader(short.class, ShortReader);
 		json.registerWriter(Short.class, ShortWriter);
 		json.registerReader(Short.class, NullableShortReader);
-		json.writerFactories.add(OptionalAnalyzer.CONVERTER);
-		json.readerFactories.add(OptionalAnalyzer.CONVERTER);
+		json.writerFactories.add(OptionalAnalyzer.WRITER);
+		json.readerFactories.add(OptionalAnalyzer.READER);
 	}
 }
