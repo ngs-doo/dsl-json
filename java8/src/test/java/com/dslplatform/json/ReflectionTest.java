@@ -177,6 +177,52 @@ public class ReflectionTest {
 		Assert.assertEquals("abc", instance.s);
 	}
 
+	@Test
+	public void readCollection() throws IOException {
+		String input = "[{\"i\":12,\"s\":\"abc\"},{\"i\":13,\"s\":\"def\"}]";
+		byte[] bytes = input.getBytes();
+		MyBind[] values = json.deserialize(MyBind[].class, bytes, bytes.length);
+		Assert.assertEquals(2, values.length);
+		Assert.assertEquals(12, values[0].i);
+		Assert.assertEquals("abc", values[0].s);
+		Assert.assertEquals(13, values[1].i);
+		Assert.assertEquals("def", values[1].s);
+	}
+
+	public static class ColProp {
+		public List<MyBind> binds;
+	}
+
+	@Test
+	public void readCollectionProperty() throws IOException {
+		String input = "{\"binds\":[{\"i\":12,\"s\":\"abc\"},{\"i\":13,\"s\":\"def\"}]}";
+		byte[] bytes = input.getBytes();
+		ColProp value = json.deserialize(ColProp.class, bytes, bytes.length);
+		Assert.assertEquals(2, value.binds.size());
+		Assert.assertEquals(12, value.binds.get(0).i);
+		Assert.assertEquals("abc", value.binds.get(0).s);
+		Assert.assertEquals(13, value.binds.get(1).i);
+		Assert.assertEquals("def", value.binds.get(1).s);
+	}
+
+	public static class Info {
+		public List<Item> info;
+
+		public static class Item {
+			public String id;
+			public int index;
+		}
+	}
+
+	@Test
+	public void readSingleCollectionProperty() throws IOException {
+		String input = "{\"info\":[{\"id\":\"37874220710194827570\",\"index\":359465317}]}";
+		byte[] bytes = input.getBytes();
+		Info value = json.deserialize(Info.class, bytes, bytes.length);
+		Assert.assertEquals(1, value.info.size());
+		Assert.assertEquals("37874220710194827570", value.info.get(0).id);
+		Assert.assertEquals(359465317, value.info.get(0).index);
+	}
 
 	public enum MyEnum {
 		A,

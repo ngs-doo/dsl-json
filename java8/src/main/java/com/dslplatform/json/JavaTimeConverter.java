@@ -37,10 +37,18 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static void serialize(final OffsetDateTime value, final JsonWriter sw) {
+		final int year = value.getYear();
+		if (year < 0) {
+			throw new SerializationException("Negative dates are not supported.");
+		} else if (year > 9999) {
+			sw.writeByte(JsonWriter.QUOTE);
+			sw.writeAscii(value.toString());
+			sw.writeByte(JsonWriter.QUOTE);
+			return;
+		}
 		final byte[] buf = sw.ensureCapacity(32);
 		final int pos = sw.size();
 		buf[pos] = '"';
-		final int year = value.getYear();
 		NumberConverter.write4(year, buf, pos + 1);
 		buf[pos + 5] = '-';
 		NumberConverter.write2(value.getMonthValue(), buf, pos + 6);
@@ -52,46 +60,55 @@ public abstract class JavaTimeConverter {
 		NumberConverter.write2(value.getMinute(), buf, pos + 15);
 		buf[pos + 17] = ':';
 		NumberConverter.write2(value.getSecond(), buf, pos + 18);
-		final int nano = value.getNano() / 100;
+		final int nano = value.getNano();
 		if (nano != 0) {
-			buf[pos + 20] = '.';
-			final int div = nano / 100;
-			final int div2 = div / 100;
-			final int rem = nano - div * 100;
-			int end;
-			if (rem != 0) {
-				NumberConverter.write3(div2, buf, pos + 21);
-				NumberConverter.write2(div - div2 * 100, buf, pos + 24);
-				NumberConverter.write2(rem, buf, pos + 26);
-				end = 28;
-			} else {
-				final int rem2 = div - div2 * 100;
-				if (rem2 != 0) {
-					NumberConverter.write3(div2, buf, pos + 21);
-					NumberConverter.write2(div - div2 * 100, buf, pos + 24);
-					end = 26;
-				} else {
-					final int div3 = div2 / 100;
-					if (div2 != div3 * 100) {
-						NumberConverter.write3(div2, buf, pos + 21);
-						end = 24;
-					} else {
-						buf[pos + 21] = (byte) (div3 + '0');
-						end = 22;
-					}
-				}
-			}
-			writeTimezone(buf, end, value, sw);
+			final int end = writeNano(buf, pos, nano);
+			writeTimezone(end, value, sw);
 		} else {
-			writeTimezone(buf, 20, value, sw);
+			writeTimezone(20, value, sw);
 		}
 	}
 
+	private static int writeNano(final byte[] buf, int pos, final int nano) {
+		buf[pos + 20] = '.';
+		final int div = nano / 1000;
+		final int div2 = div / 1000;
+		final int rem1 = nano - div * 1000;
+		int end;
+		if (rem1 != 0) {
+			NumberConverter.write3(div2, buf, pos + 21);
+			NumberConverter.write3(div - div2 * 1000, buf, pos + 24);
+			NumberConverter.write3(rem1, buf, pos + 27);
+			end = 30;
+		} else {
+			final int rem2 = div - div2 * 1000;
+			if (rem2 != 0) {
+				NumberConverter.write3(div2, buf, pos + 21);
+				NumberConverter.write3(rem2, buf, pos + 24);
+				end = 27;
+			} else {
+				NumberConverter.write3(div2, buf, pos + 21);
+				end = 24;
+			}
+		}
+		if (buf[end - 1] == '0') end--;
+		if (buf[end - 1] == '0') end--;
+		return end;
+	}
+
 	public static void serialize(final LocalDateTime value, final JsonWriter sw) {
+		final int year = value.getYear();
+		if (year < 0) {
+			throw new SerializationException("Negative dates are not supported.");
+		} else if (year > 9999) {
+			sw.writeByte(JsonWriter.QUOTE);
+			sw.writeAscii(value.toString());
+			sw.writeByte(JsonWriter.QUOTE);
+			return;
+		}
 		final byte[] buf = sw.ensureCapacity(32);
 		final int pos = sw.size();
 		buf[pos] = '"';
-		final int year = value.getYear();
 		NumberConverter.write4(year, buf, pos + 1);
 		buf[pos + 5] = '-';
 		NumberConverter.write2(value.getMonthValue(), buf, pos + 6);
@@ -103,35 +120,9 @@ public abstract class JavaTimeConverter {
 		NumberConverter.write2(value.getMinute(), buf, pos + 15);
 		buf[pos + 17] = ':';
 		NumberConverter.write2(value.getSecond(), buf, pos + 18);
-		final int nano = value.getNano() / 100;
+		final int nano = value.getNano();
 		if (nano != 0) {
-			buf[pos + 20] = '.';
-			final int div = nano / 100;
-			final int div2 = div / 100;
-			final int rem = nano - div * 100;
-			int end;
-			if (rem != 0) {
-				NumberConverter.write3(div2, buf, pos + 21);
-				NumberConverter.write2(div - div2 * 100, buf, pos + 24);
-				NumberConverter.write2(rem, buf, pos + 26);
-				end = 28;
-			} else {
-				final int rem2 = div - div2 * 100;
-				if (rem2 != 0) {
-					NumberConverter.write3(div2, buf, pos + 21);
-					NumberConverter.write2(div - div2 * 100, buf, pos + 24);
-					end = 26;
-				} else {
-					final int div3 = div2 / 100;
-					if (div2 != div3 * 100) {
-						NumberConverter.write3(div2, buf, pos + 21);
-						end = 24;
-					} else {
-						buf[pos + 21] = (byte) (div3 + '0');
-						end = 22;
-					}
-				}
-			}
+			final int end = writeNano(buf, pos, nano);
 			buf[pos + end] = '"';
 			sw.advance(end + 1);
 		} else {
@@ -140,11 +131,11 @@ public abstract class JavaTimeConverter {
 		}
 	}
 
-	private static void writeTimezone(final byte[] buf, final int position, final OffsetDateTime dt, final JsonWriter sw) {
+	private static void writeTimezone(final int position, final OffsetDateTime dt, final JsonWriter sw) {
 		final ZoneOffset zone = dt.getOffset();
 		sw.advance(position);
 		sw.writeAscii(zone.getId());
-		sw.writeByte((byte) '"');
+		sw.writeByte(JsonWriter.QUOTE);
 	}
 
 	private static boolean allDigits(char[] buffer, int start, int end) {
@@ -157,7 +148,7 @@ public abstract class JavaTimeConverter {
 	public static OffsetDateTime deserializeDateTime(final JsonReader reader) throws IOException {
 		final char[] tmp = reader.readSimpleQuote();
 		final int len = reader.getCurrentIndex() - reader.getTokenStart() - 1;
-		if (len > 18 && len < 28 && tmp[len - 1] == 'Z' && tmp[4] == '-' && tmp[7] == '-'
+		if (len > 18 && len < 31 && tmp[len - 1] == 'Z' && tmp[4] == '-' && tmp[7] == '-'
 				&& (tmp[10] == 'T' || tmp[10] == 't' || tmp[10] == ' ')
 				&& tmp[13] == ':' && tmp[16] == ':' && allDigits(tmp, 20, len - 1)) {
 			final int year = NumberConverter.read4(tmp, 0);
@@ -167,31 +158,11 @@ public abstract class JavaTimeConverter {
 			final int min = NumberConverter.read2(tmp, 14);
 			final int sec = NumberConverter.read2(tmp, 17);
 			if (tmp[19] == '.') {
-				final int nanos;
-				switch (len) {
-					case 22:
-						nanos = 100000 * (tmp[20] - 48);
-						break;
-					case 23:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48);
-						break;
-					case 24:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48);
-						break;
-					case 25:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48);
-						break;
-					case 26:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48) + 10 * (tmp[24] - 48);
-						break;
-					default:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48) + 10 * (tmp[24] - 48) + tmp[25] - 48;
-						break;
-				}
-				return OffsetDateTime.of(year, month, day, hour, min, sec, nanos * 1000, ZoneOffset.UTC);
+				final int nanos = readNanos(tmp, len - 1);
+				return OffsetDateTime.of(year, month, day, hour, min, sec, nanos, ZoneOffset.UTC);
 			}
 			return OffsetDateTime.of(year, month, day, hour, min, sec, 0, ZoneOffset.UTC);
-		} else if (len > 22 && len < 33 && tmp[len - 3] == ':'
+		} else if (len > 22 && len < 36 && tmp[len - 3] == ':'
 				&& (tmp[len - 6] == '+' || tmp[len - 6] == '-')
 				&& tmp[4] == '-' && tmp[7] == '-'
 				&& (tmp[10] == 'T' || tmp[10] == 't' || tmp[10] == ' ')
@@ -207,28 +178,8 @@ public abstract class JavaTimeConverter {
 			final int offMin = NumberConverter.read2(tmp, len - 2);
 			final ZoneOffset offset = ZoneOffset.ofHoursMinutes(tmp[len - 6] == '+' ? offHour : -offHour, offMin);
 			if (tmp[19] == '.') {
-				final int nanos;
-				switch (len) {
-					case 27:
-						nanos = 100000 * (tmp[20] - 48);
-						break;
-					case 28:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48);
-						break;
-					case 29:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48);
-						break;
-					case 30:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48);
-						break;
-					case 31:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48) + 10 * (tmp[24] - 48);
-						break;
-					default:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48) + 10 * (tmp[24] - 48) + tmp[25] - 48;
-						break;
-				}
-				return OffsetDateTime.of(year, month, day, hour, min, sec, nanos * 1000, offset);
+				final int nanos = readNanos(tmp, len - 6);
+				return OffsetDateTime.of(year, month, day, hour, min, sec, nanos, offset);
 			}
 			return OffsetDateTime.of(year, month, day, hour, min, sec, 0, offset);
 		} else {
@@ -236,11 +187,33 @@ public abstract class JavaTimeConverter {
 		}
 	}
 
+	private static int readNanos(final char[] tmp, final int len) {
+		switch (len) {
+			case 21:
+				return 100000000 * (tmp[20] - 48);
+			case 22:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48);
+			case 23:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48) + 1000000 * (tmp[22] - 48);
+			case 24:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48) + 1000000 * (tmp[22] - 48) + 100000 * (tmp[23] - 48);
+			case 25:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48) + 1000000 * (tmp[22] - 48) + 100000 * (tmp[23] - 48) + 10000 * (tmp[24] - 48);
+			case 26:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48) + 1000000 * (tmp[22] - 48) + 100000 * (tmp[23] - 48) + 10000 * (tmp[24] - 48) + 1000 * (tmp[25] - 48);
+			case 27:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48) + 1000000 * (tmp[22] - 48) + 100000 * (tmp[23] - 48) + 10000 * (tmp[24] - 48) + 1000 * (tmp[25] - 48) + 100 * (tmp[26] - 48);
+			case 28:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48) + 1000000 * (tmp[22] - 48) + 100000 * (tmp[23] - 48) + 10000 * (tmp[24] - 48) + 1000 * (tmp[25] - 48) + 100 * (tmp[26] - 48) + 10 * (tmp[27] - 48);
+			default:
+				return 100000000 * (tmp[20] - 48) + 10000000 * (tmp[21] - 48) + 1000000 * (tmp[22] - 48) + 100000 * (tmp[23] - 48) + 10000 * (tmp[24] - 48) + 1000 * (tmp[25] - 48) + 100 * (tmp[26] - 48) + 10 * (tmp[27] - 48) + tmp[28] - 48;
+		}
+	}
+
 	public static LocalDateTime deserializeLocalDateTime(final JsonReader reader) throws IOException {
 		final char[] tmp = reader.readSimpleQuote();
 		final int len = reader.getCurrentIndex() - reader.getTokenStart() - 1;
-		//TODO: non utc
-		if (len > 18 && len < 27 && tmp[4] == '-' && tmp[7] == '-'
+		if (len > 18 && len < 30 && tmp[4] == '-' && tmp[7] == '-'
 				&& (tmp[10] == 'T' || tmp[10] == 't' || tmp[10] == ' ')
 				&& tmp[13] == ':' && tmp[16] == ':' && allDigits(tmp, 20, len)) {
 			final int year = NumberConverter.read4(tmp, 0);
@@ -250,28 +223,8 @@ public abstract class JavaTimeConverter {
 			final int min = NumberConverter.read2(tmp, 14);
 			final int sec = NumberConverter.read2(tmp, 17);
 			if (tmp[19] == '.') {
-				final int nanos;
-				switch (len) {
-					case 21:
-						nanos = 100000 * (tmp[20] - 48);
-						break;
-					case 22:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48);
-						break;
-					case 23:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48);
-						break;
-					case 24:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48);
-						break;
-					case 25:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48) + 10 * (tmp[24] - 48);
-						break;
-					default:
-						nanos = 100000 * (tmp[20] - 48) + 10000 * (tmp[21] - 48) + 1000 * (tmp[22] - 48) + 100 * (tmp[23] - 48) + 10 * (tmp[24] - 48) + tmp[25] - 48;
-						break;
-				}
-				return LocalDateTime.of(year, month, day, hour, min, sec, nanos * 1000);
+				final int nanos = readNanos(tmp, len);
+				return LocalDateTime.of(year, month, day, hour, min, sec, nanos);
 			}
 			return LocalDateTime.of(year, month, day, hour, min, sec, 0);
 		} else {
@@ -320,10 +273,22 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static void serialize(final LocalDate value, final JsonWriter sw) {
+		final int year = value.getYear();
+		if (year < 0) {
+			throw new SerializationException("Negative dates are not supported.");
+		} else if (year > 9999) {
+			sw.writeByte(JsonWriter.QUOTE);
+			NumberConverter.serialize(year, sw);
+			sw.writeByte((byte)'-');
+			NumberConverter.serialize(value.getMonthValue(), sw);
+			sw.writeByte((byte)'-');
+			NumberConverter.serialize(value.getDayOfMonth(), sw);
+			sw.writeByte(JsonWriter.QUOTE);
+			return;
+		}
 		final byte[] buf = sw.ensureCapacity(12);
 		final int pos = sw.size();
 		buf[pos] = '"';
-		final int year = value.getYear();
 		NumberConverter.write4(year, buf, pos + 1);
 		buf[pos + 5] = '-';
 		NumberConverter.write2(value.getMonthValue(), buf, pos + 6);

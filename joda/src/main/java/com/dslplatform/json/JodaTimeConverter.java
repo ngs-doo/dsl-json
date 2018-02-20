@@ -51,10 +51,18 @@ public abstract class JodaTimeConverter {
 	}
 
 	public static void serialize(final DateTime value, final JsonWriter sw) {
+		final int year = value.getYear();
+		if (year < 0) {
+			throw new SerializationException("Negative dates are not supported.");
+		} else if (year > 9999) {
+			sw.writeByte(JsonWriter.QUOTE);
+			sw.writeAscii(value.toString());
+			sw.writeByte(JsonWriter.QUOTE);
+			return;
+		}
 		final byte[] buf = sw.ensureCapacity(32);
 		final int pos = sw.size();
 		buf[pos] = '"';
-		final int year = value.getYear();
 		NumberConverter.write4(year, buf, pos + 1);
 		buf[pos + 5] = '-';
 		NumberConverter.write2(value.getMonthOfYear(), buf, pos + 6);
@@ -169,10 +177,22 @@ public abstract class JodaTimeConverter {
 	}
 
 	public static void serialize(final LocalDate value, final JsonWriter sw) {
+		final int year = value.getYear();
+		if (year < 0) {
+			throw new SerializationException("Negative dates are not supported.");
+		} else if (year > 9999) {
+			sw.writeByte(JsonWriter.QUOTE);
+			NumberConverter.serialize(year, sw);
+			sw.writeByte((byte)'-');
+			NumberConverter.serialize(value.getMonthOfYear(), sw);
+			sw.writeByte((byte)'-');
+			NumberConverter.serialize(value.getDayOfMonth(), sw);
+			sw.writeByte(JsonWriter.QUOTE);
+			return;
+		}
 		final byte[] buf = sw.ensureCapacity(12);
 		final int pos = sw.size();
 		buf[pos] = '"';
-		final int year = value.getYear();
 		NumberConverter.write4(year, buf, pos + 1);
 		buf[pos + 5] = '-';
 		NumberConverter.write2(value.getMonthOfYear(), buf, pos + 6);
