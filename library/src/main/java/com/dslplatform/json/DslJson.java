@@ -856,28 +856,30 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
 		if (writer != null) return writer;
-		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
-			writer = wrt.tryCreate(manifest, this);
-			if (writer != null) {
-				jsonWriters.put(manifest, writer);
-				return writer;
+		synchronized (this) {
+			for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
+				writer = wrt.tryCreate(manifest, this);
+				if (writer != null) {
+					jsonWriters.put(manifest, writer);
+					return writer;
+				}
 			}
-		}
-		if (manifest instanceof Class<?> == false) {
-			return null;
-		}
-		Class<?> found = writerMap.get(manifest);
-		if (found != null) {
-			return jsonWriters.get(found);
-		}
-		Class<?> container = (Class<?>) manifest;
-		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
-		findAllSignatures(container, signatures);
-		for (final Class<?> sig : signatures) {
-			writer = jsonWriters.get(sig);
-			if (writer != null) {
-				writerMap.putIfAbsent(container, sig);
-				return writer;
+			if (manifest instanceof Class<?> == false) {
+				return null;
+			}
+			Class<?> found = writerMap.get(manifest);
+			if (found != null) {
+				return jsonWriters.get(found);
+			}
+			Class<?> container = (Class<?>) manifest;
+			final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
+			findAllSignatures(container, signatures);
+			for (final Class<?> sig : signatures) {
+				writer = jsonWriters.get(sig);
+				if (writer != null) {
+					writerMap.putIfAbsent(container, sig);
+					return writer;
+				}
 			}
 		}
 		return null;
@@ -899,16 +901,17 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 */
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
-		if (found == null) {
+		if (found != null) return found;
+		synchronized (this) {
 			for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
 				found = rdr.tryCreate(manifest, this);
 				if (found != null) {
 					readers.put(manifest, found);
-					break;
+					return found;
 				}
 			}
 		}
-		return found;
+		return null;
 	}
 
 	/**

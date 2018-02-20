@@ -12,8 +12,11 @@ import java.util.concurrent.Callable;
 public abstract class MapAnalyzer {
 
 	private static final JsonWriter.WriteObject tmpWriter = (writer, value) -> {
+		throw new IllegalStateException("Invalid configuration for writer. Temporary writer called");
 	};
-	private static final JsonReader.ReadObject tmpReader = reader -> null;
+	private static final JsonReader.ReadObject tmpReader = reader -> {
+		throw new IllegalStateException("Invalid configuration for reader. Temporary reader called");
+	};
 	private static final JsonReader.ReadObject<String> stringReader =
 			reader -> reader.wasNull() ? null : reader.readString();
 

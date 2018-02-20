@@ -12,8 +12,11 @@ import java.util.concurrent.Callable;
 public abstract class CollectionAnalyzer {
 
 	private static final JsonWriter.WriteObject tmpWriter = (writer, value) -> {
+		throw new IllegalStateException("Invalid configuration for writer. Temporary writer called");
 	};
-	private static final JsonReader.ReadObject tmpReader = reader -> null;
+	private static final JsonReader.ReadObject tmpReader = reader -> {
+		throw new IllegalStateException("Invalid configuration for reader. Temporary reader called");
+	};
 
 	public static final DslJson.ConverterFactory<CollectionDecoder> READER = (manifest, dslJson) -> {
 		if (manifest instanceof Class<?>) {
@@ -61,7 +64,6 @@ public abstract class CollectionAnalyzer {
 			return null;
 		}
 		final JsonReader.ReadObject<?> oldReader = json.registerReader(manifest, tmpReader);
-		json.registerReader(manifest, tmpReader);
 		final JsonReader.ReadObject<?> reader = json.tryFindReader(element);
 		if (reader == null) {
 			json.registerReader(manifest, oldReader);

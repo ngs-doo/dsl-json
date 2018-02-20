@@ -14,8 +14,11 @@ public abstract class BeanAnalyzer {
 	private static final Charset utf8 = Charset.forName("UTF-8");
 
 	private static final JsonWriter.WriteObject tmpWriter = (writer, value) -> {
+		throw new IllegalStateException("Invalid configuration for writer. Temporary writer called");
 	};
-	private static final JsonReader.ReadObject tmpReader = reader -> null;
+	private static final JsonReader.ReadObject tmpReader = reader -> {
+		throw new IllegalStateException("Invalid configuration for reader. Temporary reader called");
+	};
 
 	public static final DslJson.ConverterFactory<BeanDescription> CONVERTER = (manifest, dslJson) -> {
 		if (manifest instanceof Class<?>) {

@@ -12,8 +12,11 @@ import java.lang.reflect.Type;
 public abstract class ArrayAnalyzer {
 
 	private static final JsonWriter.WriteObject tmpWriter = (writer, value) -> {
+		throw new IllegalStateException("Invalid configuration for writer. Temporary writer called");
 	};
-	private static final JsonReader.ReadObject tmpReader = reader -> null;
+	private static final JsonReader.ReadObject tmpReader = reader -> {
+		throw new IllegalStateException("Invalid configuration for reader. Temporary reader called");
+	};
 
 	public static final DslJson.ConverterFactory<ArrayDecoder> READER = (manifest, dslJson) -> {
 		if (manifest instanceof Class<?>) {
