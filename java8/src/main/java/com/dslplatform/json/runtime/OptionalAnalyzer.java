@@ -36,33 +36,42 @@ public abstract class OptionalAnalyzer {
 		return null;
 	};
 
-	private static <T> OptionalDecoder<T> analyzeDecoding(final Type manifest, final Type content, final Class<T> raw, final DslJson json) {
+	private static OptionalDecoder analyzeDecoding(final Type manifest, final Type content, final Class<?> raw, final DslJson json) {
 		if (raw != Optional.class) {
 			return null;
+		} else if (content == Optional.class) {
+			final OptionalDecoder nested = analyzeDecoding(content, Object.class, Optional.class, json);
+			final OptionalDecoder outer = new OptionalDecoder<>(nested);
+			json.registerReader(manifest, outer);
+			return outer;
 		}
 		final JsonReader.ReadObject oldReader = json.registerReader(manifest, tmpReader);
-		final JsonReader.ReadObject<T> reader = json.tryFindReader(content);
+		final JsonReader.ReadObject<?> reader = json.tryFindReader(content);
 		if (reader == null) {
 			json.registerReader(manifest, oldReader);
 			return null;
 		}
-		final OptionalDecoder<T> converter = new OptionalDecoder<>(reader);
-		json.registerReader(manifest, converter);
-		return converter;
+		final OptionalDecoder decoder = new OptionalDecoder<>(reader);
+		json.registerReader(manifest, decoder);
+		return decoder;
 	}
 
-	private static <T> OptionalEncoder<T> analyzeEncoding(final Type manifest, final Type content, final Class<T> raw, final DslJson json) {
+	private static OptionalEncoder analyzeEncoding(final Type manifest, final Type content, final Class<?> raw, final DslJson json) {
 		if (raw != Optional.class) {
 			return null;
+		} else if (content == Optional.class) {
+			final OptionalEncoder nested = analyzeEncoding(content, Object.class, Optional.class, json);
+			json.registerWriter(manifest, nested);
+			return nested;
 		}
 		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, tmpWriter);
-		final JsonWriter.WriteObject<T> writer = json.tryFindWriter(content);
+		final JsonWriter.WriteObject<?> writer = json.tryFindWriter(content);
 		if (Object.class != content && writer == null) {
 			json.registerWriter(manifest, oldWriter);
 			return null;
 		}
-		final OptionalEncoder<T> converter = new OptionalEncoder<>(json, Object.class == content ? null : writer);
-		json.registerWriter(manifest, converter);
-		return converter;
+		final OptionalEncoder encoder = new OptionalEncoder<>(json, Object.class == content ? null : writer);
+		json.registerWriter(manifest, encoder);
+		return encoder;
 	}
 }

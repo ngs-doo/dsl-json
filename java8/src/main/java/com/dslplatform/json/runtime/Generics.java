@@ -1,8 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
+import java.lang.reflect.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +29,13 @@ abstract class Generics {
 	static Type makeConcrete(final Type manifest, final HashMap<Type, Type> mappings) {
 		if (mappings.isEmpty()) return manifest;
 		if (manifest instanceof TypeVariable) return mappings.get(manifest);
+		if (manifest instanceof GenericArrayType) {
+			GenericArrayType gat = (GenericArrayType)manifest;
+			final Type newType = makeConcrete(gat.getGenericComponentType(), mappings);
+			if (newType instanceof Class<?>) {
+				return Array.newInstance((Class<?>) newType, 0).getClass();
+			}
+		}
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
 			if (pt.getRawType() instanceof Class<?>) {
@@ -115,5 +120,13 @@ abstract class Generics {
 			typeCache.put(name, found);
 		}
 		return found;
+	}
+
+	static boolean isUnknownType(final Type type) {
+		if (type instanceof GenericArrayType) {
+			GenericArrayType gat = (GenericArrayType)type;
+			return isUnknownType(gat.getGenericComponentType());
+		}
+		return Object.class == type || type instanceof TypeVariable;
 	}
 }

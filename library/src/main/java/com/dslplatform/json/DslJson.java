@@ -856,30 +856,28 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
 		if (writer != null) return writer;
-		synchronized (this) {
-			for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
-				writer = wrt.tryCreate(manifest, this);
-				if (writer != null) {
-					jsonWriters.put(manifest, writer);
-					return writer;
-				}
+		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
+			writer = wrt.tryCreate(manifest, this);
+			if (writer != null) {
+				jsonWriters.put(manifest, writer);
+				return writer;
 			}
-			if (manifest instanceof Class<?> == false) {
-				return null;
-			}
-			Class<?> found = writerMap.get(manifest);
-			if (found != null) {
-				return jsonWriters.get(found);
-			}
-			Class<?> container = (Class<?>) manifest;
-			final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
-			findAllSignatures(container, signatures);
-			for (final Class<?> sig : signatures) {
-				writer = jsonWriters.get(sig);
-				if (writer != null) {
-					writerMap.putIfAbsent(container, sig);
-					return writer;
-				}
+		}
+		if (manifest instanceof Class<?> == false) {
+			return null;
+		}
+		Class<?> found = writerMap.get(manifest);
+		if (found != null) {
+			return jsonWriters.get(found);
+		}
+		Class<?> container = (Class<?>) manifest;
+		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
+		findAllSignatures(container, signatures);
+		for (final Class<?> sig : signatures) {
+			writer = jsonWriters.get(sig);
+			if (writer != null) {
+				writerMap.putIfAbsent(container, sig);
+				return writer;
 			}
 		}
 		return null;
@@ -902,13 +900,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
 		if (found != null) return found;
-		synchronized (this) {
-			for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
-				found = rdr.tryCreate(manifest, this);
-				if (found != null) {
-					readers.put(manifest, found);
-					return found;
-				}
+		for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
+			found = rdr.tryCreate(manifest, this);
+			if (found != null) {
+				readers.put(manifest, found);
+				return found;
 			}
 		}
 		return null;
@@ -1444,7 +1440,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return new Object[0];
 	}
 
-	private IOException createErrorMessage(final Class<?> manifest) throws IOException {
+	private IOException createErrorMessage(final Class<?> manifest) {
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(manifest, signatures);
 		for (final Class<?> sig : signatures) {

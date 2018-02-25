@@ -11,13 +11,6 @@ import java.lang.reflect.Type;
 
 public abstract class ArrayAnalyzer {
 
-	private static final JsonWriter.WriteObject tmpWriter = (writer, value) -> {
-		throw new IllegalStateException("Invalid configuration for writer. Temporary writer called");
-	};
-	private static final JsonReader.ReadObject tmpReader = reader -> {
-		throw new IllegalStateException("Invalid configuration for reader. Temporary reader called");
-	};
-
 	public static final DslJson.ConverterFactory<ArrayDecoder> READER = (manifest, dslJson) -> {
 		if (manifest instanceof Class<?>) {
 			final Class<?> array = (Class<?>)manifest;
@@ -67,10 +60,8 @@ public abstract class ArrayAnalyzer {
 	private static <T> ArrayDecoder<T> analyzeDecoder(final Type manifest, final Type element, final DslJson json) {
 		final Class<?> raw = checkSignature(element);
 		if (raw == null) return null;
-		final JsonReader.ReadObject oldReader = json.registerReader(manifest, tmpReader);
 		final JsonReader.ReadObject<?> reader = json.tryFindReader(element);
 		if (reader == null) {
-			json.registerReader(manifest, oldReader);
 			return null;
 		}
 		final ArrayDecoder<T> converter = new ArrayDecoder((T[])Array.newInstance(raw, 0), reader);
@@ -81,10 +72,8 @@ public abstract class ArrayAnalyzer {
 	private static <T> ArrayEncoder<T> analyzeEncoder(final Type manifest, final Type element, final DslJson json) {
 		final Class<?> raw = checkSignature(element);
 		if (raw == null) return null;
-		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, tmpWriter);
 		final JsonWriter.WriteObject<?> writer = json.tryFindWriter(element);
 		if (Object.class != element && writer == null) {
-			json.registerWriter(manifest, oldWriter);
 			return null;
 		}
 		final ArrayEncoder<T> converter = new ArrayEncoder(json, Object.class == element ? null : writer);

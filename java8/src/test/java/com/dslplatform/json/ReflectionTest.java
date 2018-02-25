@@ -68,15 +68,6 @@ public class ReflectionTest {
 		public T property;
 	}
 
-	static abstract class TypeDefinition<T> {
-
-		public final Type type;
-
-		public TypeDefinition() {
-			type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-		}
-	}
-
 	private <T> T deserialize(TypeDefinition<T> td, InputStream is) throws IOException {
 		return (T)json.deserialize(td.type, is);
 	}

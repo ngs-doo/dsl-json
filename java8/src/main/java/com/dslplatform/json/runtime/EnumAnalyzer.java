@@ -1,13 +1,8 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.SerializationException;
 
-import java.io.IOException;
 import java.lang.reflect.*;
-import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
 
@@ -39,7 +34,7 @@ public abstract class EnumAnalyzer {
 		for (Enum value : raw.getEnumConstants()) {
 			values.put(value.name(), value);
 		}
-		final EnumDescription converter = new EnumDescription(raw, values);
+		final EnumDescription converter = new EnumDescription<>(raw, values);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
 		return converter;

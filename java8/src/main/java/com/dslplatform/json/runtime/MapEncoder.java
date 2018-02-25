@@ -2,6 +2,7 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.NumberConverter;
 import com.dslplatform.json.SerializationException;
 
 import java.util.Map;
@@ -9,15 +10,18 @@ import java.util.Map;
 public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.WriteObject<T> {
 
 	private final DslJson json;
+	private final boolean checkForConversionToString;
 	private final JsonWriter.WriteObject<K> keyWriter;
 	private final JsonWriter.WriteObject<V> valueWriter;
 
 	public MapEncoder(
 			final DslJson json,
+			final boolean checkForConversionToString,
 			final JsonWriter.WriteObject<K> keyWriter,
 			final JsonWriter.WriteObject<V> valueWriter) {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		this.json = json;
+		this.checkForConversionToString = checkForConversionToString;
 		this.keyWriter = keyWriter;
 		this.valueWriter = valueWriter;
 	}
@@ -37,7 +41,9 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 				} else {
 					pastFirst = true;
 				}
-				keyWriter.write(writer, e.getKey());
+				if (checkForConversionToString) {
+					writeQuoted(writer, keyWriter, e.getKey());
+				} else keyWriter.write(writer, e.getKey());
 				writer.writeByte(JsonWriter.SEMI);
 				valueWriter.write(writer, e.getValue());
 			}
@@ -59,10 +65,11 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 				if (keyWriter == null && currentKeyClass != lastKeyClass) {
 					lastKeyClass = currentKeyClass;
 					lastKeyWriter = json.tryFindWriter(lastKeyClass);
-					if (lastKeyWriter == null)
+					if (lastKeyWriter == null) {
 						throw new SerializationException("Unable to find writer for " + lastKeyClass);
+					}
 				}
-				lastKeyWriter.write(writer, e.getKey());
+				writeQuoted(writer, lastKeyWriter, e.getKey());
 				writer.writeByte(JsonWriter.SEMI);
 				if (valueWriter != null) {
 					valueWriter.write(writer, e.getValue());
@@ -82,6 +89,36 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 				}
 			}
 			writer.writeByte(JsonWriter.OBJECT_END);
+		}
+	}
+
+	private void writeQuoted(final JsonWriter writer, final JsonWriter.WriteObject<K> keyWriter, final K key) {
+		if (key instanceof Double) {
+			final double value = (Double) key;
+			if (value == Double.NaN) writer.writeAscii("NaN");
+			else if (value == Double.POSITIVE_INFINITY) writer.writeAscii("Infinity");
+			else if (value == Double.NEGATIVE_INFINITY) writer.writeAscii("-Infinity");
+			else {
+				writer.writeByte(JsonWriter.QUOTE);
+				NumberConverter.serialize(value, writer);
+				writer.writeByte(JsonWriter.QUOTE);
+			}
+		} else if (key instanceof Float) {
+			final float value = (Float) key;
+			if (value == Float.NaN) writer.writeAscii("NaN");
+			else if (value == Float.POSITIVE_INFINITY) writer.writeAscii("Infinity");
+			else if (value == Float.NEGATIVE_INFINITY) writer.writeAscii("-Infinity");
+			else {
+				writer.writeByte(JsonWriter.QUOTE);
+				NumberConverter.serialize(value, writer);
+				writer.writeByte(JsonWriter.QUOTE);
+			}
+		} else if (key instanceof Number) {
+			writer.writeByte(JsonWriter.QUOTE);
+			keyWriter.write(writer, key);
+			writer.writeByte(JsonWriter.QUOTE);
+		} else {
+			keyWriter.write(writer, key);
 		}
 	}
 }

@@ -14,12 +14,45 @@ public abstract class ImmutableAnalyzer {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
 
-	private static final JsonWriter.WriteObject tmpWriter = (writer, value) -> {
-		throw new IllegalStateException("Invalid configuration for writer. Temporary writer called");
-	};
-	private static final JsonReader.ReadObject tmpReader = reader -> {
-		throw new IllegalStateException("Invalid configuration for reader. Temporary reader called");
-	};
+	private static class LazyImmutableDescription implements JsonWriter.WriteObject, JsonReader.ReadObject {
+
+		private final Type type;
+		private ImmutableDescription resolved;
+		volatile ImmutableDescription resolvedSomewhere;
+
+		LazyImmutableDescription(Type type) {
+			this.type = type;
+		}
+
+		private void checkSignature(String target) throws SerializationException {
+			if (resolved != null) return;
+			int i = 0;
+			while (resolvedSomewhere == null && i < 50) {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					throw new SerializationException(e);
+				}
+				i++;
+			}
+			if (resolvedSomewhere == null) {
+				throw new SerializationException("Unable to find " + target + " for " + type);
+			}
+			resolved = resolvedSomewhere;
+		}
+
+		@Override
+		public Object read(JsonReader reader) throws IOException {
+			checkSignature("reader");
+			return resolved.read(reader);
+		}
+
+		@Override
+		public void write(JsonWriter writer, Object value) {
+			checkSignature("writer");
+			resolved.write(writer, value);
+		}
+	}
 
 	public static final DslJson.ConverterFactory<ImmutableDescription> CONVERTER = (manifest, dslJson) -> {
 		if (manifest instanceof Class<?>) {
@@ -50,8 +83,9 @@ public abstract class ImmutableAnalyzer {
 		}
 		if (ctors.size() != 1) return null;
 		final Constructor<?> ctor = ctors.get(0);
-		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, tmpWriter);
-		final JsonReader.ReadObject oldReader = json.registerReader(manifest, tmpReader);
+		final LazyImmutableDescription lazy = new LazyImmutableDescription(manifest);
+		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, lazy);
+		final JsonReader.ReadObject oldReader = json.registerReader(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();
 		final LinkedHashMap<String, JsonWriter.WriteObject> methods = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
@@ -112,6 +146,7 @@ public abstract class ImmutableAnalyzer {
 				readProps);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
+		lazy.resolvedSomewhere = converter;
 		return converter;
 	}
 
@@ -130,10 +165,8 @@ public abstract class ImmutableAnalyzer {
 		@Override
 		public Object read(JsonReader reader) throws IOException {
 			if (ctorReader == null) {
-				final JsonReader.ReadObject tmp = json.tryFindReader(type);
-				if (tmp != null && !tmpReader.equals(tmp)) {
-					ctorReader = tmp;
-				} else {
+				ctorReader = json.tryFindReader(type);
+				if (ctorReader == null) {
 					throw new IOException("Unable to find reader for " + type + " on " + ctor);
 				}
 			}
@@ -153,7 +186,7 @@ public abstract class ImmutableAnalyzer {
 		ReadField(final DslJson json, final Field field, final Type type) {
 			this.json = json;
 			this.field = field;
-			this.type = Object.class.equals(type) ? null : type;
+			this.type = type;
 			quotedName = ("\"" + field.getName() + "\":").getBytes(utf8);
 			this.alwaysSerialize = !json.omitDefaults;
 		}
@@ -161,10 +194,8 @@ public abstract class ImmutableAnalyzer {
 		@Override
 		public void write(JsonWriter writer, Object value) {
 			if (type != null && fieldWriter == null) {
-				final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
-				if (tmp != null && !tmpWriter.equals(tmp)) {
-					fieldWriter = tmp;
-				} else {
+				fieldWriter = json.tryFindWriter(type);
+				if (fieldWriter == null) {
 					throw new SerializationException("Unable to find writer for " + type + " on field " + field.getName() + " of " + field.getDeclaringClass());
 				}
 			}
@@ -182,7 +213,7 @@ public abstract class ImmutableAnalyzer {
 					}
 				} else {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(attr.getClass());
-					if (tmp == null || tmpWriter.equals(tmp)) {
+					if (tmp == null) {
 						throw new SerializationException("Unable to find writer for " + attr.getClass() + " on field " + field.getName() + " of " + field.getDeclaringClass());
 					}
 					writer.writeAscii(quotedName);
@@ -204,9 +235,10 @@ public abstract class ImmutableAnalyzer {
 		if (isPublicFinalNonStatic(field.getModifiers()) && found.size() < ctorParams.length) {
 			final Type type = field.getGenericType();
 			final Type concreteType = Generics.makeConcrete(type, genericMappings);
+			final boolean isUnknown = Generics.isUnknownType(type);
 			if (type.equals(ctorParams[found.size()].getParameterizedType())
-				&& (isUnknownType(type) || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
-				found.put(field.getName(), new ReadField(json, field, concreteType));
+				&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
+				found.put(field.getName(), new ReadField(json, field, isUnknown ? null : concreteType));
 			}
 		}
 	}
@@ -219,10 +251,10 @@ public abstract class ImmutableAnalyzer {
 		private final boolean alwaysSerialize;
 		private JsonWriter.WriteObject methodWriter;
 
-		ReadMethod(final DslJson json, final Method method, final String name, final HashMap<Type, Type> genericMappings) {
+		ReadMethod(final DslJson json, final Method method, final String name, final Type type) {
 			this.json = json;
 			this.method = method;
-			this.type = isUnknownType(method.getGenericReturnType()) ? genericMappings.get(method.getGenericReturnType()) : method.getGenericReturnType();
+			this.type = type;
 			quotedName = ("\"" + name + "\":").getBytes(utf8);
 			alwaysSerialize = !json.omitDefaults;
 		}
@@ -230,10 +262,8 @@ public abstract class ImmutableAnalyzer {
 		@Override
 		public void write(JsonWriter writer, Object value) {
 			if (type != null && methodWriter == null) {
-				final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
-				if (tmp != null && !tmpWriter.equals(tmp)) {
-					methodWriter = tmp;
-				} else {
+				methodWriter = json.tryFindWriter(type);
+				if (methodWriter == null) {
 					throw new SerializationException("Unable to find writer for " + type + " on method " + method.getName() + " of " + method.getDeclaringClass());
 				}
 			}
@@ -250,10 +280,12 @@ public abstract class ImmutableAnalyzer {
 						writer.writeNull();
 					}
 				} else {
-					final JsonWriter.WriteObject tmp = json.tryFindWriter(method.getGenericReturnType());
-					if (tmp == null || tmpWriter.equals(tmp)) {
+					final JsonWriter.WriteObject tmp = json.tryFindWriter(attr.getClass());
+					if (tmp == null) {
 						throw new SerializationException("Unable to find writer for " + attr.getClass() + " on method " + method.getName() + " of " + method.getDeclaringClass());
 					}
+					writer.writeAscii(quotedName);
+					tmp.write(writer, attr);
 				}
 			} else if (alwaysSerialize || attr != null) {
 				writer.writeAscii(quotedName);
@@ -274,9 +306,11 @@ public abstract class ImmutableAnalyzer {
 				: mget.getName();
 		if (isPublicNonStatic(mget.getModifiers()) && found.size() < ctorParams.length) {
 			final Type type = mget.getGenericReturnType();
+			final Type concreteType = Generics.makeConcrete(type, genericMappings);
+			final boolean isUnknown = Generics.isUnknownType(type);
 			if (type.equals(ctorParams[found.size()].getParameterizedType())
-					&& (isUnknownType(type) || json.tryFindWriter(type) != null && json.tryFindReader(type) != null)) {
-				found.put(name, new ReadMethod(json, mget, name, genericMappings));
+					&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
+				found.put(name, new ReadMethod(json, mget, name, isUnknown ? null : concreteType));
 			}
 		}
 	}
@@ -292,9 +326,5 @@ public abstract class ImmutableAnalyzer {
 		return (modifiers & Modifier.PUBLIC) != 0
 				&& (modifiers & Modifier.FINAL) != 0
 				&& (modifiers & Modifier.STATIC) == 0;
-	}
-
-	private static boolean isUnknownType(final Type type) {
-		return Object.class == type || type instanceof TypeVariable;
 	}
 }

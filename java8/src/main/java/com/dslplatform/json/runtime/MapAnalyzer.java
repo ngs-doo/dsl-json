@@ -11,14 +11,7 @@ import java.util.concurrent.Callable;
 
 public abstract class MapAnalyzer {
 
-	private static final JsonWriter.WriteObject tmpWriter = (writer, value) -> {
-		throw new IllegalStateException("Invalid configuration for writer. Temporary writer called");
-	};
-	private static final JsonReader.ReadObject tmpReader = reader -> {
-		throw new IllegalStateException("Invalid configuration for reader. Temporary reader called");
-	};
-	private static final JsonReader.ReadObject<String> stringReader =
-			reader -> reader.wasNull() ? null : reader.readString();
+	private static final JsonReader.ReadObject<String> stringReader = reader -> reader.wasNull() ? null : reader.readString();
 
 	public static final DslJson.ConverterFactory<MapDecoder> READER = (manifest, dslJson) -> {
 		if (manifest instanceof Class<?>) {
@@ -65,11 +58,9 @@ public abstract class MapAnalyzer {
 		} else {
 			return null;
 		}
-		final JsonReader.ReadObject oldReader = json.registerReader(manifest, tmpReader);
 		final JsonReader.ReadObject<?> keyReader = json.tryFindReader(key);
 		final JsonReader.ReadObject<?> valueReader = json.tryFindReader(value);
 		if (keyReader == null || valueReader == null) {
-			json.registerReader(manifest, oldReader);
 			return null;
 		}
 		final MapDecoder decoder =
@@ -84,17 +75,17 @@ public abstract class MapAnalyzer {
 
 	private static MapEncoder analyzeEncoder(final Type manifest, final Type key, final Type value, final Class<?> map, final DslJson json) {
 		if (!Map.class.isAssignableFrom(map)) return null;
-		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, tmpWriter);
 		final JsonWriter.WriteObject<?> keyWriter = json.tryFindWriter(key);
 		final JsonWriter.WriteObject<?> valueWriter = json.tryFindWriter(value);
-		if (Object.class != key && keyWriter == null
-				|| Object.class != value && valueWriter == null) {
-			json.registerWriter(manifest, oldWriter);
+		if (Object.class != key && keyWriter == null || Object.class != value && valueWriter == null) {
 			return null;
 		}
+		//TODO: temp hack to encode some keys as strings even if they are numbers
+		final boolean checkForConversionToString = key instanceof Class<?> && Number.class.isAssignableFrom((Class<?>) key);
 		final MapEncoder encoder =
 				new MapEncoder(
 						json,
+						checkForConversionToString,
 						Object.class == key ? null : keyWriter,
 						Object.class == value ? null : valueWriter);
 		json.registerWriter(manifest, encoder);
