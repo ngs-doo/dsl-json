@@ -16,16 +16,18 @@ public abstract class ImmutableAnalyzer {
 
 	private static class LazyImmutableDescription implements JsonWriter.WriteObject, JsonReader.ReadObject {
 
+		private final DslJson json;
 		private final Type type;
-		private ImmutableDescription resolved;
+		private JsonWriter.WriteObject resolvedWriter;
+		private JsonReader.ReadObject resolvedReader;
 		volatile ImmutableDescription resolvedSomewhere;
 
-		LazyImmutableDescription(Type type) {
+		LazyImmutableDescription(DslJson json, Type type) {
+			this.json = json;
 			this.type = type;
 		}
 
-		private void checkSignature(String target) throws SerializationException {
-			if (resolved != null) return;
+		private boolean checkSignatureNotFound() {
 			int i = 0;
 			while (resolvedSomewhere == null && i < 50) {
 				try {
@@ -35,22 +37,39 @@ public abstract class ImmutableAnalyzer {
 				}
 				i++;
 			}
-			if (resolvedSomewhere == null) {
-				throw new SerializationException("Unable to find " + target + " for " + type);
+			if (resolvedSomewhere != null) {
+				resolvedWriter = resolvedSomewhere;
+				resolvedReader = resolvedSomewhere;
 			}
-			resolved = resolvedSomewhere;
+			return resolvedSomewhere == null;
 		}
 
 		@Override
 		public Object read(JsonReader reader) throws IOException {
-			checkSignature("reader");
-			return resolved.read(reader);
+			if (resolvedReader == null) {
+				if (checkSignatureNotFound()) {
+					final JsonReader.ReadObject tmp = json.tryFindReader(type);
+					if (tmp == null || tmp == this) {
+						throw new SerializationException("Unable to find reader for " + type);
+					}
+					resolvedReader = tmp;
+				}
+			}
+			return resolvedReader.read(reader);
 		}
 
 		@Override
 		public void write(JsonWriter writer, Object value) {
-			checkSignature("writer");
-			resolved.write(writer, value);
+			if (resolvedWriter == null) {
+				if (checkSignatureNotFound()) {
+					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
+					if (tmp == null || tmp == this) {
+						throw new SerializationException("Unable to find writer for " + type);
+					}
+					resolvedWriter = tmp;
+				}
+			}
+			resolvedWriter.write(writer, value);
 		}
 	}
 
@@ -83,7 +102,7 @@ public abstract class ImmutableAnalyzer {
 		}
 		if (ctors.size() != 1) return null;
 		final Constructor<?> ctor = ctors.get(0);
-		final LazyImmutableDescription lazy = new LazyImmutableDescription(manifest);
+		final LazyImmutableDescription lazy = new LazyImmutableDescription(json, manifest);
 		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, lazy);
 		final JsonReader.ReadObject oldReader = json.registerReader(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();

@@ -1,10 +1,7 @@
 package com.dslplatform.json;
 
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -19,6 +16,11 @@ public abstract class JavaTimeConverter {
 	static final JsonWriter.WriteObject<OffsetDateTime> DateTimeWriter = (writer, value) -> serializeNullable(value, writer);
 	static final JsonReader.ReadObject<LocalDateTime> LocalDateTimeReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeLocalDateTime(rdr);
 	static final JsonWriter.WriteObject<LocalDateTime> LocalDateTimeWriter = (writer, value) -> serializeNullable(value, writer);
+	static final JsonReader.ReadObject<ZonedDateTime> ZonedDateTimeReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeDateTime(rdr).toZonedDateTime();
+	static final JsonWriter.WriteObject<ZonedDateTime> ZonedDateTimeWriter = (writer, value) -> {
+		if (value == null) writer.writeNull();
+		else serialize(value.toOffsetDateTime(), writer);
+	};
 
 	public static void serializeNullable(final OffsetDateTime value, final JsonWriter sw) {
 		if (value == null) {

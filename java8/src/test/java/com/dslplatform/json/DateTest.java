@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.*;
 
@@ -39,6 +40,16 @@ public class DateTest {
 		jr.read();
 		LocalDateTime value = JavaTimeConverter.deserializeLocalDateTime(jr);
 		Assert.assertEquals(now, value);
+	}
+
+	@Test
+	public void zonedDateTimeOffsetConversion() throws IOException {
+		DslJson<Object> dslJson = new DslJson<>();
+		ZonedDateTime now = ZonedDateTime.now();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		dslJson.serialize(now, baos);
+		ZonedDateTime value = dslJson.deserialize(ZonedDateTime.class, baos.toByteArray(), baos.size());
+		Assert.assertTrue(now.isEqual(value));
 	}
 
 	@Test

@@ -15,16 +15,19 @@ public abstract class BeanAnalyzer {
 
 	private static class LazyBeanDescription implements JsonWriter.WriteObject, JsonReader.ReadObject, JsonReader.BindObject {
 
+		private final DslJson json;
 		private final Type type;
-		private BeanDescription resolved;
+		private JsonWriter.WriteObject resolvedWriter;
+		private JsonReader.BindObject resolvedBinder;
+		private JsonReader.ReadObject resolvedReader;
 		volatile BeanDescription resolvedSomewhere;
 
-		LazyBeanDescription(Type type) {
+		LazyBeanDescription(DslJson json, Type type) {
+			this.json = json;
 			this.type = type;
 		}
 
-		private void checkSignature(String target) throws SerializationException {
-			if (resolved != null) return;
+		private boolean checkSignatureNotFound() {
 			int i = 0;
 			while (resolvedSomewhere == null && i < 50) {
 				try {
@@ -34,28 +37,54 @@ public abstract class BeanAnalyzer {
 				}
 				i++;
 			}
-			if (resolvedSomewhere == null) {
-				throw new SerializationException("Unable to find " + target + " for " + type);
+			if (resolvedSomewhere != null) {
+				resolvedWriter = resolvedSomewhere;
+				resolvedReader = resolvedSomewhere;
+				resolvedBinder = resolvedSomewhere;
 			}
-			resolved = resolvedSomewhere;
+			return resolvedSomewhere == null;
 		}
 
 		@Override
 		public Object read(JsonReader reader) throws IOException {
-			checkSignature("reader");
-			return resolved.read(reader);
+			if (resolvedReader == null) {
+				if (checkSignatureNotFound()) {
+					final JsonReader.ReadObject tmp = json.tryFindReader(type);
+					if (tmp == null || tmp == this) {
+						throw new SerializationException("Unable to find reader for " + type);
+					}
+					resolvedReader = tmp;
+				}
+			}
+			return resolvedReader.read(reader);
 		}
 
 		@Override
 		public Object bind(JsonReader reader, Object instance) throws IOException {
-			checkSignature("binder");
-			return resolved.bind(reader, instance);
+			if (resolvedBinder == null) {
+				if (checkSignatureNotFound()) {
+					final JsonReader.BindObject tmp = json.tryFindBinder(type);
+					if (tmp == null || tmp == this) {
+						throw new SerializationException("Unable to find binder for " + type);
+					}
+					resolvedBinder = tmp;
+				}
+			}
+			return resolvedBinder.bind(reader, instance);
 		}
 
 		@Override
 		public void write(JsonWriter writer, Object value) {
-			checkSignature("writer");
-			resolved.write(writer, value);
+			if (resolvedWriter == null) {
+				if (checkSignatureNotFound()) {
+					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
+					if (tmp == null || tmp == this) {
+						throw new SerializationException("Unable to find writer for " + type);
+					}
+					resolvedWriter = tmp;
+				}
+			}
+			resolvedWriter.write(writer, value);
 		}
 	}
 
@@ -85,7 +114,7 @@ public abstract class BeanAnalyzer {
 		} catch (InstantiationException | IllegalAccessException ignore) {
 			return null;
 		}
-		final LazyBeanDescription lazy = new LazyBeanDescription(manifest);
+		final LazyBeanDescription lazy = new LazyBeanDescription(json, manifest);
 		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, lazy);
 		final JsonReader.ReadObject oldReader = json.registerReader(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
