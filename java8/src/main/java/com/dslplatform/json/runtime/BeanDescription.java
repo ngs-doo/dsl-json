@@ -11,23 +11,23 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 
 	public final Type manifest;
 	private final Callable<T> newInstance;
-	private final ReadPropertyInfo<JsonReader.BindObject>[] readers;
+	private final DecodePropertyInfo<JsonReader.BindObject>[] decoders;
 
 	public BeanDescription(
 			final Type manifest,
 			final Callable<T> newInstance,
-			final JsonWriter.WriteObject[] writers,
-			final ReadPropertyInfo<JsonReader.BindObject>[] readers) {
-		super(writers);
+			final JsonWriter.WriteObject[] encoders,
+			final DecodePropertyInfo<JsonReader.BindObject>[] decoders) {
+		super(encoders);
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
-		if (readers == null) throw new IllegalArgumentException("readers can't be null");
+		if (decoders == null) throw new IllegalArgumentException("decoders can't be null");
 		this.manifest = manifest;
 		this.newInstance = newInstance;
-		this.readers = ReadPropertyInfo.prepareReaders(readers);
+		this.decoders = DecodePropertyInfo.prepare(decoders);
 	}
 
-	public T read(JsonReader reader) throws IOException {
+	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		final T instance;
 		try {
@@ -38,7 +38,7 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 		return bind(reader, instance);
 	}
 
-	public T bind(JsonReader reader, T instance) throws IOException {
+	public T bind(final JsonReader reader, final T instance) throws IOException {
 		if (reader.last() != '{') {
 			throw new java.io.IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
 		}
@@ -46,7 +46,7 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 		do {
 			final int hash = reader.fillName();
 			boolean processed = false;
-			for (final ReadPropertyInfo<JsonReader.BindObject> ri : readers) {
+			for (final DecodePropertyInfo<JsonReader.BindObject> ri : decoders) {
 				if (hash == ri.hash) {
 					if (ri.exactName) {
 						if (!reader.wasLastName(ri.name)) continue;
@@ -63,7 +63,7 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 			if (reader.getNextToken() != ',') break;
 		} while (reader.getNextToken() == '"');
 		if (reader.last() != '}') {
-			throw new java.io.IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
 		}
 		return instance;
 	}

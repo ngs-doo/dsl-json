@@ -4,11 +4,11 @@ import com.dslplatform.json.JsonWriter;
 
 abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 
-	private final JsonWriter.WriteObject[] writers;
+	private final JsonWriter.WriteObject[] encoders;
 
-	WriteDescription(final JsonWriter.WriteObject[] writers) {
-		if (writers == null) throw new IllegalArgumentException("writers can't be null");
-		this.writers = writers.clone();
+	WriteDescription(final JsonWriter.WriteObject[] encoders) {
+		if (encoders == null) throw new IllegalArgumentException("encoders can't be null");
+		this.encoders = encoders.clone();
 	}
 
 	public final void write(final JsonWriter writer, final T instance) {
@@ -16,17 +16,17 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 			writer.writeNull();
 		} else {
 			writer.writeByte(JsonWriter.OBJECT_START);
-			int pos = writer.size();
-			long flushed = writer.flushed();
-			if (writers.length > 0) {
-				writers[0].write(writer, instance);
-				for (int i = 1; i < writers.length; i++) {
+			if (encoders.length > 0) {
+				int pos = writer.size();
+				long flushed = writer.flushed();
+				encoders[0].write(writer, instance);
+				for (int i = 1; i < encoders.length; i++) {
 					if (writer.size() != pos || writer.flushed() != flushed) {
 						writer.writeByte(JsonWriter.COMMA);
 						pos = writer.size();
 						flushed = writer.flushed();
 					}
-					writers[i].write(writer, instance);
+					encoders[i].write(writer, instance);
 				}
 			}
 			writer.writeByte(JsonWriter.OBJECT_END);

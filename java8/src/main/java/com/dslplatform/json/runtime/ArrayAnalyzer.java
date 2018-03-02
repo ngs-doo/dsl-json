@@ -64,9 +64,9 @@ public abstract class ArrayAnalyzer {
 		if (reader == null) {
 			return null;
 		}
-		final ArrayDecoder<T> converter = new ArrayDecoder((T[])Array.newInstance(raw, 0), reader);
-		json.registerReader(manifest, converter);
-		return converter;
+		final ArrayDecoder<T> decoder = new ArrayDecoder((T[])Array.newInstance(raw, 0), reader);
+		json.registerReader(manifest, decoder);
+		return decoder;
 	}
 
 	private static <T> ArrayEncoder<T> analyzeEncoder(final Type manifest, final Type element, final DslJson json) {
@@ -76,8 +76,8 @@ public abstract class ArrayAnalyzer {
 		if (Object.class != element && writer == null) {
 			return null;
 		}
-		final ArrayEncoder<T> converter = new ArrayEncoder(json, Object.class == element ? null : writer);
-		json.registerWriter(manifest, converter);
-		return converter;
+		final ArrayEncoder<T> encoder = new ArrayEncoder(json, Object.class == element ? null : writer);
+		json.registerWriter(manifest, encoder);
+		return encoder;
 	}
 }

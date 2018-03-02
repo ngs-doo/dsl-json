@@ -2,13 +2,13 @@ package com.dslplatform.json.runtime;
 
 import java.util.HashSet;
 
-class ReadPropertyInfo<T> {
+class DecodePropertyInfo<T> {
 	public final String name;
 	public final int hash;
 	public final boolean exactName;
 	public final T value;
 
-	ReadPropertyInfo(String name, boolean exactName, T value) {
+	DecodePropertyInfo(String name, boolean exactName, T value) {
 		this.name = name;
 		this.exactName = exactName;
 		this.value = value;
@@ -20,15 +20,15 @@ class ReadPropertyInfo<T> {
 		this.hash = (int) hash;
 	}
 
-	static <T> ReadPropertyInfo<T>[] prepareReaders(ReadPropertyInfo<T>[] initial) {
-		final ReadPropertyInfo<T>[] readers = initial.clone();
+	static <T> DecodePropertyInfo<T>[] prepare(DecodePropertyInfo<T>[] initial) {
+		final DecodePropertyInfo<T>[] readers = initial.clone();
 		final HashSet<Integer> hashes = new HashSet<Integer>();
-		for (final ReadPropertyInfo<T> ri : readers) {
+		for (final DecodePropertyInfo<T> ri : readers) {
 			if (!hashes.add(ri.hash)) {
 				for (int j = 0; j < readers.length; j++) {
-					final ReadPropertyInfo si = readers[j];
+					final DecodePropertyInfo si = readers[j];
 					if (si.hash == ri.hash && !si.exactName) {
-						readers[j] = new ReadPropertyInfo<>(ri.name, true, ri.value);
+						readers[j] = new DecodePropertyInfo<>(ri.name, true, ri.value);
 					}
 				}
 			}

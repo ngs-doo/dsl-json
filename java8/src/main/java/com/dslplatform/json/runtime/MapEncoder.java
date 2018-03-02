@@ -11,19 +11,19 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 
 	private final DslJson json;
 	private final boolean checkForConversionToString;
-	private final JsonWriter.WriteObject<K> keyWriter;
-	private final JsonWriter.WriteObject<V> valueWriter;
+	private final JsonWriter.WriteObject<K> keyEncoder;
+	private final JsonWriter.WriteObject<V> valueEncoder;
 
 	public MapEncoder(
 			final DslJson json,
 			final boolean checkForConversionToString,
-			final JsonWriter.WriteObject<K> keyWriter,
-			final JsonWriter.WriteObject<V> valueWriter) {
+			final JsonWriter.WriteObject<K> keyEncoder,
+			final JsonWriter.WriteObject<V> valueEncoder) {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		this.json = json;
 		this.checkForConversionToString = checkForConversionToString;
-		this.keyWriter = keyWriter;
-		this.valueWriter = valueWriter;
+		this.keyEncoder = keyEncoder;
+		this.valueEncoder = valueEncoder;
 	}
 
 	private static final byte[] EMPTY = {'{', '}'};
@@ -32,7 +32,7 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 	public void write(JsonWriter writer, T value) {
 		if (value == null) writer.writeNull();
 		else if (value.isEmpty()) writer.writeAscii(EMPTY);
-		else if (keyWriter != null && valueWriter != null) {
+		else if (keyEncoder != null && valueEncoder != null) {
 			boolean pastFirst = false;
 			writer.writeByte(JsonWriter.OBJECT_START);
 			for (final Map.Entry<K, V> e : value.entrySet()) {
@@ -42,10 +42,10 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 					pastFirst = true;
 				}
 				if (checkForConversionToString) {
-					writeQuoted(writer, keyWriter, e.getKey());
-				} else keyWriter.write(writer, e.getKey());
+					writeQuoted(writer, keyEncoder, e.getKey());
+				} else keyEncoder.write(writer, e.getKey());
 				writer.writeByte(JsonWriter.SEMI);
-				valueWriter.write(writer, e.getValue());
+				valueEncoder.write(writer, e.getValue());
 			}
 			writer.writeByte(JsonWriter.OBJECT_END);
 		} else {
@@ -53,8 +53,8 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 			writer.writeByte(JsonWriter.OBJECT_START);
 			Class<?> lastKeyClass = null;
 			Class<?> lastValueClass = null;
-			JsonWriter.WriteObject lastKeyWriter = keyWriter;
-			JsonWriter.WriteObject lastValueWriter = null;
+			JsonWriter.WriteObject lastKeyEncoder = keyEncoder;
+			JsonWriter.WriteObject lastValueEncoder = null;
 			for (final Map.Entry<K, V> e : value.entrySet()) {
 				if (pastFirst) {
 					writer.writeByte(JsonWriter.COMMA);
@@ -62,17 +62,17 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 					pastFirst = true;
 				}
 				final Class<?> currentKeyClass = e.getKey().getClass();
-				if (keyWriter == null && currentKeyClass != lastKeyClass) {
+				if (keyEncoder == null && currentKeyClass != lastKeyClass) {
 					lastKeyClass = currentKeyClass;
-					lastKeyWriter = json.tryFindWriter(lastKeyClass);
-					if (lastKeyWriter == null) {
+					lastKeyEncoder = json.tryFindWriter(lastKeyClass);
+					if (lastKeyEncoder == null) {
 						throw new SerializationException("Unable to find writer for " + lastKeyClass);
 					}
 				}
-				writeQuoted(writer, lastKeyWriter, e.getKey());
+				writeQuoted(writer, lastKeyEncoder, e.getKey());
 				writer.writeByte(JsonWriter.SEMI);
-				if (valueWriter != null) {
-					valueWriter.write(writer, e.getValue());
+				if (valueEncoder != null) {
+					valueEncoder.write(writer, e.getValue());
 				} else {
 					if (e.getValue() == null) {
 						writer.writeNull();
@@ -80,11 +80,11 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 						final Class<?> currentValueClass = e.getValue().getClass();
 						if (currentValueClass != lastValueClass) {
 							lastValueClass = currentValueClass;
-							lastValueWriter = json.tryFindWriter(lastValueClass);
-							if (lastValueWriter == null)
+							lastValueEncoder = json.tryFindWriter(lastValueClass);
+							if (lastValueEncoder == null)
 								throw new SerializationException("Unable to find writer for " + lastValueClass);
 						}
-						lastValueWriter.write(writer, e.getValue());
+						lastValueEncoder.write(writer, e.getValue());
 					}
 				}
 			}

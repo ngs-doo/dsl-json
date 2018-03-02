@@ -8,29 +8,29 @@ import java.util.ArrayList;
 public final class ArrayDecoder<T> implements JsonReader.ReadObject<T[]> {
 
 	private final T[] emptyInstance;
-	private final JsonReader.ReadObject<T> elementReader;
+	private final JsonReader.ReadObject<T> decoder;
 
 	public ArrayDecoder(
 			final T[] emptyInstance,
-			final JsonReader.ReadObject<T> reader) {
+			final JsonReader.ReadObject<T> decoder) {
 		if (emptyInstance == null) throw new IllegalArgumentException("emptyInstance can't be null");
-		if (reader == null) throw new IllegalArgumentException("reader can't be null");
+		if (decoder == null) throw new IllegalArgumentException("decoder can't be null");
 		this.emptyInstance = emptyInstance;
-		this.elementReader = reader;
+		this.decoder = decoder;
 	}
 
 	@Override
-	public T[] read(JsonReader reader) throws IOException {
+	public T[] read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() != '[') {
 			throw new IOException("Expecting '[' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
 		}
 		if (reader.getNextToken() == ']') return emptyInstance;
 		final ArrayList<T> list = new ArrayList<>(4);
-		list.add(elementReader.read(reader));
+		list.add(decoder.read(reader));
 		while (reader.getNextToken() == ','){
 			reader.getNextToken();
-			list.add(elementReader.read(reader));
+			list.add(decoder.read(reader));
 		}
 		if (reader.last() != ']') {
 			throw new IOException("Expecting ']' at position " + reader.positionInStream() + ". Found " + (char)reader.last());

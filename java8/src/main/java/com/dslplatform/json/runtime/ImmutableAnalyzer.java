@@ -18,9 +18,9 @@ public abstract class ImmutableAnalyzer {
 
 		private final DslJson json;
 		private final Type type;
-		private JsonWriter.WriteObject resolvedWriter;
-		private JsonReader.ReadObject resolvedReader;
-		volatile ImmutableDescription resolvedSomewhere;
+		private JsonWriter.WriteObject encoder;
+		private JsonReader.ReadObject decoder;
+		volatile ImmutableDescription resolved;
 
 		LazyImmutableDescription(DslJson json, Type type) {
 			this.json = json;
@@ -29,7 +29,7 @@ public abstract class ImmutableAnalyzer {
 
 		private boolean checkSignatureNotFound() {
 			int i = 0;
-			while (resolvedSomewhere == null && i < 50) {
+			while (resolved == null && i < 50) {
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
@@ -37,39 +37,39 @@ public abstract class ImmutableAnalyzer {
 				}
 				i++;
 			}
-			if (resolvedSomewhere != null) {
-				resolvedWriter = resolvedSomewhere;
-				resolvedReader = resolvedSomewhere;
+			if (resolved != null) {
+				encoder = resolved;
+				decoder = resolved;
 			}
-			return resolvedSomewhere == null;
+			return resolved == null;
 		}
 
 		@Override
-		public Object read(JsonReader reader) throws IOException {
-			if (resolvedReader == null) {
+		public Object read(final JsonReader reader) throws IOException {
+			if (decoder == null) {
 				if (checkSignatureNotFound()) {
 					final JsonReader.ReadObject tmp = json.tryFindReader(type);
 					if (tmp == null || tmp == this) {
 						throw new SerializationException("Unable to find reader for " + type);
 					}
-					resolvedReader = tmp;
+					decoder = tmp;
 				}
 			}
-			return resolvedReader.read(reader);
+			return decoder.read(reader);
 		}
 
 		@Override
-		public void write(JsonWriter writer, Object value) {
-			if (resolvedWriter == null) {
+		public void write(final JsonWriter writer, final Object value) {
+			if (encoder == null) {
 				if (checkSignatureNotFound()) {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
 					if (tmp == null || tmp == this) {
 						throw new SerializationException("Unable to find writer for " + type);
 					}
-					resolvedWriter = tmp;
+					encoder = tmp;
 				}
 			}
-			resolvedWriter.write(writer, value);
+			encoder.write(writer, value);
 		}
 	}
 
@@ -128,11 +128,11 @@ public abstract class ImmutableAnalyzer {
 			json.registerReader(manifest, oldReader);
 			return null;
 		}
-		final ReadPropertyInfo<JsonReader.ReadObject>[] readProps = new ReadPropertyInfo[ctorParams.length];
+		final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[ctorParams.length];
 		final Object[] defArgs = new Object[ctorParams.length];
 		for (int i = 0; i < ctorParams.length; i++) {
 			final Type concreteType = Generics.makeConcrete(ctorParams[i].getParameterizedType(), genericMappings);
-			readProps[i] = new ReadPropertyInfo<>(names[i], false, new WriteCtor(json, concreteType, ctor));
+			readProps[i] = new DecodePropertyInfo<>(names[i], false, new WriteCtor(json, concreteType, ctor));
 			final JsonReader.ReadObject defReader = json.tryFindReader(concreteType);
 			if (defReader != null) {
 				if (ctorParams[i].getType().isPrimitive()) {
@@ -165,7 +165,7 @@ public abstract class ImmutableAnalyzer {
 				readProps);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
-		lazy.resolvedSomewhere = converter;
+		lazy.resolved = converter;
 		return converter;
 	}
 
@@ -173,7 +173,7 @@ public abstract class ImmutableAnalyzer {
 		private final DslJson json;
 		private final Type type;
 		private final Constructor<?> ctor;
-		private JsonReader.ReadObject ctorReader;
+		private JsonReader.ReadObject decoder;
 
 		WriteCtor(final DslJson json, final Type type, final Constructor<?> ctor) {
 			this.json = json;
@@ -182,14 +182,14 @@ public abstract class ImmutableAnalyzer {
 		}
 
 		@Override
-		public Object read(JsonReader reader) throws IOException {
-			if (ctorReader == null) {
-				ctorReader = json.tryFindReader(type);
-				if (ctorReader == null) {
+		public Object read(final JsonReader reader) throws IOException {
+			if (decoder == null) {
+				decoder = json.tryFindReader(type);
+				if (decoder == null) {
 					throw new IOException("Unable to find reader for " + type + " on " + ctor);
 				}
 			}
-			return ctorReader.read(reader);
+			return decoder.read(reader);
 		}
 	}
 
@@ -200,7 +200,7 @@ public abstract class ImmutableAnalyzer {
 		private final Type type;
 		private final byte[] quotedName;
 		private final boolean alwaysSerialize;
-		private JsonWriter.WriteObject fieldWriter;
+		private JsonWriter.WriteObject encoder;
 
 		ReadField(final DslJson json, final Field field, final Type type) {
 			this.json = json;
@@ -211,10 +211,10 @@ public abstract class ImmutableAnalyzer {
 		}
 
 		@Override
-		public void write(JsonWriter writer, Object value) {
-			if (type != null && fieldWriter == null) {
-				fieldWriter = json.tryFindWriter(type);
-				if (fieldWriter == null) {
+		public void write(final JsonWriter writer, final Object value) {
+			if (type != null && encoder == null) {
+				encoder = json.tryFindWriter(type);
+				if (encoder == null) {
 					throw new SerializationException("Unable to find writer for " + type + " on field " + field.getName() + " of " + field.getDeclaringClass());
 				}
 			}
@@ -240,7 +240,7 @@ public abstract class ImmutableAnalyzer {
 				}
 			} else if (alwaysSerialize || attr != null) {
 				writer.writeAscii(quotedName);
-				fieldWriter.write(writer, attr);
+				encoder.write(writer, attr);
 			}
 		}
 	}
@@ -268,7 +268,7 @@ public abstract class ImmutableAnalyzer {
 		private final Type type;
 		private final byte[] quotedName;
 		private final boolean alwaysSerialize;
-		private JsonWriter.WriteObject methodWriter;
+		private JsonWriter.WriteObject encoder;
 
 		ReadMethod(final DslJson json, final Method method, final String name, final Type type) {
 			this.json = json;
@@ -279,10 +279,10 @@ public abstract class ImmutableAnalyzer {
 		}
 
 		@Override
-		public void write(JsonWriter writer, Object value) {
-			if (type != null && methodWriter == null) {
-				methodWriter = json.tryFindWriter(type);
-				if (methodWriter == null) {
+		public void write(final JsonWriter writer, final Object value) {
+			if (type != null && encoder == null) {
+				encoder = json.tryFindWriter(type);
+				if (encoder == null) {
 					throw new SerializationException("Unable to find writer for " + type + " on method " + method.getName() + " of " + method.getDeclaringClass());
 				}
 			}
@@ -308,7 +308,7 @@ public abstract class ImmutableAnalyzer {
 				}
 			} else if (alwaysSerialize || attr != null) {
 				writer.writeAscii(quotedName);
-				methodWriter.write(writer, attr);
+				encoder.write(writer, attr);
 			}
 		}
 	}

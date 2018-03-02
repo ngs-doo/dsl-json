@@ -11,22 +11,22 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 
 	private final Type manifest;
 	private final Callable<T> newInstance;
-	private final JsonReader.ReadObject<K> keyReader;
-	private final JsonReader.ReadObject<V> valueReader;
+	private final JsonReader.ReadObject<K> keyDecoder;
+	private final JsonReader.ReadObject<V> valueDecoder;
 
 	public MapDecoder(
 			final Type manifest,
 			final Callable<T> newInstance,
-			final JsonReader.ReadObject<K> keyReader,
-			final JsonReader.ReadObject<V> valueReader) {
+			final JsonReader.ReadObject<K> keyDecoder,
+			final JsonReader.ReadObject<V> valueDecoder) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
-		if (keyReader == null) throw new IllegalArgumentException("keyReader can't be null");
-		if (valueReader == null) throw new IllegalArgumentException("valueReader can't be null");
+		if (keyDecoder == null) throw new IllegalArgumentException("keyDecoder can't be null");
+		if (valueDecoder == null) throw new IllegalArgumentException("valueDecoder can't be null");
 		this.manifest = manifest;
 		this.newInstance = newInstance;
-		this.keyReader = keyReader;
-		this.valueReader = valueReader;
+		this.keyDecoder = keyDecoder;
+		this.valueDecoder = valueDecoder;
 	}
 
 	@Override
@@ -42,7 +42,7 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 			throw new IOException("Unable to create a new instance of " + manifest, e);
 		}
 		if (reader.getNextToken() == '}') return instance;
-		K key = keyReader.read(reader);
+		K key = keyDecoder.read(reader);
 		if (key == null) {
 			throw new IOException("Null value detected for key element of " + manifest + " at position " + reader.positionInStream());
 		}
@@ -50,11 +50,11 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 			throw new IOException("Expecting ':' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
 		}
 		reader.getNextToken();
-		V value = valueReader.read(reader);
+		V value = valueDecoder.read(reader);
 		instance.put(key, value);
 		while (reader.getNextToken() == ','){
 			reader.getNextToken();
-			key = keyReader.read(reader);
+			key = keyDecoder.read(reader);
 			if (key == null) {
 				throw new IOException("Null value detected for key element of " + manifest + " at position " + reader.positionInStream());
 			}
@@ -62,7 +62,7 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 				throw new IOException("Expecting ':' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
 			}
 			reader.getNextToken();
-			value = valueReader.read(reader);
+			value = valueDecoder.read(reader);
 			instance.put(key, value);
 		}
 		if (reader.last() != '}') {

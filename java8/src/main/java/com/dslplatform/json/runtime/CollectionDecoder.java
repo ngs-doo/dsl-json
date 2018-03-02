@@ -11,22 +11,22 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 
 	private final Type manifest;
 	private final Callable<T> newInstance;
-	private final JsonReader.ReadObject<E> elementReader;
+	private final JsonReader.ReadObject<E> decoder;
 
 	public CollectionDecoder(
 			final Type manifest,
 			final Callable<T> newInstance,
-			final JsonReader.ReadObject<E> reader) {
+			final JsonReader.ReadObject<E> decoder) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
-		if (reader == null) throw new IllegalArgumentException("reader can't be null");
+		if (decoder == null) throw new IllegalArgumentException("decoder can't be null");
 		this.manifest = manifest;
 		this.newInstance = newInstance;
-		this.elementReader = reader;
+		this.decoder = decoder;
 	}
 
 	@Override
-	public T read(JsonReader reader) throws IOException {
+	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() != '[') {
 			throw new java.io.IOException("Expecting '[' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
@@ -38,10 +38,10 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 			throw new IOException("Unable to create a new instance of " + manifest, e);
 		}
 		if (reader.getNextToken() == ']') return instance;
-		instance.add(elementReader.read(reader));
+		instance.add(decoder.read(reader));
 		while (reader.getNextToken() == ','){
 			reader.getNextToken();
-			instance.add(elementReader.read(reader));
+			instance.add(decoder.read(reader));
 		}
 		if (reader.last() != ']') {
 			throw new java.io.IOException("Expecting ']' at position " + reader.positionInStream() + ". Found " + (char)reader.last());

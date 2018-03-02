@@ -118,7 +118,7 @@ public abstract class BeanAnalyzer {
 		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, lazy);
 		final JsonReader.ReadObject oldReader = json.registerReader(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
-		final LinkedHashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
+		final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
 		for (final Field f : raw.getFields()) {
 			analyzeField(json, foundWrite, foundRead, f, genericMappings);
@@ -128,7 +128,7 @@ public abstract class BeanAnalyzer {
 		}
 		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
-		final ReadPropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new ReadPropertyInfo[0]);
+		final DecodePropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new DecodePropertyInfo[0]);
 		final BeanDescription<T> converter = new BeanDescription<T>(manifest, raw::newInstance, writeProps, readProps);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
@@ -221,7 +221,7 @@ public abstract class BeanAnalyzer {
 	private static void analyzeField(
 			final DslJson json,
 			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
-			final LinkedHashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead,
+			final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead,
 			final Field field,
 			final HashMap<Type, Type> genericMappings) {
 		if (canRead(field.getModifiers()) && canWrite(field.getModifiers())) {
@@ -230,7 +230,7 @@ public abstract class BeanAnalyzer {
 			final boolean isUnknown = Generics.isUnknownType(type);
 			if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
 				foundWrite.put(field.getName(), new ReadField(json, field, isUnknown ? null : concreteType));
-				foundRead.put(field.getName(), new ReadPropertyInfo<>(field.getName(), false, new SetField(json, field, concreteType)));
+				foundRead.put(field.getName(), new DecodePropertyInfo<>(field.getName(), false, new SetField(json, field, concreteType)));
 			}
 		}
 	}
@@ -321,7 +321,7 @@ public abstract class BeanAnalyzer {
 			final Class<?> manifest,
 			final DslJson json,
 			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
-			final LinkedHashMap<String, ReadPropertyInfo<JsonReader.BindObject>> foundRead,
+			final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead,
 			final HashMap<Type, Type> genericMappings) {
 		if (mget.getParameterTypes().length != 0) return;
 		final String setName = mget.getName().startsWith("get") ? "set" + mget.getName().substring(3) : mget.getName();
@@ -340,7 +340,7 @@ public abstract class BeanAnalyzer {
 			final boolean isUnknown = Generics.isUnknownType(type);
 			if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
 				foundWrite.put(name, new ReadMethod(json, mget, name, isUnknown ? null : concreteType));
-				foundRead.put(name, new ReadPropertyInfo<>(name, false, new SetMethod(json, mset, concreteType)));
+				foundRead.put(name, new DecodePropertyInfo<>(name, false, new SetMethod(json, mset, concreteType)));
 			}
 		}
 	}
