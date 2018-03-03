@@ -26,7 +26,7 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 				Diagnostic.Kind.ERROR,
 				5,
 				compileTestCase(MissingEmptyCtor.class),
-				"therefore 'com.dslplatform.json.models.MissingEmptyCtor' requires public no argument constructor");
+				"'com.dslplatform.json.models.MissingEmptyCtor' requires public no argument constructor");
 	}
 
 	@Test
@@ -49,7 +49,7 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 				Diagnostic.Kind.ERROR,
 				9,
 				compileTestCase(InvalidType.class),
-				"Specified type not supported: 'char'");
+				"Specified type is not supported: 'char'");
 	}
 
 	@Test
@@ -214,6 +214,7 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("?>? abs2 {  simple Java access;  exclude serialization signature;  }"));
 		Assert.assertTrue(dsl.contains("? abs3 {  simple Java access;  exclude serialization signature;  }"));
 		Assert.assertTrue(dsl.contains("? abs4 {  simple Java access;  }"));
+		Assert.assertTrue(dsl.contains("[]? abs5 {  simple Java access;  exclude serialization signature;  }"));
 		Assert.assertTrue(dsl.contains("long y {  simple Java access;"));
 	}
 
@@ -423,8 +424,8 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 	@Test
 	public void invalidConverterErrors() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InvalidConveterErrors.class);
-		Assert.assertEquals(9, diagnostics.size());
-		for(Diagnostic note : diagnostics) {
+		Assert.assertEquals(3, diagnostics.size());
+		for (Diagnostic note : diagnostics) {
 			Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		}
 		String error1 = diagnostics.get(0).getMessage(Locale.ENGLISH);

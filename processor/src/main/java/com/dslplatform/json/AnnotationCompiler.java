@@ -2,6 +2,7 @@ package com.dslplatform.json;
 
 import com.dslplatform.compiler.client.*;
 import com.dslplatform.compiler.client.parameters.*;
+import com.dslplatform.json.processor.LogLevel;
 
 import javax.annotation.processing.Messager;
 import javax.tools.Diagnostic;
@@ -17,23 +18,6 @@ abstract class AnnotationCompiler {
 		boolean useAndroid;
 		String namespace;
 		String compiler;
-	}
-
-	enum LogLevel {
-		DEBUG(0),
-		INFO(1),
-		ERRORS(2),
-		NONE(3);
-
-		private final int level;
-
-		LogLevel(int level) {
-			this.level = level;
-		}
-
-		public boolean isVisible(LogLevel other) {
-			return other.level <= this.level;
-		}
 	}
 
 	private static class DslContext extends Context {

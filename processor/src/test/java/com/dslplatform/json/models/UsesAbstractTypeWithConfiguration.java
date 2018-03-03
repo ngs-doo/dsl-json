@@ -13,4 +13,6 @@ public class UsesAbstractTypeWithConfiguration {
 	public AbstractTypeWithoutSignature abs3;
 	@JsonAttribute(typeSignature = CompiledJson.TypeSignature.DEFAULT)
 	public AbstractTypeWithoutSignature abs4;
+	@JsonAttribute(typeSignature = CompiledJson.TypeSignature.EXCLUDE)
+	public AbstractTypeWithoutSignature[] abs5;
 }
