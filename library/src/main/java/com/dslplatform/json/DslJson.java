@@ -495,6 +495,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (settings.withServiceLoader && settings.configurations.isEmpty()) {
 			//TODO: workaround common issue with failed services registration. try to load common external name if exists
+			loadDefaultConverters(this, "dsl_json_Annotation_Processor_External_Serialization");
 			loadDefaultConverters(this, "dsl_json.json.ExternalSerialization");
 			loadDefaultConverters(this, "dsl_json_ExternalSerialization");
 		}
@@ -714,6 +715,14 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	private final ConcurrentHashMap<Type, JsonReader.ReadObject<?>> readers = new ConcurrentHashMap<Type, JsonReader.ReadObject<?>>();
 	private final ConcurrentHashMap<Type, JsonReader.BindObject<?>> binders = new ConcurrentHashMap<Type, JsonReader.BindObject<?>>();
+
+	public final Set<Type> getRegisteredDecoders() {
+		return readers.keySet();
+	}
+
+	public final Set<Type> getRegisteredEncoders() {
+		return jsonWriters.keySet();
+	}
 
 	/**
 	 * Register custom reader for specific type (JSON -&gt; instance conversion).

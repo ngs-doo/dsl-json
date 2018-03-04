@@ -9,10 +9,13 @@ import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 import java.util.*;
 
-public class ValidationTest extends AbstractAnnotationProcessorTest {
+public class DslValidationTest extends AbstractAnnotationProcessorTest {
 
 	protected Collection<Processor> getProcessors() {
 		return Collections.<Processor>singletonList(new CompiledJsonProcessor());
+	}
+	protected List<String> getDefaultArguments() {
+		return Collections.singletonList("-Adsljson.showdsl=true");
 	}
 
 	@Test
@@ -351,7 +354,7 @@ public class ValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(
 						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
 						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
-		Assert.assertEquals(1, diagnostics.size());
+		Assert.assertEquals(4, diagnostics.size());
 		Diagnostic note = diagnostics.get(0);
 		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		String error = note.getMessage(Locale.ENGLISH);

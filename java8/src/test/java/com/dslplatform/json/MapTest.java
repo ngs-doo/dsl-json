@@ -1,6 +1,7 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -63,7 +64,7 @@ public class MapTest {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		json.serialize(wo, baos);
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		Generic<String, Long> wo2 = new TypeDefinition<Generic<String, Long>>() {}.deserialize(json, bais);
+		Generic<String, Long> wo2 = (Generic<String, Long>) json.deserialize(new TypeDefinition<Generic<String, Long>>() {}.type, bais);
 		Assert.assertEquals(wo.mapKV, wo2.mapKV);
 		Assert.assertEquals(wo.mapMapKV, wo2.mapMapKV);
 	}
@@ -79,7 +80,7 @@ public class MapTest {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		json.serialize(wo, baos);
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		Generic<Long, Long> wo2 = new TypeDefinition<Generic<Long, Long>>() {}.deserialize(json, bais);
+		Generic<Long, Long> wo2 = (Generic<Long, Long>) json.deserialize(new TypeDefinition<Generic<Long, Long>>() {}.type, bais);
 		Assert.assertEquals(wo.mapKV, wo2.mapKV);
 		Assert.assertEquals(wo.mapMapKV, wo2.mapMapKV);
 	}

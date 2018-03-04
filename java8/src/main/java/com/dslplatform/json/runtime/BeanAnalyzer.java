@@ -60,7 +60,7 @@ public abstract class BeanAnalyzer {
 		}
 
 		@Override
-		public Object bind(JsonReader reader, Object instance) throws IOException {
+		public Object bind(final JsonReader reader, final Object instance) throws IOException {
 			if (resolvedBinder == null) {
 				if (checkSignatureNotFound()) {
 					final JsonReader.BindObject tmp = json.tryFindBinder(type);
@@ -74,7 +74,7 @@ public abstract class BeanAnalyzer {
 		}
 
 		@Override
-		public void write(JsonWriter writer, Object value) {
+		public void write(final JsonWriter writer, final Object value) {
 			if (resolvedWriter == null) {
 				if (checkSignatureNotFound()) {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
@@ -129,7 +129,7 @@ public abstract class BeanAnalyzer {
 		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
 		final DecodePropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new DecodePropertyInfo[0]);
-		final BeanDescription<T> converter = new BeanDescription<T>(manifest, raw::newInstance, writeProps, readProps);
+		final BeanDescription<T> converter = new BeanDescription<T>(manifest, raw::newInstance, writeProps, readProps, true);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
 		json.registerBinder(manifest, converter);
@@ -154,7 +154,7 @@ public abstract class BeanAnalyzer {
 		}
 
 		@Override
-		public void write(JsonWriter writer, Object value) {
+		public void write(final JsonWriter writer, final Object value) {
 			if (type != null && fieldWriter == null) {
 				fieldWriter = json.tryFindWriter(type);
 				if (fieldWriter == null) {
@@ -201,7 +201,7 @@ public abstract class BeanAnalyzer {
 		}
 
 		@Override
-		public Object bind(JsonReader reader, Object instance) throws IOException {
+		public Object bind(final JsonReader reader, final Object instance) throws IOException {
 			if (fieldReader == null) {
 				fieldReader = json.tryFindReader(type);
 				if (fieldReader == null) {
@@ -252,7 +252,7 @@ public abstract class BeanAnalyzer {
 		}
 
 		@Override
-		public void write(JsonWriter writer, Object value) {
+		public void write(final JsonWriter writer, final Object value) {
 			if (type != null && methodWriter == null) {
 				methodWriter = json.tryFindWriter(type);
 				if (methodWriter == null) {
@@ -299,7 +299,7 @@ public abstract class BeanAnalyzer {
 		}
 
 		@Override
-		public Object bind(JsonReader reader, Object instance) throws IOException {
+		public Object bind(final JsonReader reader, final Object instance) throws IOException {
 			if (methodReader == null) {
 				methodReader = json.tryFindReader(type);
 				if (methodReader == null) {

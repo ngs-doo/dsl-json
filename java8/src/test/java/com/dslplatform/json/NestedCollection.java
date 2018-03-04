@@ -1,6 +1,7 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -50,7 +51,7 @@ public class NestedCollection {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		json.serialize(wo, baos);
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		Generic<Long> wo2 = new TypeDefinition<Generic<Long>>() {}.deserialize(json, bais);
+		Generic<Long> wo2 = (Generic<Long>) json.deserialize(new TypeDefinition<Generic<Long>>() {}.type, bais);
 		Assert.assertEquals(wo.colT, wo2.colT);
 		Assert.assertEquals(wo.colColT, wo2.colColT);
 	}

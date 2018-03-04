@@ -48,6 +48,7 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * @return the processor instances that should be tested
 	 */
 	protected abstract Collection<Processor> getProcessors();
+	protected abstract List<String> getDefaultArguments();
 
 	/**
 	 * Attempts to compile the given compilation units using the Java Compiler
@@ -62,7 +63,7 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * @see #compileTestCase(String[], List&lt;String&gt;)
 	 */
 	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(Class<?>... compilationUnits) {
-		return compileTestCase(Arrays.asList("-Adsljson.showdsl=true"), compilationUnits);
+		return compileTestCase(getDefaultArguments(), compilationUnits);
 	}
 
 	/**

@@ -41,7 +41,7 @@ public class OptionalTest {
 
 	@Test
 	public void testPrimitives() throws IOException {
-		DslJson<Object> json = new DslJson<Object>(Settings.withRuntime().with(new ConfigureJava8()));
+		DslJson<Object> json = new DslJson<>(Settings.withRuntime());
 		PrimitiveOptionals wo = new PrimitiveOptionals();
 		wo.optLong = OptionalLong.of(-5L);
 		wo.optOptInt = Optional.of(OptionalInt.of(2));

@@ -2,13 +2,13 @@ package com.dslplatform.json.runtime;
 
 import java.util.HashSet;
 
-class DecodePropertyInfo<T> {
+public class DecodePropertyInfo<T> {
 	public final String name;
 	public final int hash;
 	public final boolean exactName;
 	public final T value;
 
-	DecodePropertyInfo(String name, boolean exactName, T value) {
+	public DecodePropertyInfo(String name, boolean exactName, T value) {
 		this.name = name;
 		this.exactName = exactName;
 		this.value = value;

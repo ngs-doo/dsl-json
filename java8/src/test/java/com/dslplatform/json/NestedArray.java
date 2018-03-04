@@ -1,6 +1,7 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -46,7 +47,7 @@ public class NestedArray {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		json.serialize(wo, baos);
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		Generic<Long> wo2 = new TypeDefinition<Generic<Long>>() {}.deserialize(json, bais);
+		Generic<Long> wo2 = (Generic<Long>) json.deserialize(new TypeDefinition<Generic<Long>>() {}.type, bais);
 		Assert.assertArrayEquals(wo.arrT, wo2.arrT);
 		Assert.assertArrayEquals(wo.arrArrT, wo2.arrArrT);
 	}

@@ -12,7 +12,8 @@ import java.util.List;
 public class AttributeInfo {
 	public final String id;
 	public final String name;
-	public final ExecutableElement method;
+	public final ExecutableElement readMethod;
+	public final ExecutableElement writeMethod;
 	public final VariableElement field;
 	public final TypeMirror type;
 	public final Element element;
@@ -26,7 +27,8 @@ public class AttributeInfo {
 
 	public AttributeInfo(
 			String name,
-			ExecutableElement method,
+			ExecutableElement readMethod,
+			ExecutableElement writeMethod,
 			VariableElement field,
 			TypeMirror type,
 			boolean notNull,
@@ -37,9 +39,10 @@ public class AttributeInfo {
 			TypeMirror converter) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
-		this.method = method;
+		this.readMethod = readMethod;
+		this.writeMethod = writeMethod;
 		this.field = field;
-		this.element = method != null ? method : field;
+		this.element = field != null ? field : readMethod;
 		this.type = type;
 		this.notNull = notNull;
 		this.mandatory = mandatory;

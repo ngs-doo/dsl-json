@@ -6,11 +6,15 @@ import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 public class PackageTest extends AbstractAnnotationProcessorTest {
 
 	protected Collection<Processor> getProcessors() {
 		return Collections.<Processor>singletonList(new CompiledJsonProcessor());
+	}
+	protected List<String> getDefaultArguments() {
+		return Collections.singletonList("-Adsljson.showdsl=true");
 	}
 
 	@Test

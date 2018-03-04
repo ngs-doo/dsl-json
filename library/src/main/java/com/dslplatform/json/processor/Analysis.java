@@ -266,13 +266,13 @@ public class Analysis {
 				}
 				path.push(info.element.getSimpleName().toString());
 				if (includeBeanMethods) {
-					for (Map.Entry<String, ExecutableElement> p : getBeanProperties(info.element).entrySet()) {
-						analyzeAttribute(info, p.getValue().getReturnType(), p.getKey(), p.getValue(), null, "bean property", path);
+					for (Map.Entry<String, MethodPair> p : getBeanProperties(info.element).entrySet()) {
+						analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), null, "bean property", path);
 					}
 				}
 				if (includeExactMethods) {
-					for (Map.Entry<String, ExecutableElement> p : getExactProperties(info.element).entrySet()) {
-						analyzeAttribute(info, p.getValue().getReturnType(), p.getKey(), p.getValue(), null, "exact property", path);
+					for (Map.Entry<String, MethodPair> p : getExactProperties(info.element).entrySet()) {
+						analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), null, "exact property", path);
 					}
 				}
 				if (includeFields) {
@@ -285,8 +285,17 @@ public class Analysis {
 		} while (total != structs.size());
 	}
 
-	private void analyzeAttribute(StructInfo info, TypeMirror type, String name, ExecutableElement method, VariableElement field, String target, Stack<String> path) {
-		Element element = method != null ? method : field;
+	public static String objectName(final String type) {
+		return "int".equals(type) ? "java.lang.Integer"
+				: "long".equals(type) ? "java.lang.Long"
+				: "double".equals(type) ? "java.lang.Double"
+				: "float".equals(type) ? "java.lang.Float"
+				: "char".equals(type) ? "java.lang.Character"
+				: type;
+	}
+
+	private void analyzeAttribute(StructInfo info, TypeMirror type, String name, MethodPair method, VariableElement field, String target, Stack<String> path) {
+		Element element = field != null ? field : method.read;
 		path.push(name);
 		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element)) {
 			AnnotationMirror annotation = getAnnotation(element, attributeType);
@@ -294,7 +303,8 @@ public class Analysis {
 			AttributeInfo attr =
 					new AttributeInfo(
 							name,
-							method,
+							method != null ? method.read : null,
+							method != null ? method.write : null,
 							field,
 							type,
 							hasNonNullable(element),
@@ -310,12 +320,7 @@ public class Analysis {
 			if (attr.converter != null) {
 				TypeElement typeConverter = elements.getTypeElement(attr.converter.toString());
 				String javaType = type.toString();
-				String objectType = "int".equals(javaType) ? "java.lang.Integer"
-						: "long".equals(javaType) ? "java.lang.Long"
-						: "double".equals(javaType) ? "java.lang.Double"
-						: "float".equals(javaType) ? "java.lang.Float"
-						: "char".equals(javaType) ? "java.lang.Character"
-						: javaType;
+				String objectType = objectName(javaType);
 				Element declaredType = objectType.equals(javaType)
 						? types.asElement(type)
 						: elements.getTypeElement(objectType);
@@ -558,8 +563,18 @@ public class Analysis {
 		return false;
 	}
 
-	public Map<String, ExecutableElement> getBeanProperties(TypeElement element) {
-		Map<String, VariableElement> setters = new HashMap<String, VariableElement>();
+	public static class MethodPair {
+		public final ExecutableElement read;
+		public final ExecutableElement write;
+
+		public MethodPair(ExecutableElement read, ExecutableElement write) {
+			this.read = read;
+			this.write = write;
+		}
+	}
+
+	public Map<String, MethodPair> getBeanProperties(TypeElement element) {
+		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			boolean isPublicInterface = inheritance.getKind() == ElementKind.INTERFACE
@@ -584,24 +599,25 @@ public class Analysis {
 					}
 				} else if (name.startsWith("set")
 						&& method.getParameters().size() == 1) {
-					setters.put(property, method.getParameters().get(0));
+					setters.put(property, method);
 				}
 			}
 		}
-		Map<String, ExecutableElement> result = new HashMap<String, ExecutableElement>();
+		Map<String, MethodPair> result = new HashMap<String, MethodPair>();
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
-			VariableElement setterArgument = setters.get(kv.getKey());
+			ExecutableElement setter = setters.get(kv.getKey());
+			VariableElement setterArgument = setter == null ? null : setter.getParameters().get(0);
 			if (setterArgument != null && setterArgument.asType().equals(kv.getValue().getReturnType())) {
-				result.put(kv.getKey(), kv.getValue());
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(kv.getValue().getReturnType().toString())) {
-				result.put(kv.getKey(), kv.getValue());
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
 			}
 		}
 		return result;
 	}
 
-	public Map<String, ExecutableElement> getExactProperties(TypeElement element) {
-		Map<String, VariableElement> setters = new HashMap<String, VariableElement>();
+	public Map<String, MethodPair> getExactProperties(TypeElement element) {
+		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			boolean isPublicInterface = inheritance.getKind() == ElementKind.INTERFACE
@@ -620,17 +636,18 @@ public class Analysis {
 						getters.put(name, method);
 					}
 				} else if (method.getParameters().size() == 1) {
-					setters.put(name, method.getParameters().get(0));
+					setters.put(name, method);
 				}
 			}
 		}
-		Map<String, ExecutableElement> result = new HashMap<String, ExecutableElement>();
+		Map<String, MethodPair> result = new HashMap<String, MethodPair>();
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
-			VariableElement setterArgument = setters.get(kv.getKey());
+			ExecutableElement setter = setters.get(kv.getKey());
+			VariableElement setterArgument = setter == null ? null : setter.getParameters().get(0);
 			if (setterArgument != null && setterArgument.asType().equals(kv.getValue().getReturnType())) {
-				result.put(kv.getKey(), kv.getValue());
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(kv.getValue().getReturnType().toString())) {
-				result.put(kv.getKey(), kv.getValue());
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
 			}
 		}
 		return result;

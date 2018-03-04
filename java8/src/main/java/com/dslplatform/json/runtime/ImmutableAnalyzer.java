@@ -96,11 +96,11 @@ public abstract class ImmutableAnalyzer {
 		}
 		final ArrayList<Constructor<?>> ctors = new ArrayList<>();
 		for(Constructor<?> ctor : raw.getDeclaredConstructors()) {
-			if ((ctor.getModifiers() & Modifier.PUBLIC) == 1 && ctor.getParameterCount() > 0) {
+			if ((ctor.getModifiers() & Modifier.PUBLIC) == 1) {
 				ctors.add(ctor);
 			}
 		}
-		if (ctors.size() != 1) return null;
+		if (ctors.size() != 1 || ctors.get(0).getParameterCount() == 0) return null;
 		final Constructor<?> ctor = ctors.get(0);
 		final LazyImmutableDescription lazy = new LazyImmutableDescription(json, manifest);
 		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, lazy);

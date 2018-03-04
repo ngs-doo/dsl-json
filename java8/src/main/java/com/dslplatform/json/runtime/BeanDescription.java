@@ -12,12 +12,23 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 	public final Type manifest;
 	private final Callable<T> newInstance;
 	private final DecodePropertyInfo<JsonReader.BindObject>[] decoders;
+	private final boolean skipOnUnknown;
 
 	public BeanDescription(
+			final Class<T> manifest,
+			final Callable<T> newInstance,
+			final JsonWriter.WriteObject[] encoders,
+			final DecodePropertyInfo<JsonReader.BindObject>[] decoders,
+			final boolean skipOnUnknown) {
+		this((Type)manifest, newInstance, encoders, decoders, skipOnUnknown);
+	}
+
+	BeanDescription(
 			final Type manifest,
 			final Callable<T> newInstance,
 			final JsonWriter.WriteObject[] encoders,
-			final DecodePropertyInfo<JsonReader.BindObject>[] decoders) {
+			final DecodePropertyInfo<JsonReader.BindObject>[] decoders,
+			final boolean skipOnUnknown) {
 		super(encoders);
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
@@ -25,6 +36,7 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 		this.manifest = manifest;
 		this.newInstance = newInstance;
 		this.decoders = DecodePropertyInfo.prepare(decoders);
+		this.skipOnUnknown = skipOnUnknown;
 	}
 
 	public T read(final JsonReader reader) throws IOException {
@@ -58,7 +70,8 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 				}
 			}
 			if (!processed) {
-				reader.skip();
+				if (skipOnUnknown) reader.skip();
+				else throw new IOException("Unknown property detected: " + reader.getLastName() + " at position " + reader.positionInStream());
 			}
 			if (reader.getNextToken() != ',') break;
 		} while (reader.getNextToken() == '"');
