@@ -76,7 +76,7 @@ public abstract class ArrayAnalyzer {
 		if (Object.class != element && writer == null) {
 			return null;
 		}
-		final ArrayEncoder<T> encoder = new ArrayEncoder(json, Object.class == element ? null : writer);
+		final ArrayEncoder<T> encoder = new ArrayEncoder(json, Settings.isKnownType(element) ? writer : null);
 		json.registerWriter(manifest, encoder);
 		return encoder;
 	}

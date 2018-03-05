@@ -4,7 +4,6 @@ import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.SerializationException;
 
-import javax.sql.rowset.serial.SerialException;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.function.Function;
@@ -37,14 +36,28 @@ class LazyAttributeEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
 	@Override
 	public void write(final JsonWriter writer, final T value) {
-		if (encoder == null) {
+		if (type != null && encoder == null) {
 			encoder = json.tryFindWriter(type);
 			if (encoder == null) {
 				throw new SerializationException("Unable to find writer for " + type);
 			}
 		}
 		final R attr = read.apply(value);
-		if (alwaysSerialize || attr != null) {
+		if (type == null) {
+			if (attr == null) {
+				if (alwaysSerialize) {
+					writer.writeAscii(quotedName);
+					writer.writeNull();
+				}
+			} else {
+				final JsonWriter.WriteObject tmp = json.tryFindWriter(attr.getClass());
+				if (tmp == null) {
+					throw new SerializationException("Unable to find writer for " + attr.getClass());
+				}
+				writer.writeAscii(quotedName);
+				tmp.write(writer, attr);
+			}
+		} else if (alwaysSerialize || attr != null) {
 			writer.writeAscii(quotedName);
 			encoder.write(writer, attr);
 		}

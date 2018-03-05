@@ -720,6 +720,10 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return readers.keySet();
 	}
 
+	public final Set<Type> getRegisteredBinders() {
+		return binders.keySet();
+	}
+
 	public final Set<Type> getRegisteredEncoders() {
 		return jsonWriters.keySet();
 	}

@@ -7,12 +7,9 @@ import com.dslplatform.json.SerializationException;
 
 import java.io.IOException;
 import java.lang.reflect.*;
-import java.nio.charset.Charset;
 import java.util.*;
 
 public abstract class ImmutableAnalyzer {
-
-	private static final Charset utf8 = Charset.forName("UTF-8");
 
 	private static class LazyImmutableDescription implements JsonWriter.WriteObject, JsonReader.ReadObject {
 
@@ -193,58 +190,6 @@ public abstract class ImmutableAnalyzer {
 		}
 	}
 
-
-	private static class ReadField implements JsonWriter.WriteObject {
-		private final DslJson json;
-		private final Field field;
-		private final Type type;
-		private final byte[] quotedName;
-		private final boolean alwaysSerialize;
-		private JsonWriter.WriteObject encoder;
-
-		ReadField(final DslJson json, final Field field, final Type type) {
-			this.json = json;
-			this.field = field;
-			this.type = type;
-			quotedName = ("\"" + field.getName() + "\":").getBytes(utf8);
-			this.alwaysSerialize = !json.omitDefaults;
-		}
-
-		@Override
-		public void write(final JsonWriter writer, final Object value) {
-			if (type != null && encoder == null) {
-				encoder = json.tryFindWriter(type);
-				if (encoder == null) {
-					throw new SerializationException("Unable to find writer for " + type + " on field " + field.getName() + " of " + field.getDeclaringClass());
-				}
-			}
-			final Object attr;
-			try {
-				attr = field.get(value);
-			} catch (IllegalAccessException e) {
-				throw new SerializationException("Unable to read field " + field.getName() + " of " + field.getDeclaringClass(), e);
-			}
-			if (type == null) {
-				if (attr == null) {
-					if (alwaysSerialize) {
-						writer.writeAscii(quotedName);
-						writer.writeNull();
-					}
-				} else {
-					final JsonWriter.WriteObject tmp = json.tryFindWriter(attr.getClass());
-					if (tmp == null) {
-						throw new SerializationException("Unable to find writer for " + attr.getClass() + " on field " + field.getName() + " of " + field.getDeclaringClass());
-					}
-					writer.writeAscii(quotedName);
-					tmp.write(writer, attr);
-				}
-			} else if (alwaysSerialize || attr != null) {
-				writer.writeAscii(quotedName);
-				encoder.write(writer, attr);
-			}
-		}
-	}
-
 	private static void analyzeField(
 			final DslJson json,
 			final Parameter[] ctorParams,
@@ -257,58 +202,13 @@ public abstract class ImmutableAnalyzer {
 			final boolean isUnknown = Generics.isUnknownType(type);
 			if (type.equals(ctorParams[found.size()].getParameterizedType())
 				&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
-				found.put(field.getName(), new ReadField(json, field, isUnknown ? null : concreteType));
-			}
-		}
-	}
-
-	private static class ReadMethod implements JsonWriter.WriteObject {
-		private final DslJson json;
-		private final Method method;
-		private final Type type;
-		private final byte[] quotedName;
-		private final boolean alwaysSerialize;
-		private JsonWriter.WriteObject encoder;
-
-		ReadMethod(final DslJson json, final Method method, final String name, final Type type) {
-			this.json = json;
-			this.method = method;
-			this.type = type;
-			quotedName = ("\"" + name + "\":").getBytes(utf8);
-			alwaysSerialize = !json.omitDefaults;
-		}
-
-		@Override
-		public void write(final JsonWriter writer, final Object value) {
-			if (type != null && encoder == null) {
-				encoder = json.tryFindWriter(type);
-				if (encoder == null) {
-					throw new SerializationException("Unable to find writer for " + type + " on method " + method.getName() + " of " + method.getDeclaringClass());
-				}
-			}
-			final Object attr;
-			try {
-				attr = method.invoke(value);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new SerializationException("Unable to read method " + method.getName() + " of " + method.getDeclaringClass(), e);
-			}
-			if (type == null) {
-				if (attr == null) {
-					if (alwaysSerialize) {
-						writer.writeAscii(quotedName);
-						writer.writeNull();
-					}
-				} else {
-					final JsonWriter.WriteObject tmp = json.tryFindWriter(attr.getClass());
-					if (tmp == null) {
-						throw new SerializationException("Unable to find writer for " + attr.getClass() + " on method " + method.getName() + " of " + method.getDeclaringClass());
-					}
-					writer.writeAscii(quotedName);
-					tmp.write(writer, attr);
-				}
-			} else if (alwaysSerialize || attr != null) {
-				writer.writeAscii(quotedName);
-				encoder.write(writer, attr);
+				found.put(
+						field.getName(),
+						Settings.createEncoder(
+								new Reflection.ReadField(field),
+								field.getName(),
+								json,
+								isUnknown ? null : concreteType));
 			}
 		}
 	}
@@ -329,7 +229,13 @@ public abstract class ImmutableAnalyzer {
 			final boolean isUnknown = Generics.isUnknownType(type);
 			if (type.equals(ctorParams[found.size()].getParameterizedType())
 					&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
-				found.put(name, new ReadMethod(json, mget, name, isUnknown ? null : concreteType));
+				found.put(
+						name,
+						Settings.createEncoder(
+								new Reflection.ReadMethod(mget),
+								name,
+								json,
+								isUnknown ? null : concreteType));
 			}
 		}
 	}

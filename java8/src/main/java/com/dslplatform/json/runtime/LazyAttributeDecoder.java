@@ -23,6 +23,7 @@ class LazyAttributeDecoder<T, P> implements JsonReader.BindObject<T> {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
 		if (name == null || name.isEmpty()) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
+		if (type == null) throw new IllegalArgumentException("type can't be null");
 		this.write = write;
 		this.json = json;
 		this.type = type;

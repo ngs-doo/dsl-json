@@ -71,7 +71,7 @@ public abstract class CollectionAnalyzer {
 		if (Object.class != element && writer == null) {
 			return null;
 		}
-		final CollectionEncoder encoder = new CollectionEncoder<>(json, Object.class == element ? null : writer);
+		final CollectionEncoder encoder = new CollectionEncoder<>(json, Settings.isKnownType(element) ? writer : null);
 		json.registerWriter(manifest, encoder);
 		return encoder;
 	}

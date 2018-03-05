@@ -330,4 +330,41 @@ public class ReflectionTest {
 		);
 		Assert.assertEquals("{\"x\":[[\"Hello\"]]}", jw.toString());
 	}
+
+	public static abstract class Abstract {
+		public int x;
+	}
+	public static class Concrete extends Abstract {
+		public long y;
+	}
+
+	public static class AbstractLists {
+		public List<Abstract> list1;
+		public List list2;
+	}
+
+	@Test
+	public void canUseAbstractList() throws IOException {
+		DslJson<Object> json = new DslJson<Object>(Settings.withRuntime());
+		json.registerReader(Abstract.class, json.tryFindReader(Concrete.class));
+		AbstractLists me1 = new AbstractLists();
+		Concrete c1 = new Concrete();
+		c1.y = 4L;
+		c1.x = 2;
+		me1.list1 = Arrays.asList(null, c1);
+		me1.list2 = Arrays.asList(c1, null);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(me1, baos);
+		byte[] bytes = baos.toByteArray();
+		AbstractLists me2 = json.deserialize(AbstractLists.class, bytes, bytes.length);
+		Assert.assertEquals(me1.list1.size(), me2.list1.size());
+		Assert.assertNull(me2.list1.get(0));
+		Assert.assertNull(me2.list1.get(0));
+		Assert.assertTrue(me2.list1.get(1) instanceof Concrete);
+		Assert.assertEquals(2, me2.list1.get(1).x);
+		Assert.assertTrue(me2.list1.get(1) instanceof Concrete);
+		Assert.assertEquals(4L, ((Concrete)me2.list1.get(1)).y);
+		Assert.assertEquals(me1.list2.size(), me2.list2.size());
+	}
+
 }

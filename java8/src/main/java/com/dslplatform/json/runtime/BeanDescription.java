@@ -10,7 +10,7 @@ import java.util.concurrent.Callable;
 public final class BeanDescription<T> extends WriteDescription<T> implements JsonReader.ReadObject<T>, JsonReader.BindObject<T> {
 
 	public final Type manifest;
-	private final Callable<T> newInstance;
+	final Callable<T> newInstance;
 	private final DecodePropertyInfo<JsonReader.BindObject>[] decoders;
 	private final boolean skipOnUnknown;
 

@@ -25,12 +25,11 @@ public final class OptionalEncoder<T> implements JsonWriter.WriteObject<Optional
 		else if (encoder != null) encoder.write(writer, value.get());
 		else {
 			final T unpacked = value.get();
-			if (unpacked == null) writer.writeNull();
-			else {
-				final JsonWriter.WriteObject jw = json.tryFindWriter(unpacked.getClass());
-				if (jw == null) throw new SerializationException("Unable to find writer for " + unpacked.getClass());
-				jw.write(writer, unpacked);
+			final JsonWriter.WriteObject jw = json.tryFindWriter(unpacked.getClass());
+			if (jw == null) {
+				throw new SerializationException("Unable to find writer for " + unpacked.getClass());
 			}
+			jw.write(writer, unpacked);
 		}
 	}
 }

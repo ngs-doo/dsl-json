@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.*;
 
 public class MapTest {
@@ -83,5 +84,21 @@ public class MapTest {
 		Generic<Long, Long> wo2 = (Generic<Long, Long>) json.deserialize(new TypeDefinition<Generic<Long, Long>>() {}.type, bais);
 		Assert.assertEquals(wo.mapKV, wo2.mapKV);
 		Assert.assertEquals(wo.mapMapKV, wo2.mapMapKV);
+	}
+
+	public static class GenericMap<T> {
+		public Map<String, T> map = new LinkedHashMap<>();
+	}
+
+	@Test
+	public void nonPrimitiveTypes() throws IOException {
+		GenericMap<LocalDate> wo = new GenericMap<>();
+		LocalDate today = LocalDate.now();
+		wo.map.put("abc", today);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(wo, baos);
+		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		GenericMap<LocalDate> wo2 = (GenericMap<LocalDate>) json.deserialize(new TypeDefinition<GenericMap<LocalDate>>() {}.type, bais);
+		Assert.assertEquals(wo.map, wo2.map);
 	}
 }

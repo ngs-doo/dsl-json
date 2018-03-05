@@ -117,12 +117,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	@Override
 	public SourceVersion getSupportedSourceVersion() {
 		SourceVersion latest = SourceVersion.latest();
-		if ("RELEASE_9".equals(latest.name())
-				|| "RELEASE_8".equals(latest.name())
-				|| "RELEASE_7".equals(latest.name())) {
+		if ("RELEASE_9".equals(latest.name())) {
 			return latest;
 		}
-		return SourceVersion.RELEASE_6;
+		return SourceVersion.RELEASE_8;
 	}
 
 	private static String nonGenericObject(String type) {
