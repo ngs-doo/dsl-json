@@ -199,6 +199,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(").append("v").append(")");
 		else code.append(attr.field.getSimpleName()).append(" = ").append("v");
 		code.append(", \"").append(alias).append("\", json, ");
+		if (attr.fullMatch) code.append("true, ");
+		else code.append("false, ");
 		code.append(typeOrClass(objectType, attr.type.toString())).append("),\n");
 	}
 }

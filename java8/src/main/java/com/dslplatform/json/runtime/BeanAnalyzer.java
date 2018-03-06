@@ -205,6 +205,7 @@ public abstract class BeanAnalyzer {
 								new Reflection.SetField(field),
 								field.getName(),
 								json,
+								false,
 								concreteType));
 			}
 		}
@@ -246,6 +247,7 @@ public abstract class BeanAnalyzer {
 								new Reflection.SetMethod(mset),
 								name,
 								json,
+								false,
 								concreteType));
 			}
 		}

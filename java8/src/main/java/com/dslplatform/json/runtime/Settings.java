@@ -38,13 +38,14 @@ public abstract class Settings {
 			final BiConsumer<T, R> write,
 			final String name,
 			final DslJson json,
+			final boolean exactNameMatch,
 			final Type type) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonReader.ReadObject<R> decoder = type != null ? json.tryFindReader(type) : null;
-		if (decoder == null || Object.class.equals(type)) return new DecodePropertyInfo<>(name, false, new LazyAttributeDecoder<>(write, name, json, type));
-		return new DecodePropertyInfo<>(name, false, new KnownAttributeDecoder<>(write, decoder));
+		if (decoder == null || Object.class.equals(type)) return new DecodePropertyInfo<>(name, exactNameMatch, new LazyAttributeDecoder<>(write, name, json, type));
+		return new DecodePropertyInfo<>(name, exactNameMatch, new KnownAttributeDecoder<>(write, decoder));
 	}
 
 	public static <T> DslJson.Settings<T> withRuntime() {
