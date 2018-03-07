@@ -22,7 +22,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testEmptyValidClass() {
-		assertCompilationSuccessful(compileTestCase(ValidCtor.class));
+		checkValidCompilation(ValidCtor.class);
 	}
 
 	//TODO: immutable support
@@ -47,7 +47,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testValidPropertyType() {
-		assertCompilationSuccessful(compileTestCase(ValidType.class));
+		checkValidCompilation(ValidType.class);
 	}
 
 	//TODO: char is supported
@@ -63,22 +63,22 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testReferencePropertyType() {
-		assertCompilationSuccessful(compileTestCase(ReferenceType.class));
+		checkValidCompilation(ReferenceType.class);
 	}
 
 	@Test
 	public void testReferenceListPropertyType() {
-		assertCompilationSuccessful(compileTestCase(ReferenceListType.class));
+		checkValidCompilation(ReferenceListType.class);
 	}
 
 	@Test
 	public void testEnum() {
-		assertCompilationSuccessful(compileTestCase(SimpleEnum.class));
+		checkValidCompilation(SimpleEnum.class);
 	}
 
 	@Test
 	public void testEnumWithCtor() {
-		assertCompilationSuccessful(compileTestCase(EnumWithArgs.class));
+		checkValidCompilation(EnumWithArgs.class);
 	}
 
 	@Test
@@ -92,48 +92,42 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testNestedStaticClass() {
-		assertCompilationSuccessful(compileTestCase(NestedStaticClass.class));
+		checkValidCompilation(NestedStaticClass.class);
 	}
 
 	@Test
 	public void canIgnoreUnsupportedProperty() {
-		assertCompilationSuccessful(compileTestCase(IgnoredProperty.class));
+		checkValidCompilation(IgnoredProperty.class);
 	}
 
 	@Test
 	public void coverAllTypes() {
-		assertCompilationSuccessful(compileTestCase(AllTypes.class));
+		checkValidCompilation(AllTypes.class);
 	}
 
-	//TODO: actual check
-	@Ignore
 	@Test
 	public void checkIgnore() {
-		assertCompilationSuccessful(compileTestCase(IgnoredProperty.class));
+		checkValidCompilation(IgnoredProperty.class);
 	}
 
 	@Test
 	public void checkAlias() {
-		assertCompilationSuccessful(compileTestCase(PropertyAlias.class));
+		checkValidCompilation(PropertyAlias.class);
 	}
 
-	//TODO: actual check
-	@Ignore
 	@Test
 	public void checkNonNull() {
-		assertCompilationSuccessful(compileTestCase(NonNullableReferenceProperty.class));
+		checkValidCompilation(NonNullableReferenceProperty.class);
 	}
 
 	@Test
 	public void correctCasing() {
-		assertCompilationSuccessful(compileTestCase(ValidType.class));
+		checkValidCompilation(ValidType.class);
 	}
 
-	//TODO: actual checks
-	@Ignore
 	@Test
 	public void fieldsAreRecognized() {
-		assertCompilationSuccessful(compileTestCase(ValidType.class));
+		checkValidCompilation(ValidType.class);
 	}
 
 	@Test
@@ -145,16 +139,14 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				"Duplicate alias detected on field: prop");
 	}
 
-	//TODO: actual checks
-	@Ignore
 	@Test
 	public void checkMinifiedNames() {
-		assertCompilationSuccessful(compileTestCase(MinifiedProperties.class));
+		checkValidCompilation(MinifiedProperties.class);
 	}
 
 	@Test
 	public void supportsInterfaces() {
-		assertCompilationSuccessful(compileTestCase(UsesInterfaceType.class, Implements1Type.class));
+		checkValidCompilation(UsesInterfaceType.class, Implements1Type.class);
 	}
 
 	//TODO: mixins
@@ -168,30 +160,24 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				"Property iface is referencing interface (com.dslplatform.json.models.InterfaceType) which doesn't have registered implementations with @CompiledJson. At least one implementation of specified interface must be annotated with CompiledJson annotation");
 	}
 
-	//TODO: actual checks
-	@Ignore
 	@Test
 	public void supportsAbstractClasses() {
-		assertCompilationSuccessful(compileTestCase(UsesAbstractType.class, ExtendsType.class));
+		checkValidCompilation(UsesAbstractType.class, ExtendsType.class);
 	}
 
-	//TODO: actual check
-	@Ignore
 	@Test
 	public void supportsAbstractClassesWithConfiguration() {
-		assertCompilationSuccessful(compileTestCase(UsesAbstractTypeWithConfiguration.class, ExtendsType.class, ExtendsTypeWithConfiguration.class));
+		checkValidCompilation(UsesAbstractTypeWithConfiguration.class, ExtendsType.class, ExtendsTypeWithConfiguration.class);
 	}
 
-	//TODO: actual checks
-	@Ignore
 	@Test
 	public void supportsInterfacesWithConfiguration() {
-		assertCompilationSuccessful(compileTestCase(UsesInterfaceWithConfiguration.class, Implements1Type.class, InterfaceTypeWithoutSignature.class));
+		checkValidCompilation(UsesInterfaceWithConfiguration.class, Implements1Type.class, InterfaceTypeWithoutSignature.class);
 	}
 
 	@Test
 	public void willReadJsonAttributeOfClass() {
-		assertCompilationSuccessful(compileTestCase(InterfaceTypeWithoutSignature.class));
+		checkValidCompilation(InterfaceTypeWithoutSignature.class);
 	}
 
 	@Test
@@ -223,7 +209,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void selfDeserializeAs() {
-		assertCompilationSuccessful(compileTestCase(DeserializeAsSelf.class));
+		checkValidCompilation(DeserializeAsSelf.class);
 	}
 
 	@Test
@@ -237,14 +223,12 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void deserializeAsCheck() {
-		assertCompilationSuccessful(compileTestCase(AbstractTypeIntoConcreteType.class));
+		checkValidCompilation(AbstractTypeIntoConcreteType.class);
 	}
 
-	//TODO: actual checks
-	@Ignore
 	@Test
 	public void checkInheritance() {
-		assertCompilationSuccessful(compileTestCase(ExtendsType.class));
+		checkValidCompilation(ExtendsType.class);
 	}
 
 	@Test
@@ -255,7 +239,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void checkImplicitReference() {
-		assertCompilationSuccessful(compileTestCase(ReferenceToImplicitType.class, ImplicitType.class));
+		checkValidCompilation(ReferenceToImplicitType.class, ImplicitType.class);
 	}
 
 	@Test
@@ -293,23 +277,19 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(error.contains("java.util.GregorianCalendar is referenced as field from 'com.dslplatform.json.models.ImplicitWithJavaType'"));
 	}
 
-	//TODO: actual checks
-	@Ignore
 	@Test
 	public void jsonObjectReferences() {
-		assertCompilationSuccessful(compileTestCase(ReferenceJsonObject.class));
+		checkValidCompilation(ReferenceJsonObject.class);
 	}
 
-	//TODO: actual checks
-	@Ignore
 	@Test
 	public void hashMatchAnnotation() {
-		assertCompilationSuccessful(compileTestCase(SerializationMatch.class));
+		checkValidCompilation(SerializationMatch.class);
 	}
 
 	@Test
 	public void validClassConverter() {
-		assertCompilationSuccessful(compileTestCase(CalendarPojo.class));
+		checkValidCompilation(CalendarPojo.class);
 	}
 
 	@Test
@@ -330,12 +310,12 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void allowedDuplicatesInDifferentProperties() {
-		assertCompilationSuccessful(compileTestCase(DuplicateHashAllowed.class));
+		checkValidCompilation(DuplicateHashAllowed.class);
 	}
 
 	@Test
 	public void allowedDuplicatesOnSameProperty() {
-		assertCompilationSuccessful(compileTestCase(DuplicateAlternativeHashAllowed.class));
+		checkValidCompilation(DuplicateAlternativeHashAllowed.class);
 	}
 
 	@Test
@@ -361,31 +341,28 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				"Specified converter: 'com.dslplatform.json.models.InvalidDecimalPropertyConverter.FormatDecimal2' has invalid type for JSON_READER field. It must be of type: 'com.dslplatform.json.JsonReader.ReadObject<java.math.BigDecimal>'");
 	}
 
-	//TODO: actual check
-	@Ignore
 	@Test
 	public void validPrimitivePropertyConverter() {
-		assertCompilationSuccessful(compileTestCase(PrimitivePropertyConverter.class));
+		checkValidCompilation(PrimitivePropertyConverter.class);
 	}
 
 	@Test
 	public void validCustomArrayConverter() {
-		assertCompilationSuccessful(compileTestCase(CustomArrayConverter.class));
+		checkValidCompilation(CustomArrayConverter.class);
 	}
 
-	//TODO: mandatory not implemented yet
 	@Test
 	public void mandatoryProperties() {
-		assertCompilationSuccessful(compileTestCase(RequiredProperty.class));
+		checkValidCompilation(RequiredProperty.class);
 	}
 
 	@Test
 	public void failUnknownCheck() {
-		assertCompilationSuccessful(compileTestCase(PropertyAlias.class));
+		checkValidCompilation(PropertyAlias.class);
 	}
 
 	@Test
 	public void onUnknownDefault() {
-		assertCompilationSuccessful(compileTestCase(ValidCtor.class));
+		checkValidCompilation(ValidCtor.class);
 	}
 }

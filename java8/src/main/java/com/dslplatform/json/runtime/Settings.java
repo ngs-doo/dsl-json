@@ -31,7 +31,7 @@ public abstract class Settings {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonWriter.WriteObject<R> encoder = type != null ? json.tryFindWriter(type) : null;
 		if (encoder == null || Object.class.equals(type)) return new LazyAttributeEncoder<>(read, name, json, type);
-		return new KnownAttributeEncoder<>(read, name, !json.omitDefaults, encoder);
+		return new AttributeEncoder<>(read, name, !json.omitDefaults, encoder);
 	}
 
 	public static <T, R> DecodePropertyInfo<JsonReader.BindObject<T>> createDecoder(
@@ -39,13 +39,14 @@ public abstract class Settings {
 			final String name,
 			final DslJson json,
 			final boolean exactNameMatch,
+			final boolean isMandatory,
 			final Type type) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonReader.ReadObject<R> decoder = type != null ? json.tryFindReader(type) : null;
-		if (decoder == null || Object.class.equals(type)) return new DecodePropertyInfo<>(name, exactNameMatch, new LazyAttributeDecoder<>(write, name, json, type));
-		return new DecodePropertyInfo<>(name, exactNameMatch, new KnownAttributeDecoder<>(write, decoder));
+		if (decoder == null || Object.class.equals(type)) return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, new LazyAttributeDecoder<>(write, name, json, type));
+		return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, new AttributeDecoder<>(write, decoder));
 	}
 
 	public static <T> DslJson.Settings<T> withRuntime() {

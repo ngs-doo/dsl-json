@@ -5,7 +5,7 @@ import com.dslplatform.json.JsonWriter;
 import java.nio.charset.Charset;
 import java.util.function.Function;
 
-class KnownAttributeEncoder<T, R> implements JsonWriter.WriteObject<T> {
+public class AttributeEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
 
@@ -14,7 +14,7 @@ class KnownAttributeEncoder<T, R> implements JsonWriter.WriteObject<T> {
 	private final boolean alwaysSerialize;
 	private final JsonWriter.WriteObject<R> encoder;
 
-	KnownAttributeEncoder(
+	public AttributeEncoder(
 			final Function<T, R> read,
 			final String name,
 			final boolean alwaysSerialize,

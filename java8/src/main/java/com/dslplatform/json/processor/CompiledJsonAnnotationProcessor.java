@@ -61,7 +61,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
 		Set<Type> knownDecoders = dslJson.getRegisteredDecoders();
 		Set<String> allTypes = new HashSet<>();
-		for(Type t : knownEncoders) {
+		for (Type t : knownEncoders) {
 			if (knownDecoders.contains(t)) {
 				allTypes.add(t.getTypeName());
 			}
@@ -142,13 +142,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("public class dsl_json_Annotation_Processor_External_Serialization implements com.dslplatform.json.Configuration {\n");
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
-		for(StructInfo si : structs.values()) {
+		for (StructInfo si : structs.values()) {
 			if (si.type == ObjectType.CLASS && si.hasEmptyCtor && !si.attributes.isEmpty()) {
 				code.append("\t\tregister_").append(si.name).append("(json);\n");
 			}
 		}
 		code.append("\t}\n");
-		for(Map.Entry<String, StructInfo> it : structs.entrySet()) {
+		for (Map.Entry<String, StructInfo> it : structs.entrySet()) {
 			StructInfo si = it.getValue();
 			String className = it.getKey();
 			if (si.type == ObjectType.CLASS && si.hasEmptyCtor && !si.attributes.isEmpty()) {
@@ -157,19 +157,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				code.append("\t\t\t").append(className).append(".class,\n");
 				code.append("\t\t\t").append(className).append("::new,\n");
 				code.append("\t\t\tnew com.dslplatform.json.JsonWriter.WriteObject[] {\n");
-				for(AttributeInfo attr : si.attributes.values()) {
-					String objectType = nonGenericObject(attr.type.toString());
-					code.append("\t\t\t\tcom.dslplatform.json.runtime.Settings.<");
-					code.append(className).append(", ").append(objectType).append(">createEncoder(");
-					if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
-					else code.append("c -> c.").append(attr.field.getSimpleName());
-					code.append(", \"").append(attr.id).append("\", json, ");
-					code.append(typeOrClass(objectType, attr.type.toString())).append("),\n");
+				for (AttributeInfo attr : si.attributes.values()) {
+					addAttributeWriter(code, className, attr);
 				}
 				code.setLength(code.length() - 2);
 				code.append("\n\t\t\t},\n");
 				code.append("\t\t\tnew com.dslplatform.json.runtime.DecodePropertyInfo[] {\n");
-				for(AttributeInfo attr : si.attributes.values()) {
+				for (AttributeInfo attr : si.attributes.values()) {
 					String mn = si.minifiedNames.get(attr.id);
 					addAttributeReader(code, className, attr, mn != null ? mn : attr.id);
 					for (String an : attr.alternativeNames) {
@@ -192,15 +186,54 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		return code.toString();
 	}
 
+	private static void addAttributeWriter(StringBuilder code, String className, AttributeInfo attr) {
+		if (attr.converter != null) {
+			code.append("\t\t\t\tnew com.dslplatform.json.runtime.AttributeEncoder<>(");
+			if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
+			else code.append("c -> c.").append(attr.field.getSimpleName());
+			code.append(", \"").append(attr.id).append("\", !json.omitDefaults, ");
+			code.append(attr.converter.toString()).append(".JSON_WRITER),\n");
+		} else {
+			String objectType = nonGenericObject(attr.type.toString());
+			code.append("\t\t\t\tcom.dslplatform.json.runtime.Settings.<");
+			code.append(className).append(", ").append(objectType).append(">createEncoder(");
+			if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
+			else code.append("c -> c.").append(attr.field.getSimpleName());
+			code.append(", \"").append(attr.id).append("\", json, ");
+			code.append(typeOrClass(objectType, attr.type.toString())).append("),\n");
+		}
+	}
+
 	private static void addAttributeReader(StringBuilder code, String className, AttributeInfo attr, String alias) {
-		String objectType = nonGenericObject(attr.type.toString());
-		code.append("\t\t\t\tcom.dslplatform.json.runtime.Settings.<");
-		code.append(className).append(", ").append(objectType).append(">createDecoder((i, v) -> i.");
-		if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(").append("v").append(")");
-		else code.append(attr.field.getSimpleName()).append(" = ").append("v");
-		code.append(", \"").append(alias).append("\", json, ");
-		if (attr.fullMatch) code.append("true, ");
-		else code.append("false, ");
-		code.append(typeOrClass(objectType, attr.type.toString())).append("),\n");
+		if (attr.converter != null) {
+			code.append("\t\t\t\tnew com.dslplatform.json.runtime.DecodePropertyInfo<>(\"");
+			code.append(alias).append("\", ");
+			if (attr.fullMatch) code.append("true, ");
+			else code.append("false, ");
+			if (attr.mandatory) code.append("true, ");
+			else code.append("false, ");
+			code.append("new com.dslplatform.json.runtime.AttributeDecoder<>((i, v) -> i.");
+			if (attr.writeMethod != null) {
+				code.append(attr.writeMethod.getSimpleName()).append("(").append("v").append(")");
+			} else {
+				code.append(attr.field.getSimpleName()).append(" = ").append("v");
+			}
+			code.append(", ").append(attr.converter.toString()).append(".JSON_READER)),\n");
+		} else {
+			String objectType = nonGenericObject(attr.type.toString());
+			code.append("\t\t\t\tcom.dslplatform.json.runtime.Settings.<");
+			code.append(className).append(", ").append(objectType).append(">createDecoder((i, v) -> i.");
+			if (attr.writeMethod != null) {
+				code.append(attr.writeMethod.getSimpleName()).append("(").append("v").append(")");
+			} else {
+				code.append(attr.field.getSimpleName()).append(" = ").append("v");
+			}
+			code.append(", \"").append(alias).append("\", json, ");
+			if (attr.fullMatch) code.append("true, ");
+			else code.append("false, ");
+			if (attr.mandatory) code.append("true, ");
+			else code.append("false, ");
+			code.append(typeOrClass(objectType, attr.type.toString())).append("),\n");
+		}
 	}
 }

@@ -20,7 +20,7 @@ public final class EnumDescription<T extends Enum<T>> implements JsonWriter.Writ
 		final DecodePropertyInfo<T>[] tmp = new DecodePropertyInfo[values.size()];
 		int i = 0;
 		for (String name : values.keySet()) {
-			tmp[i++] = new DecodePropertyInfo<>(name, false, values.get(name));
+			tmp[i++] = new DecodePropertyInfo<>(name, false, false, values.get(name));
 		}
 		this.decoders = DecodePropertyInfo.prepare(tmp);
 	}

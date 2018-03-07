@@ -21,6 +21,8 @@ package com.dslplatform.json;
  * ====================================================================
  */
 
+import org.junit.Assert;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -96,6 +98,11 @@ public abstract class AbstractAnnotationProcessorTest {
 		return clazz.getName().replace('.', '/') + SOURCE_FILE_SUFFIX;
 	}
 
+	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(String[] compilationUnitPaths, List<String> arguments) {
+		ArrayList<Diagnostic<? extends JavaFileObject>> diagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>();
+		compileTestCase(compilationUnitPaths, arguments, diagnostics);
+		return diagnostics;
+	}
 	/**
 	 * Attempts to compile the given compilation units using the Java Compiler API.
 	 * <p>
@@ -107,7 +114,7 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * as demonstrated in the documentation for {@link JavaCompiler}
 	 * @see #compileTestCase(Class...)
 	 */
-	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(String[] compilationUnitPaths, List<String> arguments) {
+	protected Boolean compileTestCase(String[] compilationUnitPaths, List<String> arguments, List<Diagnostic<? extends JavaFileObject>> diagnostics) {
 		assert (compilationUnitPaths != null);
 
 		Collection<File> compilationUnits;
@@ -143,20 +150,20 @@ public abstract class AbstractAnnotationProcessorTest {
 				compileArgs, null,
 				fileManager.getJavaFileObjectsFromFiles(compilationUnits));
 		task.setProcessors(getProcessors());
-		task.call();
+		Boolean compilationSuccessful = task.call();
 
 		try {
 			fileManager.close();
 		} catch (IOException ignore) {
 		}
 
-		List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics();
+		diagnostics.addAll(diagnosticCollector.getDiagnostics());
 		if (diagnostics.size() > 0 && diagnostics.get(0).getKind() == Kind.WARNING
 				&& diagnostics.get(0).getMessage(Locale.ENGLISH).startsWith("Supported source version 'RELEASE_6' from "
 				+ "annotation processor 'com.dslplatform.json.CompiledJsonProcessor' less than -source")) {
-			return diagnostics.subList(1, diagnostics.size());
+			diagnostics.remove(0);
 		}
-		return diagnostics;
+		return compilationSuccessful;
 	}
 
 	private static Collection<File> findClasspathFiles(String[] filenames) throws IOException {
@@ -190,6 +197,23 @@ public abstract class AbstractAnnotationProcessorTest {
 	protected static void assertCompilationSuccessful(
 			List<Diagnostic<? extends JavaFileObject>> diagnostics) {
 		assert (diagnostics != null);
+
+		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
+			assertFalse(diagnostic.getMessage(Locale.ENGLISH), diagnostic.getKind().equals(Kind.ERROR));
+		}
+	}
+
+	protected void checkValidCompilation(Class<?>... compilationUnits) {
+		assert (compilationUnits != null);
+
+		String[] compilationUnitPaths = new String[compilationUnits.length];
+
+		for (int i = 0; i < compilationUnitPaths.length; i++) {
+			assert (compilationUnits[i] != null);
+			compilationUnitPaths[i] = toResourcePath(compilationUnits[i]);
+		}
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>();
+		Assert.assertTrue(compileTestCase(compilationUnitPaths, getDefaultArguments(), diagnostics));
 
 		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
 			assertFalse(diagnostic.getMessage(Locale.ENGLISH), diagnostic.getKind().equals(Kind.ERROR));

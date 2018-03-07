@@ -129,7 +129,7 @@ public abstract class ImmutableAnalyzer {
 		final Object[] defArgs = new Object[ctorParams.length];
 		for (int i = 0; i < ctorParams.length; i++) {
 			final Type concreteType = Generics.makeConcrete(ctorParams[i].getParameterizedType(), genericMappings);
-			readProps[i] = new DecodePropertyInfo<>(names[i], false, new WriteCtor(json, concreteType, ctor));
+			readProps[i] = new DecodePropertyInfo<>(names[i], false, false, new WriteCtor(json, concreteType, ctor));
 			final JsonReader.ReadObject defReader = json.tryFindReader(concreteType);
 			if (defReader != null) {
 				if (ctorParams[i].getType().isPrimitive()) {
