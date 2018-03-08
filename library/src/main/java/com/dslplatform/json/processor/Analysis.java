@@ -18,6 +18,7 @@ public class Analysis {
 
 	private final AnnotationUsage annotationUsage;
 	private final LogLevel logLevel;
+	private final boolean mustHaveEmptyCtor;
 	private final boolean includeFields;
 	private final boolean includeBeanMethods;
 	private final boolean includeExactMethods;
@@ -48,7 +49,7 @@ public class Analysis {
 	}
 
 	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, Set<String> supportedTypes) {
-		this(processingEnv, annotationUsage, logLevel, supportedTypes, null, null, null, null, true, true, true);
+		this(processingEnv, annotationUsage, logLevel, supportedTypes, null, null, null, null, false, true, true, true);
 	}
 
 	public Analysis(
@@ -60,6 +61,7 @@ public class Analysis {
 			Set<String> alternativeNonNullable,
 			Set<String> alternativeAlias,
 			Map<String, String> alternativeMandatory,
+			boolean mustHaveEmptyCtor,
 			boolean includeFields,
 			boolean includeBeanMethods,
 			boolean includeExactMethods) {
@@ -79,6 +81,7 @@ public class Analysis {
 		this.alternativeNonNullable = alternativeNonNullable == null ? new HashSet<String>() : alternativeNonNullable;
 		this.alternativeAlias = alternativeAlias == null ? new HashSet<String>() : alternativeAlias;
 		this.alternativeMandatory = alternativeMandatory == null ? new LinkedHashMap<String, String>() : alternativeMandatory;
+		this.mustHaveEmptyCtor = mustHaveEmptyCtor;
 		this.includeFields = includeFields;
 		this.includeBeanMethods = includeBeanMethods;
 		this.includeExactMethods = includeExactMethods;
@@ -135,9 +138,26 @@ public class Analysis {
 							getAnnotation(info.element, compiledJsonType));
 				}
 			}
+			if (info.type == ObjectType.CLASS && mustHaveEmptyCtor && info.converter == null && !info.hasEmptyCtor) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + info.element.asType() + "' requires public no argument constructor" + info.pathDescription(),
+						info.element,
+						getAnnotation(info.element, compiledJsonType));
+			} else if (info.type == ObjectType.CLASS &&!mustHaveEmptyCtor && !info.hasEmptyCtor && info.converter == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + info.element.asType() + "' does not have an empty or matching constructor" + info.pathDescription(),
+						info.element,
+						getAnnotation(info.element, compiledJsonType));
+			}
+
 			if (info.isMinified) {
 				info.prepareMinifiedNames();
 			}
+			info.sortAttributes();
 		}
 		return new LinkedHashMap<String, StructInfo>(structs);
 	}
@@ -276,7 +296,7 @@ public class Analysis {
 					}
 				}
 				if (includeFields) {
-					for (Map.Entry<String, VariableElement> f : getPublicFields(info.element).entrySet()) {
+					for (Map.Entry<String, VariableElement> f : getPublicFields(info.element, mustHaveEmptyCtor).entrySet()) {
 						analyzeAttribute(info, f.getValue().asType(), f.getKey(), null, f.getValue(), "field", path);
 					}
 				}
@@ -309,6 +329,7 @@ public class Analysis {
 							type,
 							hasNonNullable(element),
 							hasMandatoryAnnotation(element),
+							index(element),
 							findNameAlias(element),
 							isFullMatch(element),
 							typeSignature,
@@ -459,6 +480,7 @@ public class Analysis {
 							name,
 							type,
 							isJsonObject,
+							findMatchingConstructor(element),
 							annotation != null,
 							onUnknown,
 							typeSignature,
@@ -504,6 +526,16 @@ public class Analysis {
 			}
 		}
 		return false;
+	}
+
+	public static ExecutableElement findMatchingConstructor(Element element) {
+		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
+			List<? extends VariableElement> parameters = constructor.getParameters();
+			if (!parameters.isEmpty() && element.getKind() != ElementKind.ENUM && constructor.getModifiers().contains(Modifier.PUBLIC)) {
+				return constructor;
+			}
+		}
+		return null;
 	}
 
 	public static List<String> getEnumConstants(TypeElement element) {
@@ -653,13 +685,13 @@ public class Analysis {
 		return result;
 	}
 
-	public Map<String, VariableElement> getPublicFields(TypeElement element) {
+	public Map<String, VariableElement> getPublicFields(TypeElement element, boolean mustHaveEmptyCtor) {
 		Map<String, VariableElement> fields = new HashMap<String, VariableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
 				String name = field.getSimpleName().toString();
 				boolean isAccessible = field.getModifiers().contains(Modifier.PUBLIC)
-						&& !field.getModifiers().contains(Modifier.FINAL)
+						&& (!field.getModifiers().contains(Modifier.FINAL) || !mustHaveEmptyCtor)
 						&& !field.getModifiers().contains(Modifier.STATIC);
 				if (!isAccessible) {
 					continue;
@@ -720,6 +752,21 @@ public class Analysis {
 			}
 		}
 		return false;
+	}
+
+	public int index(Element property) {
+		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		if (dslAnn != null) {
+			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+			for (ExecutableElement ee : values.keySet()) {
+				if (ee.toString().equals("index()")) {
+					Object val = values.get(ee).getValue();
+					if (val == null) return -1;
+					return (Integer) val;
+				}
+			}
+		}
+		return -1;
 	}
 
 	public boolean hasIgnoredAnnotation(Element property) {

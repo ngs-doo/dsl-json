@@ -13,13 +13,27 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private final Object[] defArgs;
 	private final Function<Object[], T> newInstance;
 	private final DecodePropertyInfo<JsonReader.ReadObject>[] decoders;
+	private final boolean skipOnUnknown;
+	private final boolean hasMandatory;
+	private final long mandatoryFlag;
 
 	public ImmutableDescription(
+			final Class<T> manifest,
+			final Object[] defArgs,
+			final Function<Object[], T> newInstance,
+			final JsonWriter.WriteObject[] encoders,
+			final DecodePropertyInfo<JsonReader.ReadObject>[] decoders,
+			final boolean skipOnUnknown) {
+		this((Type) manifest, defArgs, newInstance, encoders, decoders, skipOnUnknown);
+	}
+
+	ImmutableDescription(
 			final Type manifest,
 			final Object[] defArgs,
 			final Function<Object[], T> newInstance,
 			final JsonWriter.WriteObject[] encoders,
-			final DecodePropertyInfo<JsonReader.ReadObject>[] decoders) {
+			final DecodePropertyInfo<JsonReader.ReadObject>[] decoders,
+			final boolean skipOnUnknown) {
 		super(encoders);
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (defArgs == null) throw new IllegalArgumentException("defArgs can't be null");
@@ -29,6 +43,9 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		this.defArgs = defArgs;
 		this.newInstance = newInstance;
 		this.decoders = DecodePropertyInfo.prepare(decoders);
+		this.skipOnUnknown = skipOnUnknown;
+		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
+		hasMandatory = mandatoryFlag != 0;
 	}
 
 	public T read(final JsonReader reader) throws IOException {
@@ -36,8 +53,14 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		if (reader.last() != '{') {
 			throw new IOException("Expecting '{' at position " + reader.positionInStream() + " while parsing " + manifest + ". Found " + (char) reader.last());
 		}
-		if (reader.getNextToken() == '}') return newInstance.apply(defArgs);
+		if (reader.getNextToken() == '}') {
+			if (hasMandatory) {
+				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, decoders);
+			}
+			return newInstance.apply(defArgs);
+		}
 		final Object[] args = defArgs.clone();
+		long currentMandatory = mandatoryFlag;
 		do {
 			final int hash = reader.fillName();
 			boolean processed = false;
@@ -48,18 +71,26 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 						if (!reader.wasLastName(ri.name)) continue;
 					}
 					reader.getNextToken();
-					args[i] = ri.value.read(reader);
+					args[ri.index] = ri.value.read(reader);
+					currentMandatory = currentMandatory & ri.mandatoryValue;
 					processed = true;
 					break;
 				}
 			}
 			if (!processed) {
+				if (!skipOnUnknown) {
+					final String name = reader.getLastName();
+					throw new IOException("Unknown property detected: " + name + " at position " + reader.positionInStream(name.length() + 3));
+				}
 				reader.skip();
 			}
 			if (reader.getNextToken() != ',') break;
 		} while (reader.getNextToken() == '"');
 		if (reader.last() != '}') {
 			throw new IOException("Expecting '}' at position " + reader.positionInStream() + " while parsing " + manifest + ". Found " + (char) reader.last());
+		}
+		if (hasMandatory && currentMandatory != 0) {
+			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
 		}
 		return newInstance.apply(args);
 	}

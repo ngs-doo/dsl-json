@@ -3,7 +3,9 @@ package com.dslplatform.json.processor;
 import com.dslplatform.json.CompiledJson;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import java.util.*;
 
 public class StructInfo {
@@ -11,6 +13,7 @@ public class StructInfo {
 	public final String name;
 	public final ObjectType type;
 	public final String converter;
+	public final ExecutableElement constructor;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
 	public final Map<String, String> minifiedNames = new HashMap<String, String>();
 	public final boolean hasAnnotation;
@@ -19,7 +22,7 @@ public class StructInfo {
 	public final TypeElement deserializeAs;
 	public final boolean isMinified;
 	public final boolean hasEmptyCtor;
-	public final Map<String, AttributeInfo> attributes = new LinkedHashMap<String, AttributeInfo>();
+	public final LinkedHashMap<String, AttributeInfo> attributes = new LinkedHashMap<String, AttributeInfo>();
 	public final Set<Element> properties = new HashSet<Element>();
 	public final List<String> constants = new ArrayList<String>();
 	public final Stack<String> path = new Stack<String>();
@@ -29,6 +32,7 @@ public class StructInfo {
 			String name,
 			ObjectType type,
 			boolean isJsonObject,
+			ExecutableElement constructor,
 			boolean hasAnnotation,
 			CompiledJson.Behavior onUnknown,
 			CompiledJson.TypeSignature typeSignature,
@@ -39,6 +43,7 @@ public class StructInfo {
 		this.name = name;
 		this.type = type;
 		this.converter = isJsonObject ? "" : null;
+		this.constructor = constructor;
 		this.hasAnnotation = hasAnnotation;
 		this.onUnknown = onUnknown;
 		this.typeSignature = typeSignature;
@@ -52,6 +57,7 @@ public class StructInfo {
 		this.name = name;
 		this.type = ObjectType.CLASS;
 		this.converter = converter.getQualifiedName().toString();
+		this.constructor = null;
 		this.hasAnnotation = true;
 		this.onUnknown = null;
 		this.typeSignature = null;
@@ -124,6 +130,28 @@ public class StructInfo {
 			}
 			String shortName = buildShortName(p.id, names, counters);
 			minifiedNames.put(p.id, shortName);
+		}
+	}
+
+	public void sortAttributes() {
+		boolean needsSorting = false;
+		for (AttributeInfo attr : attributes.values()) {
+			needsSorting = needsSorting || attr.index >= 0;
+		}
+		if (needsSorting) {
+			final AttributeInfo[] all = attributes.values().toArray(new AttributeInfo[0]);
+			Arrays.sort(all, new Comparator<AttributeInfo>() {
+				@Override
+				public int compare(AttributeInfo a, AttributeInfo b) {
+					if (b.index == -1) return -1;
+					else if (a.index == -1) return 1;
+					return a.index - b.index;
+				}
+			});
+			attributes.clear();
+			for (AttributeInfo attr : all) {
+				attributes.put(attr.id, attr);
+			}
 		}
 	}
 

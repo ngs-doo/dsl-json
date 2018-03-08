@@ -27,9 +27,9 @@ public class BindingChecksTest {
 			MyClass::new,
 			new JsonWriter.WriteObject[0],
 			new DecodePropertyInfo[] {
-					Settings.<MyClass, Integer>createDecoder((c, v) -> c.x = v, "x", dslJson, false, true, int.class),
-					Settings.<MyClass, String>createDecoder((c, v) -> c.s = v, "s", dslJson, false, false, String.class),
-					Settings.<MyClass, Long>createDecoder((c, v) -> c.y = v, "y", dslJson, false, true, long.class)
+					Settings.<MyClass, Integer>createDecoder((c, v) -> c.x = v, "x", dslJson, false, true, 0, int.class),
+					Settings.<MyClass, String>createDecoder((c, v) -> c.s = v, "s", dslJson, false, false, 1, String.class),
+					Settings.<MyClass, Long>createDecoder((c, v) -> c.y = v, "y", dslJson, false, true, 2, long.class)
 			},
 			false
 	);

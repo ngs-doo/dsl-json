@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  * Specify custom property for processing specific properties.
  * Eg. different property name in JSON, ignore this property, etc...
  */
-@Target({ElementType.FIELD, ElementType.METHOD})
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.CLASS)
 public @interface JsonAttribute {
 	/**
@@ -43,6 +43,15 @@ public @interface JsonAttribute {
 	 * @return JSON property name
 	 */
 	String name() default "";
+
+
+	/**
+	 * Specify index order during serialization.
+	 * -1 implies default order
+	 *
+	 * @return order when defined
+	 */
+	int index() default -1;
 
 	/**
 	 * Use only hash match for detecting incoming property.

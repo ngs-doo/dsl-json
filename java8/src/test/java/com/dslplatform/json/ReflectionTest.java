@@ -106,6 +106,33 @@ public class ReflectionTest {
 		Assert.assertEquals(im2.s, im1.s);
 	}
 
+	public static class SameTypeImmutable {
+		public final int x;
+		public final String s;
+		public final String e;
+		public final long l;
+
+		public SameTypeImmutable(int x, String s, String e, long l) {
+			this.x = x;
+			this.s = s;
+			this.e = e;
+			this.l = l;
+		}
+	}
+
+	@Test
+	public void checkSameTypeImmutable() throws IOException {
+		SameTypeImmutable im1 = new SameTypeImmutable(1,"b", "a", 2L);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(im1, baos);
+		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		SameTypeImmutable im2 = json.deserialize(SameTypeImmutable.class, bais);
+		Assert.assertEquals(im2.x, im1.x);
+		Assert.assertEquals(im2.s, im1.s);
+		Assert.assertEquals(im2.e, im1.e);
+		Assert.assertEquals(im2.l, im1.l);
+	}
+
 	public static class Opt<T> {
 		public final Optional<Integer> x;
 		public final Optional<T> s;

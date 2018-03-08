@@ -134,11 +134,12 @@ public abstract class BeanAnalyzer {
 		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
 		final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
+		int index = 0;
 		for (final Field f : raw.getFields()) {
-			analyzeField(json, foundWrite, foundRead, f, genericMappings);
+			if (analyzeField(json, foundWrite, foundRead, f, index, genericMappings)) index++;
 		}
 		for (final Method m : raw.getMethods()) {
-			analyzeMethods(m, raw, json, foundWrite, foundRead, genericMappings);
+			if (analyzeMethods(m, raw, json, foundWrite, foundRead, index, genericMappings)) index++;
 		}
 		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
@@ -181,78 +182,85 @@ public abstract class BeanAnalyzer {
 		}
 	}
 
-	private static void analyzeField(
+	private static boolean analyzeField(
 			final DslJson json,
 			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
 			final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead,
 			final Field field,
+			final int index,
 			final HashMap<Type, Type> genericMappings) {
-		if (canRead(field.getModifiers()) && canWrite(field.getModifiers())) {
-			final Type type = field.getGenericType();
-			final Type concreteType = Generics.makeConcrete(type, genericMappings);
-			final boolean isUnknown = Generics.isUnknownType(type);
-			if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
-				foundWrite.put(
-						field.getName(),
-						Settings.createEncoder(
-								new Reflection.ReadField(field),
-								field.getName(),
-								json,
-								isUnknown ? null : concreteType));
-				foundRead.put(
-						field.getName(),
-						Settings.createDecoder(
-								new Reflection.SetField(field),
-								field.getName(),
-								json,
-								false,
-								false,
-								concreteType));
-			}
+		if (!canRead(field.getModifiers()) || !canWrite(field.getModifiers())) return false;
+		final Type type = field.getGenericType();
+		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final boolean isUnknown = Generics.isUnknownType(type);
+		if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
+			foundWrite.put(
+					field.getName(),
+					Settings.createEncoder(
+							new Reflection.ReadField(field),
+							field.getName(),
+							json,
+							isUnknown ? null : concreteType));
+			foundRead.put(
+					field.getName(),
+					Settings.createDecoder(
+							new Reflection.SetField(field),
+							field.getName(),
+							json,
+							false,
+							false,
+							index,
+							concreteType));
+			return true;
 		}
+		return false;
 	}
 
-	private static void analyzeMethods(
+	private static boolean analyzeMethods(
 			final Method mget,
 			final Class<?> manifest,
 			final DslJson json,
 			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
 			final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead,
+			final int index,
 			final HashMap<Type, Type> genericMappings) {
-		if (mget.getParameterTypes().length != 0) return;
+		if (mget.getParameterTypes().length != 0) return false;
 		final String setName = mget.getName().startsWith("get") ? "set" + mget.getName().substring(3) : mget.getName();
 		final Method mset;
 		try {
 			mset = manifest.getMethod(setName, mget.getReturnType());
 		} catch (NoSuchMethodException ignore) {
-			return;
+			return false;
 		}
 		final String name = mget.getName().startsWith("get")
 				? Character.toLowerCase(mget.getName().charAt(3)) + mget.getName().substring(4)
 				: mget.getName();
-		if (canRead(mget.getModifiers()) && canWrite(mset.getModifiers())) {
-			final Type type = mget.getGenericReturnType();
-			final Type concreteType = Generics.makeConcrete(type, genericMappings);
-			final boolean isUnknown = Generics.isUnknownType(type);
-			if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
-				foundWrite.put(
-						name,
-						Settings.createEncoder(
-								new Reflection.ReadMethod(mget),
-								name,
-								json,
-								isUnknown ? null : concreteType));
-				foundRead.put(
-						name,
-						Settings.createDecoder(
-								new Reflection.SetMethod(mset),
-								name,
-								json,
-								false,
-								false,
-								concreteType));
-			}
+		if (!canRead(mget.getModifiers()) || !canWrite(mset.getModifiers())) return false;
+		if (foundRead.containsKey(name) && foundWrite.containsKey(name)) return false;
+		final Type type = mget.getGenericReturnType();
+		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final boolean isUnknown = Generics.isUnknownType(type);
+		if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
+			foundWrite.put(
+					name,
+					Settings.createEncoder(
+							new Reflection.ReadMethod(mget),
+							name,
+							json,
+							isUnknown ? null : concreteType));
+			foundRead.put(
+					name,
+					Settings.createDecoder(
+							new Reflection.SetMethod(mset),
+							name,
+							json,
+							false,
+							false,
+							index,
+							concreteType));
+			return true;
 		}
+		return false;
 	}
 
 	private static boolean canRead(final int modifiers) {

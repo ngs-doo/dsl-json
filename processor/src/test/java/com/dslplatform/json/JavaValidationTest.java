@@ -25,15 +25,18 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		checkValidCompilation(ValidCtor.class);
 	}
 
-	//TODO: immutable support
-	@Ignore
 	@Test
-	public void testMissingEmptyCtor() {
+	public void testInvalidCtor() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
 				5,
 				compileTestCase(MissingEmptyCtor.class),
-				"'com.dslplatform.json.models.MissingEmptyCtor' requires public no argument constructor");
+				"'com.dslplatform.json.models.MissingEmptyCtor' does not have an empty or matching constructor");
+	}
+
+	@Test
+	public void testValidCtor() {
+		checkValidCompilation(ImmutableClass.class);
 	}
 
 	@Test
@@ -48,17 +51,6 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	@Test
 	public void testValidPropertyType() {
 		checkValidCompilation(ValidType.class);
-	}
-
-	//TODO: char is supported
-	@Ignore
-	@Test
-	public void testUnsupportedPropertyType() {
-		assertCompilationReturned(
-				Diagnostic.Kind.ERROR,
-				9,
-				compileTestCase(InvalidType.class),
-				"Specified type is not supported: 'char'");
 	}
 
 	@Test
@@ -149,8 +141,6 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		checkValidCompilation(UsesInterfaceType.class, Implements1Type.class);
 	}
 
-	//TODO: mixins
-	@Ignore
 	@Test
 	public void missingImplementations() {
 		assertCompilationReturned(

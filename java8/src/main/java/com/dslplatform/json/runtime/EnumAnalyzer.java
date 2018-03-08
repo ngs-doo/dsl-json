@@ -5,6 +5,7 @@ import com.dslplatform.json.DslJson;
 import java.lang.reflect.*;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public abstract class EnumAnalyzer {
 
@@ -30,11 +31,7 @@ public abstract class EnumAnalyzer {
 				|| (raw.getDeclaringClass() != null && (raw.getModifiers() & Modifier.STATIC) == 0)) {
 			return null;
 		}
-		final HashMap<String, Enum> values = new HashMap<>();
-		for (Enum value : raw.getEnumConstants()) {
-			values.put(value.name(), value);
-		}
-		final EnumDescription converter = new EnumDescription<>(raw, values);
+		final EnumDescription converter = new EnumDescription<>(raw, raw.getEnumConstants());
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);
 		return converter;

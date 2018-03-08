@@ -20,7 +20,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testEmptyValidClass() {
-		assertCompilationSuccessful(compileTestCase(ValidCtor.class));
+		checkValidCompilation(ValidCtor.class);
 	}
 
 	@Test
@@ -43,7 +43,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testValidPropertyType() {
-		assertCompilationSuccessful(compileTestCase(ValidType.class));
+		checkValidCompilation(ValidType.class);
 	}
 
 	@Test
@@ -57,22 +57,22 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testReferencePropertyType() {
-		assertCompilationSuccessful(compileTestCase(ReferenceType.class));
+		checkValidCompilation(ReferenceType.class);
 	}
 
 	@Test
 	public void testReferenceListPropertyType() {
-		assertCompilationSuccessful(compileTestCase(ReferenceListType.class));
+		checkValidCompilation(ReferenceListType.class);
 	}
 
 	@Test
 	public void testEnum() {
-		assertCompilationSuccessful(compileTestCase(SimpleEnum.class));
+		checkValidCompilation(SimpleEnum.class);
 	}
 
 	@Test
 	public void testEnumWithCtor() {
-		assertCompilationSuccessful(compileTestCase(EnumWithArgs.class));
+		checkValidCompilation(EnumWithArgs.class);
 	}
 
 	@Test
@@ -86,17 +86,17 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testNestedStaticClass() {
-		assertCompilationSuccessful(compileTestCase(NestedStaticClass.class));
+		checkValidCompilation(NestedStaticClass.class);
 	}
 
 	@Test
 	public void canIgnoreUnsupportedProperty() {
-		assertCompilationSuccessful(compileTestCase(IgnoredProperty.class));
+		checkValidCompilation(IgnoredProperty.class);
 	}
 
 	@Test
 	public void coverAllTypes() {
-		assertCompilationSuccessful(compileTestCase(AllTypes.class));
+		checkValidCompilation(AllTypes.class);
 	}
 
 	@Test
@@ -447,7 +447,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void allowedDuplicatesOnSameProperty() {
-		assertCompilationSuccessful(compileTestCase(DuplicateAlternativeHashAllowed.class));
+		checkValidCompilation(DuplicateAlternativeHashAllowed.class);
 	}
 
 	@Test
@@ -482,12 +482,12 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void validPrimitivePropertyConverter() {
-		assertCompilationSuccessful(compileTestCase(PrimitivePropertyConverter.class));
+		checkValidCompilation(PrimitivePropertyConverter.class);
 	}
 
 	@Test
 	public void validCustomArrayConverter() {
-		assertCompilationSuccessful(compileTestCase(CustomArrayConverter.class));
+		checkValidCompilation(CustomArrayConverter.class);
 	}
 
 	@Test

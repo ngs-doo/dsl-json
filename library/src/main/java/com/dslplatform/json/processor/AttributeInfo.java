@@ -19,6 +19,7 @@ public class AttributeInfo {
 	public final Element element;
 	public final boolean notNull;
 	public final boolean mandatory;
+	public final int index;
 	public final String alias;
 	public final boolean fullMatch;
 	public final CompiledJson.TypeSignature typeSignature;
@@ -33,6 +34,7 @@ public class AttributeInfo {
 			TypeMirror type,
 			boolean notNull,
 			boolean mandatory,
+			final int index,
 			String alias,
 			boolean fullMatch,
 			CompiledJson.TypeSignature typeSignature,
@@ -46,6 +48,7 @@ public class AttributeInfo {
 		this.type = type;
 		this.notNull = notNull;
 		this.mandatory = mandatory;
+		this.index = index;
 		this.alias = alias;
 		this.fullMatch = fullMatch;
 		this.typeSignature = typeSignature;

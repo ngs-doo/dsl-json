@@ -155,6 +155,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				JsonRequired,
 				true,
 				true,
+				true,
 				false);
 	}
 
@@ -250,14 +251,6 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				dsl.append("  mixin ");
 			} else {
 				dsl.append("  struct ");
-				if (info.converter == null && !info.hasEmptyCtor) {
-					options.hasError = true;
-					processingEnv.getMessager().printMessage(
-							Diagnostic.Kind.ERROR,
-							"'" + info.element.asType() + "' requires public no argument constructor" + info.pathDescription(),
-							info.element,
-							analysis.getAnnotation(info.element, analysis.compiledJsonType));
-				}
 			}
 			dsl.append(info.name);
 			dsl.append(" {\n");

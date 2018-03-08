@@ -39,14 +39,8 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 		this.newInstance = newInstance;
 		this.decoders = DecodePropertyInfo.prepare(decoders);
 		this.skipOnUnknown = skipOnUnknown;
-		long flag = 0;
-		for (DecodePropertyInfo dp : this.decoders) {
-			if (dp.mandatory) {
-				flag = flag | ~dp.mandatoryValue;
-			}
-		}
-		hasMandatory = flag != 0;
-		mandatoryFlag = flag;
+		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
+		hasMandatory = mandatoryFlag != 0;
 	}
 
 	public T read(final JsonReader reader) throws IOException {
@@ -65,7 +59,9 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 			throw new IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
 		}
 		if (reader.getNextToken() == '}') {
-			if (hasMandatory) showMandatoryError(reader, mandatoryFlag);
+			if (hasMandatory) {
+				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, decoders);
+			}
 			return instance;
 		}
 		long currentMandatory = mandatoryFlag;
@@ -97,23 +93,8 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 			throw new IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
 		}
 		if (hasMandatory && currentMandatory != 0) {
-			showMandatoryError(reader, currentMandatory);
+			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
 		}
 		return instance;
-	}
-
-	private void showMandatoryError(final JsonReader reader, final long currentMandatory) throws IOException {
-		final StringBuilder sb = new StringBuilder("Mandatory ");
-		sb.append(Long.bitCount(currentMandatory) == 1 ? "property" : "properties");
-		sb.append(" (");
-		for (final DecodePropertyInfo<JsonReader.BindObject> ri : decoders) {
-			if (ri.mandatory && (currentMandatory & ~ri.mandatoryValue) != 0) {
-				sb.append(ri.name).append(", ");
-			}
-		}
-		sb.setLength(sb.length() - 2);
-		sb.append(") not found at position ");
-		sb.append(reader.positionInStream());
-		throw new IOException(sb.toString());
 	}
 }

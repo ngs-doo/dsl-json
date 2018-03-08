@@ -4,7 +4,6 @@ import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
 
 import java.io.IOException;
-import java.util.Map;
 
 public final class EnumDescription<T extends Enum<T>> implements JsonWriter.WriteObject<T>, JsonReader.ReadObject<T> {
 
@@ -13,14 +12,14 @@ public final class EnumDescription<T extends Enum<T>> implements JsonWriter.Writ
 
 	public EnumDescription(
 			final Class<T> manifest,
-			final Map<String, T> values) {
+			final T[] values) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (values == null) throw new IllegalArgumentException("values can't be null");
 		this.manifest = manifest;
-		final DecodePropertyInfo<T>[] tmp = new DecodePropertyInfo[values.size()];
-		int i = 0;
-		for (String name : values.keySet()) {
-			tmp[i++] = new DecodePropertyInfo<>(name, false, false, values.get(name));
+		final DecodePropertyInfo<T>[] tmp = new DecodePropertyInfo[values.length];
+		for (int i = 0; i < values.length; i++) {
+			T value = values[i];
+			tmp[i] = new DecodePropertyInfo<>(value.name(), false, false, i, value);
 		}
 		this.decoders = DecodePropertyInfo.prepare(tmp);
 	}
