@@ -17,13 +17,14 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter"})
-@SupportedOptions({"dsljson.loglevel", "dsljson.annotation"})
+@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown"})
 public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static final Set<String> JsonIgnore;
 	private static final Set<String> NonNullable;
 	private static final Set<String> PropertyAlias;
 	private static final Map<String, String> JsonRequired;
+	private static final Set<String> Constructors;
 
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
 
@@ -39,10 +40,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		PropertyAlias.add("com.google.gson.annotations.SerializedName");
 		JsonRequired = new HashMap<>();
 		JsonRequired.put("com.fasterxml.jackson.annotation.JsonProperty", "required()");
+		Constructors = new HashSet<>();
+		Constructors.add("com.fasterxml.jackson.annotation.JsonCreator");
 	}
 
 	private LogLevel logLevel = LogLevel.ERRORS;
 	private AnnotationUsage annotationUsage = AnnotationUsage.IMPLICIT;
+	private UnknownTypes unknownTypes = UnknownTypes.ERROR;
 
 	private Analysis analysis;
 
@@ -58,7 +62,11 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		if (au != null && au.length() > 0) {
 			annotationUsage = AnnotationUsage.valueOf(au);
 		}
-		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
+		String unk = options.get("dsljson.unknown");
+		if (unk != null && unk.length() > 0) {
+			unknownTypes = UnknownTypes.valueOf(unk);
+		}
+		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
 		Set<Type> knownDecoders = dslJson.getRegisteredDecoders();
 		Set<String> allTypes = new HashSet<>();
@@ -72,10 +80,20 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				annotationUsage,
 				logLevel,
 				allTypes,
+				rawClass -> {
+					try {
+						Class<?> raw = Class.forName(rawClass);
+						return dslJson.canSerialize(raw) && dslJson.canDeserialize(raw);
+					} catch (Exception ignore) {
+						return false;
+					}
+				},
 				JsonIgnore,
 				NonNullable,
 				PropertyAlias,
 				JsonRequired,
+				Constructors,
+				unknownTypes,
 				false,
 				true,
 				true,
@@ -145,7 +163,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
 		for (StructInfo si : structs.values()) {
-			if (si.type == ObjectType.CLASS && (si.hasEmptyCtor || si.constructor != null) && !si.attributes.isEmpty()) {
+			if (si.type == ObjectType.CLASS && (si.hasEmptyCtor() || si.constructor != null) && !si.attributes.isEmpty()) {
 				code.append("\t\tregister_").append(si.name).append("(json);\n");
 			}
 		}
@@ -154,7 +172,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			StructInfo si = it.getValue();
 			String className = it.getKey();
 			if (si.type == ObjectType.CLASS && !si.attributes.isEmpty()) {
-				if (si.hasEmptyCtor) {
+				if (si.hasEmptyCtor()) {
 					emptyCtorDescription(code, si, className);
 				} else if (si.constructor != null) {
 					fromCtorDescription(code, si, className);

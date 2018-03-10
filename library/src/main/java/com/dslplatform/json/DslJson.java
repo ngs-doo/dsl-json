@@ -26,8 +26,8 @@ import java.util.concurrent.ConcurrentMap;
  * DslJson can fallback to another serializer in case when it doesn't know how to handle specific type.
  * This can be specified by Fallback interface during initialization.
  * <p>
- * If you wish to use compile time databinding @CompiledJson annotation must be specified on the classes
- * and annotation processor must be configured to register those classes into services file.
+ * If you wish to use compile time databinding @CompiledJson annotation must be specified on the target class
+ * or implicit reference to target class must exists from a class with @CompiledJson annotation.
  * <p>
  * Usage example:
  * <pre>
@@ -48,7 +48,8 @@ import java.util.concurrent.ConcurrentMap;
  * For example DSL Platform entities require service locator to be able to perform lazy load.
  * <p>
  * DslJson doesn't have a String or Reader API since it's optimized for processing bytes and streams.
- * If you wish to process String, use String.getBytes("UTF-8") as argument for DslJson
+ * If you wish to process String, use String.getBytes("UTF-8") as argument for DslJson.
+ * Only UTF-8 is supported for encoding and decoding JSON.
  * <pre>
  *     DslJson&lt;Object&gt; dsl = new DslJson&lt;&gt;();
  *     JsonWriter writer = dsl.newWriter();
@@ -77,6 +78,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * which can be reconstructed from schema information
 	 */
 	public final boolean omitDefaults;
+	/**
+	 * When object supports array format, eg. [prop1, prop2, prop3] this value must be enabled before
+	 * object will be serialized in such a way. Regardless of this value deserialization will support all formats.
+	 */
+	public final boolean allowArrayFormat;
 	protected final StringCache keyCache;
 	protected final StringCache valuesCache;
 	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
@@ -113,6 +119,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private boolean javaSpecifics;
 		private Fallback<TContext> fallback;
 		private boolean omitDefaults;
+		private boolean allowArrayFormat;
 		private StringCache keyCache = new SimpleStringCache();
 		private StringCache valuesCache;
 		private boolean withServiceLoader;
@@ -171,6 +178,20 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		public Settings<TContext> skipDefaultValues(boolean omitDefaults) {
 			this.omitDefaults = omitDefaults;
+			return this;
+		}
+
+		/**
+		 * Some encoders/decoders support writing objects in array format.
+		 * For encoder to write objects in such format, Array format must be defined before the Default and minified formats
+		 * and array format must be allowed via this setting.
+		 * If objects support multiple formats decoding will work regardless of this setting.
+		 *
+		 * @param allowArrayFormat allow serialization via array format
+		 * @return itself
+		 */
+		public Settings<TContext> allowArrayFormat(boolean allowArrayFormat) {
+			this.allowArrayFormat = allowArrayFormat;
 			return this;
 		}
 
@@ -261,7 +282,17 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		public Settings<TContext> includeServiceLoader() {
 			withServiceLoader = true;
 			for (Configuration c : ServiceLoader.load(Configuration.class)) {
-				configurations.add(c);
+				boolean hasConfiguration = false;
+				Class<?> manifest = c.getClass();
+				for (Configuration cur : configurations) {
+					if (cur.getClass() == manifest) {
+						hasConfiguration = true;
+						break;
+					}
+				}
+				if (!hasConfiguration) {
+					configurations.add(c);
+				}
 			}
 			return this;
 		}
@@ -411,6 +442,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.context = settings.context;
 		this.fallback = settings.fallback;
 		this.omitDefaults = settings.omitDefaults;
+		this.allowArrayFormat = settings.allowArrayFormat;
 		this.keyCache = settings.keyCache;
 		this.valuesCache = settings.valuesCache;
 		this.unknownNumbers = settings.unknownNumbers;

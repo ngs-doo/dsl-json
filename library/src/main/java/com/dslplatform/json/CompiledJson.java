@@ -7,7 +7,7 @@ import java.lang.annotation.*;
  * Objects with this annotation will have their serializers/deserializers created during project compilation.
  * They will be registered into META-INF/services/com.dslplatform.json.CompiledJson and should be loaded during
  * DslJson initialization.
- *
+ * <p>
  * If classes with this annotation reference another class which doesn't have this annotation, annotation processor
  * will behave as they have @CompiledJson annotation (this can be controlled via compiler option).
  * This can be used to create converters for objects which can't be modified.
@@ -15,6 +15,26 @@ import java.lang.annotation.*;
 @Target({ElementType.TYPE, ElementType.CONSTRUCTOR})
 @Retention(RetentionPolicy.CLASS)
 public @interface CompiledJson {
+	/**
+	 * JSON can be encoded/decoded in several ways:<br>
+	 * 	- object - standard attribute: value pair, eg: {"prop":123,"attr":"abc"}<br>
+	 * 	- array - no attributes, just values in array, eg: [123,"abc"]<br>
+	 * <p>
+	 * Array format [prop1, prop2, prop3] is useful when sending known format on both sides since
+	 * it assumes fixed property order and all properties must be known by both sides.
+	 * index() parameter can be used to control the ordering.
+	 * <p>
+	 * Serialization will be done via the first available format.
+	 *
+	 * @return JSON format
+	 */
+	Format[] formats() default {Format.OBJECT};
+
+	enum Format {
+		OBJECT,
+		ARRAY
+	}
+
 	/**
 	 * JSON attribute names can be minified using builtin simplistic algorithm
 	 * which results in smaller JSON and faster processing.

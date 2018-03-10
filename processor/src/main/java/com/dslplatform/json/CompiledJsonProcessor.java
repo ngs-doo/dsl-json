@@ -23,6 +23,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static final Set<String> PropertyAlias;
 	private static final Map<String, String> JsonRequired;
 	private static final List<IncompatibleTypes> CheckTypes;
+	private static final ContainerSupport CheckCollection;
 
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
 
@@ -106,6 +107,16 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 						"java.awt",
 						"android.graphics",
 						"Both Java AWT and Android graphics detected as property types. Only one supported at once."));
+		final Set<String> collections = new HashSet<String>();
+		for (String c : SupportedCollections.keySet()) {
+			collections.add(c.substring(0, c.length() - 1));
+		}
+		CheckCollection = new ContainerSupport() {
+			@Override
+			public boolean isSupported(String rawClass) {
+				return collections.contains(rawClass);
+			}
+		};
 	}
 
 	private String namespace;
@@ -149,10 +160,13 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				annotationUsage,
 				logLevel,
 				SupportedTypes.keySet(),
+				CheckCollection,
 				JsonIgnore,
 				NonNullable,
 				PropertyAlias,
 				JsonRequired,
+				Collections.<String>emptySet(),
+				UnknownTypes.ERROR,
 				true,
 				true,
 				true,
@@ -245,6 +259,21 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 		boolean requiresExtraSetup = false;
 		for (StructInfo info : structs.values()) {
+			if (info.formats.contains(CompiledJson.Format.ARRAY)) {
+				options.hasError = true;
+				processingEnv.getMessager().printMessage(
+						Diagnostic.Kind.ERROR,
+						"Array format is not supported in the DSL compiler. Found on: '" + info.element.getQualifiedName().toString() + "'.",
+						info.element,
+						analysis.getAnnotation(info.element, analysis.compiledJsonType));
+			} else if (info.formats.size() > 1) {
+				options.hasError = true;
+				processingEnv.getMessager().printMessage(
+						Diagnostic.Kind.ERROR,
+						"Only one format at a time is supported in the DSL compiler. Multiple formats found on: '" + info.element.getQualifiedName().toString() + "'.",
+						info.element,
+						analysis.getAnnotation(info.element, analysis.compiledJsonType));
+			}
 			if (info.type == ObjectType.ENUM) {
 				dsl.append("  enum ");
 			} else if (info.type == ObjectType.MIXIN) {
@@ -383,18 +412,6 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			dsl.append(attr.name);
 
 			StructInfo target = findReferenced(attr.type, structs);
-			if (target != null && target.type == ObjectType.MIXIN && target.implementations.size() == 0) {
-				String what = target.element.getKind() == ElementKind.INTERFACE ? "interface" : "abstract class";
-				String one = target.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
-				options.hasError = true;
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Property " + attr.name +
-								" is referencing " + what + " (" + target.element.getQualifiedName() + ") which doesn't have registered " +
-								"implementations with @CompiledJson. At least one " + one + " of specified " + what + " must be annotated " +
-								"with CompiledJson annotation",
-						attr.element,
-						analysis.getAnnotation(info.element, analysis.compiledJsonType));
-			}
-
 			String alias = attr.id;
 			if (info.minifiedNames.containsKey(attr.id)) {
 				alias = info.minifiedNames.get(attr.id);

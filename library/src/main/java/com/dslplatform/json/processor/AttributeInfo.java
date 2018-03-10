@@ -24,6 +24,7 @@ public class AttributeInfo {
 	public final boolean fullMatch;
 	public final CompiledJson.TypeSignature typeSignature;
 	public final TypeMirror converter;
+	public final boolean isJsonObject;
 	public final List<String> alternativeNames = new ArrayList<String>();
 
 	public AttributeInfo(
@@ -38,7 +39,8 @@ public class AttributeInfo {
 			String alias,
 			boolean fullMatch,
 			CompiledJson.TypeSignature typeSignature,
-			TypeMirror converter) {
+			TypeMirror converter,
+			boolean isJsonObject) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
 		this.readMethod = readMethod;
@@ -53,5 +55,6 @@ public class AttributeInfo {
 		this.fullMatch = fullMatch;
 		this.typeSignature = typeSignature;
 		this.converter = converter;
+		this.isJsonObject = isJsonObject;
 	}
 }

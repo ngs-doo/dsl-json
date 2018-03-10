@@ -143,11 +143,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void missingImplementations() {
-		assertCompilationReturned(
-				Diagnostic.Kind.ERROR,
-				7,
-				compileTestCase(UsesInterfaceType.class),
-				"Property iface is referencing interface (com.dslplatform.json.models.InterfaceType) which doesn't have registered implementations with @CompiledJson. At least one implementation of specified interface must be annotated with CompiledJson annotation");
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(UsesInterfaceType.class);
+		Assert.assertEquals(2, diagnostics.size());
+		Assert.assertTrue(diagnostics.get(0).getMessage(Locale.ENGLISH).contains("Property iface is referencing interface (com.dslplatform.json.models.InterfaceType) which doesn't have registered implementations with @CompiledJson. At least one implementation of specified interface must be annotated with CompiledJson annotation"));
+		Assert.assertEquals(7, diagnostics.get(0).getLineNumber());
+		Assert.assertTrue(diagnostics.get(1).getMessage(Locale.ENGLISH).contains("Interface (com.dslplatform.json.models.InterfaceType) is referenced, but it doesn't have registered implementations with @CompiledJson. At least one implementation of specified Interface must be annotated with CompiledJson annotation"));
 	}
 
 	@Test
@@ -259,7 +259,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(
 						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
 						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
-   		Assert.assertEquals(2, diagnostics.size());
+		Assert.assertEquals(4, diagnostics.size());
 		Diagnostic note = diagnostics.get(0);
 		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		String error = note.getMessage(Locale.ENGLISH);
@@ -268,8 +268,23 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void jsonObjectReferences() {
-		checkValidCompilation(ReferenceJsonObject.class);
+	public void invalidJsonObjectReferences() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ReferenceJsonObject.class);
+		Assert.assertEquals(3, diagnostics.size());
+		for (Diagnostic note : diagnostics) {
+			Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
+		}
+		String error1 = diagnostics.get(0).getMessage(Locale.ENGLISH);
+		String error2 = diagnostics.get(1).getMessage(Locale.ENGLISH);
+		String error3 = diagnostics.get(2).getMessage(Locale.ENGLISH);
+		Assert.assertTrue(error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type. It can't be used for serialization/deserialization this way. You probably want to change JSON_READER field to: 'com.dslplatform.json.JsonReader.ReadJsonObject<com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3>'"));
+		Assert.assertTrue(error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static. It can't be used for serialization/deserialization this way. You probably want to change JSON_READER field so it's public and static."));
+		Assert.assertTrue(error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field. It can't be used for serialization/deserialization this way. You probably want to add public static JSON_READER field."));
+	}
+
+	@Test
+	public void validJsonObjectReferences() {
+		checkValidCompilation(ValidReferenceJsonObject.class);
 	}
 
 	@Test
@@ -355,4 +370,10 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void onUnknownDefault() {
 		checkValidCompilation(ValidCtor.class);
 	}
+
+	@Test
+	public void supportsArrayFormat() {
+		checkValidCompilation(ArrayFormat.class);
+	}
+
 }

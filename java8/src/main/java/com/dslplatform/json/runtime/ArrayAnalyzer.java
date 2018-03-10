@@ -72,7 +72,7 @@ public abstract class ArrayAnalyzer {
 	private static <T> ArrayEncoder<T> analyzeEncoder(final Type manifest, final Type element, final DslJson json) {
 		final Class<?> raw = checkSignature(element);
 		if (raw == null) return null;
-		final JsonWriter.WriteObject<?> writer = json.tryFindWriter(element);
+		final JsonWriter.WriteObject<?> writer = Object.class == element ? null : json.tryFindWriter(element);
 		if (Object.class != element && writer == null) {
 			return null;
 		}

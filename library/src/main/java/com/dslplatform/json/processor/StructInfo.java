@@ -2,10 +2,11 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 import java.util.*;
 
 public class StructInfo {
@@ -16,16 +17,17 @@ public class StructInfo {
 	public final ExecutableElement constructor;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
 	public final Map<String, String> minifiedNames = new HashMap<String, String>();
-	public final boolean hasAnnotation;
+	public final AnnotationMirror annotation;
 	public final CompiledJson.Behavior onUnknown;
 	public final CompiledJson.TypeSignature typeSignature;
 	public final TypeElement deserializeAs;
 	public final boolean isMinified;
-	public final boolean hasEmptyCtor;
+	public final LinkedHashSet<CompiledJson.Format> formats;
 	public final LinkedHashMap<String, AttributeInfo> attributes = new LinkedHashMap<String, AttributeInfo>();
 	public final Set<Element> properties = new HashSet<Element>();
 	public final List<String> constants = new ArrayList<String>();
 	public final Stack<String> path = new Stack<String>();
+	public final Map<String, TypeMirror> unknowns = new LinkedHashMap<String, TypeMirror>();
 
 	public StructInfo(
 			TypeElement element,
@@ -33,23 +35,23 @@ public class StructInfo {
 			ObjectType type,
 			boolean isJsonObject,
 			ExecutableElement constructor,
-			boolean hasAnnotation,
+			AnnotationMirror annotation,
 			CompiledJson.Behavior onUnknown,
 			CompiledJson.TypeSignature typeSignature,
 			TypeElement deserializeAs,
 			boolean isMinified,
-			boolean hasEmptyCtor) {
+			CompiledJson.Format[] formats) {
 		this.element = element;
 		this.name = name;
 		this.type = type;
 		this.converter = isJsonObject ? "" : null;
 		this.constructor = constructor;
-		this.hasAnnotation = hasAnnotation;
+		this.annotation = annotation;
 		this.onUnknown = onUnknown;
 		this.typeSignature = typeSignature;
 		this.deserializeAs = deserializeAs;
 		this.isMinified = isMinified;
-		this.hasEmptyCtor = hasEmptyCtor;
+		this.formats = new LinkedHashSet<CompiledJson.Format>(formats == null ? Collections.singletonList(CompiledJson.Format.OBJECT) : Arrays.asList(formats));
 	}
 
 	public StructInfo(TypeElement converter, TypeElement target, String name) {
@@ -58,12 +60,20 @@ public class StructInfo {
 		this.type = ObjectType.CLASS;
 		this.converter = converter.getQualifiedName().toString();
 		this.constructor = null;
-		this.hasAnnotation = true;
+		this.annotation = null;
 		this.onUnknown = null;
 		this.typeSignature = null;
 		this.deserializeAs = null;
 		this.isMinified = false;
-		this.hasEmptyCtor = false;
+		this.formats = new LinkedHashSet<CompiledJson.Format>(Collections.singletonList(CompiledJson.Format.OBJECT));
+	}
+
+	public boolean hasEmptyCtor() {
+		return constructor != null && constructor.getParameters().size() == 0;
+	}
+
+	public boolean hasAnnotation() {
+		return annotation != null;
 	}
 
 	public static int calcHash(String name) {
@@ -81,7 +91,7 @@ public class StructInfo {
 	public void deserializeTarget(StructInfo value) { deserializeTarget = value; }
 
 	public String pathDescription() {
-		if (hasAnnotation) return " since it has @CompiledJson annotation.";
+		if (annotation != null) return " since it has @CompiledJson annotation.";
 		if (path.isEmpty()) return "";
 		StringBuilder sb = new StringBuilder();
 		for (String p : path) {

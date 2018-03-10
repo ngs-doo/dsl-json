@@ -75,8 +75,8 @@ public abstract class MapAnalyzer {
 
 	private static MapEncoder analyzeEncoder(final Type manifest, final Type key, final Type value, final Class<?> map, final DslJson json) {
 		if (!Map.class.isAssignableFrom(map)) return null;
-		final JsonWriter.WriteObject<?> keyWriter = json.tryFindWriter(key);
-		final JsonWriter.WriteObject<?> valueWriter = json.tryFindWriter(value);
+		final JsonWriter.WriteObject<?> keyWriter = Object.class == key ? null : json.tryFindWriter(key);
+		final JsonWriter.WriteObject<?> valueWriter = Object.class == value ? null : json.tryFindWriter(value);
 		if (Object.class != key && keyWriter == null || Object.class != value && valueWriter == null) {
 			return null;
 		}

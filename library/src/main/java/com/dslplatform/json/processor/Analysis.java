@@ -18,6 +18,7 @@ public class Analysis {
 
 	private final AnnotationUsage annotationUsage;
 	private final LogLevel logLevel;
+	private final UnknownTypes unknownTypes;
 	private final boolean mustHaveEmptyCtor;
 	private final boolean includeFields;
 	private final boolean includeBeanMethods;
@@ -35,10 +36,12 @@ public class Analysis {
 	public final DeclaredType converterType;
 
 	private final Set<String> supportedTypes;
+	private final ContainerSupport containerSupport;
 	private final Set<String> alternativeIgnore;
 	private final Set<String> alternativeNonNullable;
 	private final Set<String> alternativeAlias;
 	private final Map<String, String> alternativeMandatory;
+	private final Set<String> alternativeCtors;
 
 	private final Map<String, StructInfo> structs = new LinkedHashMap<String, StructInfo>();
 
@@ -48,8 +51,8 @@ public class Analysis {
 		return hasError;
 	}
 
-	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, Set<String> supportedTypes) {
-		this(processingEnv, annotationUsage, logLevel, supportedTypes, null, null, null, null, false, true, true, true);
+	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, Set<String> supportedTypes, ContainerSupport containerSupport) {
+		this(processingEnv, annotationUsage, logLevel, supportedTypes, containerSupport, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
 	}
 
 	public Analysis(
@@ -57,10 +60,13 @@ public class Analysis {
 			AnnotationUsage annotationUsage,
 			LogLevel logLevel,
 			Set<String> supportedTypes,
+			ContainerSupport containerSupport,
 			Set<String> alternativeIgnore,
 			Set<String> alternativeNonNullable,
 			Set<String> alternativeAlias,
 			Map<String, String> alternativeMandatory,
+			Set<String> alternativeCtors,
+			UnknownTypes unknownTypes,
 			boolean mustHaveEmptyCtor,
 			boolean includeFields,
 			boolean includeBeanMethods,
@@ -77,10 +83,13 @@ public class Analysis {
 		converterElement = elements.getTypeElement(JsonConverter.class.getName());
 		converterType = types.getDeclaredType(converterElement);
 		this.supportedTypes = supportedTypes;
+		this.containerSupport = containerSupport;
 		this.alternativeIgnore = alternativeIgnore == null ? new HashSet<String>() : alternativeIgnore;
 		this.alternativeNonNullable = alternativeNonNullable == null ? new HashSet<String>() : alternativeNonNullable;
 		this.alternativeAlias = alternativeAlias == null ? new HashSet<String>() : alternativeAlias;
 		this.alternativeMandatory = alternativeMandatory == null ? new LinkedHashMap<String, String>() : alternativeMandatory;
+		this.alternativeCtors = alternativeCtors == null ? new HashSet<String>() : alternativeCtors;
+		this.unknownTypes = unknownTypes == null ? UnknownTypes.ERROR : unknownTypes;
 		this.mustHaveEmptyCtor = mustHaveEmptyCtor;
 		this.includeFields = includeFields;
 		this.includeBeanMethods = includeBeanMethods;
@@ -113,11 +122,76 @@ public class Analysis {
 	public Map<String, StructInfo> processCompiledJson(Set<? extends Element> classes) {
 		Stack<String> path = new Stack<String>();
 		for (Element el : classes) {
-			findStructs(el, "CompiledJson requires accessible public no argument constructor", path);
+			findStructs(el, "CompiledJson requires accessible public constructor", path);
 		}
 		findRelatedReferences();
 		findImplementations(structs.values());
 		for (StructInfo info : structs.values()) {
+			if (unknownTypes != UnknownTypes.ALLOW && !info.unknowns.isEmpty()) {
+				for (Map.Entry<String, TypeMirror> kv : info.unknowns.entrySet()) {
+					AttributeInfo attr = info.attributes.get(kv.getKey());
+					if (attr != null && (attr.converter != null || attr.isJsonObject)) continue;;
+					Map<String, Boolean> references = analyzeParts(kv.getValue());
+					for (Map.Entry<String, Boolean> pair : references.entrySet()) {
+						if (!pair.getValue()) {
+							hasError = hasError || unknownTypes == UnknownTypes.ERROR;
+							Diagnostic.Kind kind = unknownTypes == UnknownTypes.ERROR ? Diagnostic.Kind.ERROR : Diagnostic.Kind.WARNING;
+							if (kind == Diagnostic.Kind.ERROR || logLevel.isVisible(LogLevel.INFO)) {
+								if (kv.getValue().toString().equals(pair.getKey())) {
+									messager.printMessage(
+											kind,
+											"Property " + kv.getKey() + " is referencing unknown type: '" + kv.getValue()
+													+ "'. Register custom converter, mark property as ignored or enable unknown types",
+											attr != null ? attr.element : info.element,
+											getAnnotation(info.element, compiledJsonType));
+								} else {
+									messager.printMessage(
+											kind,
+											"Property " + kv.getKey() + " is referencing unknown type: '" + kv.getValue() + "' which has an unknown part: '"
+													+ pair.getKey() + "'. Register custom converter, mark property as ignored or enable unknown types",
+											attr != null ? attr.element : info.element,
+											getAnnotation(info.element, compiledJsonType));
+								}
+							}
+						}
+					}
+				}
+			}
+			if (unknownTypes != UnknownTypes.ALLOW) {
+				for (AttributeInfo attr : info.attributes.values()) {
+					if (attr.converter != null || attr.isJsonObject) continue;
+					Map<String, Boolean> references = analyzeParts(attr.type);
+					for (String r : references.keySet()) {
+						StructInfo target = structs.get(r);
+						if (target != null && target.type == ObjectType.MIXIN && target.implementations.size() == 0) {
+							String what = target.element.getKind() == ElementKind.INTERFACE ? "interface" : "abstract class";
+							String one = target.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
+							hasError = true;
+							messager.printMessage(Diagnostic.Kind.ERROR, "Property " + attr.name +
+											" is referencing " + what + " (" + target.element.getQualifiedName() + ") which doesn't have registered " +
+											"implementations with @CompiledJson. At least one " + one + " of specified " + what + " must be annotated " +
+											"with CompiledJson annotation or allow unknown types during analysis",
+									attr.element,
+									getAnnotation(info.element, compiledJsonType));
+						}
+					}
+				}
+			}
+			if (unknownTypes != UnknownTypes.ALLOW && info.type == ObjectType.MIXIN && info.implementations.isEmpty()) {
+				String what = info.element.getKind() == ElementKind.INTERFACE ? "Interface" : "Abstract class";
+				String one = info.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
+				hasError = hasError || unknownTypes == UnknownTypes.ERROR;
+				Diagnostic.Kind kind = unknownTypes == UnknownTypes.ERROR ? Diagnostic.Kind.ERROR : Diagnostic.Kind.WARNING;
+				if (kind == Diagnostic.Kind.ERROR || logLevel.isVisible(LogLevel.INFO)) {
+					messager.printMessage(
+							kind,
+							what + " (" + info.element.getQualifiedName() + ") is referenced, but it doesn't have registered " +
+									"implementations with @CompiledJson. At least one " + one + " of specified " + what + " must be annotated " +
+									"with CompiledJson annotation or allow unknown types during analysis",
+							info.element,
+							getAnnotation(info.element, compiledJsonType));
+				}
+			}
 			if (info.checkHashCollision()) {
 				hasError = true;
 				messager.printMessage(
@@ -138,14 +212,14 @@ public class Analysis {
 							getAnnotation(info.element, compiledJsonType));
 				}
 			}
-			if (info.type == ObjectType.CLASS && mustHaveEmptyCtor && info.converter == null && !info.hasEmptyCtor) {
+			if (info.type == ObjectType.CLASS && mustHaveEmptyCtor && info.converter == null && !info.hasEmptyCtor()) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
 						"'" + info.element.asType() + "' requires public no argument constructor" + info.pathDescription(),
 						info.element,
 						getAnnotation(info.element, compiledJsonType));
-			} else if (info.type == ObjectType.CLASS &&!mustHaveEmptyCtor && !info.hasEmptyCtor && info.converter == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
+			} else if (info.type == ObjectType.CLASS && !mustHaveEmptyCtor && !info.hasEmptyCtor() && info.converter == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
@@ -281,9 +355,7 @@ public class Analysis {
 			List<StructInfo> items = new ArrayList<StructInfo>(structs.values());
 			Stack<String> path = new Stack<String>();
 			for (StructInfo info : items) {
-				if (info.converter != null) {
-					continue;
-				}
+				if (info.converter != null) continue;
 				path.push(info.element.getSimpleName().toString());
 				if (includeBeanMethods) {
 					for (Map.Entry<String, MethodPair> p : getBeanProperties(info.element).entrySet()) {
@@ -311,6 +383,9 @@ public class Analysis {
 				: "double".equals(type) ? "java.lang.Double"
 				: "float".equals(type) ? "java.lang.Float"
 				: "char".equals(type) ? "java.lang.Character"
+				: "byte".equals(type) ? "java.lang.Byte"
+				: "short".equals(type) ? "java.lang.Short"
+				: "boolean".equals(type) ? "java.lang.Boolean"
 				: type;
 	}
 
@@ -318,6 +393,21 @@ public class Analysis {
 		Element element = field != null ? field : method.read;
 		path.push(name);
 		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element)) {
+			TypeMirror referenceType = field != null ? field.asType() : method.read.getReturnType();
+			Element referenceElement = types.asElement(referenceType);
+			TypeMirror converter = findConverter(element);
+			String referenceName = referenceType.toString();
+			boolean isJsonObject = isJsonObject(referenceElement);
+			boolean typeResolved = converter != null || isJsonObject || supportedTypes.contains(referenceName) || structs.containsKey(referenceName);
+			boolean hasUnknown = false;
+			if (!typeResolved) {
+				Map<String, Boolean> references = analyzeParts(referenceType);
+				for (Map.Entry<String, Boolean> kv : references.entrySet()) {
+					if (!kv.getValue()) {
+						hasUnknown = true;
+					}
+				}
+			}
 			AnnotationMirror annotation = getAnnotation(element, attributeType);
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
 			AttributeInfo attr =
@@ -333,7 +423,8 @@ public class Analysis {
 							findNameAlias(element),
 							isFullMatch(element),
 							typeSignature,
-							findConverter(element));
+							converter,
+							isJsonObject);
 			String[] alternativeNames = getAlternativeNames(attr.element);
 			if (alternativeNames != null) {
 				attr.alternativeNames.addAll(Arrays.asList(alternativeNames));
@@ -354,6 +445,9 @@ public class Analysis {
 						"Duplicate alias detected on " + (attr.field != null ? "field: " : "property: ") + attr.name,
 						attr.element,
 						getAnnotation(info.element, compiledJsonType));
+			}
+			if (!typeResolved && hasUnknown) {
+				info.unknowns.put(attr.id, referenceType);
 			}
 			info.attributes.put(attr.id, attr);
 			info.properties.add(attr.element);
@@ -382,21 +476,25 @@ public class Analysis {
 		}
 		int genInd = typeName.indexOf('<');
 		if (genInd == -1) return;
-		for (String st : typeName.substring(genInd + 1, typeName.length() - 1).split(",")) {
-			el = elements.getTypeElement(st);
-			if (el != null) {
-				findStructs(el, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+		String subtype = typeName.substring(genInd + 1, typeName.lastIndexOf('>'));
+		if (supportedTypes.contains(subtype)) return;
+		Set<String> parts = new LinkedHashSet<String>();
+		extractTypes(subtype, parts);
+		for (String st : parts) {
+			if (!structs.containsKey(st) && !supportedTypes.contains(st)) {
+				el = elements.getTypeElement(st);
+				if (el != null) {
+					//TODO: check for el.getQualifiedName().toString().equals(st)
+					findStructs(el, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+				}
 			}
 		}
 	}
 
 	private void findStructs(Element el, String errorMessge, Stack<String> path) {
-		if (!(el instanceof TypeElement)) {
-			return;
-		}
+		if (!(el instanceof TypeElement)) return;
 		String typeName = el.asType().toString();
-		if (structs.containsKey(typeName)) return;
-		if (supportedTypes.contains(typeName)) return;
+		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) return;
 		TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
@@ -460,14 +558,14 @@ public class Analysis {
 						messager.printMessage(
 								Diagnostic.Kind.ERROR,
 								"Annotation usage is set to explicit, but '" + element.getQualifiedName() + "' is used implicitly through references. " +
-										"Either change usage to implicit or use @Ignore on property referencing this type. " + errorMessge,
+										"Either change usage to implicit, use @Ignore on property referencing this type or register custom converter for problematic type. " + errorMessge,
 								element);
 					} else if (element.getQualifiedName().toString().startsWith("java.")) {
 						hasError = true;
 						messager.printMessage(
 								Diagnostic.Kind.ERROR,
 								"Annotation usage is set to non-java, but '" + element.getQualifiedName() + "' is found in java package. " +
-										"Either change usage to implicit, use @Ignore on property referencing this type or add annotation to this type. " +
+										"Either change usage to implicit, use @Ignore on property referencing this type, register custom converter for problematic type or add annotation to this type. " +
 										errorMessge,
 								element);
 					}
@@ -481,17 +579,17 @@ public class Analysis {
 							type,
 							isJsonObject,
 							findMatchingConstructor(element),
-							annotation != null,
+							annotation,
 							onUnknown,
 							typeSignature,
 							deserializeAs,
-							isMinified(element),
-							hasEmptyCtor(element));
+							isMinified(annotation),
+							getFormats(annotation));
 			info.path.addAll(path);
 			if (type == ObjectType.ENUM) {
 				info.constants.addAll(getEnumConstants(info.element));
 			}
-			structs.put(element.asType().toString(), info);
+			structs.put(typeName, info);
 		}
 	}
 
@@ -517,25 +615,132 @@ public class Analysis {
 		}
 	}
 
-	public static boolean hasEmptyCtor(Element element) {
-		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
-			List<? extends VariableElement> parameters = constructor.getParameters();
-			if (parameters.isEmpty()
-					&& (element.getKind() == ElementKind.ENUM || constructor.getModifiers().contains(Modifier.PUBLIC))) {
-				return true;
-			}
+	public ExecutableElement findMatchingConstructor(Element element) {
+		if (element.getKind() == ElementKind.INTERFACE
+				|| element.getKind() == ElementKind.ENUM
+				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT)) {
+			return null;
 		}
-		return false;
-	}
-
-	public static ExecutableElement findMatchingConstructor(Element element) {
+		List<ExecutableElement> matchingCtors = new ArrayList<ExecutableElement>();
 		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
-			List<? extends VariableElement> parameters = constructor.getParameters();
-			if (!parameters.isEmpty() && element.getKind() != ElementKind.ENUM && constructor.getModifiers().contains(Modifier.PUBLIC)) {
+			AnnotationMirror dslAnn = getAnnotation(element, compiledJsonType);
+			if (dslAnn != null) {
+				if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Constructor in '" + element.asType() + "' is annotated with @CompiledJson, but it's not public.",
+							constructor,
+							dslAnn);
+				}
 				return constructor;
 			}
+			for (AnnotationMirror ann : constructor.getAnnotationMirrors()) {
+				if (alternativeCtors.contains(ann.getAnnotationType().toString())) {
+					if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Constructor in '" + element.asType() + "' is annotated with " + ann.getAnnotationType() + ", but it's not public.",
+								constructor,
+								ann);
+					}
+					return constructor;
+				}
+			}
+			if (constructor.getModifiers().contains(Modifier.PUBLIC)) {
+				matchingCtors.add(constructor);
+			}
+		}
+		if (matchingCtors.size() == 1) return matchingCtors.get(0);
+		for (ExecutableElement ctor : matchingCtors) {
+			if (ctor.getParameters().size() == 0) return ctor;
+		}
+		hasError = true;
+		if (matchingCtors.size() == 0) {
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"No matching constructors found for '" + element.asType() + "'. Make sure there is at least one matching constructor available.",
+					element,
+					getAnnotation(element, compiledJsonType));
+		} else {
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Multiple matching constructors found for '" + element.asType() + "'. Use @CompiledJson or alternative annotations to select the appropriate constructor.",
+					element,
+					getAnnotation(element, compiledJsonType));
 		}
 		return null;
+	}
+
+	private Map<String, Boolean> analyzeParts(TypeMirror target) {
+		String typeName = target.toString();
+		if (structs.containsKey(typeName)) {
+			return Collections.singletonMap(typeName, true);
+		} else if (supportedTypes.contains(typeName)) {
+			return Collections.singletonMap(typeName, true);
+		}
+		if (target instanceof ArrayType) {
+			ArrayType at = (ArrayType) target;
+			return analyzeParts(at.getComponentType());
+		}
+		int genInd = typeName.indexOf('<');
+		if (genInd == -1) return Collections.singletonMap(typeName, false);
+		Map<String, Boolean> found = new LinkedHashMap<String, Boolean>();
+		String rawClass = typeName.substring(0, genInd);
+		TypeElement raw = elements.getTypeElement(rawClass);
+		if (raw != null) {
+			if (supportedTypes.contains(rawClass)) {
+				found.put(rawClass, true);
+			} else {
+				found.put(rawClass, containerSupport.isSupported(rawClass));
+			}
+		}
+		String subtype = typeName.substring(genInd + 1, typeName.lastIndexOf('>'));
+		if (structs.containsKey(subtype) || supportedTypes.contains(subtype)) {
+			found.put(subtype, true);
+			return found;
+		}
+		Set<String> parts = new LinkedHashSet<String>();
+		extractTypes(subtype, parts);
+		for (String st : parts) {
+			if (structs.containsKey(st) || supportedTypes.contains(st)) {
+				found.put(st, true);
+			} else {
+				TypeElement el = elements.getTypeElement(st);
+				if (el == null || !el.getQualifiedName().toString().equals(st)) {
+					found.put(st, containerSupport.isSupported(st));
+				} else if (isJsonObject(el)) {
+					found.put(st, true);
+				} else {
+					found.putAll(analyzeParts(el.asType()));
+				}
+			}
+		}
+		return found;
+	}
+
+	private void extractTypes(String signature, Set<String> parts) {
+		if (signature.isEmpty()) return;
+		if (supportedTypes.contains(signature) || structs.containsKey(signature)) {
+			parts.add(signature);
+			return;
+		}
+		int nextComma = signature.indexOf(',');
+		int nextGen = signature.indexOf('<');
+		if (nextComma == -1 && nextGen == -1) {
+			parts.add(signature);
+		} else if (nextComma != -1 && (nextGen == -1 || nextGen > nextComma)) {
+			String first = signature.substring(0, nextComma);
+			String second = signature.substring(nextComma + 1, signature.length());
+			parts.add(first);
+			extractTypes(second, parts);
+		} else {
+			String first = signature.substring(0, nextGen);
+			String second = signature.substring(nextGen + 1, signature.length() - 1);
+			parts.add(first);
+			extractTypes(second, parts);
+		}
 	}
 
 	public static List<String> getEnumConstants(TypeElement element) {
@@ -549,47 +754,43 @@ public class Analysis {
 		return result;
 	}
 
-	public boolean isJsonObject(TypeElement element) {
+	public boolean isJsonObject(Element el) {
+		if (el == null || !(el instanceof TypeElement)) return false;
+		TypeElement element = (TypeElement)el;
 		for (TypeMirror type : element.getInterfaces()) {
 			if (JsonObject.class.getName().equals(type.toString())) {
 				for (VariableElement field : ElementFilter.fieldsIn(element.getEnclosedElements())) {
 					if ("JSON_READER".equals(field.getSimpleName().toString())) {
 						if (!field.getModifiers().contains(Modifier.PUBLIC)
 								|| !field.getModifiers().contains(Modifier.STATIC)) {
-							if (logLevel.isVisible(LogLevel.INFO)) {
-								messager.printMessage(
-										Diagnostic.Kind.WARNING,
-										"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static. " +
-												"It can't be used for serialization/deserialization this way. " +
-												"You probably want to change JSON_READER field so it's public and static.",
-										element);
-							}
-							return false;
+							hasError = true;
+							messager.printMessage(
+									Diagnostic.Kind.ERROR,
+									"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static. " +
+											"It can't be used for serialization/deserialization this way. " +
+											"You probably want to change JSON_READER field so it's public and static.",
+									element);
 						}
 						String correctType = "com.dslplatform.json.JsonReader.ReadJsonObject<" + element.getQualifiedName() + ">";
 						if (!(correctType.equals(field.asType().toString()))) {
-							if (logLevel.isVisible(LogLevel.INFO)) {
-								messager.printMessage(
-										Diagnostic.Kind.WARNING,
-										"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type. " +
-												"It can't be used for serialization/deserialization this way. " +
-												"You probably want to change JSON_READER field to: '" + correctType + "'",
-										element);
-							}
-							return false;
+							hasError = true;
+							messager.printMessage(
+									Diagnostic.Kind.ERROR,
+									"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type. " +
+											"It can't be used for serialization/deserialization this way. " +
+											"You probably want to change JSON_READER field to: '" + correctType + "'",
+									element);
 						}
 						return true;
 					}
 				}
-				if (logLevel.isVisible(LogLevel.INFO)) {
-					messager.printMessage(
-							Diagnostic.Kind.WARNING,
-							"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field. " +
-									"It can't be used for serialization/deserialization this way. " +
-									"You probably want to add public static JSON_READER field.",
-							element);
-				}
-				return false;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field. " +
+								"It can't be used for serialization/deserialization this way. " +
+								"You probably want to add public static JSON_READER field.",
+						element);
+				return true;
 			}
 		}
 		return false;
@@ -722,19 +923,18 @@ public class Analysis {
 
 	public String[] getAlternativeNames(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
-		if (dslAnn != null) {
-			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
-			for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> ee : values.entrySet()) {
-				if (ee.getKey().toString().equals("alternativeNames()")) {
-					@SuppressWarnings("unchecked")
-					List<AnnotationValue> val = (List) ee.getValue().getValue();
-					if (val == null) return null;
-					String[] names = new String[val.size()];
-					for (int i = 0; i < val.size(); i++) {
-						names[i] = val.get(i).getValue().toString();
-					}
-					return names;
+		if (dslAnn == null) return null;
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+		for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> ee : values.entrySet()) {
+			if (ee.getKey().toString().equals("alternativeNames()")) {
+				@SuppressWarnings("unchecked")
+				List<AnnotationValue> val = (List) ee.getValue().getValue();
+				if (val == null) return null;
+				String[] names = new String[val.size()];
+				for (int i = 0; i < val.size(); i++) {
+					names[i] = val.get(i).getValue().toString();
 				}
+				return names;
 			}
 		}
 		return null;
@@ -742,13 +942,12 @@ public class Analysis {
 
 	public boolean isFullMatch(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
-		if (dslAnn != null) {
-			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
-			for (ExecutableElement ee : values.keySet()) {
-				if (ee.toString().equals("hashMatch()")) {
-					Object val = values.get(ee).getValue();
-					return val != null && !((Boolean) val);
-				}
+		if (dslAnn == null) return false;
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("hashMatch()")) {
+				Object val = values.get(ee).getValue();
+				return val != null && !((Boolean) val);
 			}
 		}
 		return false;
@@ -873,14 +1072,31 @@ public class Analysis {
 		return null;
 	}
 
-	public boolean isMinified(Element struct) {
-		AnnotationMirror ann = getAnnotation(struct, compiledJsonType);
-		if (ann != null) {
-			for (ExecutableElement ee : ann.getElementValues().keySet()) {
-				if ("minified()".equals(ee.toString())) {
-					AnnotationValue minified = ann.getElementValues().get(ee);
-					return (Boolean) minified.getValue();
+	public CompiledJson.Format[] getFormats(AnnotationMirror ann) {
+		if (ann == null) return new CompiledJson.Format[]{CompiledJson.Format.OBJECT};
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = ann.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if ("formats()".equals(ee.toString())) {
+				Object val = values.get(ee).getValue();
+				if (val == null) return new CompiledJson.Format[]{CompiledJson.Format.OBJECT};
+				List list = (List)val;
+				CompiledJson.Format[] result = new CompiledJson.Format[list.size()];
+				for (int i = 0; i < result.length; i++) {
+					AnnotationValue enumVal = (AnnotationValue)list.get(i);
+					result[i] = enumVal == null ? null : CompiledJson.Format.valueOf(enumVal.getValue().toString());
 				}
+				return result;
+			}
+		}
+		return new CompiledJson.Format[]{CompiledJson.Format.OBJECT};
+	}
+
+	public boolean isMinified(AnnotationMirror ann) {
+		if (ann == null) return false;
+		for (ExecutableElement ee : ann.getElementValues().keySet()) {
+			if ("minified()".equals(ee.toString())) {
+				AnnotationValue minified = ann.getElementValues().get(ee);
+				return (Boolean) minified.getValue();
 			}
 		}
 		return false;
@@ -888,15 +1104,13 @@ public class Analysis {
 
 	public TypeMirror findConverter(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
-		if (dslAnn != null) {
-			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
-			for (ExecutableElement ee : values.keySet()) {
-				if (ee.toString().equals("converter()")) {
-					TypeMirror mirror = (TypeMirror) values.get(ee).getValue();
-					return mirror != null && mirror.toString().equals(JsonAttribute.class.getName()) ? null : mirror;
-				}
+		if (dslAnn == null) return null;
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("converter()")) {
+				TypeMirror mirror = (TypeMirror) values.get(ee).getValue();
+				return mirror != null && mirror.toString().equals(JsonAttribute.class.getName()) ? null : mirror;
 			}
-			return null;
 		}
 		return null;
 	}

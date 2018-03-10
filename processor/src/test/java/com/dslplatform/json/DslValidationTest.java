@@ -52,7 +52,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 				Diagnostic.Kind.ERROR,
 				9,
 				compileTestCase(InvalidType.class),
-				"Specified type is not supported: 'char'");
+				"Property prop is referencing unknown type: 'char'.");
 	}
 
 	@Test
@@ -354,7 +354,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(
 						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
 						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
-		Assert.assertEquals(4, diagnostics.size());
+		Assert.assertEquals(5, diagnostics.size());
 		Diagnostic note = diagnostics.get(0);
 		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		String error = note.getMessage(Locale.ENGLISH);
@@ -363,42 +363,40 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void jsonObjectReferences() {
+	public void invalidJsonObjectReferences() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ReferenceJsonObject.class);
-		String warning1 = diagnostics.get(diagnostics.size() - 4).getMessage(Locale.ENGLISH);
-		String warning2 = diagnostics.get(diagnostics.size() - 3).getMessage(Locale.ENGLISH);
-		String warning3 = diagnostics.get(diagnostics.size() - 2).getMessage(Locale.ENGLISH);
+		Assert.assertEquals(3, diagnostics.size());
+		String error1 = diagnostics.get(0).getMessage(Locale.ENGLISH);
+		String error2 = diagnostics.get(1).getMessage(Locale.ENGLISH);
+		String error3 = diagnostics.get(2).getMessage(Locale.ENGLISH);
+		Assert.assertTrue(
+				error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
+						|| error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
+						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
+		);
+		Assert.assertTrue(
+				error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
+						|| error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
+						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
+		);
+		Assert.assertTrue(
+				error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
+						|| error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
+						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
+		);
+	}
+
+	@Test
+	public void validJsonObjectReference() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ValidReferenceJsonObject.class);
+		Assert.assertEquals(1, diagnostics.size());
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
 		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
 		String dsl = note.getMessage(Locale.ENGLISH);
 		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
 				"external Java JSON converter;\n" +
-				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplProper';\n" +
+				"external name Java 'com.dslplatform.json.models.ValidReferenceJsonObject.ImplProper';\n" +
 				"}"));
-		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
-				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1';\n" +
-				"}"));
-		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
-				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2';\n" +
-				"}"));
-		Assert.assertTrue(dsl.replace("  ", "").contains("{\n" +
-				"external name Java 'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3';\n" +
-				"}"));
-		Assert.assertTrue(
-				warning1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
-						|| warning2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
-						|| warning3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
-		);
-		Assert.assertTrue(
-				warning1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
-						|| warning2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
-						|| warning3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
-		);
-		Assert.assertTrue(
-				warning1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
-						|| warning2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
-						|| warning3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
-		);
 	}
 
 	@Test

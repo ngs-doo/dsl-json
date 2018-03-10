@@ -67,7 +67,7 @@ public abstract class CollectionAnalyzer {
 
 	private static CollectionEncoder analyzeEncoding(final Type manifest, final Type element, final Class<?> collection, final DslJson json) {
 		if (!Collection.class.isAssignableFrom(collection)) return null;
-		final JsonWriter.WriteObject<?> writer = json.tryFindWriter(element);
+		final JsonWriter.WriteObject<?> writer = Object.class == element ? null : json.tryFindWriter(element);
 		if (Object.class != element && writer == null) {
 			return null;
 		}

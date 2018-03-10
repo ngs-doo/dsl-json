@@ -55,7 +55,7 @@ public abstract class OptionalAnalyzer {
 			json.registerWriter(manifest, nested);
 			return nested;
 		}
-		final JsonWriter.WriteObject<?> writer = json.tryFindWriter(content);
+		final JsonWriter.WriteObject<?> writer = Object.class == content ? null : json.tryFindWriter(content);
 		if (Object.class != content && writer == null) {
 			return null;
 		}
