@@ -23,8 +23,9 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			final Function<Object[], T> newInstance,
 			final JsonWriter.WriteObject[] encoders,
 			final DecodePropertyInfo<JsonReader.ReadObject>[] decoders,
+			final boolean alwaysSerialize,
 			final boolean skipOnUnknown) {
-		this((Type) manifest, defArgs, newInstance, encoders, decoders, skipOnUnknown);
+		this((Type) manifest, defArgs, newInstance, encoders, decoders, alwaysSerialize, skipOnUnknown);
 	}
 
 	ImmutableDescription(
@@ -33,11 +34,12 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			final Function<Object[], T> newInstance,
 			final JsonWriter.WriteObject[] encoders,
 			final DecodePropertyInfo<JsonReader.ReadObject>[] decoders,
+			final boolean alwaysSerialize,
 			final boolean skipOnUnknown) {
-		super(encoders);
+		super(encoders, alwaysSerialize);
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (defArgs == null) throw new IllegalArgumentException("defArgs can't be null");
-		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
+		if (newInstance == null) throw new IllegalArgumentException("create can't be null");
 		if (decoders == null) throw new IllegalArgumentException("decoders can't be null");
 		this.manifest = manifest;
 		this.defArgs = defArgs;
@@ -64,8 +66,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		do {
 			final int hash = reader.fillName();
 			boolean processed = false;
-			for (int i = 0; i < decoders.length; i++) {
-				final DecodePropertyInfo<JsonReader.ReadObject> ri = decoders[i];
+			for (final DecodePropertyInfo<JsonReader.ReadObject> ri : decoders) {
 				if (hash == ri.hash) {
 					if (ri.exactName) {
 						if (!reader.wasLastName(ri.name)) continue;

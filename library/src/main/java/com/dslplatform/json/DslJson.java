@@ -83,6 +83,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * object will be serialized in such a way. Regardless of this value deserialization will support all formats.
 	 */
 	public final boolean allowArrayFormat;
+
 	protected final StringCache keyCache;
 	protected final StringCache valuesCache;
 	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();

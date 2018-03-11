@@ -4,12 +4,12 @@ import com.dslplatform.json.JsonWriter;
 
 import java.util.function.Function;
 
-public class AttributeArrayEncoder<T, R> implements JsonWriter.WriteObject<T> {
+class AttributeArrayEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
 	private final Function<T, R> read;
 	private final JsonWriter.WriteObject<R> encoder;
 
-	public AttributeArrayEncoder(
+	AttributeArrayEncoder(
 			final Function<T, R> read,
 			final JsonWriter.WriteObject<R> encoder) {
 		if (read == null) throw new IllegalArgumentException("read can't be null");

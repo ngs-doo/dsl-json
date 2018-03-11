@@ -384,4 +384,33 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				"Duplicate format detected on 'com.dslplatform.json.models.DuplicateFormat'");
 	}
 
+	@Test
+	public void deserializationNameWorksWithoutInterface() {
+		checkValidCompilation(DeserializationName.class);
+	}
+
+	@Test
+	public void deserializationNameWorksWithInterface() {
+		checkValidCompilation(DeserializationNameWithInterface.class, DeserializationInterface.class);
+	}
+
+	@Test
+	public void multipleCtors() {
+		checkValidCompilation(MultipleCtors.class);
+	}
+
+	@Test
+	public void inversedCtorArguments() {
+		checkValidCompilation(InversedArguments.class);
+	}
+
+	@Test
+	public void arrayFormatAndCtors() {
+		checkValidCompilation(MultipleCtorsAndArray.class);
+	}
+
+	@Test
+	public void jacksonAnnotation() {
+		checkValidCompilation(JacksonCreator.class);
+	}
 }

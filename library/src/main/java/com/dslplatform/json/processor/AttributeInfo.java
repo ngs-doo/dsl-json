@@ -2,6 +2,7 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
@@ -16,6 +17,7 @@ public class AttributeInfo {
 	public final ExecutableElement writeMethod;
 	public final VariableElement field;
 	public final TypeMirror type;
+	public final AnnotationMirror annotation;
 	public final Element element;
 	public final boolean notNull;
 	public final boolean mandatory;
@@ -33,6 +35,7 @@ public class AttributeInfo {
 			ExecutableElement writeMethod,
 			VariableElement field,
 			TypeMirror type,
+			AnnotationMirror annotation,
 			boolean notNull,
 			boolean mandatory,
 			final int index,
@@ -48,6 +51,7 @@ public class AttributeInfo {
 		this.field = field;
 		this.element = field != null ? field : readMethod;
 		this.type = type;
+		this.annotation = annotation;
 		this.notNull = notNull;
 		this.mandatory = mandatory;
 		this.index = index;

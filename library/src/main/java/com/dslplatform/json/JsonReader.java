@@ -711,6 +711,16 @@ public final class JsonReader<TContext> {
 		return hash;
 	}
 
+	public final int fillNameWeakHash() throws IOException {
+		final int hash = calcWeakHash();
+		if (read() != ':') {
+			if (!wasWhiteSpace() || getNextToken() != ':') {
+				throw new IOException("Expecting ':' at position " + positionInStream() + ". Found " + (char) last);
+			}
+		}
+		return hash;
+	}
+
 	public final int calcHash() throws IOException {
 		if (last != '"') {
 			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
@@ -742,6 +752,56 @@ public final class JsonReader<TContext> {
 		return (int) hash;
 	}
 
+	public final int calcWeakHash() throws IOException {
+		if (last != '"') {
+			throw new IOException("Expecting '\"' at position " + positionInStream() + ". Found " + (char) last);
+		}
+		tokenStart = currentIndex;
+		int ci = currentIndex;
+		int hash = 0;
+		if (stream != null) {
+			while (ci < readLimit) {
+				final byte b = buffer[ci];
+				if (b == '"') break;
+				ci++;
+				hash += b;
+			}
+			if (ci >= readLimit) {
+				return calcWeakHashAndCopyName(hash, ci);
+			}
+			nameEnd = currentIndex = ci + 1;
+		} else {
+			while (ci < buffer.length) {
+				final byte b = buffer[ci++];
+				if (b == '"') break;
+				hash += b;
+			}
+			nameEnd = currentIndex = ci;
+		}
+		return hash;
+	}
+
+	public final int getLastHash() {
+		long hash = 0x811c9dc5;
+		if (stream != null && nameEnd == -1) {
+			int i = 0;
+			while (i < lastNameLen) {
+				final byte b = (byte)chars[i++];
+				hash ^= b;
+				hash *= 0x1000193;
+			}
+		} else {
+			int i = tokenStart;
+			int end = nameEnd - 1;
+			while (i < end) {
+				final byte b = buffer[i++];
+				hash ^= b;
+				hash *= 0x1000193;
+			}
+		}
+		return (int)hash;
+	}
+
 	private int lastNameLen;
 
 	private int calcHashAndCopyName(long hash, int ci) throws IOException {
@@ -768,6 +828,33 @@ public final class JsonReader<TContext> {
 			chars[i++] = (char) b;
 			hash ^= b;
 			hash *= 0x1000193;
+		} while (!isEndOfStream());
+		throw new IOException("JSON string was not closed with a double quote at: " + startPosition);
+	}
+
+	private int calcWeakHashAndCopyName(int hash, int ci) throws IOException {
+		int soFar = ci - tokenStart;
+		long startPosition = currentPosition - soFar;
+		while (chars.length < soFar) {
+			chars = Arrays.copyOf(chars, chars.length * 2);
+		}
+		int i = 0;
+		for (; i < soFar; i++) {
+			chars[i] = (char) buffer[i + tokenStart];
+		}
+		currentIndex = ci;
+		do {
+			final byte b = read();
+			if (b == '"') {
+				nameEnd = -1;
+				lastNameLen = i;
+				return hash;
+			}
+			if (i == chars.length) {
+				chars = Arrays.copyOf(chars, chars.length * 2);
+			}
+			chars[i++] = (char) b;
+			hash += b;
 		} while (!isEndOfStream());
 		throw new IOException("JSON string was not closed with a double quote at: " + startPosition);
 	}

@@ -20,7 +20,7 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 			final JsonReader.ReadObject<K> keyDecoder,
 			final JsonReader.ReadObject<V> valueDecoder) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
-		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
+		if (newInstance == null) throw new IllegalArgumentException("create can't be null");
 		if (keyDecoder == null) throw new IllegalArgumentException("keyDecoder can't be null");
 		if (valueDecoder == null) throw new IllegalArgumentException("valueDecoder can't be null");
 		this.manifest = manifest;

@@ -527,4 +527,18 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(ArrayFormat.class),
 				"Array format is not supported in the DSL compiler. Found on: 'com.dslplatform.json.models.ArrayFormat'.");
 	}
+
+	@Test
+	public void deserializationNameWorksWithoutInterface() {
+		checkValidCompilation(DeserializationName.class);
+	}
+
+	@Test
+	public void deserializationNameIsNotSupported() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(DeserializationNameWithInterface.class, DeserializationInterface.class),
+				"Deserialization name is not supported in the DSL compiler. Found on: 'com.dslplatform.json.models.DeserializationNameWithInterface' and used in: 'com.dslplatform.json.models.DeserializationInterface'");
+	}
 }

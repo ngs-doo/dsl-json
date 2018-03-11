@@ -24,6 +24,8 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:27.0.2'
 
-    compile 'com.dslplatform:dsl-json:1.6.4'
-    annotationProcessor 'com.dslplatform:dsl-json-processor:1.5.0'
+    compile 'com.dslplatform:dsl-json:1.7.0'
+    //compile 'com.dslplatform:dsl-json-java8:1.7.0'
+    //annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.0'
+    annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.0'
 }

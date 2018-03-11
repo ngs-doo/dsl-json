@@ -10,7 +10,7 @@ import java.io.IOException;
 public class MixinTest {
 
 	private final DslJson<Object> json = new DslJson<Object>(Settings.withRuntime());
-	private final BeanDescription<Example, Example> beanDescription1 = BeanDescription.create(
+	private final ObjectFormatDescription<Example, Example> objectFormatDescription1 = ObjectFormatDescription.create(
 			Example.class,
 			Example::new,
 			new JsonWriter.WriteObject[] {
@@ -21,28 +21,32 @@ public class MixinTest {
 					Settings.<Example, Integer>createDecoder((c, v) -> c.y = v, "y", json, int.class),
 					Settings.<Example, Long>createDecoder((c, v) -> c.x = v, "x", json, long.class)
 			},
+			json,
 			true);
 	private final MixinDescription<Iface> mixinDescription1 = new MixinDescription<>(
 			Iface.class,
-			new BeanDescription[] {beanDescription1}
+			json,
+			new ObjectDescription[] { new ObjectDescription(Example.class, objectFormatDescription1, null, true, "Example", json)}
 	);
-	private final BeanDescription<EmptyExample, EmptyExample> beanDescription2 = BeanDescription.create(
+	private final ObjectFormatDescription<EmptyExample, EmptyExample> objectFormatDescription2 = ObjectFormatDescription.create(
 			EmptyExample.class,
 			EmptyExample::new,
 			new JsonWriter.WriteObject[0],
 			new DecodePropertyInfo[0],
+			json,
 			true);
 	private final MixinDescription<IEmpty> mixinDescription2 = new MixinDescription<>(
 			IEmpty.class,
-			new BeanDescription[] {beanDescription2}
+			json,
+			new ObjectDescription[] { new ObjectDescription(EmptyExample.class, objectFormatDescription2, null, true, "EmptyExample", json)}
 	);
 	public MixinTest() {
-		json.registerReader(Example.class, beanDescription1);
-		json.registerWriter(Example.class, beanDescription1);
+		json.registerReader(Example.class, objectFormatDescription1);
+		json.registerWriter(Example.class, objectFormatDescription1);
 		json.registerReader(Iface.class, mixinDescription1);
 		json.registerWriter(Iface.class, mixinDescription1);
-		json.registerReader(EmptyExample.class, beanDescription2);
-		json.registerWriter(EmptyExample.class, beanDescription2);
+		json.registerReader(EmptyExample.class, objectFormatDescription2);
+		json.registerWriter(EmptyExample.class, objectFormatDescription2);
 		json.registerReader(IEmpty.class, mixinDescription2);
 		json.registerWriter(IEmpty.class, mixinDescription2);
 	}
@@ -77,7 +81,7 @@ public class MixinTest {
 		wo.y(200);
 		JsonWriter writer = json.newWriter();
 		json.serialize(writer, Iface.class, wo);
-		Assert.assertEquals("{\"$type\":\"com.dslplatform.json.MixinTest.Example\",\"y\":200,\"x\":100}", writer.toString());
+		Assert.assertEquals("{\"$type\":\"Example\",\"y\":200,\"x\":100}", writer.toString());
 		ByteArrayInputStream is = new ByteArrayInputStream(writer.getByteBuffer(), 0, writer.size());
 		Iface wo2 = json.deserialize(Iface.class, is);
 		Assert.assertEquals(wo.y, wo2.y());
@@ -112,7 +116,7 @@ public class MixinTest {
 		EmptyExample wo = new EmptyExample();
 		JsonWriter writer = json.newWriter();
 		json.serialize(writer, IEmpty.class, wo);
-		Assert.assertEquals("{\"$type\":\"com.dslplatform.json.MixinTest.EmptyExample\"}", writer.toString());
+		Assert.assertEquals("{\"$type\":\"EmptyExample\"}", writer.toString());
 		ByteArrayInputStream is = new ByteArrayInputStream(writer.getByteBuffer(), 0, writer.size());
 		IEmpty wo2 = json.deserialize(IEmpty.class, is);
 		Assert.assertTrue(wo2 instanceof EmptyExample);

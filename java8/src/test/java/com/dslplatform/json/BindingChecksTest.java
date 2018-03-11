@@ -1,17 +1,12 @@
 package com.dslplatform.json;
 
-import com.dslplatform.json.runtime.BeanDescription;
+import com.dslplatform.json.runtime.ObjectFormatDescription;
 import com.dslplatform.json.runtime.DecodePropertyInfo;
 import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 
 public class BindingChecksTest {
 
@@ -24,7 +19,7 @@ public class BindingChecksTest {
 	private final DslJson dslJson = new DslJson();
 
 	public BindingChecksTest() {
-		BeanDescription<MyClass, MyClass> description = BeanDescription.create(
+		ObjectFormatDescription<MyClass, MyClass> description = ObjectFormatDescription.create(
 				MyClass.class,
 				MyClass::new,
 				new JsonWriter.WriteObject[0],
@@ -33,6 +28,7 @@ public class BindingChecksTest {
 						Settings.<MyClass, String>createDecoder((c, v) -> c.s = v, "s", dslJson, false, false, 1, String.class),
 						Settings.<MyClass, Long>createDecoder((c, v) -> c.y = v, "y", dslJson, false, true, 2, long.class)
 				},
+				dslJson,
 				false
 		);
 		dslJson.registerBinder(MyClass.class, description);

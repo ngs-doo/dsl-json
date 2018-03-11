@@ -6,18 +6,8 @@ import java.util.Arrays;
 
 public abstract class BigIntegerConverter {
 
-	static final JsonReader.ReadObject<BigInteger> Reader = new JsonReader.ReadObject<BigInteger>() {
-		@Override
-		public BigInteger read(JsonReader reader) throws IOException {
-			return reader.wasNull() ? null : deserialize(reader);
-		}
-	};
-	static final JsonWriter.WriteObject<BigInteger> Writer = new JsonWriter.WriteObject<BigInteger>() {
-		@Override
-		public void write(JsonWriter writer, BigInteger value) {
-			serialize(value, writer);
-		}
-	};
+	static final JsonReader.ReadObject<BigInteger> Reader = reader -> reader.wasNull() ? null : deserialize(reader);
+	static final JsonWriter.WriteObject<BigInteger> Writer = (writer, value) -> serialize(value, writer);
 
 	private static void numberException(final JsonReader reader, final int start, final int end, String message) throws IOException {
 		final int len = end - start;

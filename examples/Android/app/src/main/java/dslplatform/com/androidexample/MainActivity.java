@@ -196,12 +196,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         DslJson<Object> dslJson = DSL.JSON();
-        //it's best to reuse writer if possible
-        //since only a single serialization in Android is done concurrently
-        //a good practice is to have a static field with a synchronized guard
-        JsonWriter writer = dslJson.newWriter();
-
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
 
         Model instance = new Model();
         instance.number = 42;
@@ -231,15 +225,13 @@ public class MainActivity extends AppCompatActivity {
         instance.map.put("abc", 678);
         instance.map.put("array", new int[] { 2, 4, 8});
         try {
-            //serialize into writer
-            dslJson.serialize(writer, instance);
-            //after serialization is done we can copy it into output stream
-            writer.toStream(os);
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            //serialize into stream
+            dslJson.serialize(instance, os);
 
             ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
-
-            //deserialized using stream API. temporary buffer is passes which should be reused if possible
-            Model deserialized = dslJson.deserialize(Model.class, is, new byte[1024]);
+            //deserialized using stream API
+            Model deserialized = dslJson.deserialize(Model.class, is);
             Toast.makeText(this, deserialized.string, Toast.LENGTH_LONG);
         } catch (IOException ex) {
             Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG);

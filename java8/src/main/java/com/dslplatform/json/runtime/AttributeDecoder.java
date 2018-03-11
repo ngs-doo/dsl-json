@@ -5,12 +5,12 @@ import com.dslplatform.json.JsonReader;
 import java.io.IOException;
 import java.util.function.BiConsumer;
 
-public class AttributeDecoder<T, P> implements JsonReader.BindObject<T> {
+class AttributeDecoder<T, P> implements JsonReader.BindObject<T> {
 
 	private final BiConsumer<T, P> write;
 	private final JsonReader.ReadObject<P> decoder;
 
-	public AttributeDecoder(
+	AttributeDecoder(
 			final BiConsumer<T, P> write,
 			final JsonReader.ReadObject<P> decoder) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");

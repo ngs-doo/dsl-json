@@ -12,7 +12,7 @@ public class BuilderTest {
 	private final DslJson<Object> json = new DslJson<Object>(Settings.withRuntime());
 
 	public BuilderTest() {
-		BeanDescription<Immutable.Builder, Immutable> description = new BeanDescription<Immutable.Builder, Immutable>(
+		ObjectFormatDescription<Immutable.Builder, Immutable> description = new ObjectFormatDescription<Immutable.Builder, Immutable>(
 				Immutable.class,
 				Immutable.Builder::new,
 				Immutable.Builder::build,
@@ -24,7 +24,7 @@ public class BuilderTest {
 						Settings.<Immutable.Builder, Integer>createDecoder(Immutable.Builder::x, "x", json, int.class),
 						Settings.<Immutable.Builder, Long>createDecoder(Immutable.Builder::y, "y", json, long.class)
 				},
-				Immutable.class.getTypeName(),
+				json,
 				true
 		);
 		json.registerReader(Immutable.class, description);

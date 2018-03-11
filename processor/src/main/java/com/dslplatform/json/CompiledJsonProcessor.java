@@ -197,7 +197,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		if (!compiledJsons.isEmpty()) {
 			Set<? extends Element> jsonConverters = roundEnv.getElementsAnnotatedWith(analysis.converterElement);
 			List<String> configurations = analysis.processConverters(jsonConverters);
-			Map<String, StructInfo> structs = analysis.processCompiledJson(compiledJsons);
+			analysis.processAnnotation(analysis.compiledJsonType, compiledJsons);
+			Map<String, StructInfo> structs = analysis.analyze();
 			CompileOptions options = new CompileOptions();
 			options.hasError = analysis.hasError();
 			String dsl = buildDsl(structs, options);
@@ -263,16 +264,21 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				options.hasError = true;
 				processingEnv.getMessager().printMessage(
 						Diagnostic.Kind.ERROR,
-						"Array format is not supported in the DSL compiler. Found on: '" + info.element.getQualifiedName().toString() + "'.",
+						"Array format is not supported in the DSL compiler. Found on: '" + info.element.getQualifiedName() + "'.",
 						info.element,
-						analysis.getAnnotation(info.element, analysis.compiledJsonType));
-			} else if (info.formats.size() > 1) {
-				options.hasError = true;
-				processingEnv.getMessager().printMessage(
-						Diagnostic.Kind.ERROR,
-						"Only one format at a time is supported in the DSL compiler. Multiple formats found on: '" + info.element.getQualifiedName().toString() + "'.",
-						info.element,
-						analysis.getAnnotation(info.element, analysis.compiledJsonType));
+						info.annotation);
+			}
+			if (info.deserializeAs == null && info.type == ObjectType.MIXIN) {
+				for (StructInfo im : info.implementations) {
+					if (!im.deserializeName.isEmpty()) {
+						options.hasError = true;
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.ERROR,
+								"Deserialization name is not supported in the DSL compiler. Found on: '" + im.element.getQualifiedName() + "' and used in: '" + info.element.getQualifiedName() + "'.",
+								im.element,
+								im.annotation);
+					}
+				}
 			}
 			if (info.type == ObjectType.ENUM) {
 				dsl.append("  enum ");
@@ -393,7 +399,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 							Diagnostic.Kind.ERROR,
 							"Both Joda Time and Java Time detected as property types. Only one supported at once.",
 							attr.element,
-							analysis.getAnnotation(info.element, analysis.compiledJsonType));
+							info.annotation);
 				}
 				tc.hasFirst = hasFirst;
 				tc.hasSecond = hasSecond;
@@ -460,7 +466,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 							+ (fieldAccess ? "field" : "getter")
 							+ "]. Alternatively register @JsonConverter for this type to support it with custom conversion.",
 					attr.element,
-					analysis.getAnnotation(info.element, analysis.compiledJsonType));
+					info.annotation);
 		}
 	}
 

@@ -73,15 +73,15 @@ public class Analysis {
 			boolean includeExactMethods) {
 		this.annotationUsage = annotationUsage;
 		this.logLevel = logLevel;
-		elements = processingEnv.getElementUtils();
-		types = processingEnv.getTypeUtils();
-		messager = processingEnv.getMessager();
-		compiledJsonElement = elements.getTypeElement(CompiledJson.class.getName());
-		compiledJsonType = types.getDeclaredType(compiledJsonElement);
-		attributeElement = elements.getTypeElement(JsonAttribute.class.getName());
-		attributeType = types.getDeclaredType(attributeElement);
-		converterElement = elements.getTypeElement(JsonConverter.class.getName());
-		converterType = types.getDeclaredType(converterElement);
+		this.elements = processingEnv.getElementUtils();
+		this.types = processingEnv.getTypeUtils();
+		this.messager = processingEnv.getMessager();
+		this.compiledJsonElement = elements.getTypeElement(CompiledJson.class.getName());
+		this.compiledJsonType = types.getDeclaredType(compiledJsonElement);
+		this.attributeElement = elements.getTypeElement(JsonAttribute.class.getName());
+		this.attributeType = types.getDeclaredType(attributeElement);
+		this.converterElement = elements.getTypeElement(JsonConverter.class.getName());
+		this.converterType = types.getDeclaredType(converterElement);
 		this.supportedTypes = supportedTypes;
 		this.containerSupport = containerSupport;
 		this.alternativeIgnore = alternativeIgnore == null ? new HashSet<String>() : alternativeIgnore;
@@ -119,18 +119,43 @@ public class Analysis {
 		return configurations;
 	}
 
-	public Map<String, StructInfo> processCompiledJson(Set<? extends Element> classes) {
+	public void processAnnotation(DeclaredType currentAnnotationType, Set<? extends Element> targets) {
 		Stack<String> path = new Stack<String>();
-		for (Element el : classes) {
-			findStructs(el, "CompiledJson requires accessible public constructor", path);
+		for (Element el : targets) {
+			Element classElement;
+			if (el instanceof TypeElement) classElement = el;
+			else classElement = el.getEnclosingElement();
+			findStructs(classElement, currentAnnotationType, currentAnnotationType + " requires accessible public constructor", path);
 		}
 		findRelatedReferences();
 		findImplementations(structs.values());
-		for (StructInfo info : structs.values()) {
+	}
+
+	public Map<String, StructInfo> analyze() {
+		for (Map.Entry<String, StructInfo> it : structs.entrySet()) {
+			final StructInfo info = it.getValue();
+			final String className = it.getKey();
+			if (info.type == ObjectType.CLASS && info.constructor == null
+					&& info.converter == null && info.matchingConstructors != null) {
+				hasError = true;
+				if (info.matchingConstructors.size() == 0) {
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"No matching constructors found for '" + info.element.asType() + "'. Make sure there is at least one matching constructor available.",
+							info.element,
+							info.annotation);
+				} else {
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Multiple matching constructors found for '" + info.element.asType() + "'. Use @CompiledJson or alternative annotations to select the appropriate constructor.",
+							info.element,
+							info.annotation);
+				}
+			}
 			if (unknownTypes != UnknownTypes.ALLOW && !info.unknowns.isEmpty()) {
 				for (Map.Entry<String, TypeMirror> kv : info.unknowns.entrySet()) {
 					AttributeInfo attr = info.attributes.get(kv.getKey());
-					if (attr != null && (attr.converter != null || attr.isJsonObject)) continue;;
+					if (attr != null && (attr.converter != null || attr.isJsonObject)) continue;
 					Map<String, Boolean> references = analyzeParts(kv.getValue());
 					for (Map.Entry<String, Boolean> pair : references.entrySet()) {
 						if (!pair.getValue()) {
@@ -143,14 +168,14 @@ public class Analysis {
 											"Property " + kv.getKey() + " is referencing unknown type: '" + kv.getValue()
 													+ "'. Register custom converter, mark property as ignored or enable unknown types",
 											attr != null ? attr.element : info.element,
-											getAnnotation(info.element, compiledJsonType));
+											info.annotation);
 								} else {
 									messager.printMessage(
 											kind,
 											"Property " + kv.getKey() + " is referencing unknown type: '" + kv.getValue() + "' which has an unknown part: '"
 													+ pair.getKey() + "'. Register custom converter, mark property as ignored or enable unknown types",
 											attr != null ? attr.element : info.element,
-											getAnnotation(info.element, compiledJsonType));
+											info.annotation);
 								}
 							}
 						}
@@ -172,7 +197,7 @@ public class Analysis {
 											"implementations with @CompiledJson. At least one " + one + " of specified " + what + " must be annotated " +
 											"with CompiledJson annotation or allow unknown types during analysis",
 									attr.element,
-									getAnnotation(info.element, compiledJsonType));
+									info.annotation);
 						}
 					}
 				}
@@ -185,20 +210,20 @@ public class Analysis {
 				if (kind == Diagnostic.Kind.ERROR || logLevel.isVisible(LogLevel.INFO)) {
 					messager.printMessage(
 							kind,
-							what + " (" + info.element.getQualifiedName() + ") is referenced, but it doesn't have registered " +
+							what + " (" + className + ") is referenced, but it doesn't have registered " +
 									"implementations with @CompiledJson. At least one " + one + " of specified " + what + " must be annotated " +
 									"with CompiledJson annotation or allow unknown types during analysis",
 							info.element,
-							getAnnotation(info.element, compiledJsonType));
+							info.annotation);
 				}
 			}
 			if (info.checkHashCollision()) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
-						"Duplicate hash value detected. Unable to create binding for: '" + info.element.getQualifiedName() + "'. Remove (or reduce) alternativeNames from @JsonAttribute to resolve this issue." + info.pathDescription(),
+						"Duplicate hash value detected. Unable to create binding for: '" + className + "'. Remove (or reduce) alternativeNames from @JsonAttribute to resolve this issue." + info.pathDescription(),
 						info.element,
-						getAnnotation(info.element, compiledJsonType));
+						info.annotation);
 			}
 			if (info.deserializeAs != null) {
 				StructInfo target = structs.get(info.deserializeAs.asType().toString());
@@ -209,23 +234,44 @@ public class Analysis {
 							Diagnostic.Kind.ERROR,
 							"Unable to find DSL-JSON metadata for: '" + info.deserializeAs.getQualifiedName() + "'. Add @CompiledJson annotation to target type.",
 							info.element,
-							getAnnotation(info.element, compiledJsonType));
+							info.annotation);
+				}
+			}
+			if (info.deserializeAs == null && info.type == ObjectType.MIXIN) {
+				Set<String> names = new HashSet<String>();
+				for(StructInfo im : info.implementations) {
+					String actualName = im.deserializeName.isEmpty() ? im.element.getQualifiedName().toString() : im.deserializeName;
+					if (!names.add(actualName)) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Duplicate deserialization name detected: '" + actualName + "' for mixin: " + className,
+								info.element,
+								info.annotation);
+					} else if (actualName.contains("\\") || actualName.contains("\"")) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Invalid deserialization name (with quotes or escape chars) detected: '" + actualName + "' for mixin: " + className,
+								info.element,
+								info.annotation);
+					}
 				}
 			}
 			if (info.type == ObjectType.CLASS && mustHaveEmptyCtor && info.converter == null && !info.hasEmptyCtor()) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
-						"'" + info.element.asType() + "' requires public no argument constructor" + info.pathDescription(),
+						"'" + className + "' requires public no argument constructor" + info.pathDescription(),
 						info.element,
-						getAnnotation(info.element, compiledJsonType));
+						info.annotation);
 			} else if (info.type == ObjectType.CLASS && !mustHaveEmptyCtor && !info.hasEmptyCtor() && info.converter == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
-						"'" + info.element.asType() + "' does not have an empty or matching constructor" + info.pathDescription(),
+						"'" + className + "' does not have an empty or matching constructor" + info.pathDescription(),
 						info.element,
-						getAnnotation(info.element, compiledJsonType));
+						info.annotation);
 			}
 
 			if (info.isMinified) {
@@ -256,7 +302,7 @@ public class Analysis {
 		if (!structs.containsKey(target.toString())) {
 			String name = "struct" + structs.size();
 			TypeElement element = (TypeElement) target.asElement();
-			StructInfo info = new StructInfo(converter, element, name);
+			StructInfo info = new StructInfo(converter, converterType, element, name);
 			structs.put(target.toString(), info);
 		}
 	}
@@ -417,6 +463,7 @@ public class Analysis {
 							method != null ? method.write : null,
 							field,
 							type,
+							annotation,
 							hasNonNullable(element),
 							hasMandatoryAnnotation(element),
 							index(element),
@@ -444,33 +491,33 @@ public class Analysis {
 						Diagnostic.Kind.ERROR,
 						"Duplicate alias detected on " + (attr.field != null ? "field: " : "property: ") + attr.name,
 						attr.element,
-						getAnnotation(info.element, compiledJsonType));
+						info.annotation);
 			}
 			if (!typeResolved && hasUnknown) {
 				info.unknowns.put(attr.id, referenceType);
 			}
 			info.attributes.put(attr.id, attr);
 			info.properties.add(attr.element);
-			checkRelatedProperty(type, target, info.element, element, path);
+			checkRelatedProperty(type, info.discoveredBy, target, info.element, element, path);
 		}
 		path.pop();
 	}
 
-	private void checkRelatedProperty(TypeMirror returnType, String access, Element inside, Element property, Stack<String> path) {
+	private void checkRelatedProperty(TypeMirror returnType, DeclaredType discoveredBy, String access, Element inside, Element property, Stack<String> path) {
 		TypeMirror converter = findConverter(property);
 		if (converter != null) return;
 		String typeName = returnType.toString();
 		if (supportedTypes.contains(typeName)) return;
 		TypeElement el = elements.getTypeElement(typeName);
 		if (el != null) {
-			findStructs(el, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+			findStructs(el, discoveredBy, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
 			return;
 		}
 		if (returnType instanceof ArrayType) {
 			ArrayType at = (ArrayType) returnType;
 			el = elements.getTypeElement(at.getComponentType().toString());
 			if (el != null) {
-				findStructs(el, el + " is referenced as array " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+				findStructs(el, discoveredBy,el + " is referenced as array " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
 				return;
 			}
 		}
@@ -485,21 +532,21 @@ public class Analysis {
 				el = elements.getTypeElement(st);
 				if (el != null) {
 					//TODO: check for el.getQualifiedName().toString().equals(st)
-					findStructs(el, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+					findStructs(el, discoveredBy, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
 				}
 			}
 		}
 	}
 
-	private void findStructs(Element el, String errorMessge, Stack<String> path) {
+	private void findStructs(Element el, DeclaredType discoveredBy, String errorMessge, Stack<String> path) {
 		if (!(el instanceof TypeElement)) return;
 		String typeName = el.asType().toString();
 		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) return;
-		TypeElement element = (TypeElement) el;
+		final TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
 		boolean isJsonObject = isJsonObject(element);
-		AnnotationMirror annotation = getAnnotation(element, compiledJsonType);
+		final AnnotationMirror annotation = scanClassForAnnotation(element, discoveredBy);
 		if (!element.getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
@@ -548,7 +595,7 @@ public class Analysis {
 							if (deserializeAs.asType().toString().equals(element.asType().toString())) {
 								deserializeAs = null;
 							} else {
-								findStructs(deserializeAs, errorMessge, path);
+								findStructs(deserializeAs, discoveredBy, errorMessge, path);
 							}
 						}
 					}
@@ -572,7 +619,6 @@ public class Analysis {
 				}
 			}
 			CompiledJson.Format[] formats = getFormats(annotation);
-
 			if ((new HashSet<CompiledJson.Format>(Arrays.asList(formats))).size() != formats.length) {
 				hasError = true;
 				messager.printMessage(
@@ -585,16 +631,19 @@ public class Analysis {
 			StructInfo info =
 					new StructInfo(
 							element,
+							discoveredBy,
 							name,
 							type,
 							isJsonObject,
-							findMatchingConstructor(element),
+							findMatchingConstructors(element),
+							findAnnotatedConstructor(element, discoveredBy),
 							annotation,
 							onUnknown,
 							typeSignature,
 							deserializeAs,
+							deserializeName(annotation),
 							isMinified(annotation),
-							getFormats(annotation));
+							formats);
 			info.path.addAll(path);
 			if (type == ObjectType.ENUM) {
 				info.constants.addAll(getEnumConstants(info.element));
@@ -625,7 +674,7 @@ public class Analysis {
 		}
 	}
 
-	public ExecutableElement findMatchingConstructor(Element element) {
+	public List<ExecutableElement> findMatchingConstructors(Element element) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -633,15 +682,29 @@ public class Analysis {
 		}
 		List<ExecutableElement> matchingCtors = new ArrayList<ExecutableElement>();
 		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
-			AnnotationMirror dslAnn = getAnnotation(element, compiledJsonType);
-			if (dslAnn != null) {
+			if (constructor.getModifiers().contains(Modifier.PUBLIC)) {
+				matchingCtors.add(constructor);
+			}
+		}
+		return matchingCtors;
+	}
+
+	public ExecutableElement findAnnotatedConstructor(Element element, DeclaredType discoveredBy) {
+		if (element.getKind() == ElementKind.INTERFACE
+				|| element.getKind() == ElementKind.ENUM
+				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT)) {
+			return null;
+		}
+		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
+			AnnotationMirror discAnn = getAnnotation(constructor, discoveredBy);
+			if (discAnn != null) {
 				if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
 					hasError = true;
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
-							"Constructor in '" + element.asType() + "' is annotated with @CompiledJson, but it's not public.",
+							"Constructor in '" + element.asType() + "' is annotated with " + discoveredBy + ", but it's not public.",
 							constructor,
-							dslAnn);
+							discAnn);
 				}
 				return constructor;
 			}
@@ -658,27 +721,6 @@ public class Analysis {
 					return constructor;
 				}
 			}
-			if (constructor.getModifiers().contains(Modifier.PUBLIC)) {
-				matchingCtors.add(constructor);
-			}
-		}
-		if (matchingCtors.size() == 1) return matchingCtors.get(0);
-		for (ExecutableElement ctor : matchingCtors) {
-			if (ctor.getParameters().size() == 0) return ctor;
-		}
-		hasError = true;
-		if (matchingCtors.size() == 0) {
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"No matching constructors found for '" + element.asType() + "'. Make sure there is at least one matching constructor available.",
-					element,
-					getAnnotation(element, compiledJsonType));
-		} else {
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"Multiple matching constructors found for '" + element.asType() + "'. Use @CompiledJson or alternative annotations to select the appropriate constructor.",
-					element,
-					getAnnotation(element, compiledJsonType));
 		}
 		return null;
 	}
@@ -991,12 +1033,23 @@ public class Analysis {
 		return false;
 	}
 
+	public AnnotationMirror scanClassForAnnotation(TypeElement element, DeclaredType annotationType) {
+		AnnotationMirror target = getAnnotation(element, annotationType);
+		if (target != null) return target;
+		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
+			AnnotationMirror discAnn = getAnnotation(constructor, annotationType);
+			if (discAnn != null) return discAnn;
+		}
+		return null;
+	}
+
 	public AnnotationMirror getAnnotation(Element element, DeclaredType annotationType) {
 		for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
 			if (types.isSameType(mirror.getAnnotationType(), annotationType)) {
 				return mirror;
 			}
 		}
+
 		return null;
 	}
 
@@ -1029,6 +1082,17 @@ public class Analysis {
 			}
 		}
 		return null;
+	}
+
+	public static String deserializeName(AnnotationMirror annotation) {
+		if (annotation == null) return "";
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("deserializeName()")) {
+				return values.get(ee).getValue().toString();
+			}
+		}
+		return "";
 	}
 
 	public boolean hasMandatoryAnnotation(Element property) {

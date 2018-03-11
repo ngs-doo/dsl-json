@@ -160,6 +160,7 @@ public abstract class ImmutableAnalyzer {
 				},
 				writeProps,
 				readProps,
+				!json.omitDefaults,
 				true);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);

@@ -36,7 +36,7 @@ public final class EnumDescription<T extends Enum<T>> implements JsonWriter.Writ
 		final int hash = reader.calcHash();
 		for (final DecodePropertyInfo<T> ri : decoders) {
 			if (hash == ri.hash) {
-				if (ri.exactName && !reader.wasLastName(ri.name)) continue;
+				if (ri.exactName && !reader.wasLastName(ri.nameBytes)) continue;
 				return ri.value;
 			}
 		}

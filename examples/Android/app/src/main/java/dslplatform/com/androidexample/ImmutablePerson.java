@@ -10,6 +10,7 @@ public class ImmutablePerson {
 	public final String lastName;
 	public final int age;
 
+	//Java8 version supports this out of the box
 	public ImmutablePerson(String firstName, String lastName, int age) {
 		this.firstName = firstName;
 		this.lastName = lastName;

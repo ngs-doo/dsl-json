@@ -1,0 +1,33 @@
+group 'kotlin-dsl-json'
+version '1.7.0'
+
+buildscript {
+  ext.kotlin_version = '1.2.30'
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+  }
+}
+
+apply plugin: 'kotlin'
+apply plugin: 'application'
+
+mainClassName = 'json.ExampleKt'
+
+defaultTasks 'run'
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+  compile "com.dslplatform:dsl-json-java8:1.7.0"
+}
+
+task wrapper(type: Wrapper) {
+  gradleVersion = "4.1"
+}

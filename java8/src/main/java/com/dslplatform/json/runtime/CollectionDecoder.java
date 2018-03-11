@@ -18,7 +18,7 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 			final Callable<T> newInstance,
 			final JsonReader.ReadObject<E> decoder) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
-		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
+		if (newInstance == null) throw new IllegalArgumentException("create can't be null");
 		if (decoder == null) throw new IllegalArgumentException("decoder can't be null");
 		this.manifest = manifest;
 		this.newInstance = newInstance;

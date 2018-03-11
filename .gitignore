@@ -4,7 +4,8 @@ out/
 *.properties
 *.class
 target/
-out/
+build/
+.gradle/
 *.iml
 *.jar
 
@@ -16,3 +17,4 @@ processor/ExternalSerialization.java
 processor/com.dslplatform.json.Configuration
 processor/META-INF/services/com.dslplatform.json.Configuration
 processor/dsl_json
+processor/dsl_json_Annotation_Processor_External_Serialization.java

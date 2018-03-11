@@ -82,4 +82,13 @@ public @interface CompiledJson {
 	 * @return deserialize into a specified signature
 	 */
 	Class deserializeAs() default CompiledJson.class;
+
+	/**
+	 * When used in mixin which doesn't have deserializeAs "$type":name will be injected into JSON.
+	 * If not specified name will be the class full name, otherwise it will use value provided here.
+	 * Value must be unique across all mixin implementations.
+	 *
+	 * @return deserialization hint
+	 */
+	String deserializeName() default "";
 }
