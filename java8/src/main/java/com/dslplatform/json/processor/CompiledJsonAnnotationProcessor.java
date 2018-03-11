@@ -165,7 +165,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		for (Map.Entry<String, StructInfo> kv : structs.entrySet()) {
 			StructInfo si = kv.getValue();
 			if (si.type == ObjectType.CLASS && si.constructor != null && !si.attributes.isEmpty()) {
-				code.append("\t\tcom.dslplatform.json.runtime.BeanDescription description").append(si.name);
+				code.append("\t\tcom.dslplatform.json.runtime.BeanDescription ").append(si.name);
 				code.append(" = register_").append(si.name).append("(json);\n");
 			} else if (si.type == ObjectType.CONVERTER) {
 				String type = typeOrClass(nonGenericObject(kv.getKey()), kv.getKey());
@@ -173,14 +173,17 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				code.append("\t\tjson.registerReader(").append(type).append(", ").append(si.converter).append(".JSON_READER);\n");
 			}
 		}
-		for (StructInfo si : structs.values()) {
-			if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
-				code.append("\t\tcom.dslplatform.json.runtime.MixinDescription description").append(si.name);
-				code.append(" = register_").append(si.name).append("(json");
+		for (Map.Entry<String, StructInfo> kv : structs.entrySet()) {
+			StructInfo si = kv.getValue();
+			if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty() && si.deserializeAs == null) {
+				code.append("\t\tregister_").append(si.name).append("(json");
 				for (StructInfo im : si.implementations) {
-					code.append(", ").append("description").append(im.name);
+					code.append(", ").append(im.name);
 				}
 				code.append(");\n");
+			} else if (si.type == ObjectType.MIXIN && si.deserializeAs != null) {
+				String typeMixin = typeOrClass(nonGenericObject(kv.getKey()), kv.getKey());
+				code.append("\t\tjson.registerReader(").append(typeMixin).append(", ").append(si.deserializeTarget().name).append(");\n");
 			}
 		}
 		code.append("\t}\n");
@@ -197,7 +200,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
 				code.append("\t\treturn description;\n");
 				code.append("\t}\n");
-			} else if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
+			} else if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty() && si.deserializeAs == null) {
 				mixinDescription(code, si, className, structs);
 				code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
 				code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
@@ -248,7 +251,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 		code.setLength(code.length() - 2);
 		code.append("\n\t\t\t},\n");
-		code.append("\t\t\t\"").append(className.replace("$", ".")).append("\",\n");
+		code.append("\t\t\t\"").append(className).append("\",\n");
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) code.append("\t\t\tfalse\n");
 		else code.append("\t\t\ttrue\n");
 		code.append("\n\t\t);\n");
@@ -279,7 +282,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 		code.setLength(code.length() - 2);
 		code.append("\n\t\t\t},\n");
-		code.append("\t\t\t\"").append(className.replace("$", ".")).append("\",\n");
+		code.append("\t\t\t\"").append(className).append("\",\n");
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) code.append("\t\t\tfalse\n");
 		else code.append("\t\t\ttrue\n");
 		code.append("\t\t);\n");
