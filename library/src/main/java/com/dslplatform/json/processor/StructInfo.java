@@ -57,7 +57,7 @@ public class StructInfo {
 	public StructInfo(TypeElement converter, TypeElement target, String name) {
 		this.element = target;
 		this.name = name;
-		this.type = ObjectType.CLASS;
+		this.type = ObjectType.CONVERTER;
 		this.converter = converter.getQualifiedName().toString();
 		this.constructor = null;
 		this.annotation = null;

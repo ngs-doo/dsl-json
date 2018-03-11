@@ -3,7 +3,6 @@ package com.dslplatform.json;
 import com.dslplatform.json.models.*;
 import com.dslplatform.json.processor.CompiledJsonAnnotationProcessor;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.annotation.processing.Processor;

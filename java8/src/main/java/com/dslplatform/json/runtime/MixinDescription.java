@@ -17,18 +17,18 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 	private static final byte[] hashAscii = "\"$type\":".getBytes(utf8);
 
 	private final Type manifest;
-	private final BeanDescription<T>[] descriptions;
+	private final BeanDescription<Object, T>[] descriptions;
 	private final boolean exactMatch;
 
 	public MixinDescription(
 			final Class<T> manifest,
-			final BeanDescription<T>[] descriptions) {
+			final BeanDescription<Object, T>[] descriptions) {
 		this((Type) manifest, descriptions);
 	}
 
 	MixinDescription(
 			final Type manifest,
-			final BeanDescription<T>[] descriptions) {
+			final BeanDescription<Object, T>[] descriptions) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (descriptions == null || descriptions.length == 0) {
 			throw new IllegalArgumentException("descriptions can't be null or empty");
@@ -56,10 +56,10 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();
-		for (BeanDescription<T> bd : descriptions) {
+		for (final BeanDescription<Object, T> bd : descriptions) {
 			if (bd.typeHash != hash) continue;
 			if (exactMatch && !reader.wasLastName(bd.typeName)) continue;
-			final T instance;
+			final Object instance;
 			try {
 				instance = bd.newInstance.call();
 			} catch (Exception e) {
@@ -68,7 +68,8 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			if (reader.getNextToken() == JsonWriter.COMMA) {
 				reader.getNextToken();
 			}
-			return bd.bindObject(reader, instance);
+			bd.bindObject(reader, instance);
+			return bd.finalize.apply(instance);
 		}
 		throw new IOException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest + ". Add @CompiledJson to specified type to allow deserialization into it");
 	}
@@ -81,9 +82,9 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		}
 		writer.writeByte(JsonWriter.OBJECT_START);
 		writer.writeAscii(hashAscii);
-		Class<?> manifest = instance.getClass();
-		for (BeanDescription<T> bd : descriptions) {
-			if (manifest == bd.manifest) {
+		final Class<?> current = instance.getClass();
+		for (BeanDescription<Object, T> bd : descriptions) {
+			if (current == bd.manifest) {
 				writer.writeAscii(bd.typeName);
 				writer.writeByte(JsonWriter.COMMA);
 				int pos = writer.size();

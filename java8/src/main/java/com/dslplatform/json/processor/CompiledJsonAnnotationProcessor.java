@@ -157,14 +157,30 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		return "new com.dslplatform.json.runtime.TypeDefinition<" + typeName + ">(){}.type";
 	}
 
-	private String buildCode(Map<String, StructInfo> structs) {
+	private static String buildCode(final Map<String, StructInfo> structs) {
 		final StringBuilder code = new StringBuilder();
 		code.append("public class dsl_json_Annotation_Processor_External_Serialization implements com.dslplatform.json.Configuration {\n");
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
+		for (Map.Entry<String, StructInfo> kv : structs.entrySet()) {
+			StructInfo si = kv.getValue();
+			if (si.type == ObjectType.CLASS && si.constructor != null && !si.attributes.isEmpty()) {
+				code.append("\t\tcom.dslplatform.json.runtime.BeanDescription description").append(si.name);
+				code.append(" = register_").append(si.name).append("(json);\n");
+			} else if (si.type == ObjectType.CONVERTER) {
+				String type = typeOrClass(nonGenericObject(kv.getKey()), kv.getKey());
+				code.append("\t\tjson.registerWriter(").append(type).append(", ").append(si.converter).append(".JSON_WRITER);\n");
+				code.append("\t\tjson.registerReader(").append(type).append(", ").append(si.converter).append(".JSON_READER);\n");
+			}
+		}
 		for (StructInfo si : structs.values()) {
-			if (si.type == ObjectType.CLASS && (si.hasEmptyCtor() || si.constructor != null) && !si.attributes.isEmpty()) {
-				code.append("\t\tregister_").append(si.name).append("(json);\n");
+			if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
+				code.append("\t\tcom.dslplatform.json.runtime.MixinDescription description").append(si.name);
+				code.append(" = register_").append(si.name).append("(json");
+				for (StructInfo im : si.implementations) {
+					code.append(", ").append("description").append(im.name);
+				}
+				code.append(");\n");
 			}
 		}
 		code.append("\t}\n");
@@ -173,12 +189,19 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			String className = it.getKey();
 			if (si.type == ObjectType.CLASS && !si.attributes.isEmpty()) {
 				if (si.hasEmptyCtor()) {
-					emptyCtorDescription(code, si, className);
+					emptyCtorDescription(code, si, className, structs);
 				} else if (si.constructor != null) {
-					fromCtorDescription(code, si, className);
+					fromCtorDescription(code, si, className, structs);
 				}
 				code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
 				code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
+				code.append("\t\treturn description;\n");
+				code.append("\t}\n");
+			} else if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
+				mixinDescription(code, si, className, structs);
+				code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
+				code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
+				code.append("\t\treturn description;\n");
 				code.append("\t}\n");
 			}
 		}
@@ -186,7 +209,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		return code.toString();
 	}
 
-	private void fromCtorDescription(final StringBuilder code, final StructInfo si, final String className) {
+	private static void fromCtorDescription(final StringBuilder code, final StructInfo si, final String className, final Map<String, StructInfo> structs) {
 		code.append("\tprivate static class builder").append(si.name).append(" {\n");
 		for (VariableElement p : si.constructor.getParameters()) {
 			//TODO: default
@@ -201,75 +224,96 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append(");\n\t\t}\n");
 		final String builderName = "builder" + si.name;
 		code.append("\t}\n");
-		code.append("\tprivate static void register_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
-		code.append("\t\tcom.dslplatform.json.runtime.BeanDescription<").append(builderName).append("> builderDescription = new com.dslplatform.json.runtime.BeanDescription<>(\n");
-		code.append("\t\t\t").append(builderName).append(".class,\n");
-		code.append("\t\t\t").append(builderName).append("::new,\n");
-		code.append("\t\t\tnew com.dslplatform.json.JsonWriter.WriteObject[0],\n");
-		code.append("\t\t\tnew com.dslplatform.json.runtime.DecodePropertyInfo[] {\n");
-		for (AttributeInfo attr : si.attributes.values()) {
-			String mn = si.minifiedNames.get(attr.id);
-			addAttributeReader(code, builderName, attr, mn != null ? mn : attr.id);
-			for (String an : attr.alternativeNames) {
-				addAttributeReader(code, builderName, attr, an);
-			}
-		}
-		code.setLength(code.length() - 2);
-		code.append("\n\t\t\t},\n");
-		code.append("\t\t\t");
-		if (si.onUnknown == CompiledJson.Behavior.FAIL) code.append("false");
-		else code.append("true");
-		code.append("\n\t\t);\n");
-		code.append("\t\tcom.dslplatform.json.runtime.BuilderDescription<").append(className).append("> description = new com.dslplatform.json.runtime.BuilderDescription<>(\n");
+		code.append("\tprivate static com.dslplatform.json.runtime.BeanDescription<").append(builderName);
+		code.append(", ").append(className).append("> register_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
+		code.append("\t\tcom.dslplatform.json.runtime.BeanDescription<").append(builderName).append(", ");
+		code.append(className).append("> description = new com.dslplatform.json.runtime.BeanDescription<");
+		code.append(builderName).append(", ").append(className).append(">(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
-		code.append("\t\t\tbuilder").append(si.name).append("::new,\n");
-		code.append("\t\t\t").append("builderDescription,\n");
+		code.append("\t\t\t").append(builderName).append("::new,\n");
 		code.append("\t\t\tbuilder").append(si.name).append("::__buildFromBuilder__,\n");
 		code.append("\t\t\tnew com.dslplatform.json.JsonWriter.WriteObject[] {\n");
 		for (AttributeInfo attr : si.attributes.values()) {
-			addAttributeWriter(code, className, attr);
-		}
-		code.setLength(code.length() - 2);
-		code.append("\n\t\t\t});\n");
-	}
-
-	private void emptyCtorDescription(final StringBuilder code, final StructInfo si, final String className) {
-		code.append("\tprivate static void register_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
-		code.append("\t\tcom.dslplatform.json.runtime.BeanDescription<").append(className).append("> description = new com.dslplatform.json.runtime.BeanDescription<>(\n");
-		code.append("\t\t\t").append(className).append(".class,\n");
-		code.append("\t\t\t").append(className).append("::new,\n");
-		code.append("\t\t\tnew com.dslplatform.json.JsonWriter.WriteObject[] {\n");
-		for (AttributeInfo attr : si.attributes.values()) {
-			addAttributeWriter(code, className, attr);
+			addAttributeWriter(code, className, attr, structs);
 		}
 		code.setLength(code.length() - 2);
 		code.append("\n\t\t\t},\n");
 		code.append("\t\t\tnew com.dslplatform.json.runtime.DecodePropertyInfo[] {\n");
 		for (AttributeInfo attr : si.attributes.values()) {
 			String mn = si.minifiedNames.get(attr.id);
-			addAttributeReader(code, className, attr, mn != null ? mn : attr.id);
+			addAttributeReader(code, builderName, attr, mn != null ? mn : attr.id, structs);
 			for (String an : attr.alternativeNames) {
-				addAttributeReader(code, className, attr, an);
+				addAttributeReader(code, builderName, attr, an, structs);
 			}
 		}
 		code.setLength(code.length() - 2);
 		code.append("\n\t\t\t},\n");
-		code.append("\t\t\t");
-		if (si.onUnknown == CompiledJson.Behavior.FAIL) code.append("false");
-		else code.append("true");
-		code.append(");\n");
+		code.append("\t\t\t\"").append(className.replace("$", ".")).append("\",\n");
+		if (si.onUnknown == CompiledJson.Behavior.FAIL) code.append("\t\t\tfalse\n");
+		else code.append("\t\t\ttrue\n");
+		code.append("\n\t\t);\n");
+	}
+
+	private static void emptyCtorDescription(final StringBuilder code, final StructInfo si, final String className, final Map<String, StructInfo> structs) {
+		code.append("\tprivate static com.dslplatform.json.runtime.BeanDescription<").append(className).append(", ");
+		code.append(className).append("> register_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
+		code.append("\t\tcom.dslplatform.json.runtime.BeanDescription<").append(className).append(", ").append(className);
+		code.append("> description = new com.dslplatform.json.runtime.BeanDescription<");
+		code.append(className).append(", ").append(className).append(">(\n");
+		code.append("\t\t\t").append(className).append(".class,\n");
+		code.append("\t\t\t").append(className).append("::new,\n");
+		code.append("\t\t\tt -> t,\n");
+		code.append("\t\t\tnew com.dslplatform.json.JsonWriter.WriteObject[] {\n");
+		for (AttributeInfo attr : si.attributes.values()) {
+			addAttributeWriter(code, className, attr, structs);
+		}
+		code.setLength(code.length() - 2);
+		code.append("\n\t\t\t},\n");
+		code.append("\t\t\tnew com.dslplatform.json.runtime.DecodePropertyInfo[] {\n");
+		for (AttributeInfo attr : si.attributes.values()) {
+			String mn = si.minifiedNames.get(attr.id);
+			addAttributeReader(code, className, attr, mn != null ? mn : attr.id, structs);
+			for (String an : attr.alternativeNames) {
+				addAttributeReader(code, className, attr, an, structs);
+			}
+		}
+		code.setLength(code.length() - 2);
+		code.append("\n\t\t\t},\n");
+		code.append("\t\t\t\"").append(className.replace("$", ".")).append("\",\n");
+		if (si.onUnknown == CompiledJson.Behavior.FAIL) code.append("\t\t\tfalse\n");
+		else code.append("\t\t\ttrue\n");
+		code.append("\t\t);\n");
 		code.append("\t\tjson.registerBinder(").append(className).append(".class, description);\n");
 	}
 
-	private static void addAttributeWriter(StringBuilder code, String className, AttributeInfo attr) {
-		if (attr.converter != null) {
-			code.append("\t\t\t\tnew com.dslplatform.json.runtime.AttributeEncoder<>(");
+	private static void mixinDescription(final StringBuilder code, final StructInfo si, final String className, final Map<String, StructInfo> structs) {
+		code.append("\tprivate static com.dslplatform.json.runtime.MixinDescription<").append(className).append("> register_").append(si.name).append("(com.dslplatform.json.DslJson json");
+		for(StructInfo im : si.implementations) {
+			code.append(", com.dslplatform.json.runtime.BeanDescription bean").append(im.name);
+		}
+		code.append(") {\n");
+		code.append("\t\tcom.dslplatform.json.runtime.MixinDescription<").append(className).append("> description = new com.dslplatform.json.runtime.MixinDescription<>(\n");
+		code.append("\t\t\t").append(className).append(".class,\n");
+		code.append("\t\t\tnew com.dslplatform.json.runtime.BeanDescription[] {\n");
+		for (StructInfo im : si.implementations) {
+			code.append("\t\t\t\tbean").append(im.name).append(",\n");
+		}
+		code.setLength(code.length() - 2);
+		code.append("\n\t\t\t}\n");
+		code.append("\t\t);\n");
+	}
+
+	private static void addAttributeWriter(final StringBuilder code, final String className, final AttributeInfo attr, final Map<String, StructInfo> structs) {
+		final String objectType = nonGenericObject(attr.type.toString());
+		final String converter = findConverter(attr, structs);
+		if (converter != null) {
+			code.append("\t\t\t\tnew com.dslplatform.json.runtime.AttributeObjectEncoder<");
+			code.append(className).append(", ").append(objectType).append(">(");
 			if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
 			else code.append("c -> c.").append(attr.field.getSimpleName());
 			code.append(", \"").append(attr.id).append("\", !json.omitDefaults, ");
-			code.append(attr.converter.toString()).append(".JSON_WRITER),\n");
+			code.append(converter).append(".JSON_WRITER),\n");
 		} else {
-			String objectType = nonGenericObject(attr.type.toString());
 			code.append("\t\t\t\tcom.dslplatform.json.runtime.Settings.<");
 			code.append(className).append(", ").append(objectType).append(">createEncoder(");
 			if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
@@ -279,23 +323,32 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 	}
 
-	private static void addAttributeReader(StringBuilder code, String className, AttributeInfo attr, String alias) {
-		if (attr.converter != null) {
-			code.append("\t\t\t\tnew com.dslplatform.json.runtime.DecodePropertyInfo<>(\"");
-			code.append(alias).append("\", ");
+	private static String findConverter(AttributeInfo attr, Map<String, StructInfo> structs) {
+		if (attr.converter != null) return attr.converter.toString();
+		StructInfo target = structs.get(attr.type.toString());
+		if (target == null || target.type != ObjectType.CONVERTER) return null;
+		return target.converter;
+	}
+
+	private static void addAttributeReader(StringBuilder code, String className, AttributeInfo attr, String alias, Map<String, StructInfo> structs) {
+		final String objectType = nonGenericObject(attr.type.toString());
+		final String converter = findConverter(attr, structs);
+		if (converter != null) {
+			code.append("\t\t\t\tnew com.dslplatform.json.runtime.DecodePropertyInfo<>(\"").append(alias).append("\", ");
 			if (attr.fullMatch) code.append("true, ");
 			else code.append("false, ");
 			if (attr.mandatory) code.append("true, ");
 			else code.append("false, ");
-			code.append("new com.dslplatform.json.runtime.AttributeDecoder<>((i, v) -> i.");
+			code.append(attr.index);
+			code.append(", new com.dslplatform.json.runtime.AttributeDecoder<").append(className).append(", ");
+			code.append(objectType).append(">((i, v) -> i.");
 			if (attr.writeMethod != null) {
 				code.append(attr.writeMethod.getSimpleName()).append("(").append("v").append(")");
 			} else {
 				code.append(attr.field.getSimpleName()).append(" = ").append("v");
 			}
-			code.append(", ").append(attr.converter.toString()).append(".JSON_READER)),\n");
+			code.append(", ").append(converter).append(".JSON_READER)),\n");
 		} else {
-			String objectType = nonGenericObject(attr.type.toString());
 			code.append("\t\t\t\tcom.dslplatform.json.runtime.Settings.<");
 			code.append(className).append(", ").append(objectType).append(">createDecoder((i, v) -> i.");
 			if (attr.writeMethod != null) {

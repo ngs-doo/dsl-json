@@ -7,13 +7,15 @@ import java.io.IOException;
 import java.lang.reflect.*;
 import java.nio.charset.Charset;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
-public final class BeanDescription<T> extends WriteDescription<T> implements JsonReader.ReadObject<T>, JsonReader.BindObject<T> {
+public final class BeanDescription<B, T> extends WriteDescription<T> implements JsonReader.ReadObject<T>, JsonReader.BindObject<B> {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
 
 	final Type manifest;
-	final Callable<T> newInstance;
+	final Callable<B> newInstance;
+	final Function<B, T> finalize;
 	private final DecodePropertyInfo<JsonReader.BindObject>[] decoders;
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
@@ -21,48 +23,53 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 	final int typeHash;
 	final byte[] typeName;
 
-	public BeanDescription(
-			final Class<T> manifest,
-			final Callable<T> newInstance,
+	public static <D> BeanDescription<D, D> create(
+			final Class<D> manifest,
+			final Callable<D> newInstance,
 			final JsonWriter.WriteObject[] encoders,
 			final DecodePropertyInfo<JsonReader.BindObject>[] decoders,
 			final boolean skipOnUnknown) {
-		this((Type) manifest, newInstance, encoders, decoders, skipOnUnknown);
+		return new BeanDescription<>(manifest, newInstance, t -> t, encoders, decoders, manifest.getTypeName(), skipOnUnknown);
 	}
 
-	BeanDescription(
+	public BeanDescription(
 			final Type manifest,
-			final Callable<T> newInstance,
+			final Callable<B> newInstance,
+			final Function<B, T> finalize,
 			final JsonWriter.WriteObject[] encoders,
 			final DecodePropertyInfo<JsonReader.BindObject>[] decoders,
+			final String typeName,
 			final boolean skipOnUnknown) {
 		super(encoders);
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (newInstance == null) throw new IllegalArgumentException("newInstance can't be null");
 		if (decoders == null) throw new IllegalArgumentException("decoders can't be null");
+		if (typeName == null) throw new IllegalArgumentException("typeName can't be null");
 		this.manifest = manifest;
 		this.newInstance = newInstance;
+		this.finalize = finalize;
 		this.decoders = DecodePropertyInfo.prepare(decoders);
 		this.skipOnUnknown = skipOnUnknown;
 		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
 		this.hasMandatory = mandatoryFlag != 0;
-		String name = manifest.getTypeName().replace("$", ".");
+		String name = typeName.replace("$", ".");
 		this.typeName = ("\"" + name + "\"").getBytes(utf8);
 		this.typeHash = DecodePropertyInfo.calcHash(name);
 	}
 
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
-		final T instance;
+		final B instance;
 		try {
 			instance = newInstance.call();
 		} catch (Exception e) {
 			throw new IOException("Unable to create an instance of " + manifest, e);
 		}
-		return bind(reader, instance);
+		bind(reader, instance);
+		return finalize.apply(instance);
 	}
 
-	public T bind(final JsonReader reader, final T instance) throws IOException {
+	public B bind(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() != '{') {
 			throw new IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
 		}
@@ -70,7 +77,7 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 		return bindObject(reader, instance);
 	}
 
-	public T bindObject(final JsonReader reader, final T instance) throws IOException {
+	public B bindObject(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() == '}') {
 			if (hasMandatory) {
 				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, decoders);

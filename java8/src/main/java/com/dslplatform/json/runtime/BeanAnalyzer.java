@@ -100,7 +100,7 @@ public abstract class BeanAnalyzer {
 		return null;
 	};
 
-	private static <T> BeanDescription<T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
+	private static <T> BeanDescription<T, T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
 		if (raw.isArray()
 				|| Object.class == manifest
 				|| Collection.class.isAssignableFrom(raw)
@@ -144,7 +144,7 @@ public abstract class BeanAnalyzer {
 		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
 		final DecodePropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new DecodePropertyInfo[0]);
-		final BeanDescription<T> converter = new BeanDescription<T>(manifest, newInstance, writeProps, readProps, true);
+		final BeanDescription<T, T> converter = new BeanDescription<T, T>(manifest, newInstance, t -> t, writeProps, readProps, manifest.getTypeName(), true);
 		if (!hasEncoder) json.registerWriter(manifest, converter);
 		if (!hasDecoder) json.registerReader(manifest, converter);
 		if (!hasBinder) json.registerBinder(manifest, converter);

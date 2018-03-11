@@ -10,7 +10,7 @@ import java.io.IOException;
 public class MixinTest {
 
 	private final DslJson<Object> json = new DslJson<Object>(Settings.withRuntime());
-	private final BeanDescription<Example> beanDescription1 = new BeanDescription<>(
+	private final BeanDescription<Example, Example> beanDescription1 = BeanDescription.create(
 			Example.class,
 			Example::new,
 			new JsonWriter.WriteObject[] {
@@ -26,7 +26,7 @@ public class MixinTest {
 			Iface.class,
 			new BeanDescription[] {beanDescription1}
 	);
-	private final BeanDescription<EmptyExample> beanDescription2 = new BeanDescription<>(
+	private final BeanDescription<EmptyExample, EmptyExample> beanDescription2 = BeanDescription.create(
 			EmptyExample.class,
 			EmptyExample::new,
 			new JsonWriter.WriteObject[0],
