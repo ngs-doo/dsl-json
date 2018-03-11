@@ -8,7 +8,7 @@ import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.function.Function;
 
-class LazyAttributeEncoder<T, R> implements JsonWriter.WriteObject<T> {
+class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
 
@@ -19,7 +19,7 @@ class LazyAttributeEncoder<T, R> implements JsonWriter.WriteObject<T> {
 	private final DslJson json;
 	private final Type type;
 
-	LazyAttributeEncoder(
+	LazyAttributeObjectEncoder(
 			final Function<T, R> read,
 			final String name,
 			final DslJson json,

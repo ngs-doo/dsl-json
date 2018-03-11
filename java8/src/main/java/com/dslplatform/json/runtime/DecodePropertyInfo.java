@@ -21,7 +21,7 @@ public class DecodePropertyInfo<T> {
 		this(name, exactName, mandatory, 0, index, calcHash(name), value);
 	}
 
-	private static int calcHash(String name) {
+	static int calcHash(String name) {
 		long hash = 0x811c9dc5;
 		for (int x = 0; x < name.length(); x++) {
 			hash ^= (byte) name.charAt(x);

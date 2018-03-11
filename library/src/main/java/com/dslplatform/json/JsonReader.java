@@ -795,6 +795,29 @@ public final class JsonReader<TContext> {
 		return true;
 	}
 
+	public final boolean wasLastName(final byte[] name) {
+		if (stream != null && nameEnd == -1) {
+			if (name.length != lastNameLen) {
+				return false;
+			}
+			for (int i = 0; i < name.length; i++) {
+				if (name[i] != chars[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+		if (name.length != nameEnd - tokenStart - 1) {
+			return false;
+		}
+		for (int i = 0; i < name.length; i++) {
+			if (name[i] != buffer[tokenStart + i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public final String getLastName() throws IOException {
 		if (stream != null && nameEnd == -1) {
 			return new String(chars, 0, lastNameLen);

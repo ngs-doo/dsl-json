@@ -18,7 +18,7 @@ public abstract class Settings {
 			if (manifest.isInterface()) return false;
 			return (manifest.getModifiers() & Modifier.ABSTRACT) == 0;
 		}
-		return true;
+		return type != null;
 	}
 
 	public static <T, R> JsonWriter.WriteObject<T> createEncoder(
@@ -30,8 +30,27 @@ public abstract class Settings {
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonWriter.WriteObject<R> encoder = type != null ? json.tryFindWriter(type) : null;
-		if (encoder == null || Object.class.equals(type)) return new LazyAttributeEncoder<>(read, name, json, type);
-		return new AttributeEncoder<>(read, name, !json.omitDefaults, encoder);
+		if (encoder == null || Object.class.equals(type)) return new LazyAttributeObjectEncoder<>(read, name, json, type);
+		return new AttributeObjectEncoder<>(read, name, !json.omitDefaults, encoder);
+	}
+
+	public static <T, R> JsonWriter.WriteObject<T> createArrayEncoder(
+			final Function<T, R> read,
+			final DslJson json,
+			final Type type) {
+		if (read == null) throw new IllegalArgumentException("read can't be null");
+		if (json == null) throw new IllegalArgumentException("json can't be null");
+		final JsonWriter.WriteObject<R> encoder = type != null ? json.tryFindWriter(type) : null;
+		if (encoder == null || Object.class.equals(type)) return new LazyAttributeArrayEncoder<>(read, json, type);
+		return new AttributeArrayEncoder<>(read, encoder);
+	}
+
+	public static <T, R> DecodePropertyInfo<JsonReader.BindObject<T>> createDecoder(
+			final BiConsumer<T, R> write,
+			final String name,
+			final DslJson json,
+			final Class<R> manifest) {
+		return createDecoder(write, name, json, false, false, -1, manifest);
 	}
 
 	public static <T, R> DecodePropertyInfo<JsonReader.BindObject<T>> createDecoder(
@@ -46,8 +65,19 @@ public abstract class Settings {
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonReader.ReadObject<R> decoder = type != null ? json.tryFindReader(type) : null;
-		if (decoder == null || Object.class.equals(type)) return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, new LazyAttributeDecoder<>(write, name, json, type));
+		if (decoder == null || !isKnownType(type)) return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, new LazyAttributeDecoder<>(write, json, type));
 		return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, new AttributeDecoder<>(write, decoder));
+	}
+
+	public static <T, R> JsonReader.BindObject<T> createArrayDecoder(
+			final BiConsumer<T, R> write,
+			final DslJson json,
+			final Type type) {
+		if (write == null) throw new IllegalArgumentException("write can't be null");
+		if (json == null) throw new IllegalArgumentException("json can't be null");
+		final JsonReader.ReadObject<R> decoder = type != null ? json.tryFindReader(type) : null;
+		if (decoder == null || !isKnownType(type)) return new LazyAttributeDecoder<>(write, json, type);
+		return new AttributeDecoder<>(write, decoder);
 	}
 
 	public static <T> DslJson.Settings<T> withRuntime() {

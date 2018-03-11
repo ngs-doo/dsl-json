@@ -16,20 +16,24 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 			writer.writeNull();
 		} else {
 			writer.writeByte(JsonWriter.OBJECT_START);
-			if (encoders.length > 0) {
-				int pos = writer.size();
-				long flushed = writer.flushed();
-				encoders[0].write(writer, instance);
-				for (int i = 1; i < encoders.length; i++) {
-					if (writer.size() != pos || writer.flushed() != flushed) {
-						writer.writeByte(JsonWriter.COMMA);
-						pos = writer.size();
-						flushed = writer.flushed();
-					}
-					encoders[i].write(writer, instance);
-				}
-			}
+			writeObject(writer, instance);
 			writer.writeByte(JsonWriter.OBJECT_END);
+		}
+	}
+
+	public final void writeObject(final JsonWriter writer, final T instance) {
+		if (encoders.length > 0) {
+			int pos = writer.size();
+			long flushed = writer.flushed();
+			encoders[0].write(writer, instance);
+			for (int i = 1; i < encoders.length; i++) {
+				if (writer.size() != pos || writer.flushed() != flushed) {
+					writer.writeByte(JsonWriter.COMMA);
+					pos = writer.size();
+					flushed = writer.flushed();
+				}
+				encoders[i].write(writer, instance);
+			}
 		}
 	}
 }

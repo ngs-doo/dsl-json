@@ -17,11 +17,9 @@ class LazyAttributeDecoder<T, P> implements JsonReader.BindObject<T> {
 
 	LazyAttributeDecoder(
 			final BiConsumer<T, P> write,
-			final String name,
 			final DslJson json,
 			final Type type) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
-		if (name == null || name.isEmpty()) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		if (type == null) throw new IllegalArgumentException("type can't be null");
 		this.write = write;

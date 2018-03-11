@@ -518,4 +518,13 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 		String dsl = note.getMessage(Locale.ENGLISH);
 		Assert.assertFalse(dsl.contains("JSON serialization"));
 	}
+
+	@Test
+	public void arrayFormatIsNotSupported() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(ArrayFormat.class),
+				"Array format is not supported in the DSL compiler. Found on: 'com.dslplatform.json.models.ArrayFormat'.");
+	}
 }

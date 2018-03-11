@@ -376,4 +376,13 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		checkValidCompilation(ArrayFormat.class);
 	}
 
+	@Test
+	public void duplicateFormatCheck() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(DuplicateFormat.class),
+				"Duplicate format detected on 'com.dslplatform.json.models.DuplicateFormat'");
+	}
+
 }

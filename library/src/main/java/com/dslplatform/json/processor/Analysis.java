@@ -571,6 +571,16 @@ public class Analysis {
 					}
 				}
 			}
+			CompiledJson.Format[] formats = getFormats(annotation);
+
+			if ((new HashSet<CompiledJson.Format>(Arrays.asList(formats))).size() != formats.length) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"Duplicate format detected on '" + element.getQualifiedName() + "'.",
+						element,
+						annotation);
+			}
 			String name = "struct" + structs.size();
 			StructInfo info =
 					new StructInfo(
@@ -1083,7 +1093,7 @@ public class Analysis {
 				CompiledJson.Format[] result = new CompiledJson.Format[list.size()];
 				for (int i = 0; i < result.length; i++) {
 					AnnotationValue enumVal = (AnnotationValue)list.get(i);
-					result[i] = enumVal == null ? null : CompiledJson.Format.valueOf(enumVal.getValue().toString());
+					result[i] = CompiledJson.Format.valueOf(enumVal.getValue().toString());
 				}
 				return result;
 			}

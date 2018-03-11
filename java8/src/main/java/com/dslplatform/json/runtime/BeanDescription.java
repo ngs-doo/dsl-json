@@ -5,16 +5,21 @@ import com.dslplatform.json.JsonWriter;
 
 import java.io.IOException;
 import java.lang.reflect.*;
+import java.nio.charset.Charset;
 import java.util.concurrent.Callable;
 
 public final class BeanDescription<T> extends WriteDescription<T> implements JsonReader.ReadObject<T>, JsonReader.BindObject<T> {
 
-	public final Type manifest;
+	private static final Charset utf8 = Charset.forName("UTF-8");
+
+	final Type manifest;
 	final Callable<T> newInstance;
 	private final DecodePropertyInfo<JsonReader.BindObject>[] decoders;
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
 	private final long mandatoryFlag;
+	final int typeHash;
+	final byte[] typeName;
 
 	public BeanDescription(
 			final Class<T> manifest,
@@ -40,7 +45,10 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 		this.decoders = DecodePropertyInfo.prepare(decoders);
 		this.skipOnUnknown = skipOnUnknown;
 		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
-		hasMandatory = mandatoryFlag != 0;
+		this.hasMandatory = mandatoryFlag != 0;
+		String name = manifest.getTypeName().replace("$", ".");
+		this.typeName = ("\"" + name + "\"").getBytes(utf8);
+		this.typeHash = DecodePropertyInfo.calcHash(name);
 	}
 
 	public T read(final JsonReader reader) throws IOException {
@@ -58,7 +66,12 @@ public final class BeanDescription<T> extends WriteDescription<T> implements Jso
 		if (reader.last() != '{') {
 			throw new IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
 		}
-		if (reader.getNextToken() == '}') {
+		reader.getNextToken();
+		return bindObject(reader, instance);
+	}
+
+	public T bindObject(final JsonReader reader, final T instance) throws IOException {
+		if (reader.last() == '}') {
 			if (hasMandatory) {
 				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, decoders);
 			}
