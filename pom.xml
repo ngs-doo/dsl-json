@@ -15,6 +15,7 @@
 		<module>java8</module>
 		<module>joda</module>
 		<module>android</module>
+		<module>tests-java8</module>
 	</modules>
 
 	<properties>

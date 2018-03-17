@@ -1,6 +1,7 @@
 package com.dslplatform.json.models;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.JsonAttribute;
 
 public class MultipleCtorsAndArray {
 	private int x;
@@ -17,8 +18,10 @@ public class MultipleCtorsAndArray {
 		this.y = y;
 	}
 
+	@JsonAttribute(index = 1)
 	public int x() { return x; }
 	public void x(int v) { x = v; }
+	@JsonAttribute(index = 2)
 	public int getY() { return y; }
 	public void setY(int v) { y = v; }
 }

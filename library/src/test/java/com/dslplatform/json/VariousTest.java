@@ -55,7 +55,7 @@ public class VariousTest {
 		} catch (StringIndexOutOfBoundsException e) {
 			Assert.fail("Expecting end of JSON error");
 		} catch (IOException e) {
-			Assert.assertTrue(e.getMessage().contains("Unable to parse input at position 11"));
+			Assert.assertTrue(e.getMessage().contains("Unable to parse input at position: 11"));
 		}
 	}
 }

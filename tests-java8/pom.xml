@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.dslplatform</groupId>
+	<artifactId>dsl-json-integration-tests-java8</artifactId>
+	<name>DSL-JSON integration tests (Java 8)</name>
+	<description>DSL Platform compatible JSON (https://dsl-platform.com)</description>
+	<url>https://github.com/ngs-doo/dsl-json</url>
+	<packaging>jar</packaging>
+	<version>1.7.1</version>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.dslplatform</groupId>
+			<artifactId>dsl-json-java8</artifactId>
+			<version>1.7.1</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.12</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+			<version>2.6.3</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<licenses>
+		<license>
+			<name>The BSD 3-Clause License</name>
+			<url>http://opensource.org/licenses/BSD-3-Clause</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Rikard Pavelić</name>
+			<email>rikard@ngs.hr</email>
+			<organization>NGS</organization>
+			<organizationUrl>https://github.com/ngs-doo</organizationUrl>
+		</developer>
+	</developers>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.3</version>
+				<configuration>
+					<compilerVersion>1.8</compilerVersion>
+					<source>1.8</source>
+					<target>1.8</target>
+					<useIncrementalCompilation>false</useIncrementalCompilation>
+					<compilerArguments>
+						<Adsljson.inline>true</Adsljson.inline>
+					</compilerArguments>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

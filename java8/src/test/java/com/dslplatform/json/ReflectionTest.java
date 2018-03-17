@@ -394,4 +394,82 @@ public class ReflectionTest {
 		Assert.assertEquals(me1.list2.size(), me2.list2.size());
 	}
 
+	public static class SkipMe {
+		public int x;
+		public String s;
+	}
+
+	@Test
+	public void canSkipOverOnObjects() throws IOException {
+		String input = "{\"x\":1,\"y\":\"abc\",\"s\":null,\"a\":5}";
+		byte[] bytes = input.getBytes();
+		SkipMe skip = json.deserialize(SkipMe.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"s\":null,\"y\":\"abc\",\"x\":1,\"a\":5}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMe.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"b\":null, \"x\":1,\"y\":\"abc\",\"s\":null,\"a\":5}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMe.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"x\":1,\"s\":null,\"a\":5}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMe.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"s\":null,\"x\":1,\"a\":5}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMe.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"b\":null, \"x\":1,\"y\":\"abc\",\"s\":null}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMe.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+	}
+
+	public static class SkipMeImmutable {
+		private int x;
+		private String s;
+		public SkipMeImmutable(String s, int x) {
+			this.x = x;
+			this.s = s;
+		}
+		public int x() { return x; }
+		public String s() { return s; }
+	}
+
+	@Test
+	public void canSkipOverOnImmutables() throws IOException {
+		String input = "{\"x\":1,\"y\":\"abc\",\"s\":null,\"a\":5}";
+		byte[] bytes = input.getBytes();
+		SkipMeImmutable skip = json.deserialize(SkipMeImmutable.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"s\":null,\"y\":\"abc\",\"x\":1,\"a\":5}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMeImmutable.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"b\":null, \"x\":1,\"y\":\"abc\",\"s\":null,\"a\":5}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMeImmutable.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"s\":null,\"x\":1,\"a\":5}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMeImmutable.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+		input = "{\"b\":null, \"x\":1,\"y\":\"abc\",\"s\":null}";
+		bytes = input.getBytes();
+		skip = json.deserialize(SkipMeImmutable.class, bytes, bytes.length);
+		Assert.assertEquals(1, skip.x);
+		Assert.assertNull(skip.s);
+	}
 }

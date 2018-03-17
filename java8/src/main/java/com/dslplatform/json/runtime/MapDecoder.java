@@ -33,21 +33,21 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 	public T read(JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() != '{') {
-			throw new IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new IOException("Expecting '{' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
 		}
 		final T instance;
 		try {
 			instance = newInstance.call();
 		} catch (Exception e) {
-			throw new IOException("Unable to create a new instance of " + manifest, e);
+			throw new IOException("Unable to create a new instance of " + manifest.getTypeName(), e);
 		}
 		if (reader.getNextToken() == '}') return instance;
 		K key = keyDecoder.read(reader);
 		if (key == null) {
-			throw new IOException("Null value detected for key element of " + manifest + " at position " + reader.positionInStream());
+			throw new IOException("Null value detected for key element of " + manifest.getTypeName() + " at position: " + reader.positionInStream());
 		}
 		if (reader.getNextToken() != ':') {
-			throw new IOException("Expecting ':' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
 		}
 		reader.getNextToken();
 		V value = valueDecoder.read(reader);
@@ -56,17 +56,17 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 			reader.getNextToken();
 			key = keyDecoder.read(reader);
 			if (key == null) {
-				throw new IOException("Null value detected for key element of " + manifest + " at position " + reader.positionInStream());
+				throw new IOException("Null value detected for key element of " + manifest.getTypeName() + " at position: " + reader.positionInStream());
 			}
 			if (reader.getNextToken() != ':') {
-				throw new IOException("Expecting ':' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
+				throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
 			}
 			reader.getNextToken();
 			value = valueDecoder.read(reader);
 			instance.put(key, value);
 		}
 		if (reader.last() != '}') {
-			throw new IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new IOException("Expecting '}' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
 		}
 		return instance;
 	}

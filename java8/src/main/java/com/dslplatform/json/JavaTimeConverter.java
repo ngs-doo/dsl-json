@@ -10,10 +10,10 @@ public abstract class JavaTimeConverter {
 	public static final OffsetDateTime MIN_DATE_TIME_UTC = OffsetDateTime.of(MIN_LOCAL_DATE_TIME, ZoneOffset.UTC);
 	public static final LocalDate MIN_LOCAL_DATE = LocalDate.of(1, 1, 1);
 
-	static final JsonReader.ReadObject<LocalDate> LocalDateReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeLocalDate(rdr);
-	static final JsonWriter.WriteObject<LocalDate> LocalDateWriter = (writer, value) -> serializeNullable(value, writer);
-	static final JsonReader.ReadObject<OffsetDateTime> DateTimeReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeDateTime(rdr);
-	static final JsonWriter.WriteObject<OffsetDateTime> DateTimeWriter = (writer, value) -> serializeNullable(value, writer);
+	public static final JsonReader.ReadObject<LocalDate> LOCAL_DATE_READER = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeLocalDate(rdr);
+	public static final JsonWriter.WriteObject<LocalDate> LOCAL_DATE_WRITER = (writer, value) -> serializeNullable(value, writer);
+	public static final JsonReader.ReadObject<OffsetDateTime> DATE_TIME_READER = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeDateTime(rdr);
+	public static final JsonWriter.WriteObject<OffsetDateTime> DATE_TIME_WRITER = (writer, value) -> serializeNullable(value, writer);
 	static final JsonReader.ReadObject<LocalDateTime> LocalDateTimeReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeLocalDateTime(rdr);
 	static final JsonWriter.WriteObject<LocalDateTime> LocalDateTimeWriter = (writer, value) -> serializeNullable(value, writer);
 	static final JsonReader.ReadObject<ZonedDateTime> ZonedDateTimeReader = rdr -> rdr.wasNull() ? null : JavaTimeConverter.deserializeDateTime(rdr).toZonedDateTime();
@@ -235,19 +235,19 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static ArrayList<OffsetDateTime> deserializeDateTimeCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(DateTimeReader);
+		return reader.deserializeCollection(DATE_TIME_READER);
 	}
 
 	public static void deserializeDateTimeCollection(final JsonReader reader, final Collection<OffsetDateTime> res) throws IOException {
-		reader.deserializeCollection(DateTimeReader, res);
+		reader.deserializeCollection(DATE_TIME_READER, res);
 	}
 
 	public static ArrayList<OffsetDateTime> deserializeDateTimeNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(DateTimeReader);
+		return reader.deserializeNullableCollection(DATE_TIME_READER);
 	}
 
 	public static void deserializeDateTimeNullableCollection(final JsonReader reader, final Collection<OffsetDateTime> res) throws IOException {
-		reader.deserializeNullableCollection(DateTimeReader, res);
+		reader.deserializeNullableCollection(DATE_TIME_READER, res);
 	}
 
 	public static ArrayList<LocalDateTime> deserializeLocalDateTimeCollection(final JsonReader reader) throws IOException {
@@ -333,18 +333,18 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static ArrayList<LocalDate> deserializeLocalDateCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(LocalDateReader);
+		return reader.deserializeCollection(LOCAL_DATE_READER);
 	}
 
 	public static void deserializeLocalDateCollection(final JsonReader reader, final Collection<LocalDate> res) throws IOException {
-		reader.deserializeCollection(LocalDateReader, res);
+		reader.deserializeCollection(LOCAL_DATE_READER, res);
 	}
 
 	public static ArrayList<LocalDate> deserializeLocalDateNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(LocalDateReader);
+		return reader.deserializeNullableCollection(LOCAL_DATE_READER);
 	}
 
 	public static void deserializeLocalDateNullableCollection(final JsonReader reader, final Collection<LocalDate> res) throws IOException {
-		reader.deserializeNullableCollection(LocalDateReader, res);
+		reader.deserializeNullableCollection(LOCAL_DATE_READER, res);
 	}
 }

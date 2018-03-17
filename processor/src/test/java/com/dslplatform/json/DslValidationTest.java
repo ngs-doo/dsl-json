@@ -523,7 +523,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 	public void arrayFormatIsNotSupported() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
-				5,
+				6,
 				compileTestCase(ArrayFormat.class),
 				"Array format is not supported in the DSL compiler. Found on: 'com.dslplatform.json.models.ArrayFormat'.");
 	}

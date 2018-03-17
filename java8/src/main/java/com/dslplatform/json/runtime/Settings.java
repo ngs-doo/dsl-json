@@ -78,7 +78,7 @@ public abstract class Settings {
 			final String name,
 			final DslJson json,
 			final Class<R> manifest) {
-		return createDecoder(write, name, json, false, false, -1, manifest);
+		return createDecoder(write, name, json, false, false, -1, false, manifest);
 	}
 
 	public static <T, R> DecodePropertyInfo<JsonReader.BindObject<T>> createDecoder(
@@ -88,13 +88,14 @@ public abstract class Settings {
 			final boolean exactNameMatch,
 			final boolean isMandatory,
 			final int index,
+			final boolean nonNull,
 			final Type type) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonReader.ReadObject<R> decoder = type != null ? json.tryFindReader(type) : null;
-		if (decoder == null || !isKnownType(type)) return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, new LazyAttributeDecoder<>(write, json, type));
-		return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, new AttributeDecoder<>(write, decoder));
+		if (decoder == null || !isKnownType(type)) return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, nonNull, new LazyAttributeDecoder<>(write, json, type));
+		return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, nonNull, new AttributeDecoder<>(write, decoder));
 	}
 
 	public static <T, R> DecodePropertyInfo<JsonReader.BindObject<T>> createDecoder(
@@ -104,12 +105,13 @@ public abstract class Settings {
 			final boolean exactNameMatch,
 			final boolean isMandatory,
 			final int index,
+			final boolean nonNull,
 			final JsonReader.ReadObject<R> decoder) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		if (decoder == null) throw new IllegalArgumentException("decoder can't be null");
-		return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, new AttributeDecoder<>(write, decoder));
+		return new DecodePropertyInfo<>(name, exactNameMatch, isMandatory, index, nonNull, new AttributeDecoder<>(write, decoder));
 	}
 
 	public static <T, R> JsonReader.BindObject<T> createArrayDecoder(
@@ -147,6 +149,7 @@ public abstract class Settings {
 				.resolveReader(ObjectAnalyzer.CONVERTER)
 				.resolveWriter(ImmutableAnalyzer.CONVERTER)
 				.resolveReader(ImmutableAnalyzer.CONVERTER)
+				.resolveWriter(MixinAnalyzer.WRITER)
 				.with(new ConfigureJava8());
 	}
 }

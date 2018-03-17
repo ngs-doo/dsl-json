@@ -1,0 +1,117 @@
+package com.dslplatform.json.processor;
+
+import java.io.IOException;
+import java.io.Writer;
+import java.util.*;
+
+final class Context {
+	final Writer code;
+	private final boolean allowInline;
+	final Map<String, OptimizedConverter> inlinedConverters;
+	private final Map<String, StructInfo> structs;
+
+	Context(Writer code, boolean allowInline, Map<String, OptimizedConverter> inlinedConverters, Map<String, StructInfo> structs) {
+		this.code = code;
+		this.allowInline = allowInline;
+		this.inlinedConverters = inlinedConverters;
+		this.structs = structs;
+	}
+
+	static String nonGenericObject(String type) {
+		String objectType = Analysis.objectName(type);
+		int genInd = objectType.indexOf('<');
+		if (genInd == -1) return objectType;
+		return objectType.substring(0, genInd);
+	}
+
+	static String typeOrClass(String objectType, String typeName) {
+		if (objectType.equals(typeName)) return objectType + ".class";
+		int genInd = typeName.indexOf('<');
+		if (genInd == -1) return typeName + ".class";
+		return "new com.dslplatform.json.runtime.TypeDefinition<" + typeName + ">(){}.type";
+	}
+
+	static List<AttributeInfo> sortedAttributes(StructInfo info) {
+		ArrayList<AttributeInfo> result = new ArrayList<>(info.attributes.values());
+		result.sort((a, b) -> {
+			if (b.index == -1) return -1;
+			else if (a.index == -1) return 1;
+			return a.index - b.index;
+		});
+		return result;
+	}
+
+	private String findConverter(AttributeInfo attr) {
+		if (attr.converter != null) return attr.converter.toString();
+		StructInfo target = structs.get(attr.type.toString());
+		if (target == null || target.type != ObjectType.CONVERTER) return null;
+		return target.converter;
+	}
+
+	void addAttributeWriter(final String className, final AttributeInfo attr) throws IOException {
+		final String actualType = attr.type.toString();
+		final String objectType = nonGenericObject(actualType);
+		final String converter = findConverter(attr);
+		OptimizedConverter optimized = inlinedConverters.get(actualType);
+		String inline = allowInline && optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
+		code.append("com.dslplatform.json.runtime.Settings.<");
+		code.append(className).append(", ").append(objectType).append(">createEncoder(");
+		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
+		else code.append("c -> c.").append(attr.field.getSimpleName());
+		code.append(", \"").append(attr.id).append("\", json, ");
+		if (converter != null) code.append(converter).append(".JSON_WRITER)");
+		else if (inline != null) code.append(inline).append(")");
+		else code.append(typeOrClass(objectType, actualType)).append(")");
+	}
+
+	void addArrayWriter(final String className, final AttributeInfo attr) throws IOException {
+		final String actualType = attr.type.toString();
+		final String objectType = nonGenericObject(actualType);
+		final String converter = findConverter(attr);
+		OptimizedConverter optimized = inlinedConverters.get(actualType);
+		String inline = allowInline && optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
+		code.append("com.dslplatform.json.runtime.Settings.<");
+		code.append(className).append(", ").append(objectType).append(">createArrayEncoder(");
+		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
+		else code.append("c -> c.").append(attr.field.getSimpleName());
+		code.append(", ");
+		if (converter != null) code.append(converter).append(".JSON_WRITER)");
+		else if (inline != null) code.append(inline).append(")");
+		else code.append("json ,").append(typeOrClass(objectType, actualType)).append(")");
+	}
+
+	void addAttributeReader(final String className, final AttributeInfo attr, final String alias, final String readValue) throws IOException {
+		final String actualType = attr.type.toString();
+		final String objectType = nonGenericObject(actualType);
+		OptimizedConverter optimized = inlinedConverters.get(actualType);
+		String inline = allowInline && optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
+		final String converter = findConverter(attr);
+		code.append("com.dslplatform.json.runtime.Settings.<");
+		code.append(className).append(", ").append(objectType).append(">createDecoder(");
+		code.append(readValue);
+		code.append(", \"").append(alias).append("\", json, ");
+		code.append(attr.fullMatch ? "true" : "false").append(", ");
+		code.append(attr.mandatory ? "true" : "false").append(", ");
+		code.append(Integer.toString(attr.index)).append(", ");
+		code.append(attr.notNull ? "true" : "false").append(", ");
+		if (converter != null) code.append(converter).append(".JSON_READER)");
+		else if (inline != null) code.append(inline).append(")");
+		else code.append(typeOrClass(objectType, actualType)).append(")");
+	}
+
+	void addArrayReader(final String className, final AttributeInfo attr, final String readValue) throws IOException {
+		final String actualType = attr.type.toString();
+		final String objectType = nonGenericObject(actualType);
+		final String converter = findConverter(attr);
+		OptimizedConverter optimized = inlinedConverters.get(actualType);
+		String inline = allowInline && optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
+		code.append("com.dslplatform.json.runtime.Settings.<");
+		code.append(className).append(", ").append(objectType).append(">createArrayDecoder(");
+		code.append(readValue);
+		code.append(", ");
+		if (converter != null) code.append(converter).append(".JSON_READER)");
+		else if (inline != null) code.append(inline).append(")");
+		else code.append("json, ").append(typeOrClass(objectType, actualType)).append(")");
+	}
+
+}

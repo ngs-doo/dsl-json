@@ -26,12 +26,12 @@ public class ConfigureJava8 implements Configuration {
 
 	@Override
 	public void configure(DslJson json) {
-		json.registerReader(LocalDate.class, JavaTimeConverter.LocalDateReader);
-		json.registerWriter(LocalDate.class, JavaTimeConverter.LocalDateWriter);
+		json.registerReader(LocalDate.class, JavaTimeConverter.LOCAL_DATE_READER);
+		json.registerWriter(LocalDate.class, JavaTimeConverter.LOCAL_DATE_WRITER);
 		json.registerReader(LocalDateTime.class, JavaTimeConverter.LocalDateTimeReader);
 		json.registerWriter(LocalDateTime.class, JavaTimeConverter.LocalDateTimeWriter);
-		json.registerReader(OffsetDateTime.class, JavaTimeConverter.DateTimeReader);
-		json.registerWriter(OffsetDateTime.class, JavaTimeConverter.DateTimeWriter);
+		json.registerReader(OffsetDateTime.class, JavaTimeConverter.DATE_TIME_READER);
+		json.registerWriter(OffsetDateTime.class, JavaTimeConverter.DATE_TIME_WRITER);
 		json.registerReader(ZonedDateTime.class, JavaTimeConverter.ZonedDateTimeReader);
 		json.registerWriter(ZonedDateTime.class, JavaTimeConverter.ZonedDateTimeWriter);
 		json.registerReader(java.sql.Date.class, rdr -> rdr.wasNull() ? null : java.sql.Date.valueOf(JavaTimeConverter.deserializeLocalDate(rdr)));
@@ -108,7 +108,7 @@ public class ConfigureJava8 implements Configuration {
 		});
 		json.registerWriter(BigInteger.class, BigIntegerConverter.Writer);
 		json.registerReader(BigInteger.class, BigIntegerConverter.Reader);
-		json.writerFactories.add(OptionalAnalyzer.WRITER);
-		json.readerFactories.add(OptionalAnalyzer.READER);
+		json.writerFactories.add(0, OptionalAnalyzer.WRITER);
+		json.readerFactories.add(0, OptionalAnalyzer.READER);
 	}
 }

@@ -18,7 +18,7 @@ public abstract class ObjectAnalyzer {
 		private JsonWriter.WriteObject resolvedWriter;
 		private JsonReader.BindObject resolvedBinder;
 		private JsonReader.ReadObject resolvedReader;
-		volatile ObjectFormatDescription resolvedSomewhere;
+		volatile ObjectFormatDescription resolved;
 
 		LazyObjectDescription(DslJson json, Type type) {
 			this.json = json;
@@ -27,20 +27,21 @@ public abstract class ObjectAnalyzer {
 
 		private boolean checkSignatureNotFound() {
 			int i = 0;
-			while (resolvedSomewhere == null && i < 50) {
+			while (i < 50) {
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					throw new SerializationException(e);
 				}
+				if (resolved != null) {
+					resolvedWriter = resolved;
+					resolvedReader = resolved;
+					resolvedBinder = resolved;
+					break;
+				}
 				i++;
 			}
-			if (resolvedSomewhere != null) {
-				resolvedWriter = resolvedSomewhere;
-				resolvedReader = resolvedSomewhere;
-				resolvedBinder = resolvedSomewhere;
-			}
-			return resolvedSomewhere == null;
+			return resolved == null;
 		}
 
 		@Override
@@ -103,36 +104,29 @@ public abstract class ObjectAnalyzer {
 		if (raw.isArray()
 				|| Object.class == manifest
 				|| Collection.class.isAssignableFrom(raw)
+				|| raw.isInterface()
+				|| (raw.getModifiers() & Modifier.ABSTRACT) != 0
 				|| (raw.getDeclaringClass() != null && (raw.getModifiers() & Modifier.STATIC) == 0)) {
 			return null;
 		}
-		final InstanceFactory newInstance;
-		Set<Type> currentEncoders = json.getRegisteredEncoders();
-		Set<Type> currentDecoders = json.getRegisteredDecoders();
-		Set<Type> currentBinders = json.getRegisteredBinders();
-		boolean hasEncoder = currentEncoders.contains(manifest);
-		boolean hasDecoder = currentDecoders.contains(manifest);
-		boolean hasBinder = currentBinders.contains(manifest);
-		if ((raw.getModifiers() & Modifier.ABSTRACT) != 0) {
-			if (!currentDecoders.contains(manifest)) return null;
-			final JsonReader.ReadObject currentReader = json.tryFindReader(manifest);
-			if (currentReader instanceof ObjectFormatDescription) {
-				newInstance = ((ObjectFormatDescription)currentReader).newInstance;
-			} else return null;
-		} else {
-			try {
-				raw.newInstance();
-			} catch (InstantiationException | IllegalAccessException ignore) {
-				return null;
-			}
-			newInstance = () -> {
-				try {
-					return raw.newInstance();
-				} catch (Exception ex) {
-					throw new SerializationException("Unable to create an instance of " + raw);
-				}
-			};
+		final Set<Type> currentEncoders = json.getRegisteredEncoders();
+		final Set<Type> currentDecoders = json.getRegisteredDecoders();
+		final Set<Type> currentBinders = json.getRegisteredBinders();
+		final boolean hasEncoder = currentEncoders.contains(manifest);
+		final boolean hasDecoder = currentDecoders.contains(manifest);
+		final boolean hasBinder = currentBinders.contains(manifest);
+		try {
+			raw.newInstance();
+		} catch (InstantiationException | IllegalAccessException ignore) {
+			return null;
 		}
+		final InstanceFactory newInstance = () -> {
+			try {
+				return raw.newInstance();
+			} catch (Exception ex) {
+				throw new SerializationException("Unable to create an instance of " + raw);
+			}
+		};
 		final LazyObjectDescription lazy = new LazyObjectDescription(json, manifest);
 		if (!hasEncoder) json.registerWriter(manifest, lazy);
 		if (!hasDecoder) json.registerReader(manifest, lazy);
@@ -149,11 +143,11 @@ public abstract class ObjectAnalyzer {
 		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
 		final DecodePropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new DecodePropertyInfo[0]);
-		final ObjectFormatDescription<T, T> converter = ObjectFormatDescription.<T>create(raw, newInstance, writeProps, readProps, json, true);
+		final ObjectFormatDescription<T, T> converter = ObjectFormatDescription.create(raw, newInstance, writeProps, readProps, json, true);
 		if (!hasEncoder) json.registerWriter(manifest, converter);
 		if (!hasDecoder) json.registerReader(manifest, converter);
 		if (!hasBinder) json.registerBinder(manifest, converter);
-		lazy.resolvedSomewhere = converter;
+		lazy.resolved = converter;
 		return converter;
 	}
 
@@ -185,6 +179,7 @@ public abstract class ObjectAnalyzer {
 							false,
 							false,
 							index,
+							false,
 							concreteType));
 			return true;
 		}
@@ -207,7 +202,7 @@ public abstract class ObjectAnalyzer {
 		} catch (NoSuchMethodException ignore) {
 			return false;
 		}
-		final String name = mget.getName().startsWith("get")
+		final String name = mget.getName().startsWith("get") && mget.getName().length() > 3
 				? Character.toLowerCase(mget.getName().charAt(3)) + mget.getName().substring(4)
 				: mget.getName();
 		if (!canRead(mget.getModifiers()) || !canWrite(mset.getModifiers())) return false;
@@ -232,6 +227,7 @@ public abstract class ObjectAnalyzer {
 							false,
 							false,
 							index,
+							false,
 							concreteType));
 			return true;
 		}
@@ -240,11 +236,15 @@ public abstract class ObjectAnalyzer {
 
 	private static boolean canRead(final int modifiers) {
 		return (modifiers & Modifier.PUBLIC) != 0
+				&& (modifiers & Modifier.TRANSIENT) == 0
+				&& (modifiers & Modifier.NATIVE) == 0
 				&& (modifiers & Modifier.STATIC) == 0;
 	}
 
 	private static boolean canWrite(final int modifiers) {
 		return (modifiers & Modifier.PUBLIC) != 0
+				&& (modifiers & Modifier.TRANSIENT) == 0
+				&& (modifiers & Modifier.NATIVE) == 0
 				&& (modifiers & Modifier.FINAL) == 0
 				&& (modifiers & Modifier.STATIC) == 0;
 	}

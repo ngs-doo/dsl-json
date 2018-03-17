@@ -5,7 +5,7 @@ import com.dslplatform.json.JsonWriter;
 abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 
 	private final boolean alwaysSerialize;
-	final boolean isEmpty;
+	private final boolean isEmpty;
 	private final JsonWriter.WriteObject[] encoders;
 
 	WriteDescription(final JsonWriter.WriteObject[] encoders, final boolean alwaysSerialize) {
@@ -18,21 +18,19 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 	public final void write(final JsonWriter writer, final T instance) {
 		if (instance == null) {
 			writer.writeNull();
-		} else if (isEmpty) {
-			writer.writeByte(JsonWriter.OBJECT_START);
-			writer.writeByte(JsonWriter.OBJECT_END);
 		} else if (alwaysSerialize) {
 			writer.writeByte(JsonWriter.OBJECT_START);
-			writeObjectFull(writer, instance);
+			writeContentFull(writer, instance);
 			writer.writeByte(JsonWriter.OBJECT_END);
 		} else {
 			writer.writeByte(JsonWriter.OBJECT_START);
-			writeObjectMinimal(writer, instance);
+			writeContentMinimal(writer, instance);
 			writer.writeByte(JsonWriter.OBJECT_END);
 		}
 	}
 
-	final void writeObjectFull(final JsonWriter writer, final T instance) {
+	public final void writeContentFull(final JsonWriter writer, final T instance) {
+		if (isEmpty) return;
 		encoders[0].write(writer, instance);
 		for (int i = 1; i < encoders.length; i++) {
 			writer.writeByte(JsonWriter.COMMA);
@@ -40,17 +38,26 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 		}
 	}
 
-	final void writeObjectMinimal(final JsonWriter writer, final T instance) {
-		int pos = writer.size();
-		long flushed = writer.flushed();
+	public final boolean writeContentMinimal(final JsonWriter writer, final T instance) {
+		if (isEmpty) return false;
+		final int originalPos = writer.size();
+		final long originalFlushed = writer.flushed();
+		int pos = originalPos;
+		long flushed = originalFlushed;
 		encoders[0].write(writer, instance);
+		if (writer.size() != pos || writer.flushed() != flushed) {
+			writer.writeByte(JsonWriter.COMMA);
+			pos = writer.size();
+			flushed = writer.flushed();
+		}
 		for (int i = 1; i < encoders.length; i++) {
+			encoders[i].write(writer, instance);
 			if (writer.size() != pos || writer.flushed() != flushed) {
 				writer.writeByte(JsonWriter.COMMA);
 				pos = writer.size();
 				flushed = writer.flushed();
 			}
-			encoders[i].write(writer, instance);
 		}
+		return originalPos != pos || originalFlushed != flushed;
 	}
 }

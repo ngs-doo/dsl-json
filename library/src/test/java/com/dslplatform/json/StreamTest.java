@@ -420,7 +420,7 @@ public class StreamTest {
 					if (reader.wasNull()) {
 						nextToken = reader.getNextToken();
 					} else {
-						throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char) nextToken);
+						throw new java.io.IOException("Expecting 'u' (as null) at position: " + reader.positionInStream() + ". Found " + (char) nextToken);
 					}
 				} else {
 					switch (nameHash) {
@@ -443,7 +443,7 @@ public class StreamTest {
 							nextToken = reader.getNextToken();
 							continue;
 						} else {
-							throw new java.io.IOException("Expecting 'u' (as null) at position " + reader.positionInStream() + ". Found " + (char) nextToken);
+							throw new java.io.IOException("Expecting 'u' (as null) at position: " + reader.positionInStream() + ". Found " + (char) nextToken);
 						}
 					}
 					switch (nameHash) {
@@ -458,7 +458,7 @@ public class StreamTest {
 					}
 				}
 				if (nextToken != '}') {
-					throw new java.io.IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char) nextToken);
+					throw new java.io.IOException("Expecting '}' at position: " + reader.positionInStream() + ". Found " + (char) nextToken);
 				}
 			}
 

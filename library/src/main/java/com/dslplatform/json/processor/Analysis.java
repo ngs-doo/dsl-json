@@ -217,6 +217,26 @@ public class Analysis {
 							info.annotation);
 				}
 			}
+			if (info.type == ObjectType.CLASS && info.converter == null && !info.hasEmptyCtor() && info.constructor != null) {
+				for (VariableElement p : info.constructor.getParameters()) {
+					boolean found = false;
+					String argName = p.getSimpleName().toString();
+					for (AttributeInfo attr : info.attributes.values()) {
+						if (attr.name.equals(argName)) {
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Unable to find matching property: '" + argName + "' used in constructor. Either use annotation processor on source code, on bytecode with -parameters flag (to enable parameter names) or manually create an instance via converter",
+								info.constructor,
+								info.annotation);
+					}
+				}
+			}
 			if (info.checkHashCollision()) {
 				hasError = true;
 				messager.printMessage(
@@ -273,7 +293,26 @@ public class Analysis {
 						info.element,
 						info.annotation);
 			}
-
+			if (info.formats.contains(CompiledJson.Format.ARRAY)) {
+				HashSet<Integer> ids = new HashSet<Integer>();
+				for (AttributeInfo attr : info.attributes.values()) {
+					if (attr.index == -1) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"When array format is used all properties must have index order defined. Property " + attr.name + " doesn't have index defined",
+								attr.element,
+								attr.annotation);
+					} else if (!ids.add(attr.index)) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Duplicate index detected on " + attr.name + ". Index values must be distinct to be used in array format",
+								attr.element,
+								attr.annotation);
+					}
+				}
+			}
 			if (info.isMinified) {
 				info.prepareMinifiedNames();
 			}
@@ -404,12 +443,12 @@ public class Analysis {
 				if (info.converter != null) continue;
 				path.push(info.element.getSimpleName().toString());
 				if (includeBeanMethods) {
-					for (Map.Entry<String, MethodPair> p : getBeanProperties(info.element).entrySet()) {
+					for (Map.Entry<String, MethodPair> p : getBeanProperties(info.element, info.constructor).entrySet()) {
 						analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), null, "bean property", path);
 					}
 				}
 				if (includeExactMethods) {
-					for (Map.Entry<String, MethodPair> p : getExactProperties(info.element).entrySet()) {
+					for (Map.Entry<String, MethodPair> p : getExactProperties(info.element, info.constructor).entrySet()) {
 						analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), null, "exact property", path);
 					}
 				}
@@ -851,16 +890,19 @@ public class Analysis {
 	public static class MethodPair {
 		public final ExecutableElement read;
 		public final ExecutableElement write;
+		public final VariableElement ctor;
 
-		public MethodPair(ExecutableElement read, ExecutableElement write) {
+		public MethodPair(ExecutableElement read, ExecutableElement write, VariableElement ctor) {
 			this.read = read;
 			this.write = write;
+			this.ctor = ctor;
 		}
 	}
 
-	public Map<String, MethodPair> getBeanProperties(TypeElement element) {
+	public Map<String, MethodPair> getBeanProperties(TypeElement element, ExecutableElement ctor) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
+		Map<String, VariableElement> arguments = new HashMap<String, VariableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			boolean isPublicInterface = inheritance.getKind() == ElementKind.INTERFACE
 					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
@@ -869,6 +911,8 @@ public class Analysis {
 				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
 						|| method.getModifiers().contains(Modifier.PUBLIC)
 						&& !method.getModifiers().contains(Modifier.STATIC)
+						&& !method.getModifiers().contains(Modifier.NATIVE)
+						&& !method.getModifiers().contains(Modifier.TRANSIENT)
 						&& !method.getModifiers().contains(Modifier.ABSTRACT);
 				if (name.length() < 4 || !isAccessible) {
 					continue;
@@ -888,22 +932,32 @@ public class Analysis {
 				}
 			}
 		}
+		if (ctor != null) {
+			for (VariableElement p : ctor.getParameters()) {
+				arguments.put(p.getSimpleName().toString(), p);
+			}
+		}
 		Map<String, MethodPair> result = new HashMap<String, MethodPair>();
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setterArgument = setter == null ? null : setter.getParameters().get(0);
-			if (setterArgument != null && setterArgument.asType().equals(kv.getValue().getReturnType())) {
-				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
-			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(kv.getValue().getReturnType().toString())) {
-				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
+			VariableElement ctorArg = arguments.get(kv.getKey());
+			String returnType = kv.getValue().getReturnType().toString();
+			if (setterArgument != null && setterArgument.asType().toString().equals(returnType)) {
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter, null));
+			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter, null));
+			} else if (!mustHaveEmptyCtor && ctorArg != null && ctorArg.asType().toString().equals(returnType)) {
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), null, ctorArg));
 			}
 		}
 		return result;
 	}
 
-	public Map<String, MethodPair> getExactProperties(TypeElement element) {
+	public Map<String, MethodPair> getExactProperties(TypeElement element, ExecutableElement ctor) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
+		Map<String, VariableElement> arguments = new HashMap<String, VariableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			boolean isPublicInterface = inheritance.getKind() == ElementKind.INTERFACE
 					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
@@ -912,6 +966,8 @@ public class Analysis {
 				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
 						|| method.getModifiers().contains(Modifier.PUBLIC)
 						&& !method.getModifiers().contains(Modifier.STATIC)
+						&& !method.getModifiers().contains(Modifier.NATIVE)
+						&& !method.getModifiers().contains(Modifier.TRANSIENT)
 						&& !method.getModifiers().contains(Modifier.ABSTRACT);
 				if (name.startsWith("get") || name.startsWith("set") || !isAccessible) {
 					continue;
@@ -925,14 +981,23 @@ public class Analysis {
 				}
 			}
 		}
+		if (ctor != null) {
+			for (VariableElement p : ctor.getParameters()) {
+				arguments.put(p.getSimpleName().toString(), p);
+			}
+		}
 		Map<String, MethodPair> result = new HashMap<String, MethodPair>();
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setterArgument = setter == null ? null : setter.getParameters().get(0);
-			if (setterArgument != null && setterArgument.asType().equals(kv.getValue().getReturnType())) {
-				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
-			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(kv.getValue().getReturnType().toString())) {
-				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter));
+			VariableElement ctorArg = arguments.get(kv.getKey());
+			String returnType = kv.getValue().getReturnType().toString();
+			if (setterArgument != null && setterArgument.asType().toString().equals(returnType)) {
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter, null));
+			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), setter, null));
+			} else if (!mustHaveEmptyCtor && ctorArg != null && ctorArg.asType().toString().equals(returnType)) {
+				result.put(kv.getKey(), new MethodPair(kv.getValue(), null, ctorArg));
 			}
 		}
 		return result;
@@ -945,6 +1010,8 @@ public class Analysis {
 				String name = field.getSimpleName().toString();
 				boolean isAccessible = field.getModifiers().contains(Modifier.PUBLIC)
 						&& (!field.getModifiers().contains(Modifier.FINAL) || !mustHaveEmptyCtor)
+						&& !field.getModifiers().contains(Modifier.NATIVE)
+						&& !field.getModifiers().contains(Modifier.TRANSIENT)
 						&& !field.getModifiers().contains(Modifier.STATIC);
 				if (!isAccessible) {
 					continue;

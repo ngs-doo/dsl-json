@@ -24,9 +24,9 @@ public class BindingChecksTest {
 				MyClass::new,
 				new JsonWriter.WriteObject[0],
 				new DecodePropertyInfo[] {
-						Settings.<MyClass, Integer>createDecoder((c, v) -> c.x = v, "x", dslJson, false, true, 0, int.class),
-						Settings.<MyClass, String>createDecoder((c, v) -> c.s = v, "s", dslJson, false, false, 1, String.class),
-						Settings.<MyClass, Long>createDecoder((c, v) -> c.y = v, "y", dslJson, false, true, 2, long.class)
+						Settings.<MyClass, Integer>createDecoder((c, v) -> c.x = v, "x", dslJson, false, true, 0, false, int.class),
+						Settings.<MyClass, String>createDecoder((c, v) -> c.s = v, "s", dslJson, false, false, 1, false, StringConverter.READER),
+						Settings.<MyClass, Long>createDecoder((c, v) -> c.y = v, "y", dslJson, false, true, 2, false, long.class)
 				},
 				dslJson,
 				false
@@ -35,14 +35,13 @@ public class BindingChecksTest {
 		dslJson.registerReader(MyClass.class, description);
 	}
 
-
 	@Test
-	public void expectingMandatoryError() {
+	public void expectingMandatory() {
 		try {
 			dslJson.deserialize(MyClass.class, "{}".getBytes(), 2);
 			Assert.fail("Expecting exception");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Mandatory properties (x, y) not found at position 2"));
+			Assert.assertTrue(ex.getMessage().contains("Mandatory properties (x, y) not found at position: 2"));
 		}
 	}
 
@@ -53,7 +52,7 @@ public class BindingChecksTest {
 			dslJson.deserialize(MyClass.class, bytes, bytes.length);
 			Assert.fail("Expecting exception");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Mandatory property (y) not found at position 7"));
+			Assert.assertTrue(ex.getMessage().contains("Mandatory property (y) not found at position: 7"));
 		}
 	}
 
@@ -64,7 +63,7 @@ public class BindingChecksTest {
 			dslJson.deserialize(MyClass.class, bytes, bytes.length);
 			Assert.fail("Expecting exception");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Unknown property detected: abc at position 1"));
+			Assert.assertTrue(ex.getMessage().contains("Unknown property detected: 'abc' while reading com.dslplatform.json.BindingChecksTest$MyClass at position: 1"));
 		}
 	}
 }

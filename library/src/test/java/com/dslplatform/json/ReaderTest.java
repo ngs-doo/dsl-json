@@ -244,4 +244,29 @@ public class ReaderTest {
 		Assert.assertEquals("abc", bound.s);
 		Assert.assertSame(instance, bound);
 	}
+
+	@Test
+	public void manualProcessing() throws IOException {
+		String input = "{\"test1\":1,\"test2\":[{\"x\":1,\"y\":2},{\"x\":3,\"y\":4}]}";
+		byte[] bytes = input.getBytes();
+		DslJson<Object> json = new DslJson<Object>();
+		JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		reader.startAttribute("test2");
+		reader.startArray();
+		reader.startObject();
+		reader.startAttribute("y");
+		Assert.assertEquals(2, (int)reader.next(int.class));
+		reader.endObject();
+		reader.comma();
+		reader.startObject();
+		reader.startAttribute("x");
+		Assert.assertEquals(3, (int)reader.next(int.class));
+		reader.comma();
+		reader.startAttribute("y");
+		Assert.assertEquals(4, (int)reader.next(int.class));
+		reader.endObject();
+		reader.endArray();
+		reader.endObject();
+	}
 }

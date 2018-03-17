@@ -6,12 +6,12 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>reflection-example</artifactId>
-	<version>1.7.0</version>
+	<version>1.7.1</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-java8</artifactId>
-			<version>1.7.0</version>
+			<version>1.7.1</version>
 		</dependency>
 	</dependencies>
 	<build>

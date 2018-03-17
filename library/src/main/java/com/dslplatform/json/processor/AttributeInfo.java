@@ -28,6 +28,7 @@ public class AttributeInfo {
 	public final TypeMirror converter;
 	public final boolean isJsonObject;
 	public final List<String> alternativeNames = new ArrayList<String>();
+	public final String readProperty;
 
 	public AttributeInfo(
 			String name,
@@ -60,5 +61,6 @@ public class AttributeInfo {
 		this.typeSignature = typeSignature;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
+		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 	}
 }

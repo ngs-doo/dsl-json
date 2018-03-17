@@ -7,12 +7,12 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.function.Function;
 
-public final class ArrayFormatDescription<B, T> implements JsonWriter.WriteObject<T>, JsonReader.ReadObject<T>, JsonReader.BindObject<B> {
+public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, JsonReader.BindObject<B> {
 
 	private final Type manifest;
-	final InstanceFactory<B> newInstance;
-	final Function<B, T> finalize;
-	final boolean isEmpty;
+	private final InstanceFactory<B> newInstance;
+	private final Function<B, T> finalize;
+	private final boolean isEmpty;
 	private final JsonWriter.WriteObject[] encoders;
 	private final JsonReader.BindObject[] decoders;
 
@@ -35,7 +35,7 @@ public final class ArrayFormatDescription<B, T> implements JsonWriter.WriteObjec
 		if (finalize == null) throw new IllegalArgumentException("finalize can't be null");
 		if (encoders == null) throw new IllegalArgumentException("encoders can't be null or empty");
 		if (decoders == null) throw new IllegalArgumentException("decoders can't be null");
-		if (encoders.length != decoders.length) throw new IllegalArgumentException("decoders must match encoders");
+		if (encoders.length != decoders.length) throw new IllegalArgumentException("decoders must match encoders (" + decoders.length + " != " + encoders.length + ")");
 		this.manifest = manifest;
 		this.newInstance = newInstance;
 		this.finalize = finalize;
@@ -44,20 +44,20 @@ public final class ArrayFormatDescription<B, T> implements JsonWriter.WriteObjec
 		this.decoders = decoders.clone();
 	}
 
+	@Override
 	public final void write(final JsonWriter writer, final T instance) {
 		if (instance == null) {
 			writer.writeNull();
-		} else if (isEmpty) {
-			writer.writeByte(JsonWriter.ARRAY_START);
-			writer.writeByte(JsonWriter.ARRAY_END);
 		} else {
 			writer.writeByte(JsonWriter.ARRAY_START);
-			writeContent(writer, instance);
+			writeContentFull(writer, instance);
 			writer.writeByte(JsonWriter.ARRAY_END);
 		}
 	}
 
-	final void writeContent(final JsonWriter writer, final T instance) {
+	@Override
+	public void writeContentFull(final JsonWriter writer, final T instance) {
+		if (isEmpty) return;
 		encoders[0].write(writer, instance);
 		for (int i = 1; i < encoders.length; i++) {
 			writer.writeByte(JsonWriter.COMMA);
@@ -65,6 +65,13 @@ public final class ArrayFormatDescription<B, T> implements JsonWriter.WriteObjec
 		}
 	}
 
+	@Override
+	public boolean writeContentMinimal(final JsonWriter writer, final T instance) {
+		writeContentFull(writer, instance);
+		return false;
+	}
+
+	@Override
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		final B instance = newInstance.create();
@@ -72,28 +79,36 @@ public final class ArrayFormatDescription<B, T> implements JsonWriter.WriteObjec
 		return finalize.apply(instance);
 	}
 
+	@Override
 	public B bind(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() != '[') {
-			throw new IOException("Expecting '[' at position " + reader.positionInStream() + " while decoding " + manifest + ". Found " + (char) reader.last());
+			throw new IOException("Expecting '[' at position: " + reader.positionInStream() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 		reader.getNextToken();
-		return bindObject(reader, instance);
+		bindContent(reader, instance);
+		return instance;
 	}
 
-	public B bindObject(final JsonReader reader, final B instance) throws IOException {
-		int i;
-		for (i = 0; i < decoders.length; i++) {
-			reader.getNextToken();
+	@Override
+	public T readContent(final JsonReader reader) throws IOException {
+		final B instance = newInstance.create();
+		bindContent(reader, instance);
+		return finalize.apply(instance);
+	}
+
+	private void bindContent(final JsonReader reader, final B instance) throws IOException {
+		int i = 0;
+		while (i < decoders.length) {
 			decoders[i].bind(reader, instance);
+			i++;
 			if (reader.getNextToken() == ',') reader.getNextToken();
 			else break;
 		}
 		if (i != decoders.length) {
-			throw new IOException("Expecting to read " + decoders.length + " elements in the array while decoding " + manifest + ". Read only: " +  i + " at position " + reader.positionInStream());
+			throw new IOException("Expecting to read " + decoders.length + " elements in the array while decoding " + manifest.getTypeName() + ". Read only: " +  i + " at position: " + reader.positionInStream());
 		}
 		if (reader.last() != ']') {
-			throw new IOException("Expecting ']' at position " + reader.positionInStream() + " while decoding " + manifest + ". Found " + (char) reader.last());
+			throw new IOException("Expecting ']' at position: " + reader.positionInStream() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
-		return instance;
 	}
 }

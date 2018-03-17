@@ -7,25 +7,25 @@ import java.util.Collection;
 
 public abstract class BoolConverter {
 
-	static final JsonReader.ReadObject<Boolean> BooleanReader = new JsonReader.ReadObject<Boolean>() {
+	public static final JsonReader.ReadObject<Boolean> READER = new JsonReader.ReadObject<Boolean>() {
 		@Override
 		public Boolean read(JsonReader reader) throws IOException {
 			return deserialize(reader);
 		}
 	};
-	static final JsonReader.ReadObject<Boolean> NullableBooleanReader = new JsonReader.ReadObject<Boolean>() {
+	public static final JsonReader.ReadObject<Boolean> NULLABLE_READER = new JsonReader.ReadObject<Boolean>() {
 		@Override
 		public Boolean read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<Boolean> BooleanWriter = new JsonWriter.WriteObject<Boolean>() {
+	public static final JsonWriter.WriteObject<Boolean> WRITER = new JsonWriter.WriteObject<Boolean>() {
 		@Override
 		public void write(JsonWriter writer, Boolean value) {
 			serializeNullable(value, writer);
 		}
 	};
-	static final JsonReader.ReadObject<boolean[]> BooleanArrayReader = new JsonReader.ReadObject<boolean[]>() {
+	public static final JsonReader.ReadObject<boolean[]> ARRAY_READER = new JsonReader.ReadObject<boolean[]>() {
 		@Override
 		public boolean[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
@@ -34,7 +34,7 @@ public abstract class BoolConverter {
 			return deserializeBoolArray(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<boolean[]> BooleanArrayWriter = new JsonWriter.WriteObject<boolean[]>() {
+	public static final JsonWriter.WriteObject<boolean[]> ARRAY_WRITER = new JsonWriter.WriteObject<boolean[]>() {
 		@Override
 		public void write(JsonWriter writer, boolean[] value) {
 			serialize(value, writer);
@@ -103,19 +103,19 @@ public abstract class BoolConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Boolean> deserializeCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(BooleanReader);
+		return reader.deserializeCollection(READER);
 	}
 
 	public static void deserializeCollection(final JsonReader reader, final Collection<Boolean> res) throws IOException {
-		reader.deserializeCollection(BooleanReader, res);
+		reader.deserializeCollection(READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Boolean> deserializeNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(BooleanReader);
+		return reader.deserializeNullableCollection(READER);
 	}
 
 	public static void deserializeNullableCollection(final JsonReader reader, final Collection<Boolean> res) throws IOException {
-		reader.deserializeNullableCollection(BooleanReader, res);
+		reader.deserializeNullableCollection(READER, res);
 	}
 }

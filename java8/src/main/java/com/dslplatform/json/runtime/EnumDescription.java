@@ -19,7 +19,7 @@ public final class EnumDescription<T extends Enum<T>> implements JsonWriter.Writ
 		final DecodePropertyInfo<T>[] tmp = new DecodePropertyInfo[values.length];
 		for (int i = 0; i < values.length; i++) {
 			T value = values[i];
-			tmp[i] = new DecodePropertyInfo<>(value.name(), false, false, i, value);
+			tmp[i] = new DecodePropertyInfo<>(value.name(), false, false, i, false, value);
 		}
 		this.decoders = DecodePropertyInfo.prepare(tmp);
 	}

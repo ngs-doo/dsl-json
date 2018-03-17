@@ -16,6 +16,9 @@ public abstract class OptionalAnalyzer {
 				return analyzeDecoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
 			}
 		}
+		if (manifest == Optional.class) {
+			return analyzeDecoding(manifest, Object.class, Optional.class, dslJson);
+		}
 		return null;
 	};
 
@@ -25,6 +28,9 @@ public abstract class OptionalAnalyzer {
 			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
 				return analyzeEncoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
 			}
+		}
+		if (manifest == Optional.class) {
+			return analyzeEncoding(manifest, Object.class, Optional.class, dslJson);
 		}
 		return null;
 	};

@@ -7,14 +7,14 @@ import java.util.List;
 
 public abstract class StringConverter {
 
-	static final JsonReader.ReadObject<String> Reader = new JsonReader.ReadObject<String>() {
+	public static final JsonReader.ReadObject<String> READER = new JsonReader.ReadObject<String>() {
 		@Override
 		public String read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
 			return reader.readString();
 		}
 	};
-	static final JsonWriter.WriteObject<String> Writer = new JsonWriter.WriteObject<String>() {
+	public static final JsonWriter.WriteObject<String> WRITER = new JsonWriter.WriteObject<String>() {
 		@Override
 		public void write(JsonWriter writer, String value) {
 			serializeNullable(value, writer);
@@ -51,7 +51,7 @@ public abstract class StringConverter {
 
 	public static String deserializeNullable(final JsonReader reader) throws IOException {
 		if (reader.last() == 'n') {
-			if (!reader.wasNull()) throw new IOException("Expecting 'null' at position " + reader.positionInStream() + ". Found " + (char)reader.last());
+			if (!reader.wasNull()) throw new IOException("Expecting 'null' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
 			return null;
 		}
 		return reader.readString();
@@ -59,20 +59,20 @@ public abstract class StringConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<String> deserializeCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(Reader);
+		return reader.deserializeCollection(READER);
 	}
 
 	public static void deserializeCollection(final JsonReader reader, final Collection<String> res) throws IOException {
-		reader.deserializeCollection(Reader, res);
+		reader.deserializeCollection(READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<String> deserializeNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(Reader);
+		return reader.deserializeNullableCollection(READER);
 	}
 
 	public static void deserializeNullableCollection(final JsonReader reader, final Collection<String> res) throws IOException {
-		reader.deserializeNullableCollection(Reader, res);
+		reader.deserializeNullableCollection(READER, res);
 	}
 
 	public static void serialize(final List<String> list, final JsonWriter writer) {

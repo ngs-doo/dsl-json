@@ -60,9 +60,9 @@ public abstract class CollectionAnalyzer {
 		if (reader == null) {
 			return null;
 		}
-		final CollectionDecoder converter = new CollectionDecoder<>(manifest, newInstance, reader);
-		json.registerReader(manifest, converter);
-		return converter;
+		final CollectionDecoder decoder = new CollectionDecoder<>(manifest, newInstance, reader);
+		json.registerReader(manifest, decoder);
+		return decoder;
 	}
 
 	private static CollectionEncoder analyzeEncoding(final Type manifest, final Type element, final Class<?> collection, final DslJson json) {

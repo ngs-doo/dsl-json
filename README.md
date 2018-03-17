@@ -1,7 +1,7 @@
 DSL-JSON library
 ================
 
-Fastest Java/Android JSON library with advanced compile-time databinding support. Compatible with DSL Platform.
+Fastest JVM (Java/Android/Scala/Kotlin) JSON library with advanced compile-time databinding support. Compatible with DSL Platform.
 
 Java JSON library designed for performance. Built for invasive software composition with DSL Platform compiler.
 
@@ -22,7 +22,9 @@ Java JSON library designed for performance. Built for invasive software composit
  * binding to an existing instance - during deserialization an existing instance can be provided to reduce GC
  * advanced annotation processor support - support for Java-only compilation or DSL Platform integration via conversion of Java code to DSL schema
  * customizable runtime overheads - works in reflection mode, in Java8 annotation processor mode or DSL Platform mode. Schema and annotation based POJOs are prepared at compile time
- * support for other library annotations - most Jackson annotations will be used and compile time analysis can be extended in various ways
+ * support for other library annotations - Jackson annotations will be used and compile time analysis can be extended in various ways
+ * Scala types support - Scala collections, primitives and boxed primitives work without any extra annotations or configuration
+ * Kotlin support - annotation processor can be used from Kotlin. NonNull annotation is supported
 
 ## Schema based serialization
 
@@ -53,14 +55,14 @@ To use Java8 annotation processor its sufficient to just reference Java8 version
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-java8</artifactId>
-      <version>1.7.0</version>
+      <version>1.7.1</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.7.0'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.0'
+      compile 'com.dslplatform:dsl-json-java8:1.7.1'
+      annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.1'
     }
 
 ### DSL Platform annotation processor
@@ -76,15 +78,15 @@ Annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.7.0</version>
+      <version>1.7.1</version>
       <scope>provided</scope>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.7.0'
-      annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.0'
+      compile 'com.dslplatform:dsl-json:1.7.1'
+      annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.1'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -217,14 +219,14 @@ Reference benchmark (built by library authors):
 ## Dependencies
 
 Core library (with analysis processor) and DSL Platform annotation processor targets Java6.
-Java8 library includes runtime analysis, reflection support, annotation processor and Java8 specific types. When Java8 annotation processor is used Mono/.NET don't need to be present on the system.  
+Java8 library includes runtime analysis, reflection support, annotation processor and Java8 specific types. When Java8 annotation processor is used Mono/.NET doesn't need to be present on the system.  
 
 Library can be added as Maven dependency with:
 
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.7.0</version>
+      <version>1.7.1</version>
     </dependency>
 
 ## Runtime analysis
@@ -284,6 +286,39 @@ Library has various limits built-in to protect against malicious input:
 
  * [default of 512 digits](library/src/main/java/com/dslplatform/json/DslJson.java#L339)
  * [default of 128MB strings](library/src/main/java/com/dslplatform/json/DslJson.java#L352)
+
+### Scala support
+
+Scala types can be used. They will be analyzed at runtime with. Scala specific behaviour:
+
+ * Option[_] - means that JSON attribute can be null. If type is not an Option and null is found, IOException will be thrown
+ * Container[Primitive] - eg: `Option[Int]` - will behave as `Option<int>` and thus it will avoid wrong type decoding issues
+ * name: Type = Default - will be used to imply if attribute can be omitted from JSON - in which case the specified default value will be used (default values are static at analysis time)
+ * tuples - will be encoded/decoded in Array format (without property names)
+ 
+To avoid some Java/Scala conversion issues it's best to use Scala specific API via
+
+    import com.dslplatform.json._ // import pimping
+    val dslJson = new DslJson[Any]()
+    //use encode pimp to correctly analyze types (this will mostly provide some performance benefits)
+    dslJson.encode(instance, ...)
+    //use decode pimp to correctly analyze types (this will avoid some issues with nested classes and missing metadata)
+    val result = dslJson.decode[TargetType](...) 
+
+For SBT dependency can be added as:
+
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.7.1"
+
+### Kotlin support
+
+Kotlin has excellent Java interoperability, so annotation processor can be used as-is.
+When used with Gradle, configuration can be done via:
+
+    apply plugin: 'kotlin-kapt'
+    dependencies {
+      compile "com.dslplatform:dsl-json-java8:1.7.1"
+      kapt "com.dslplatform:dsl-json-java8:1.7.1"
+    }
 
 ## FAQ
 

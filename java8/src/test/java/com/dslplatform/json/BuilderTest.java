@@ -1,6 +1,10 @@
 package com.dslplatform.json;
 
-import com.dslplatform.json.runtime.*;
+import com.dslplatform.json.DslJson;
+import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.runtime.DecodePropertyInfo;
+import com.dslplatform.json.runtime.ObjectFormatDescription;
+import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 

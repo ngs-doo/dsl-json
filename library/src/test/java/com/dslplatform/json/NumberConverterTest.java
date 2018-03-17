@@ -251,11 +251,11 @@ public class NumberConverterTest {
 		Assert.assertEquals(expected, sw.toString());
 
 		sw.reset();
-		sw.serialize(collection, NumberConverter.LongWriter);
+		sw.serialize(collection, NumberConverter.LONG_WRITER);
 		Assert.assertEquals(expected, sw.toString());
 
 		sw.reset();
-		sw.serialize(boxes, NumberConverter.LongWriter);
+		sw.serialize(boxes, NumberConverter.LONG_WRITER);
 		Assert.assertEquals(expected, sw.toString());
 	}
 

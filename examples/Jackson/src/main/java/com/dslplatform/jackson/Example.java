@@ -15,9 +15,10 @@ import java.util.*;
 public class Example {
 
 	public static class Model {
-		//Compile time databinding will use Jackson annotations for analysis (unless disabled)
+		//Compile time databinding will use Jackson annotations for analysis (when enabled)
 		@JsonCreator
 		public Model() {}
+
 		public String string;
 		public List<Integer> integers;
 		@JsonProperty(value = "guids") //use alternative name in JSON
@@ -57,6 +58,7 @@ public class Example {
 				this.y = x;
 			}
 
+			//JsonCreator can be used for selecting the appropriate constructor when there are multiple ones
 			@JsonCreator
 			public WithCustomCtor(int x, int y) {
 				this.x = x;
@@ -129,6 +131,7 @@ public class Example {
 		//ServiceLoader.load will load Model since it will be registered into META-INF/services during annotation processing
 		//withRuntime is enabled to support runtime analysis for stuff which is not registered by default
 		//Annotation processor will run by default and generate descriptions for JSON encoding/decoding
+		//To include Jackson annotations dsljson.jackson=true must be passed to annotation processor
 		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
 
 		Model instance = new Model();

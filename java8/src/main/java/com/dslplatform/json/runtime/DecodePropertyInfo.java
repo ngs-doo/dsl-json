@@ -19,12 +19,13 @@ public class DecodePropertyInfo<T> {
 	public final boolean exactName;
 	public final boolean mandatory;
 	public final int index;
+	public final boolean nonNull;
 	public final T value;
 	final long mandatoryValue;
 	final byte[] nameBytes;
 
-	public DecodePropertyInfo(String name, boolean exactName, boolean mandatory, int index, T value) {
-		this(name, exactName, mandatory, 0, index, calcHash(name), calcWeakHash(name), value, name.getBytes(utf8));
+	public DecodePropertyInfo(String name, boolean exactName, boolean mandatory, int index, boolean nonNull, T value) {
+		this(name, exactName, mandatory, 0, index, nonNull, calcHash(name), calcWeakHash(name), value, name.getBytes(utf8));
 	}
 
 	static int calcHash(String name) {
@@ -44,12 +45,13 @@ public class DecodePropertyInfo<T> {
 		return hash;
 	}
 
-	private DecodePropertyInfo(String name, boolean exactName, boolean mandatory, long mandatoryValue, int index, int hash, int weakHash, T value, byte[] nameBytes) {
+	private DecodePropertyInfo(String name, boolean exactName, boolean mandatory, long mandatoryValue, int index, boolean nonNull, int hash, int weakHash, T value, byte[] nameBytes) {
 		this.name = name;
 		this.exactName = exactName;
 		this.mandatory = mandatory;
 		this.mandatoryValue = mandatoryValue;
 		this.index = index;
+		this.nonNull = nonNull;
 		this.hash = hash;
 		this.weakHash = weakHash;
 		this.value = value;
@@ -67,7 +69,7 @@ public class DecodePropertyInfo<T> {
 				for (int j = 0; j < decoders.length; j++) {
 					final DecodePropertyInfo si = decoders[j];
 					if (si.hash == ri.hash && !si.exactName) {
-						decoders[j] = new DecodePropertyInfo<>(ri.name, true, ri.mandatory, ~0, ri.index, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
+						decoders[j] = new DecodePropertyInfo<>(ri.name, true, ri.mandatory, ~0, ri.index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
 					}
 				}
 			}
@@ -76,7 +78,7 @@ public class DecodePropertyInfo<T> {
 				if (mandatoryIndex > 63) {
 					throw new SerializationException("Only up to 64 mandatory properties are supported");
 				}
-				decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, true, ~(1 << mandatoryIndex), ri.index, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
+				decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, true, ~(1 << mandatoryIndex), ri.index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
 				mandatoryIndex++;
 			}
 			needsSorting = needsSorting || ri.index >= 0;
@@ -96,7 +98,7 @@ public class DecodePropertyInfo<T> {
 				index = nameOrder.size();
 				nameOrder.put(ri.name, index);
 			}
-			decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, ri.mandatory, ri.mandatoryValue, index, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
+			decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, ri.mandatory, ri.mandatoryValue, index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
 		}
 		return decoders;
 	}
@@ -124,7 +126,7 @@ public class DecodePropertyInfo<T> {
 			}
 		}
 		sb.setLength(sb.length() - 2);
-		sb.append(") not found at position ");
+		sb.append(") not found at position: ");
 		sb.append(reader.positionInStream());
 		throw new IOException(sb.toString());
 	}

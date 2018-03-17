@@ -6,11 +6,11 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-abstract class Generics {
+public abstract class Generics {
 
 	private static final ConcurrentMap<String, GenericType> typeCache = new ConcurrentHashMap<>();
 
-	static HashMap<Type, Type> analyze(final Type manifest, final Class<?> raw) {
+	public static HashMap<Type, Type> analyze(final Type manifest, final Class<?> raw) {
 		final HashMap<Type, Type> genericMappings = new HashMap<>();
 		if (manifest instanceof ParameterizedType) {
 			final Type[] actual = ((ParameterizedType) manifest).getActualTypeArguments();
@@ -26,7 +26,7 @@ abstract class Generics {
 		return genericMappings;
 	}
 
-	static Type makeConcrete(final Type manifest, final HashMap<Type, Type> mappings) {
+	public static Type makeConcrete(final Type manifest, final HashMap<Type, Type> mappings) {
 		if (mappings.isEmpty()) return manifest;
 		if (manifest instanceof TypeVariable) return mappings.get(manifest);
 		if (manifest instanceof GenericArrayType) {
@@ -122,11 +122,18 @@ abstract class Generics {
 		return found;
 	}
 
-	static boolean isUnknownType(final Type type) {
+	public static boolean isUnknownType(final Type type) {
 		if (type instanceof GenericArrayType) {
-			GenericArrayType gat = (GenericArrayType)type;
+			GenericArrayType gat = (GenericArrayType) type;
 			return isUnknownType(gat.getGenericComponentType());
 		}
+		//This is commented out because each container should cope with generic arguments
+		/*if (type instanceof ParameterizedType) {
+			ParameterizedType pt = (ParameterizedType) type;
+			for (Type t : pt.getActualTypeArguments()) {
+				if (isUnknownType(t)) return true;
+			}
+		}*/
 		return Object.class == type || type instanceof TypeVariable;
 	}
 }

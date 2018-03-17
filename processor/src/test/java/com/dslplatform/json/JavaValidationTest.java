@@ -39,6 +39,15 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testCtorNameMismatch() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				12,
+				compileTestCase(ImmutableClassMismatch.class),
+				"Unable to find matching property: 'x' used in constructor");
+	}
+
+	@Test
 	public void testNonPublicClass() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
@@ -371,10 +380,27 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void arrayFormatRequiresIndexOnProperties() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				8,
+				compileTestCase(ArrayFormatWithoutIndex.class),
+				"When array format is used all properties must have index order defined. Property o doesn't have index defined");
+	}
+
+	@Test
+	public void arrayFormatAndDuplicateIndex() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				8,
+				compileTestCase(ArrayFormatDuplicateIndex.class),
+				"Duplicate index detected on y. Index values must be distinct to be used in array format");
+	}
+
+	@Test
 	public void supportsArrayFormat() {
 		checkValidCompilation(ArrayFormat.class);
 	}
-
 	@Test
 	public void duplicateFormatCheck() {
 		assertCompilationReturned(
@@ -411,6 +437,14 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void jacksonAnnotation() {
-		checkValidCompilation(JacksonCreator.class);
+		assertCompilationSuccessful(
+				compileTestCase(
+						Collections.singletonList("-Adsljson.jackson=true"),
+						JacksonCreator.class));
+	}
+
+	@Test
+	public void immutableAndGetter() {
+		checkValidCompilation(ImmutableClassWithGetter.class);
 	}
 }

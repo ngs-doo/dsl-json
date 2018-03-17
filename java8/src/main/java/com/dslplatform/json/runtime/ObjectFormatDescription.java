@@ -8,11 +8,11 @@ import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.function.Function;
 
-public final class ObjectFormatDescription<B, T> extends WriteDescription<T> implements JsonReader.ReadObject<T>, JsonReader.BindObject<B> {
+public final class ObjectFormatDescription<B, T> extends WriteDescription<T> implements FormatConverter<T>, JsonReader.BindObject<B> {
 
-	final Type manifest;
-	final InstanceFactory<B> newInstance;
-	final Function<B, T> finalize;
+	private final Type manifest;
+	private final InstanceFactory<B> newInstance;
+	private final Function<B, T> finalize;
 	private final DecodePropertyInfo<JsonReader.BindObject>[] decoders;
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
@@ -50,44 +50,62 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 		this.hasMandatory = mandatoryFlag != 0;
 	}
 
+	@Override
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
+		else if (reader.last() != '{') {
+			throw new IOException("Expecting '{' at position: " + reader.positionInStream() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
+		}
+		reader.getNextToken();
+		return readContent(reader);
+	}
+
+	@Override
+	public B bind(final JsonReader reader, final B instance) throws IOException {
+		if (reader.last() != '{') {
+			throw new IOException("Expecting '{' at position: " + reader.positionInStream() + " while binding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+		}
+		reader.getNextToken();
+		bindContent(reader, instance);
+		return instance;
+	}
+
+	@Override
+	public T readContent(final JsonReader reader) throws IOException {
 		final B instance = newInstance.create();
-		bind(reader, instance);
+		bindContent(reader, instance);
 		return finalize.apply(instance);
 	}
 
-	public B bind(final JsonReader reader, final B instance) throws IOException {
-		if (reader.last() != '{') {
-			throw new IOException("Expecting '{' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
-		}
-		reader.getNextToken();
-		return bindObject(reader, instance);
-	}
-
-	public B bindObject(final JsonReader reader, final B instance) throws IOException {
+	private void bindContent(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() == '}') {
 			if (hasMandatory) {
 				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, decoders);
 			}
-			return instance;
+			return;
 		}
 		long currentMandatory = mandatoryFlag;
-		for (final DecodePropertyInfo<JsonReader.BindObject> ri : decoders) {
+		int i = 0;
+		while(i < decoders.length) {
+			final DecodePropertyInfo<JsonReader.BindObject> ri = decoders[i++];
 			final int weakHash = reader.fillNameWeakHash();
 			if (weakHash != ri.weakHash || !reader.wasLastName(ri.nameBytes)) {
-				return bindObjectSlow(reader, instance, currentMandatory);
+				bindObjectSlow(reader, instance, currentMandatory);
+				return;
 			}
 			reader.getNextToken();
+			if (ri.nonNull && reader.wasNull()) {
+				throw new IOException("Null value found for property " + ri.name + " at position: " + reader.positionInStream());
+			}
 			ri.value.bind(reader, instance);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
-			if (reader.getNextToken() == ',') reader.getNextToken();
+			if (reader.getNextToken() == ',' && i != decoders.length) reader.getNextToken();
 			else break;
 		}
-		return checkAndReturn(reader, instance, currentMandatory);
+		finalChecks(reader, instance, currentMandatory);
 	}
 
-	private B bindObjectSlow(final JsonReader reader, final B instance, long currentMandatory) throws IOException {
+	private void bindObjectSlow(final JsonReader reader, final B instance, long currentMandatory) throws IOException {
 		boolean processed = false;
 		final int oldHash = reader.getLastHash();
 		for (final DecodePropertyInfo<JsonReader.BindObject> ri : decoders) {
@@ -96,13 +114,17 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 				if (!reader.wasLastName(ri.nameBytes)) continue;
 			}
 			reader.getNextToken();
+			if (ri.nonNull && reader.wasNull()) {
+				throw new IOException("Null value found for property " + ri.name + " at position: " + reader.positionInStream());
+			}
 			ri.value.bind(reader, instance);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
 			processed = true;
 			break;
 		}
 		if (!processed) skip(reader);
-		while (reader.getNextToken() == ','){
+		else reader.getNextToken();
+		while (reader.last() == ','){
 			reader.getNextToken();
 			final int hash = reader.fillName();
 			processed = false;
@@ -112,31 +134,40 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 					if (!reader.wasLastName(ri.nameBytes)) continue;
 				}
 				reader.getNextToken();
+				if (ri.nonNull && reader.wasNull()) {
+					throw new IOException("Null value found for property " + ri.name + " at position: " + reader.positionInStream());
+				}
 				ri.value.bind(reader, instance);
 				currentMandatory = currentMandatory & ri.mandatoryValue;
 				processed = true;
 				break;
 			}
 			if (!processed) skip(reader);
+			else reader.getNextToken();
 		}
-		return checkAndReturn(reader, instance, currentMandatory);
+		finalChecks(reader, instance, currentMandatory);
 	}
 
-	private B checkAndReturn(final JsonReader reader, final B instance, final long currentMandatory) throws IOException {
+	private void finalChecks(final JsonReader reader, final B instance, final long currentMandatory) throws IOException {
 		if (reader.last() != '}') {
-			throw new IOException("Expecting '}' at position " + reader.positionInStream() + ". Found " + (char) reader.last());
+			if (reader.last() == ',') {
+				reader.getNextToken();
+				reader.fillNameWeakHash();
+				bindObjectSlow(reader, instance, currentMandatory);
+				return;
+			} else throw new IOException("Expecting '}' or ',' at position: " + reader.positionInStream() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 		if (hasMandatory && currentMandatory != 0) {
 			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
 		}
-		return instance;
 	}
 
 	private void skip(final JsonReader reader) throws IOException {
 		if (!skipOnUnknown) {
 			final String name = reader.getLastName();
-			throw new IOException("Unknown property detected: " + name + " at position " + reader.positionInStream(name.length() + 3));
+			throw new IOException("Unknown property detected: '" + name + "' while reading " + manifest.getTypeName() + " at position: " + reader.positionInStream(name.length() + 3));
 		}
+		reader.getNextToken();
 		reader.skip();
 	}
 }

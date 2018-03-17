@@ -8,13 +8,13 @@ import java.util.UUID;
 public abstract class UUIDConverter {
 
 	public static final UUID MIN_UUID = new java.util.UUID(0L, 0L);
-	static final JsonReader.ReadObject<UUID> Reader = new JsonReader.ReadObject<UUID>() {
+	public static final JsonReader.ReadObject<UUID> READER = new JsonReader.ReadObject<UUID>() {
 		@Override
 		public UUID read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<UUID> Writer = new JsonWriter.WriteObject<UUID>() {
+	public static final JsonWriter.WriteObject<UUID> WRITER = new JsonWriter.WriteObject<UUID>() {
 		@Override
 		public void write(JsonWriter writer, UUID value) {
 			serializeNullable(value, writer);
@@ -174,19 +174,19 @@ public abstract class UUIDConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<UUID> deserializeCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(Reader);
+		return reader.deserializeCollection(READER);
 	}
 
 	public static void deserializeCollection(final JsonReader reader, final Collection<UUID> res) throws IOException {
-		reader.deserializeCollection(Reader, res);
+		reader.deserializeCollection(READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<UUID> deserializeNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(Reader);
+		return reader.deserializeNullableCollection(READER);
 	}
 
 	public static void deserializeNullableCollection(final JsonReader reader, final Collection<UUID> res) throws IOException {
-		reader.deserializeNullableCollection(Reader, res);
+		reader.deserializeNullableCollection(READER, res);
 	}
 }

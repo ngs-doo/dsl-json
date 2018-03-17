@@ -8,7 +8,7 @@ public class ImmutablePerson {
 	public final String lastName;
 	public final int age;
 
-	//Jackson can be used for selecting the appropriate constructor
+	//JsonCreator can be used for selecting the appropriate constructor when there are multiple ones
 	@JsonCreator
 	public ImmutablePerson(String firstName, String lastName, int age) {
 		this.firstName = firstName;

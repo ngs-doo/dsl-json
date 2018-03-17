@@ -26,7 +26,7 @@ public class MixinTest {
 	private final MixinDescription<Iface> mixinDescription1 = new MixinDescription<>(
 			Iface.class,
 			json,
-			new ObjectDescription[] { new ObjectDescription(Example.class, objectFormatDescription1, null, true, "Example", json)}
+			new FormatDescription[] { new FormatDescription(Example.class, objectFormatDescription1, null, true, "Example", json)}
 	);
 	private final ObjectFormatDescription<EmptyExample, EmptyExample> objectFormatDescription2 = ObjectFormatDescription.create(
 			EmptyExample.class,
@@ -38,7 +38,7 @@ public class MixinTest {
 	private final MixinDescription<IEmpty> mixinDescription2 = new MixinDescription<>(
 			IEmpty.class,
 			json,
-			new ObjectDescription[] { new ObjectDescription(EmptyExample.class, objectFormatDescription2, null, true, "EmptyExample", json)}
+			new FormatDescription[] { new FormatDescription(EmptyExample.class, objectFormatDescription2, null, true, "EmptyExample", json)}
 	);
 	public MixinTest() {
 		json.registerReader(Example.class, objectFormatDescription1);
@@ -96,7 +96,7 @@ public class MixinTest {
 			json.deserialize(Iface.class, is);
 			Assert.fail("Expecting error");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Expecting \"$type\" attribute as first element of mixin at position 2"));
+			Assert.assertTrue(ex.getMessage().contains("Expecting \"$type\" attribute as first element of mixin at position: 2"));
 		}
 	}
 
@@ -107,7 +107,7 @@ public class MixinTest {
 			json.deserialize(Iface.class, is);
 			Assert.fail("Expecting error");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Expecting \"$type\" attribute as first element of mixin at position 2. Found: $typ"));
+			Assert.assertTrue(ex.getMessage().contains("Expecting \"$type\" attribute as first element of mixin at position: 2. Found: $typ"));
 		}
 	}
 
