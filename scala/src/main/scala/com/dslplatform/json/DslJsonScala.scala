@@ -8,21 +8,23 @@ import com.dslplatform.json.runtime.ScalaClassAnalyzer
 import scala.reflect.runtime.universe._
 
 class DslJsonScala(val json: DslJson[_]) extends AnyVal {
-  def findWriter[T: TypeTag]: Option[JsonWriter.WriteObject[T]] = {
-    TypeAnalysis.findType(typeOf[T]).map(json.tryFindWriter).map(_.asInstanceOf[JsonWriter.WriteObject[T]])
+
+  def encoder[T: TypeTag]: JsonWriter.WriteObject[T] = {
+    val tpe = typeOf[T]
+    val javaType = TypeAnalysis.convertType(tpe)
+    checkConversion(tpe, javaType, json.getRegisteredEncoders)
+    json.tryFindWriter(javaType).asInstanceOf[JsonWriter.WriteObject[T]]
   }
 
-  def findReader[T: TypeTag]: Option[JsonReader.ReadObject[T]] = {
-    TypeAnalysis.findType(typeOf[T]).map(json.tryFindReader).map(_.asInstanceOf[JsonReader.ReadObject[T]])
+  def decoder[T: TypeTag]: JsonReader.ReadObject[T] = {
+    val tpe = typeOf[T]
+    val javaType = TypeAnalysis.convertType(tpe)
+    checkConversion(tpe, javaType, json.getRegisteredDecoders)
+    json.tryFindReader(javaType).asInstanceOf[JsonReader.ReadObject[T]]
   }
 
-  def findBinder[T: TypeTag]: Option[JsonReader.BindObject[T]] = {
-    TypeAnalysis.findType(typeOf[T]).map(json.tryFindBinder).map(_.asInstanceOf[JsonReader.BindObject[T]])
-  }
-
-  private def findJavaType(tpe: Type): JavaType = {
-    val foundType = TypeAnalysis.findType(tpe).getOrElse(throw new IllegalArgumentException(s"Unable to find Java type for $tpe"))
-    if (!json.getRegisteredDecoders.contains(foundType)) {
+  private def checkConversion(tpe: Type, foundType: JavaType, known: java.util.Set[JavaType]): JavaType = {
+    if (!known.contains(foundType)) {
       foundType match {
         case _: ParameterizedType =>
         case _: GenericArrayType =>
@@ -35,43 +37,34 @@ class DslJsonScala(val json: DslJson[_]) extends AnyVal {
     foundType
   }
 
-  def encode[T: TypeTag](value: T, os: OutputStream): Unit = {
+  def encode[T](value: T, os: OutputStream)(implicit encoder: JsonWriter.WriteObject[T]): Unit = {
     require(os ne null, "os can't be null")
-    val foundType = findJavaType(typeOf[T])
     val writer = json.localWriter.get()
     writer.reset(os)
     try {
-      if (!json.serialize(writer, foundType, value)) {
-        throw new IllegalArgumentException(s"Unable to encode $foundType")
-      }
+      encoder.write(writer, value)
       writer.flush()
     } finally {
       writer.reset(null)
     }
   }
 
-  def encode[T: TypeTag](writer: JsonWriter, value: T): Unit = {
-    require(writer ne null, "writer can't be null")
-    val foundType = findJavaType(typeOf[T])
-    if (!json.serialize(writer, foundType, value)) {
-      throw new IllegalArgumentException(s"Unable to encode $foundType")
-    }
-  }
-
-  def decode[T: TypeTag](bytes: Array[Byte]): T = {
+  def decode[T](bytes: Array[Byte])(implicit decoder: JsonReader.ReadObject[T]): T = {
     require(bytes ne null, "bytes can't be null")
     decode[T](bytes, bytes.length)
   }
 
-  def decode[T: TypeTag](bytes: Array[Byte], length: Int): T = {
+  def decode[T](bytes: Array[Byte], length: Int)(implicit decoder: JsonReader.ReadObject[T]): T = {
     require(bytes ne null, "bytes can't be null")
     require(length <= bytes.length, "length must be less or equal to bytes length")
-    val foundType = findJavaType(typeOf[T])
-    json.deserialize(foundType, bytes, length).asInstanceOf[T]
+    val reader = json.localReader.get()
+    reader.process(bytes, length).getNextToken()
+    decoder.read(reader)
   }
 
-  def decode[T: TypeTag](is: InputStream): T = {
-    val foundType = findJavaType(typeOf[T])
-    json.deserialize(foundType, is).asInstanceOf[T]
+  def decode[T](is: InputStream)(implicit decoder: JsonReader.ReadObject[T]): T = {
+    val reader = json.localReader.get()
+    reader.process(is).getNextToken()
+    decoder.read(reader)
   }
 }

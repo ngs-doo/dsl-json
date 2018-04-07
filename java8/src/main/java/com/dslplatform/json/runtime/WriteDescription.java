@@ -24,8 +24,11 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 			writer.writeByte(JsonWriter.OBJECT_END);
 		} else {
 			writer.writeByte(JsonWriter.OBJECT_START);
-			writeContentMinimal(writer, instance);
-			writer.writeByte(JsonWriter.OBJECT_END);
+			if (writeContentMinimal(writer, instance)) {
+				writer.getByteBuffer()[writer.size() - 1] = JsonWriter.OBJECT_END;
+			} else {
+				writer.writeByte(JsonWriter.OBJECT_END);
+			}
 		}
 	}
 

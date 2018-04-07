@@ -6,13 +6,13 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>dsl-schema-example</artifactId>
-	<version>1.7.1</version>
+	<version>1.7.2</version>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-java8</artifactId>
-			<version>1.7.1</version>
+			<version>1.7.2</version>
 		</dependency>
 	</dependencies>
 

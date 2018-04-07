@@ -43,6 +43,20 @@ public class ReflectionTest {
 	}
 
 	@Test
+	public void checkSimpleMinimal() throws IOException {
+		DslJson<Object> jsonMin = new DslJson<Object>(Settings.withRuntime().skipDefaultValues(true).includeServiceLoader());
+		SimpleClass sc = new SimpleClass();
+		sc.x = 12;
+		sc.setY("abc");
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		jsonMin.serialize(sc, baos);
+		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		SimpleClass sc2 = jsonMin.deserialize(SimpleClass.class, bais);
+		Assert.assertEquals(sc.x, sc2.x);
+		Assert.assertEquals(sc.getY(), sc2.getY());
+	}
+
+	@Test
 	public void selfReference() throws IOException {
 		SimpleClass sc1 = new SimpleClass();
 		sc1.x = 12;

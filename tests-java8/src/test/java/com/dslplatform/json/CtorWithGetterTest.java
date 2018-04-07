@@ -24,6 +24,15 @@ public class CtorWithGetterTest {
 		}
 	}
 
+	@CompiledJson
+	public static class ChangeName {
+		public final int i;
+
+		public ChangeName(@JsonAttribute(name = "i2") int i) {
+			this.i = i;
+		}
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 
 	@Test
@@ -34,5 +43,15 @@ public class CtorWithGetterTest {
 		Example res = dslJson.deserialize(Example.class, os.toByteArray(), os.size());
 		Assert.assertEquals(c.getD(), res.getD());
 		Assert.assertEquals(c.getList(), res.getList());
+	}
+
+	@Test
+	public void customCtorName() throws IOException {
+		ChangeName c = new ChangeName(505);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(c, os);
+		Assert.assertEquals("{\"i2\":505}", os.toString("UTF-8"));
+		ChangeName res = dslJson.deserialize(ChangeName.class, os.toByteArray(), os.size());
+		Assert.assertEquals(c.i, res.i);
 	}
 }

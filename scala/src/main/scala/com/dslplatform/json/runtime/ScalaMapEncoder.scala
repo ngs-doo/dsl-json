@@ -16,17 +16,22 @@ final class ScalaMapEncoder[K, V](
   override def write(writer: JsonWriter, value: scala.collection.Map[K, V]): Unit = {
     if (value.isEmpty) writer.writeAscii(EMPTY)
     else if (keyEncoder.isDefined && valueEncoder.isDefined) {
-      var pastFirst = false
+      val ke = keyEncoder.get
+      val ve = valueEncoder.get
       writer.writeByte(JsonWriter.OBJECT_START)
       val iter = value.iterator
+      val (k1, v1) = iter.next()
+      if (checkForConversionToString) writeQuoted(writer, ke, k1)
+      else ke.write(writer, k1)
+      writer.writeByte(JsonWriter.SEMI)
+      ve.write(writer, v1)
       while (iter.hasNext) {
         val (k, v) = iter.next()
-        if (pastFirst) writer.writeByte(JsonWriter.COMMA)
-        else pastFirst = true
-        if (checkForConversionToString) writeQuoted(writer, keyEncoder.get, k)
-        else keyEncoder.get.write(writer, k)
+        writer.writeByte(JsonWriter.COMMA)
+        if (checkForConversionToString) writeQuoted(writer, ke, k)
+        else ke.write(writer, k)
         writer.writeByte(JsonWriter.SEMI)
-        valueEncoder.get.write(writer, v)
+        ve.write(writer, v)
       }
       writer.writeByte(JsonWriter.OBJECT_END)
     } else {

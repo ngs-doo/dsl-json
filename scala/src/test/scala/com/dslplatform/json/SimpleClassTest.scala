@@ -7,7 +7,7 @@ import org.specs2.mutable.Specification
 
 class SimpleClassTest extends Specification with ScalaCheck {
 
-  private lazy val dslJson = new DslJson[Any]()
+  private lazy implicit val dslJson = new DslJson[Any]()
 
   "simple" >> {
     "example 1" >> {
@@ -46,7 +46,7 @@ class SimpleClassTest extends Specification with ScalaCheck {
       true === output.contains("\"i\":2")
       true === output.contains("\"l\":-4")
     }
-    /*"example 3 decoding" >> {
+    "example 3 decoding" >> {
       val os = new ByteArrayOutputStream()
       val m1 = new MutableExamples.Mutable3
       m1.str = Some("x")
@@ -57,7 +57,7 @@ class SimpleClassTest extends Specification with ScalaCheck {
       m1.str === m2.str
       m1.i === m2.i
       m1.l === m2.l
-    }*/
+    }
   }
 }
 

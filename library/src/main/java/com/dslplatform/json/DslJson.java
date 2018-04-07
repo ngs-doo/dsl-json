@@ -985,6 +985,22 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	/**
+	 * Try to find registered writer for provided type.
+	 * If writer is not found, null will be returned.
+	 * If writer for exact type is not found, type hierarchy will be scanned for base writer.
+	 * <p>
+	 * Writer is used for conversion from object instance into JSON representation.
+	 *
+	 * @param manifest specified class
+	 * @param <T> specified type
+	 * @return found writer for specified class or null
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> JsonWriter.WriteObject<T> tryFindWriter(final Class<T> manifest) {
+		return (JsonWriter.WriteObject<T>) tryFindWriter((Type) manifest);
+	}
+
+	/**
 	 * Try to find registered reader for provided type.
 	 * If reader is not found, null will be returned.
 	 * Exact match must be found, type hierarchy will not be scanned for alternative reader.
@@ -997,7 +1013,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 *
 	 * @param manifest specified class
 	 * @param <T> specified type
-	 * @return found reader for specified class
+	 * @return found reader for specified class or null
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> JsonReader.ReadObject<T> tryFindReader(final Class<T> manifest) {
@@ -1017,7 +1033,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 *
 	 * @param manifest specified class
 	 * @param <T> specified type
-	 * @return found reader for specified class
+	 * @return found reader for specified class or null
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> JsonReader.BindObject<T> tryFindBinder(final Class<T> manifest) {

@@ -541,4 +541,9 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(DeserializationNameWithInterface.class, DeserializationInterface.class),
 				"Deserialization name is not supported in the DSL compiler. Found on: 'com.dslplatform.json.models.DeserializationNameWithInterface' and used in: 'com.dslplatform.json.models.DeserializationInterface'");
 	}
+
+	@Test
+	public void simpleEnums() {
+		checkValidCompilation(WithEnums.class);
+	}
 }

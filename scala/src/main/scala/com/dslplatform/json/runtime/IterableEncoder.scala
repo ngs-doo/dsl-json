@@ -13,18 +13,30 @@ final class IterableEncoder[E](
   private val EMPTY = Array[Byte]('[', ']')
 
   override def write(writer: JsonWriter, value: Iterable[E]): Unit = {
+    //TODO: remove null check
     if (value == null) writer.writeNull()
     else if (value.isEmpty) writer.writeAscii(EMPTY)
     else if (encoder.isDefined) {
-      var pastFirst = false
       writer.writeByte(JsonWriter.ARRAY_START)
       val enc = encoder.get
-      val iter = value.iterator
-      while (iter.hasNext) {
-        val v = iter.next()
-        if (pastFirst) writer.writeByte(JsonWriter.COMMA)
-        else pastFirst = true
-        enc.write(writer, v)
+      value match {
+        case iseq: IndexedSeq[E] =>
+          enc.write(writer, iseq.head)
+          var i = 1
+          val size = iseq.size
+          while (i < size) {
+            writer.writeByte(JsonWriter.COMMA)
+            enc.write(writer, iseq(i))
+            i += 1
+          }
+        case _ =>
+          val iter = value.iterator
+          enc.write(writer, iter.next())
+          while (iter.hasNext) {
+            val v = iter.next()
+            writer.writeByte(JsonWriter.COMMA)
+            enc.write(writer, v)
+          }
       }
       writer.writeByte(JsonWriter.ARRAY_END)
     } else {

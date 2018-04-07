@@ -7,7 +7,7 @@ import org.specs2.mutable.Specification
 
 class OptionTest extends Specification with ScalaCheck {
 
-  private lazy val dslJson = new DslJson[Any]()
+  private lazy implicit val dslJson = new DslJson[Any]()
 
   "direct" >> {
     "string serialize" >> {

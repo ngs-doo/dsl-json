@@ -19,15 +19,16 @@ import java.util.*;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.typeOrClass;
 
-@SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter", "com.fasterxml.jackson.annotation.JsonCreator"})
-@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown", "dsljson.inline", "dsljson.jackson"})
+@SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter", "com.fasterxml.jackson.annotation.JsonCreator", "javax.json.bind.annotation.JsonbCreator"})
+@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown", "dsljson.inline", "dsljson.jackson", "dsljson.jsonb"})
 public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static final Set<String> JsonIgnore;
-	private static final Set<String> NonNullable;
-	private static final Set<String> PropertyAlias;
-	private static final Map<String, String> JsonRequired;
+	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> NonNullable;
+	private static final Map<String, String> PropertyAlias;
+	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> JsonRequired;
 	private static final Set<String> Constructors;
+	private static final Map<String, String> Indexes;
 	private static final Map<String, OptimizedConverter> InlinedConverters;
 
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
@@ -35,17 +36,32 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	static {
 		JsonIgnore = new HashSet<>();
 		JsonIgnore.add("com.fasterxml.jackson.annotation.JsonIgnore");
-		NonNullable = new HashSet<>();
-		NonNullable.add("javax.validation.constraints.NotNull");
-		NonNullable.add("javax.annotation.Nonnull");
-		NonNullable.add("android.support.annotation.NonNull");
-		PropertyAlias = new HashSet<>();
-		PropertyAlias.add("com.fasterxml.jackson.annotation.JsonProperty");
-		PropertyAlias.add("com.google.gson.annotations.SerializedName");
+		NonNullable = new HashMap<>();
+		NonNullable.put("javax.validation.constraints.NotNull", null);
+		NonNullable.put("javax.annotation.Nonnull", null);
+		NonNullable.put("android.support.annotation.NonNull", null);
+		NonNullable.put("org.jetbrains.annotations.NotNull", null);
+		NonNullable.put(
+				"javax.json.bind.annotation.JsonbNillable",
+				Arrays.asList(
+						new Analysis.AnnotationMapping<>("value()", null),
+						new Analysis.AnnotationMapping<>("value()", true)));
+		NonNullable.put(
+				"javax.json.bind.annotation.JsonbProperty",
+				Collections.singletonList(new Analysis.AnnotationMapping<>("nillable()", true)));
+		PropertyAlias = new HashMap<>();
+		PropertyAlias.put("com.fasterxml.jackson.annotation.JsonProperty", "value()");
+		PropertyAlias.put("com.google.gson.annotations.SerializedName", "value()");
+		PropertyAlias.put("javax.json.bind.annotation.JsonbProperty", "value()");
 		JsonRequired = new HashMap<>();
-		JsonRequired.put("com.fasterxml.jackson.annotation.JsonProperty", "required()");
+		JsonRequired.put(
+				"com.fasterxml.jackson.annotation.JsonProperty",
+				Collections.singletonList(new Analysis.AnnotationMapping<>("required()", true)));
 		Constructors = new HashSet<>();
 		Constructors.add("com.fasterxml.jackson.annotation.JsonCreator");
+		Constructors.add("javax.json.bind.annotation.JsonbCreator");
+		Indexes = new HashMap<>();
+		Indexes.put("com.fasterxml.jackson.annotation.JsonProperty", "index()");
 		InlinedConverters = new HashMap<>();
 		InlinedConverters.put("int", new OptimizedConverter("com.dslplatform.json.NumberConverter", "INT_WRITER", "serialize", "INT_READER", "deserializeInt", "0"));
 		InlinedConverters.put("int[]", new OptimizedConverter("com.dslplatform.json.NumberConverter", "INT_ARRAY_WRITER", "serialize", "INT_ARRAY_READER"));
@@ -73,10 +89,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private UnknownTypes unknownTypes = UnknownTypes.ERROR;
 	private boolean allowInline = true;
 	private boolean withJackson = false;
+	private boolean withJsonb = false;
 
 	private Analysis analysis;
 	private TypeElement jacksonCreatorElement;
 	private DeclaredType jacksonCreatorType;
+	private TypeElement jsonbCreatorElement;
+	private DeclaredType jsonbCreatorType;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -101,6 +120,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		String jks = options.get("dsljson.jackson");
 		if (jks != null && jks.length() > 0) {
 			withJackson = Boolean.parseBoolean(jks);
+		}
+		String jsb = options.get("dsljson.jsonb");
+		if (jsb != null && jsb.length() > 0) {
+			withJsonb = Boolean.parseBoolean(jsb);
 		}
 		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
@@ -129,6 +152,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				PropertyAlias,
 				JsonRequired,
 				Constructors,
+				Indexes,
 				unknownTypes,
 				false,
 				true,
@@ -136,6 +160,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				true);
 		jacksonCreatorElement = processingEnv.getElementUtils().getTypeElement("com.fasterxml.jackson.annotation.JsonCreator");
 		jacksonCreatorType = jacksonCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jacksonCreatorElement) : null;
+		jsonbCreatorElement = processingEnv.getElementUtils().getTypeElement("javax.json.bind.annotation.JsonbCreator");
+		jsonbCreatorType = jsonbCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jsonbCreatorElement) : null;
 	}
 
 	@Override
@@ -145,12 +171,16 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 		Set<? extends Element> compiledJsons = roundEnv.getElementsAnnotatedWith(analysis.compiledJsonElement);
 		Set<? extends Element> jacksonCreators = withJackson && jacksonCreatorElement != null ? roundEnv.getElementsAnnotatedWith(jacksonCreatorElement) : new HashSet<>();
-		if (!compiledJsons.isEmpty() || !jacksonCreators.isEmpty()) {
+		Set<? extends Element> jsonbCreators = withJsonb && jsonbCreatorElement != null ? roundEnv.getElementsAnnotatedWith(jsonbCreatorElement) : new HashSet<>();
+		if (!compiledJsons.isEmpty() || !jacksonCreators.isEmpty() || !jsonbCreators.isEmpty()) {
 			Set<? extends Element> jsonConverters = roundEnv.getElementsAnnotatedWith(analysis.converterElement);
 			List<String> configurations = analysis.processConverters(jsonConverters);
 			analysis.processAnnotation(analysis.compiledJsonType, compiledJsons);
 			if (!jacksonCreators.isEmpty() && jacksonCreatorType != null) {
 				analysis.processAnnotation(jacksonCreatorType, jacksonCreators);
+			}
+			if (!jsonbCreators.isEmpty() && jsonbCreatorType != null) {
+				analysis.processAnnotation(jsonbCreatorType, jsonbCreators);
 			}
 			Map<String, StructInfo> structs = analysis.analyze();
 			if (analysis.hasError()) {
@@ -189,6 +219,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		final Context context = new Context(code, allowInline, InlinedConverters, structs);
 		final DescriptionTemplate descriptionTemplate = new DescriptionTemplate(context);
 		final InlinedTemplate inlinedTemplate = new InlinedTemplate(context);
+		final EnumTemplate enumTemplate = new EnumTemplate(context);
 		code.append("public class dsl_json_Annotation_Processor_External_Serialization implements com.dslplatform.json.Configuration {\n");
 		code.append("\tprivate static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName(\"UTF-8\");\n");
 		code.append("\t@Override\n");
@@ -245,6 +276,11 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				String type = typeOrClass(nonGenericObject(className), className);
 				code.append("\t\tjson.registerWriter(").append(type).append(", ").append(si.converter).append(".JSON_WRITER);\n");
 				code.append("\t\tjson.registerReader(").append(type).append(", ").append(si.converter).append(".JSON_READER);\n");
+			} else if (si.type == ObjectType.ENUM) {
+				code.append("\t\tEnum_").append(si.name).append(" ").append(si.name);
+				code.append(" = new Enum_").append(si.name).append("();\n");
+				code.append("\t\tjson.registerWriter(").append(className).append(".class, ").append(si.name).append(");\n");
+				code.append("\t\tjson.registerReader(").append(className).append(".class, ").append(si.name).append(");\n");
 			}
 		}
 		for (Map.Entry<String, StructInfo> kv : structs.entrySet()) {
@@ -320,6 +356,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			} else if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
 				if (si.deserializeAs == null) mixin(code, false, si, className);
 				else mixin(code, true, si, className);
+			} else if (si.type == ObjectType.ENUM) {
+				enumTemplate.create(si, className);
 			}
 		}
 		code.append("}\n");

@@ -7,12 +7,12 @@ import org.specs2.mutable.Specification
 
 class CaseClassTest extends Specification with ScalaCheck {
 
-  private lazy val dslJson = new DslJson[Any]()
+  private lazy implicit val dslJson = new DslJson[Any]()
 
   "encoding" >> {
     "example 1" >> {
       val os = new ByteArrayOutputStream()
-      dslJson.encode(Example1(Some("x"), Some(2), Some(-4)), os)
+      dslJson.encode[Example1](Example1(Some("x"), Some(2), Some(-4)), os)
       "{\"str\":\"x\",\"i\":2,\"l\":-4}" === os.toString("UTF-8")
     }
     "example 2" >> {

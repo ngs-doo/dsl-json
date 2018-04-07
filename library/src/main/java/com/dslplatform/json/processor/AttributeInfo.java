@@ -2,10 +2,7 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +26,7 @@ public class AttributeInfo {
 	public final boolean isJsonObject;
 	public final List<String> alternativeNames = new ArrayList<String>();
 	public final String readProperty;
+	public final StructInfo target;
 
 	public AttributeInfo(
 			String name,
@@ -44,7 +42,8 @@ public class AttributeInfo {
 			boolean fullMatch,
 			CompiledJson.TypeSignature typeSignature,
 			TypeMirror converter,
-			boolean isJsonObject) {
+			boolean isJsonObject,
+			StructInfo target) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
 		this.readMethod = readMethod;
@@ -61,6 +60,11 @@ public class AttributeInfo {
 		this.typeSignature = typeSignature;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
+		this.target = target;
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
+	}
+
+	public boolean isEnum() {
+		return target != null && target.type == ObjectType.ENUM;
 	}
 }

@@ -10,8 +10,7 @@ import scala.util.Try
 
 class TupleTest extends Specification with ScalaCheck {
 
-  private lazy val dslJson = new DslJson[Any]()
-  private lazy val dslJsonUnknown = new DslJson[Any](Settings.withRuntime().includeServiceLoader())
+  private lazy implicit val dslJson = new DslJson[Any](Settings.withRuntime().includeServiceLoader())
 
   "encoding" >> {
     "simple tuple" >> {
@@ -21,12 +20,12 @@ class TupleTest extends Specification with ScalaCheck {
     }
     "with option nothing tuple" >> {
       val os = new ByteArrayOutputStream()
-      dslJsonUnknown.encode(("a", 1, Option.empty, 0.1), os)
+      dslJson.encode(("a", 1, Option.empty, 0.1), os)
       "[\"a\",1,null,0.1]" === os.toString("UTF-8")
     }
     "with none tuple" >> {
       val os = new ByteArrayOutputStream()
-      dslJsonUnknown.encode(("a", 1, None, 0.1), os)
+      dslJson.encode(("a", 1, None, 0.1), os)
       "[\"a\",1,null,0.1]" === os.toString("UTF-8")
     }
   }

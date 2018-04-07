@@ -34,7 +34,7 @@ class InlinedTemplate {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			if (attr.converter == null && !hasConverter) {
+			if (attr.converter == null && !hasConverter && !attr.isEnum()) {
 				String type = typeOrClass(nonGenericObject(typeName), typeName);
 				code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> reader_").append(attr.name).append(";\n");
 				code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> reader_").append(attr.name).append("() {\n");
@@ -365,6 +365,8 @@ class InlinedTemplate {
 		} else {
 			if (converter != null) {
 				code.append(converter.nonNullableEncoder("writer", readValue));
+			} else if (attr.isEnum()) {
+				code.append("Enum_").append(attr.target.name).append(".writeStatic(writer, ").append(readValue).append(")");
 			} else {
 				code.append("writer_").append(attr.name).append("().write(writer, ").append(readValue).append(")");
 			}
@@ -431,6 +433,9 @@ class InlinedTemplate {
 			if (attr.converter != null || converter != null) {
 				if (attr.converter != null) code.append(attr.converter.toString()).append(".JSON_READER.read(reader)");
 				else code.append(converter.nonNullableDecoder()).append("(reader)");
+			} else if (attr.isEnum()) {
+				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
+				code.append("Enum_").append(attr.target.name).append(".readStatic(reader)");
 			} else {
 				code.append("reader_").append(attr.name).append("().read(reader)");
 			}
@@ -454,6 +459,9 @@ class InlinedTemplate {
 			if (attr.converter != null || converter != null) {
 				if (attr.converter != null) code.append(attr.converter.toString()).append(".JSON_READER.read");
 				else code.append(converter.nonNullableDecoder());
+			} else if (attr.isEnum()) {
+				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
+				code.append("Enum_").append(attr.target.name).append(".readStatic");
 			} else {
 				code.append("reader_").append(attr.name).append("().read");
 			}

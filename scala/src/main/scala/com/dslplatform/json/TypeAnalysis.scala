@@ -5,12 +5,12 @@ import java.lang.reflect.{GenericArrayType, ParameterizedType, Type => JavaType}
 import scala.collection.concurrent.TrieMap
 import scala.reflect.runtime.universe._
 import scala.runtime.Nothing$
-import scala.util.Success
+import scala.util.{Try, Success}
 
 private[json] object TypeAnalysis {
 
   private val genericsCache = new TrieMap[String, GenericType]
-  private val typeTagCache = new TrieMap[Type, JavaType]
+  private val typeTagCache = new java.util.concurrent.ConcurrentHashMap[Type, JavaType]
   typeTagCache.put(typeOf[Nothing], classOf[Nothing$])
   typeTagCache.put(typeOf[Any], classOf[AnyRef])
   typeTagCache.put(typeOf[Option[Nothing]], classOf[Option[AnyRef]])
@@ -44,14 +44,12 @@ private[json] object TypeAnalysis {
     override def toString: String = name
   }
 
-  def makeGenericType(
-    container: Class[_],
-    arguments: List[JavaType]): ParameterizedType = {
+  private def makeGenericType(container: Class[_], arguments: List[JavaType]): ParameterizedType = {
     val sb = new StringBuilder
     sb.append(container.getTypeName)
     sb.append("<")
     sb.append(arguments.head.getTypeName)
-    for (arg <- arguments.tail) {
+    arguments.tail.foreach { arg =>
       sb.append(", ")
       sb.append(arg.getTypeName)
     }
@@ -66,40 +64,40 @@ private[json] object TypeAnalysis {
   private class GenArrType(genType: JavaType) extends GenericArrayType {
     lazy private val typeName = genType.getTypeName + "[]"
 
-    override def getGenericComponentType = genType
+    override def getGenericComponentType: JavaType = genType
 
     override def getTypeName: String = typeName
 
     override def toString: String = typeName
   }
 
-  def findType(tpe: Type): Option[JavaType] = {
-    typeTagCache.get(tpe) match {
-      case found@Some(_) => found
-      case _ =>
-        findUnknownType(tpe, scala.reflect.runtime.currentMirror) match {
-          case found@Some(jt) =>
-            typeTagCache.put(tpe, jt)
-            found
-          case _ =>
-            None
-        }
+  def convertType(tpe: Type): JavaType = {
+    val found = typeTagCache.get(tpe)
+    if (found != null) found
+    else {
+      findUnknownType(tpe, scala.reflect.runtime.currentMirror) match {
+        case Some(jt) =>
+          typeTagCache.put(tpe, jt)
+          jt
+        case _ =>
+          sys.error(s"Unable to convert $tpe to Java representation")
+      }
     }
   }
 
   private def findUnknownType(tpe: Type, mirror: Mirror): Option[JavaType] = {
     tpe.dealias match {
       case TypeRef(_, sym, args) if args.isEmpty =>
-        util.Try(mirror.runtimeClass(sym.asClass)).toOption
+        Try(mirror.runtimeClass(sym.asClass)).toOption
       case TypeRef(_, sym, args) if sym.fullName == "scala.Array" && args.lengthCompare(1) == 0 =>
-        findType(args.head) match {
-          case Some(typeArg) => Some(new GenArrType(typeArg))
+        Try(convertType(args.head)) match {
+          case Success(typeArg) => Some(new GenArrType(typeArg))
           case _ => None
         }
       case TypeRef(_, sym, args) =>
-        util.Try(mirror.runtimeClass(sym.asClass)) match {
+        Try(mirror.runtimeClass(sym.asClass)) match {
           case Success(symClass) =>
-            val typeArgs = args.flatMap(findType)
+            val typeArgs = args.flatMap(it => Try(convertType(it)).toOption)
             if (typeArgs.lengthCompare(args.size) == 0) {
               Some(makeGenericType(symClass, typeArgs))
             } else None

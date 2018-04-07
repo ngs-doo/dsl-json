@@ -447,4 +447,14 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void immutableAndGetter() {
 		checkValidCompilation(ImmutableClassWithGetter.class);
 	}
+
+	@Test
+	public void customCtorName() {
+		checkValidCompilation(CustomCtorPropertyName.class);
+	}
+
+	@Test
+	public void simpleEnums() {
+		checkValidCompilation(WithEnums.class);
+	}
 }

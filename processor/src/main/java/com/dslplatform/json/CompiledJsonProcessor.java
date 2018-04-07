@@ -19,9 +19,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static final Map<String, String> SupportedTypes;
 	private static final Map<String, String> SupportedCollections;
 	private static final Set<String> JsonIgnore;
-	private static final Set<String> NonNullable;
-	private static final Set<String> PropertyAlias;
-	private static final Map<String, String> JsonRequired;
+	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> NonNullable;
+	private static final Map<String, String> PropertyAlias;
+	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> JsonRequired;
+	private static final Map<String, String> PropertyIndex;
 	private static final List<IncompatibleTypes> CheckTypes;
 	private static final ContainerSupport CheckCollection;
 
@@ -84,18 +85,22 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		JsonIgnore = new HashSet<String>();
 		JsonIgnore.add("com.fasterxml.jackson.annotation.JsonIgnore");
 		JsonIgnore.add("org.codehaus.jackson.annotate.JsonIgnore");
-		NonNullable = new HashSet<String>();
-		NonNullable.add("javax.validation.constraints.NotNull");
-		NonNullable.add("edu.umd.cs.findbugs.annotations.NonNull");
-		NonNullable.add("javax.annotation.Nonnull");
-		NonNullable.add("org.jetbrains.annotations.NotNull");
-		NonNullable.add("lombok.NonNull");
-		NonNullable.add("android.support.annotation.NonNull");
-		PropertyAlias = new HashSet<String>();
-		PropertyAlias.add("com.fasterxml.jackson.annotation.JsonProperty");
-		PropertyAlias.add("com.google.gson.annotations.SerializedName");
-		JsonRequired = new HashMap<String, String>();
-		JsonRequired.put("com.fasterxml.jackson.annotation.JsonProperty", "required()");
+		NonNullable = new HashMap<String, List<Analysis.AnnotationMapping<Boolean>>>();
+		NonNullable.put("javax.validation.constraints.NotNull", null);
+		NonNullable.put("edu.umd.cs.findbugs.annotations.NonNull", null);
+		NonNullable.put("javax.annotation.Nonnull", null);
+		NonNullable.put("org.jetbrains.annotations.NotNull", null);
+		NonNullable.put("lombok.NonNull", null);
+		NonNullable.put("android.support.annotation.NonNull", null);
+		PropertyAlias = new HashMap<String, String>();
+		PropertyAlias.put("com.fasterxml.jackson.annotation.JsonProperty", "value()");
+		PropertyAlias.put("com.google.gson.annotations.SerializedName", "value()");
+		JsonRequired = new HashMap<String, List<Analysis.AnnotationMapping<Boolean>>>();
+		JsonRequired.put(
+				"com.fasterxml.jackson.annotation.JsonProperty",
+				Collections.singletonList(new Analysis.AnnotationMapping<Boolean>("required()", true)));
+		PropertyIndex = new HashMap<String, String>();
+		PropertyIndex.put("com.fasterxml.jackson.annotation.JsonProperty", "index()");
 		CheckTypes = new ArrayList<IncompatibleTypes>();
 		CheckTypes.add(
 				new IncompatibleTypes(
@@ -166,6 +171,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				PropertyAlias,
 				JsonRequired,
 				Collections.<String>emptySet(),
+				PropertyIndex,
 				UnknownTypes.ERROR,
 				true,
 				true,

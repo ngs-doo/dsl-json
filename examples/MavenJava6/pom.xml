@@ -6,17 +6,17 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>maven-java6-example</artifactId>
-	<version>1.7.1</version>
+	<version>1.7.2</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json</artifactId>
-			<version>1.7.1</version>
+			<version>1.7.2</version>
 		</dependency>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-processor</artifactId>
-			<version>1.7.1</version>
+			<version>1.7.2</version>
 		</dependency>
 	</dependencies>
 
@@ -36,6 +36,9 @@
 						<!--Adsljson.annotation>EXPLICIT</Adsljson.annotation-->
 						<!--Adsljson.compiler>custom_path_to_compiler/dsl-compiler.exe</Adsljson.compiler-->
 					</compilerArguments>
+					<compilerVersion>1.6</compilerVersion>
+					<source>1.6</source>
+					<target>1.6</target>
 				</configuration>
 			</plugin>
 		</plugins>

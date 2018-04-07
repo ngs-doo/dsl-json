@@ -9,7 +9,7 @@ import scala.collection.mutable
 
 class MapTest extends Specification with ScalaCheck {
 
-  private lazy val dslJson = new DslJson[Any]()
+  private lazy implicit val dslJson = new DslJson[Any]()
 
   "encoding" >> {
     "string value serialize" >> {

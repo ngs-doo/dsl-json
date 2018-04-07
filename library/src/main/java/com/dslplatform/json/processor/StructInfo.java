@@ -114,6 +114,15 @@ public class StructInfo {
 		return (int) hash;
 	}
 
+	public static int calcWeakHash(String name) {
+		int hash = 0;
+		for (int i = 0; i < name.length(); i++) {
+			byte b = (byte) name.charAt(i);
+			hash += b;
+		}
+		return hash;
+	}
+
 	private StructInfo deserializeTarget;
 	public StructInfo deserializeTarget() { return deserializeTarget; }
 	public void deserializeTarget(StructInfo value) { deserializeTarget = value; }

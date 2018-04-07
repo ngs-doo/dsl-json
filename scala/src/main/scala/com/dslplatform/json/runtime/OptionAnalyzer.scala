@@ -56,7 +56,7 @@ object OptionAnalyzer {
     }
   }
 
-	private def analyzeEncoding(manifest: Type, content: Type, raw: Class[_], json: DslJson[_]): Option[OptionEncoder[_]] = {
+	private def analyzeEncoding(manifest: Type, content: Type, raw: Class[_], json: DslJson[_]): Option[JsonWriter.WriteObject[_]] = {
     if (!classOf[Option[_]].isAssignableFrom(raw)) {
       None
     } else {
@@ -72,8 +72,12 @@ object OptionAnalyzer {
           val writer = if (classOf[AnyRef] eq content) None else Option(json.tryFindWriter(content))
           if ((classOf[AnyRef] ne content) && writer.isEmpty) {
             None
+          } else if (writer.isEmpty || (content eq classOf[AnyRef])) {
+            val encoder = new OptionUnknownEncoder(json)
+            json.registerWriter(manifest, encoder)
+            Some(encoder)
           } else {
-            val encoder = new OptionEncoder(json, if (classOf[AnyRef] eq content) None else writer)
+            val encoder = new OptionKnownEncoder(json, writer.get)
             json.registerWriter(manifest, encoder)
             Some(encoder)
           }
@@ -90,19 +94,30 @@ object OptionAnalyzer {
 		}
 	}
 
-	private final class OptionEncoder[T](json: DslJson[_], encoder: Option[JsonWriter.WriteObject[T]]) extends JsonWriter.WriteObject[Option[T]] {
-		require(json ne null, "json can't be null")
-		require(encoder ne null, "encoder can't be null")
+  private final class OptionKnownEncoder[T](json: DslJson[_], encoder: JsonWriter.WriteObject[T]) extends JsonWriter.WriteObject[Option[T]] {
+    require(json ne null, "json can't be null")
+    require(encoder ne null, "encoder can't be null")
 
-		override def write(writer: JsonWriter, value: Option[T]): Unit = {
-			if (value == null || value.isEmpty || (value.get == null)) writer.writeNull()
-			else if (encoder.isDefined) encoder.get.write(writer, value.get)
-			else {
-				val unpacked = value.get
-				val jw = json.tryFindWriter(unpacked.getClass).asInstanceOf[JsonWriter.WriteObject[T]]
-				if (jw == null) throw new SerializationException(s"Unable to find writer for ${unpacked.getClass}")
-				jw.write(writer, unpacked)
-			}
-		}
-	}
+    override def write(writer: JsonWriter, value: Option[T]): Unit = {
+      if (value.isEmpty) writer.writeNull()
+      else encoder.write(writer, value.get)
+    }
+  }
+
+  private final class OptionUnknownEncoder[T](json: DslJson[_]) extends JsonWriter.WriteObject[Option[T]] {
+    require(json ne null, "json can't be null")
+
+    override def write(writer: JsonWriter, value: Option[T]): Unit = {
+      if (value == null || value.isEmpty) writer.writeNull()
+      else {
+        val unpacked = value.get
+        if (unpacked == null) writer.writeNull()
+        else {
+          val jw = json.tryFindWriter(unpacked.getClass).asInstanceOf[JsonWriter.WriteObject[T]]
+          if (jw == null) throw new SerializationException(s"Unable to find writer for ${unpacked.getClass}")
+          jw.write(writer, unpacked)
+        }
+      }
+    }
+  }
 }

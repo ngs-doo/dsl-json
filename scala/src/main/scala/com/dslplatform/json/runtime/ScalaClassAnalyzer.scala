@@ -7,6 +7,7 @@ import java.util.function
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe
+import scala.util.Try
 
 object ScalaClassAnalyzer {
 
@@ -247,7 +248,7 @@ object ScalaClassAnalyzer {
         }
       }
       val pName = if (p.name.toString.contains("$")) names.map(it => it(i)) else Some(p.name.toString)
-      TypeAnalysis.findType(p.typeSignature).flatMap { rt =>
+      Try(TypeAnalysis.convertType(p.typeSignature)).toOption.flatMap { rt =>
         val concreteType = Generics.makeConcrete(rt, genericMappings)
         val isUnknown = Generics.isUnknownType(rt)
         val machingTypeAndName = {
@@ -269,10 +270,8 @@ object ScalaClassAnalyzer {
       val oldReader = json.registerReader(manifest, tmp)
       val writeProps = if (isProduct) {
         arguments.map { ti =>
-          Settings.createEncoder[Product, Any](
-            new function.Function[Product, Any] {
-              override def apply(t: Product): Any = t.productElement(ti.index)
-            },
+          Settings.createEncoder(
+            new GetProductIndex(ti.index),
             ti.name,
             json,
             if (ti.isUnknown) null else ti.concreteType).asInstanceOf[JsonWriter.WriteObject[_]]
@@ -331,6 +330,10 @@ object ScalaClassAnalyzer {
     } else None
   }
 
+  private class GetProductIndex(index: Int) extends function.Function[Product, Any] {
+    override def apply(t: Product): Any = t.productElement(index)
+  }
+
   private def analyzeEmptyCtor(
     manifest: JavaType,
     raw: Class[_],
@@ -353,7 +356,7 @@ object ScalaClassAnalyzer {
     methods.foreach { case (g, _) =>
       val gName = g.name.toString
       rawMethods.find(m => m.getParameterCount == 0 && m.getName.equals(gName)).foreach { jm =>
-        TypeAnalysis.findType(g.typeSignature.resultType).foreach { t =>
+        Try(TypeAnalysis.convertType(g.typeSignature.resultType)).foreach { t =>
           if (analyzeMethods(jm, t, raw, json, foundWrite, foundRead, index, genericMappings)) {
             index += 1
           }
