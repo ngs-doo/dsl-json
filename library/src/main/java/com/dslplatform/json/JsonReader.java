@@ -518,8 +518,8 @@ public final class JsonReader<TContext> {
 			final int newSize = chars.length * 2;
 			if (newSize > maxStringBuffer) throw new IOException("Unable to process input JSON. Maximum string buffer limit exceeded: " + maxStringBuffer);
 			_tmp = chars = Arrays.copyOf(chars, newSize);
-			_tmpLen = _tmp.length;
 		}
+		_tmpLen = _tmp.length;
 		currentIndex = ci;
 		int soFar = --currentIndex - startIndex;
 

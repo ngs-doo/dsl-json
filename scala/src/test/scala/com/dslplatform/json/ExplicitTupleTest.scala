@@ -2,19 +2,17 @@ package com.dslplatform.json
 
 import java.io.ByteArrayOutputStream
 
-import com.dslplatform.json.runtime.Settings
 import org.specs2.ScalaCheck
 import org.specs2.mutable.Specification
 
 class ExplicitTupleTest extends Specification with ScalaCheck {
 
-  private lazy val dslJson = new DslJson[Any](Settings.withRuntime().includeServiceLoader())
+  private lazy val dslJson = new DslJson[Any]()
 
   "encoding" >> {
     "simple tuple" >> {
       val os = new ByteArrayOutputStream()
-      val value = ("a", 1)
-      dslJson.encode(value, os)(dslJson.encoder)
+      dslJson.encode(("a", 1), os)(dslJson.encoder)
       "[\"a\",1]" === os.toString("UTF-8")
     }
   }
