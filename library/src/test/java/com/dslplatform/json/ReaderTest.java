@@ -134,13 +134,13 @@ public class ReaderTest {
 			json.deserialize(String.class, bytes, bytes.length - 1);
 			Assert.fail();
 		} catch (IOException e) {
-			Assert.assertTrue(e.getMessage().contains("at: 171"));
+			Assert.assertTrue(e.getMessage().contains("at position: 171"));
 		}
 		try {
 			json.deserialize(String.class, new ByteArrayInputStream(bytes, 0, bytes.length - 1), new byte[64]);
 			Assert.fail();
 		} catch (IOException e) {
-			Assert.assertTrue(e.getMessage().contains("at: 171"));
+			Assert.assertTrue(e.getMessage().contains("at position: 171"));
 		}
 	}
 
@@ -153,13 +153,13 @@ public class ReaderTest {
 			json.deserialize(String.class, bytes, bytes.length - 1);
 			Assert.fail();
 		} catch (IOException e) {
-			Assert.assertTrue(e.getMessage().contains("at: 18"));
+			Assert.assertTrue(e.getMessage().contains("at position: 18"));
 		}
 		try {
 			json.deserialize(String.class, new ByteArrayInputStream(bytes, 0, bytes.length - 1), new byte[64]);
 			Assert.fail();
 		} catch (IOException e) {
-			Assert.assertTrue(e.getMessage().contains("at: 18"));
+			Assert.assertTrue(e.getMessage().contains("at position: 18"));
 		}
 	}
 

@@ -70,7 +70,7 @@ class InlinedTemplate {
 		writeObject(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" bind(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance) throws java.io.IOException {\n");
-		code.append("\t\t\tif (reader.last() != '{') throw new java.io.IOException(\"Expecting '{' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '{') throw new java.io.IOException(\"Expecting '{' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		code.append("\t\t\treader.getNextToken();\n");
 		code.append("\t\t\tbindContent(reader, instance);\n");
 		code.append("\t\t\treturn instance;\n");
@@ -90,8 +90,8 @@ class InlinedTemplate {
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() == '}') ");
 				checkMandatory(sortedAttributes, i);
-				code.append("\t\t\tif (reader.last() != ',') throw new java.io.IOException(\"Expecting ',' at position: \"");
-				code.append(" + reader.positionInStream() + \". Found: \" + (char)reader.last()); else reader.getNextToken();\n");
+				code.append("\t\t\tif (reader.last() != ',') throw new java.io.IOException(\"Expecting ',' \"");
+				code.append(" + reader.positionDescription() + \". Found: \" + (char)reader.last()); else reader.getNextToken();\n");
 			}
 			code.append("\t\t\tif (reader.fillNameWeakHash() != ").append(Integer.toString(calcWeakHash(mn != null ? mn : attr.id)));
 			code.append(" || !reader.wasLastName(name_").append(attr.name).append(")) { bindSlow(reader, instance, ");
@@ -101,7 +101,7 @@ class InlinedTemplate {
 			i += 1;
 		}
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) {
-			code.append("\t\t\tif (reader.getNextToken() != '}') throw new java.io.IOException(\"Expecting '}' at position: \" + reader.positionInStream() + \" since unknown properties are not allowed on ");
+			code.append("\t\t\tif (reader.getNextToken() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \" since unknown properties are not allowed on ");
 			code.append(className).append(". Found \" + (char) reader.last());\n");
 		} else {
 			code.append("\t\t\tif (reader.getNextToken() != '}') {\n");
@@ -110,7 +110,7 @@ class InlinedTemplate {
 			code.append("\t\t\t\t\treader.fillNameWeakHash();\n");
 			code.append("\t\t\t\t\tbindSlow(reader, instance, ").append(Integer.toString(sortedAttributes.size())).append(");\n");
 			code.append("\t\t\t\t}\n");
-			code.append("\t\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+			code.append("\t\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 			code.append("\t\t\t}\n");
 		}
 		code.append("\t\t}\n");
@@ -132,11 +132,11 @@ class InlinedTemplate {
 		handleSwitch(si, "\t\t\t\t", false);
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
-		code.append("\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		for (AttributeInfo attr : sortedAttributes) {
 			if (attr.mandatory) {
 				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw new java.io.IOException(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON at position: \" + reader.positionInStream());\n");
+				code.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
 			}
 		}
 		code.append("\t\t}\n");
@@ -149,7 +149,7 @@ class InlinedTemplate {
 		writeObject(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
-		code.append("\t\t\telse if (reader.last() != '{') throw new java.io.IOException(\"Expecting '{' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\telse if (reader.last() != '{') throw new java.io.IOException(\"Expecting '{' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		code.append("\t\t\treader.getNextToken();\n");
 		code.append("\t\t\treturn readContent(reader);\n");
 		code.append("\t\t}\n");
@@ -177,7 +177,7 @@ class InlinedTemplate {
 		handleSwitch(si, "\t\t\t\t", true);
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
-		code.append("\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		checkMandatory(sortedAttributes);
 		returnInstance("\t\t\t", si.constructor, className);
 		code.append("\t\t}\n");
@@ -237,7 +237,7 @@ class InlinedTemplate {
 			AttributeInfo attr = attributes.get(i);
 			if (attr.mandatory) {
 				code.append(" throw new java.io.IOException(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON at position: \" + reader.positionInStream());\n");
+				code.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
 				return;
 			}
 		}
@@ -248,7 +248,7 @@ class InlinedTemplate {
 		for (AttributeInfo attr : attributes) {
 			if (attr.mandatory) {
 				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw new java.io.IOException(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON at position: \" + reader.positionInStream());\n");
+				code.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
 			}
 		}
 	}
@@ -264,15 +264,15 @@ class InlinedTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" bind(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance) throws java.io.IOException {\n");
-		code.append("\t\t\tif (reader.last() != '[') throw new java.io.IOException(\"Expecting '[' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '[') throw new java.io.IOException(\"Expecting '[' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		int i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\treader.getNextToken();\n");
 			setPropertyValue(attr, "\t");
 			i--;
-			if (i > 0) code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+			if (i > 0) code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		}
-		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		code.append("\t\t\treturn instance;\n");
 		code.append("\t\t}\n");
 		code.append("\t}\n");
@@ -284,7 +284,7 @@ class InlinedTemplate {
 		writeArray(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
-		code.append("\t\t\telse if (reader.last() != '[') throw new java.io.IOException(\"Expecting '[' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\telse if (reader.last() != '[') throw new java.io.IOException(\"Expecting '[' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		code.append("\t\t\treturn readContent(reader);\n");
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
@@ -294,9 +294,9 @@ class InlinedTemplate {
 			code.append("\t\t\treader.getNextToken();\n");
 			readPropertyValue(attr, "\t");
 			i--;
-			if (i > 0) code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+			if (i > 0) code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		}
-		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' at position: \" + reader.positionInStream() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		returnInstance("\t\t\t", si.constructor, className);
 		code.append("\t\t}\n");
 		code.append("\t}\n");
@@ -385,7 +385,7 @@ class InlinedTemplate {
 				code.append(alignment).append("\t\tif (!reader.wasLastName(name_").append(attr.name).append(")) {\n");
 				if (si.onUnknown == CompiledJson.Behavior.FAIL) {
 					code.append(alignment).append("\t\tthrow new java.io.IOException(\"Unknown property detected: '\" + reader.getLastName()");
-					code.append(" + \"' at position: \" + reader.positionInStream(reader.getLastName().length() + 3));\n");
+					code.append(" + \"' \" + reader.positionDescription(reader.getLastName().length() + 3));\n");
 				} else {
 					code.append(alignment).append("\t\treader.getNextToken(); reader.skip(); break;\n");
 				}
@@ -404,7 +404,7 @@ class InlinedTemplate {
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) {
 			code.append(alignment).append("\t\tString lastName = reader.getLastName();\n");
 			code.append(alignment).append("\t\tthrow new java.io.IOException(\"Unknown property detected: '\" + lastName");
-			code.append(" + \"' at position: \" + reader.positionInStream(lastName.length() + 3));\n");
+			code.append(" + \"' \" + reader.positionDescription(lastName.length() + 3));\n");
 		} else {
 			code.append(alignment).append("\t\treader.getNextToken();\n");
 			code.append(alignment).append("\t\treader.skip();\n");
@@ -414,7 +414,7 @@ class InlinedTemplate {
 	private void setPropertyValue(AttributeInfo attr, String alignment) throws IOException {
 		if (attr.notNull) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) throw new java.io.IOException(\"Property '").append(attr.name).append("' is not allowed to be null.");
-			code.append(" Null value found at position: \" + reader.positionInStream());\n");
+			code.append(" Null value found \" + reader.positionDescription());\n");
 		}
 		String typeName = attr.type.toString();
 		OptimizedConverter converter = context.inlinedConverters.get(typeName);
@@ -447,7 +447,7 @@ class InlinedTemplate {
 	private void readPropertyValue(AttributeInfo attr, String alignment) throws IOException {
 		if (attr.notNull) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) throw new java.io.IOException(\"Property '").append(attr.name).append("' is not allowed to be null.");
-			code.append(" Null value found at position: \" + reader.positionInStream());\n");
+			code.append(" Null value found \" + reader.positionDescription());\n");
 		}
 		String typeName = attr.type.toString();
 		OptimizedConverter converter = context.inlinedConverters.get(typeName);

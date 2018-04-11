@@ -259,12 +259,12 @@ public class DecimalConverterTest {
 		try {
 			json.deserialize(BigDecimal.class, body, body.length);
 		} catch (IOException e) {
-			Assert.assertTrue(e.getMessage().contains("at: 72"));
+			Assert.assertTrue(e.getMessage().contains("at position: 72"));
 		}
 		try {
 			json.deserialize(BigDecimal.class, new ByteArrayInputStream(body, 0, body.length), new byte[64]);
 		} catch (IOException e) {
-			Assert.assertTrue(e.getMessage().contains("at: 72"));
+			Assert.assertTrue(e.getMessage().contains("at position: 72"));
 		}
 	}
 

@@ -82,7 +82,7 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 	@Override
 	public B bind(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() != '[') {
-			throw new IOException("Expecting '[' at position: " + reader.positionInStream() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 		reader.getNextToken();
 		bindContent(reader, instance);
@@ -108,7 +108,7 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 			throw new IOException("Expecting to read " + decoders.length + " elements in the array while decoding " + manifest.getTypeName() + ". Read only: " +  i + " at position: " + reader.positionInStream());
 		}
 		if (reader.last() != ']') {
-			throw new IOException("Expecting ']' at position: " + reader.positionInStream() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting ']' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 	}
 }

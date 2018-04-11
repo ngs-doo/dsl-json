@@ -29,7 +29,7 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() != '[') {
-			throw new java.io.IOException("Expecting '[' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new java.io.IOException("Expecting '[' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		}
 		final T instance;
 		try {
@@ -44,7 +44,7 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 			instance.add(decoder.read(reader));
 		}
 		if (reader.last() != ']') {
-			throw new java.io.IOException("Expecting ']' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new java.io.IOException("Expecting ']' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		}
 		return instance;
 	}

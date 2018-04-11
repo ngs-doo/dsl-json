@@ -325,12 +325,23 @@ public final class JsonReader<TContext> {
 		return last;
 	}
 
+	public String positionDescription() {
+		return positionDescription(0);
+	}
+
+	public String positionDescription(int offset) {
+		if (stream != null && currentPosition > 0) {
+			return "at position: " + positionInStream(offset);
+		}
+		return "at position: " +  positionInStream(offset);
+	}
+
 	final IOException expecting(final String what) {
-		return new IOException("Expecting '" + what + "' at position: " + positionInStream() + ". Found " + (char) last);
+		return new IOException("Expecting '" + what + "' " + positionDescription() + ". Found " + (char) last);
 	}
 
 	final IOException expecting(final String what, final byte found) {
-		return new IOException("Expecting '" + what + "' at position: " + positionInStream() + ". Found " + (char) found);
+		return new IOException("Expecting '" + what + "' " + positionDescription() + ". Found " + (char) found);
 	}
 
 	public final int getTokenStart() {
@@ -414,7 +425,7 @@ public final class JsonReader<TContext> {
 	 */
 	public final String readSimpleString() throws IOException {
 		if (last != '"') {
-			throw new IOException("Expecting '\"' at position: " + positionInStream() + ". Found " + (char) last);
+			throw new IOException("Expecting '\"' " + positionDescription() + ". Found " + (char) last);
 		}
 		int i = 0;
 		int ci = currentIndex;
@@ -425,7 +436,7 @@ public final class JsonReader<TContext> {
 				tmp[i++] = (char) bb;
 			}
 		} catch (ArrayIndexOutOfBoundsException ignore) {
-			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
+			throw new IOException("JSON string was not closed with a double quote " + positionDescription());
 		}
 		if (ci > length) {
 			throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
@@ -443,7 +454,7 @@ public final class JsonReader<TContext> {
 	 */
 	public final char[] readSimpleQuote() throws IOException {
 		if (last != '"') {
-			throw new IOException("Expecting '\"' at position: " + positionInStream() + ". Found " + (char) last);
+			throw new IOException("Expecting '\"' " + positionDescription() + ". Found " + (char) last);
 		}
 		int ci = tokenStart = currentIndex;
 		try {
@@ -453,7 +464,7 @@ public final class JsonReader<TContext> {
 				tmp[i] = (char) bb;
 			}
 		} catch (ArrayIndexOutOfBoundsException ignore) {
-			throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
+			throw new IOException("JSON string was not closed with a double quote " + positionDescription());
 		}
 		if (ci > length) {
 			throw new IOException("JSON string was not closed with a double quote at: " + (currentPosition + length));
@@ -479,10 +490,9 @@ public final class JsonReader<TContext> {
 	final int parseString() throws IOException {
 		final int startIndex = currentIndex;
 		if (last != '"') {
-			//TODO: count special chars in separate counter
-			throw new IOException("JSON string must start with a double quote at: " + positionInStream());
+			throw new IOException("JSON string must start with a double quote " + positionDescription());
 		} else if (currentIndex == length) {
-			throw new IOException("Unable to parse input at position: " + positionInStream() + ". Premature end of JSON input");
+			throw new IOException("Unable to parse input " + positionDescription() + ". Premature end of JSON input");
 		}
 
 		byte bb;
@@ -556,7 +566,7 @@ public final class JsonReader<TContext> {
 						break;
 
 					default:
-						throw new IOException("Could not parse String at position: " + positionInStream() + ". Invalid escape combination detected: '\\" + bc + "'");
+						throw new IOException("Could not parse String " + positionDescription() + ". Invalid escape combination detected: '\\" + bc + "'");
 				}
 			} else if ((bc & 0x80) != 0) {
 				if (soFar >= _tmpLen - 4) {
@@ -578,13 +588,13 @@ public final class JsonReader<TContext> {
 							bc = ((bc & 0x07) << 18) + ((u2 & 0x3F) << 12) + ((u3 & 0x3F) << 6) + (u4 & 0x3F);
 						} else {
 							// there are legal 5 & 6 byte combinations, but none are _valid_
-							throw new IOException("Invalid unicode character detected at: " + positionInStream());
+							throw new IOException("Invalid unicode character detected " + positionDescription());
 						}
 
 						if (bc >= 0x10000) {
 							// check if valid unicode
 							if (bc >= 0x110000) {
-								throw new IOException("Invalid unicode character detected at: " + positionInStream());
+								throw new IOException("Invalid unicode character detected " + positionDescription());
 							}
 
 							// split surrogates
@@ -604,7 +614,7 @@ public final class JsonReader<TContext> {
 
 			_tmp[soFar++] = (char) bc;
 		}
-		throw new IOException("JSON string was not closed with a double quote at: " + positionInStream());
+		throw new IOException("JSON string was not closed with a double quote " + positionDescription());
 	}
 
 	private static int hexToInt(final byte value) throws IOException {
@@ -706,7 +716,7 @@ public final class JsonReader<TContext> {
 		final int hash = calcHash();
 		if (read() != ':') {
 			if (!wasWhiteSpace() || getNextToken() != ':') {
-				throw new IOException("Expecting ':' at position: " + positionInStream() + ". Found " + (char) last);
+				throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) last);
 			}
 		}
 		return hash;
@@ -716,7 +726,7 @@ public final class JsonReader<TContext> {
 		final int hash = calcWeakHash();
 		if (read() != ':') {
 			if (!wasWhiteSpace() || getNextToken() != ':') {
-				throw new IOException("Expecting ':' at position: " + positionInStream() + ". Found " + (char) last);
+				throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) last);
 			}
 		}
 		return hash;
@@ -724,7 +734,7 @@ public final class JsonReader<TContext> {
 
 	public final int calcHash() throws IOException {
 		if (last != '"') {
-			throw new IOException("Expecting '\"' at position: " + positionInStream() + ". Found " + (char) last);
+			throw new IOException("Expecting '\"' " + positionDescription() + ". Found " + (char) last);
 		}
 		tokenStart = currentIndex;
 		int ci = currentIndex;
@@ -755,7 +765,7 @@ public final class JsonReader<TContext> {
 
 	public final int calcWeakHash() throws IOException {
 		if (last != '"') {
-			throw new IOException("Expecting '\"' at position: " + positionInStream() + ". Found " + (char) last);
+			throw new IOException("Expecting '\"' " + positionDescription() + ". Found " + (char) last);
 		}
 		tokenStart = currentIndex;
 		int ci = currentIndex;
@@ -940,10 +950,10 @@ public final class JsonReader<TContext> {
 			if (nextToken == '"') {
 				nextToken = skipString();
 			} else {
-				throw new IOException("Expecting '\"' at position: " + positionInStream() + ". Found " + (char) nextToken);
+				throw new IOException("Expecting '\"' " + positionDescription() + ". Found " + (char) nextToken);
 			}
 			if (nextToken != ':') {
-				throw new IOException("Expecting ':' at position: " + positionInStream() + ". Found " + (char) nextToken);
+				throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) nextToken);
 			}
 			getNextToken();
 			nextToken = skip();
@@ -952,16 +962,16 @@ public final class JsonReader<TContext> {
 				if (nextToken == '"') {
 					nextToken = skipString();
 				} else {
-					throw new IOException("Expecting '\"' at position: " + positionInStream() + ". Found " + (char) nextToken);
+					throw new IOException("Expecting '\"' " + positionDescription() + ". Found " + (char) nextToken);
 				}
 				if (nextToken != ':') {
-					throw new IOException("Expecting ':' at position: " + positionInStream() + ". Found " + (char) nextToken);
+					throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) nextToken);
 				}
 				getNextToken();
 				nextToken = skip();
 			}
 			if (nextToken != '}') {
-				throw new IOException("Expecting '}' at position: " + positionInStream() + ". Found " + (char) nextToken);
+				throw new IOException("Expecting '}' " + positionDescription() + ". Found " + (char) nextToken);
 			}
 			return getNextToken();
 		}
@@ -973,25 +983,25 @@ public final class JsonReader<TContext> {
 				nextToken = skip();
 			}
 			if (nextToken != ']') {
-				throw new IOException("Expecting ']' at position: " + positionInStream() + ". Found " + (char) nextToken);
+				throw new IOException("Expecting ']' " + positionDescription() + ". Found " + (char) nextToken);
 			}
 			return getNextToken();
 		}
 		if (last == 'n') {
 			if (!wasNull()) {
-				throw new IOException("Expecting 'null' at position: " + positionInStream());
+				throw new IOException("Expecting 'null' " + positionDescription());
 			}
 			return getNextToken();
 		}
 		if (last == 't') {
 			if (!wasTrue()) {
-				throw new IOException("Expecting 'true' at position: " + positionInStream());
+				throw new IOException("Expecting 'true' " + positionDescription());
 			}
 			return getNextToken();
 		}
 		if (last == 'f') {
 			if (!wasFalse()) {
-				throw new IOException("Expecting 'false' at position: " + positionInStream());
+				throw new IOException("Expecting 'false' " + positionDescription());
 			}
 			return getNextToken();
 		}
@@ -1024,13 +1034,13 @@ public final class JsonReader<TContext> {
 			return Base64.decodeFast(input, 0, len);
 		}
 		if (last != '"') {
-			throw new IOException("Expecting '\"' at position: " + positionInStream() + " at base64 start. Found " + (char) last);
+			throw new IOException("Expecting '\"' " + positionDescription() + " at base64 start. Found " + (char) last);
 		}
 		final int start = currentIndex;
 		currentIndex = Base64.findEnd(buffer, start);
 		last = buffer[currentIndex++];
 		if (last != '"') {
-			throw new IOException("Expecting '\"' at position: " + positionInStream() + " at base64 end. Found " + (char) last);
+			throw new IOException("Expecting '\"' " + positionDescription() + " at base64 end. Found " + (char) last);
 		}
 		return Base64.decodeFast(buffer, start, currentIndex - 1);
 	}
@@ -1046,7 +1056,7 @@ public final class JsonReader<TContext> {
 		final int len = parseString();
 		final String key = keyCache != null ? keyCache.get(chars, len) : new String(chars, 0, len);
 		if (getNextToken() != ':') {
-			throw new IOException("Expecting ':' at position: " + positionInStream() + ". Found " + (char) last);
+			throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) last);
 		}
 		getNextToken();
 		return key;
@@ -1092,7 +1102,7 @@ public final class JsonReader<TContext> {
 				last = 'l';
 				return true;
 			}
-			throw new IOException("Invalid null value found at: " + positionInStream());
+			throw new IOException("Invalid null value found " + positionDescription());
 		}
 		return false;
 	}
@@ -1113,7 +1123,7 @@ public final class JsonReader<TContext> {
 				last = 'e';
 				return true;
 			}
-			throw new IOException("Invalid boolean value found at: " + positionInStream());
+			throw new IOException("Invalid boolean value found " + positionDescription());
 		}
 		return false;
 	}
@@ -1135,7 +1145,7 @@ public final class JsonReader<TContext> {
 				last = 'e';
 				return true;
 			}
-			throw new IOException("Invalid boolean value found at: " + positionInStream());
+			throw new IOException("Invalid boolean value found " + positionDescription());
 		}
 		return false;
 	}
@@ -1147,8 +1157,8 @@ public final class JsonReader<TContext> {
 	 */
 	public final void comma() throws IOException {
 		if (getNextToken() != ',') {
-			if (currentIndex >= length) throw new IOException("Unexpected end in JSON at: " + positionInStream());
-			else throw new IOException("Expecting ',' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected end in JSON " + positionDescription());
+			else throw new IOException("Expecting ',' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
@@ -1159,8 +1169,8 @@ public final class JsonReader<TContext> {
 	 */
 	public final void semicolon() throws IOException {
 		if (getNextToken() != ':') {
-			if (currentIndex >= length) throw new IOException("Unexpected end in JSON at: " + positionInStream());
-			else throw new IOException("Expecting ':' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected end in JSON " + positionDescription());
+			else throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
@@ -1171,8 +1181,8 @@ public final class JsonReader<TContext> {
 	 */
 	public final void startArray() throws IOException {
 		if (getNextToken() != '[') {
-			if (currentIndex >= length) throw new IOException("Unexpected start of collection in JSON at: " + positionInStream());
-			else throw new IOException("Expecting '[' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected start of collection in JSON " + positionDescription());
+			else throw new IOException("Expecting '[' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
@@ -1183,8 +1193,8 @@ public final class JsonReader<TContext> {
 	 */
 	public final void endArray() throws IOException {
 		if (getNextToken() != ']') {
-			if (currentIndex >= length) throw new IOException("Unexpected end of collection in JSON at: " + positionInStream());
-			else throw new IOException("Expecting ']' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected end of collection in JSON " + positionDescription());
+			else throw new IOException("Expecting ']' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
@@ -1195,8 +1205,8 @@ public final class JsonReader<TContext> {
 	 */
 	public final void startObject() throws IOException {
 		if (getNextToken() != '{') {
-			if (currentIndex >= length) throw new IOException("Unexpected start of object in JSON at: " + positionInStream());
-			else throw new IOException("Expecting '{' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected start of object in JSON " + positionDescription());
+			else throw new IOException("Expecting '{' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
@@ -1207,21 +1217,21 @@ public final class JsonReader<TContext> {
 	 */
 	public final void endObject() throws IOException {
 		if (getNextToken() != '}') {
-			if (currentIndex >= length) throw new IOException("Unexpected end of object in JSON at: " + positionInStream());
-			else throw new IOException("Expecting '}' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected end of object in JSON " + positionDescription());
+			else throw new IOException("Expecting '}' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
 	public final void startAttribute(final String name) throws IOException {
 		do {
 			if (getNextToken() != '"') {
-				throw new IOException("Expecting '\"' at position: " + positionInStream() + ". Found " + (char) last);
+				throw new IOException("Expecting '\"' " + positionDescription() + ". Found " + (char) last);
 			}
 			fillNameWeakHash();
 			if (wasLastName(name)) return;
 			getNextToken();
 		} while (skip() == ',');
-		throw new IOException("Unable to find attribute '" + name + "' at position: " + positionInStream());
+		throw new IOException("Unable to find attribute '" + name + "' " + positionDescription());
 	}
 
 	/**
@@ -1231,8 +1241,8 @@ public final class JsonReader<TContext> {
 	 */
 	public final void checkArrayEnd() throws IOException {
 		if (last != ']') {
-			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in collection at: " + positionInStream());
-			else throw new IOException("Expecting ']' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in collection " + positionDescription());
+			else throw new IOException("Expecting ']' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
@@ -1243,13 +1253,13 @@ public final class JsonReader<TContext> {
 	 */
 	public final void checkObjectEnd() throws IOException {
 		if (last != '}') {
-			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in object at: " + positionInStream());
-			else throw new IOException("Expecting '}' at position: " + positionInStream() + ". Found " + (char) last);
+			if (currentIndex >= length) throw new IOException("Unexpected end of JSON in object " + positionDescription());
+			else throw new IOException("Expecting '}' " + positionDescription() + ". Found " + (char) last);
 		}
 	}
 
 	private Object readNull(final Class<?> manifest) throws IOException {
-		if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
+		if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected " + positionDescription());
 		if (manifest.isPrimitive()) {
 			if (manifest == int.class) return 0;
 			else if (manifest == long.class) return 0L;
@@ -1296,7 +1306,7 @@ public final class JsonReader<TContext> {
 	public final <T> T next(final ReadObject<T> reader) throws IOException {
 		if (reader == null) throw new IllegalArgumentException("reader can't be null");
 		if (this.getNextToken() == 'n') {
-			if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
+			if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected " + positionDescription());
 			return null;
 		}
 		return reader.read(this);
@@ -1338,7 +1348,7 @@ public final class JsonReader<TContext> {
 		if (binder == null) throw new IllegalArgumentException("binder can't be null");
 		if (instance == null) throw new IllegalArgumentException("instance can't be null");
 		if (this.getNextToken() == 'n') {
-			if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected at: " + positionInStream());
+			if (!wasNull()) throw new IllegalArgumentException("Invalid JSON detected " + positionDescription());
 			return null;
 		}
 		return binder.bind(this, instance);
@@ -1392,12 +1402,12 @@ public final class JsonReader<TContext> {
 		if (last == '{') {
 			getNextToken();
 			res.add(readObject.deserialize(this));
-		} else throw new IOException("Expecting '{' at position: " + positionInStream() + ". Found " + (char) last);
+		} else throw new IOException("Expecting '{' " + positionDescription() + ". Found " + (char) last);
 		while (getNextToken() == ',') {
 			if (getNextToken() == '{') {
 				getNextToken();
 				res.add(readObject.deserialize(this));
-			} else throw new IOException("Expecting '{' at position: " + positionInStream() + ". Found " + (char) last);
+			} else throw new IOException("Expecting '{' " + positionDescription() + ". Found " + (char) last);
 		}
 		checkArrayEnd();
 	}
@@ -1414,14 +1424,14 @@ public final class JsonReader<TContext> {
 			res.add(readObject.deserialize(this));
 		} else if (wasNull()) {
 			res.add(null);
-		} else throw new IOException("Expecting '{' at position: " + positionInStream() + ". Found " + (char) last);
+		} else throw new IOException("Expecting '{' " + positionDescription() + ". Found " + (char) last);
 		while (getNextToken() == ',') {
 			if (getNextToken() == '{') {
 				getNextToken();
 				res.add(readObject.deserialize(this));
 			} else if (wasNull()) {
 				res.add(null);
-			} else throw new IOException("Expecting '{' at position: " + positionInStream() + ". Found " + (char) last);
+			} else throw new IOException("Expecting '{' " + positionDescription() + ". Found " + (char) last);
 		}
 		checkArrayEnd();
 	}

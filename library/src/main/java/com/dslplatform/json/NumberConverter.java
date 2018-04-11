@@ -260,9 +260,9 @@ public abstract class NumberConverter {
 		final char[] buf = reader.prepareBuffer(reader.getCurrentIndex() - len, len);
 		if (len < reader.maxNumberDigits) {
 			final NumberFormatException error = new NumberFormatException(new String(buf, 0, len));
-			throw new IOException("Error parsing number at position: " + reader.positionInStream(len) + ". " + message, error);
+			throw new IOException("Error parsing number " + reader.positionDescription(len) + ". " + message, error);
 		}
-		throw new IOException("Error parsing number at position: " + reader.positionInStream(len) + ". " + message);
+		throw new IOException("Error parsing number " + reader.positionDescription(len) + ". " + message);
 	}
 
 	public static void serializeNullable(final Double value, final JsonWriter sw) {
@@ -281,7 +281,7 @@ public abstract class NumberConverter {
 		try {
 			return new BigDecimal(buf, 0, end);
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Error parsing number at position: " + reader.positionInStream(len), nfe);
+			throw new IOException("Error parsing number " + reader.positionDescription(len), nfe);
 		}
 	}
 
@@ -509,7 +509,7 @@ public abstract class NumberConverter {
 		try {
 			return Double.parseDouble(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Error parsing number at position: " + reader.positionInStream(len), nfe);
+			throw new IOException("Error parsing number " + reader.positionDescription(len), nfe);
 		}
 	}
 
@@ -689,7 +689,7 @@ public abstract class NumberConverter {
 		try {
 			return Float.parseFloat(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Error parsing number at position: " + reader.positionInStream(len), nfe);
+			throw new IOException("Error parsing number " + reader.positionDescription(len), nfe);
 		}
 	}
 
@@ -816,7 +816,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).intValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new IOException("Integer overflow detected at position: " + (reader.positionInStream() - reader.getCurrentIndex() + position));
+				throw new IOException("Integer overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
 			}
 		}
 		final int start = reader.scanNumber();
@@ -1136,7 +1136,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).longValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new IOException("Long overflow detected at position: " + (reader.positionInStream() - reader.getCurrentIndex() + position));
+				throw new IOException("Long overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
 			}
 		}
 		final int start = reader.scanNumber();

@@ -53,7 +53,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		else if (reader.last() != '{') {
-			throw new IOException("Expecting '{' at position: " + reader.positionInStream() + " while parsing " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting '{' " + reader.positionDescription() + " while parsing " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 		if (reader.getNextToken() == '}') {
 			if (hasMandatory) {
@@ -72,7 +72,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new IOException("Null value found for property " + ri.name + " at position: " + reader.positionInStream());
+				throw new IOException("Null value found for property " + ri.name + " " + reader.positionDescription());
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -92,7 +92,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new IOException("Null value found for property " + ri.name + " at position: " + reader.positionInStream());
+				throw new IOException("Null value found for property " + ri.name + " " + reader.positionDescription());
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -112,7 +112,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 				}
 				reader.getNextToken();
 				if (ri.nonNull && reader.wasNull()) {
-					throw new IOException("Null value found for property " + ri.name + " at position: " + reader.positionInStream());
+					throw new IOException("Null value found for property " + ri.name + " " + reader.positionDescription());
 				}
 				args[ri.index] = ri.value.read(reader);
 				currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -131,7 +131,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 				reader.getNextToken();
 				reader.fillNameWeakHash();
 				return readObjectSlow(args, reader, currentMandatory);
-			} else throw new IOException("Expecting '}' or ',' at position: " + reader.positionInStream() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			} else throw new IOException("Expecting '}' or ',' " + reader.positionDescription() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 		if (hasMandatory && currentMandatory != 0) {
 			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
@@ -142,7 +142,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private void skip(final JsonReader reader) throws IOException {
 		if (!skipOnUnknown) {
 			final String name = reader.getLastName();
-			throw new IOException("Unknown property detected: '" + name + "' while reading " + manifest.getTypeName() + " at position: " + reader.positionInStream(name.length() + 3));
+			throw new IOException("Unknown property detected: '" + name + "' while reading " + manifest.getTypeName() + " " + reader.positionDescription(name.length() + 3));
 		}
 		reader.getNextToken();
 		reader.skip();

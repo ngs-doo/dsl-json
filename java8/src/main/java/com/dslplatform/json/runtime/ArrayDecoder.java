@@ -23,7 +23,7 @@ public final class ArrayDecoder<T> implements JsonReader.ReadObject<T[]> {
 	public T[] read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() != '[') {
-			throw new IOException("Expecting '[' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new IOException("Expecting '[' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		}
 		if (reader.getNextToken() == ']') return emptyInstance;
 		final ArrayList<T> list = new ArrayList<>(4);
@@ -33,7 +33,7 @@ public final class ArrayDecoder<T> implements JsonReader.ReadObject<T[]> {
 			list.add(decoder.read(reader));
 		}
 		if (reader.last() != ']') {
-			throw new IOException("Expecting ']' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
+			throw new IOException("Expecting ']' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		}
 		return list.toArray(emptyInstance);
 	}

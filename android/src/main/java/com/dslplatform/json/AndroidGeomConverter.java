@@ -75,14 +75,14 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static PointF deserializeLocation(final JsonReader reader) throws IOException {
-		if (reader.last() != '{') throw new IOException("Expecting '{' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
+		if (reader.last() != '{') throw new IOException("Expecting '{' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new PointF();
 		float x = 0;
 		float y = 0;
 		String name = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
-		if (nextToken != ':') throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+		if (nextToken != ':') throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)nextToken);
 		reader.getNextToken();
 		float value = NumberConverter.deserializeFloat(reader);
 		if ("X".equalsIgnoreCase(name)) {
@@ -94,7 +94,7 @@ public abstract class AndroidGeomConverter {
 			reader.getNextToken();
 			name = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
-			if (nextToken != ':') throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+			if (nextToken != ':') throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)nextToken);
 			reader.getNextToken();
 			value = NumberConverter.deserializeFloat(reader);
 			if ("X".equalsIgnoreCase(name)) {
@@ -103,7 +103,7 @@ public abstract class AndroidGeomConverter {
 				y = value;
 			}
 		}
-		if (nextToken != '}') throw new IOException("Expecting '}' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+		if (nextToken != '}') throw new IOException("Expecting '}' " + reader.positionDescription() + ". Found " + (char)nextToken);
 		return new PointF(x, y);
 	}
 
@@ -140,14 +140,14 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static Point deserializePoint(final JsonReader reader) throws IOException {
-		if (reader.last() != '{') throw new IOException("Expecting '{' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
+		if (reader.last() != '{') throw new IOException("Expecting '{' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new Point();
 		int x = 0;
 		int y = 0;
 		String name = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
-		if (nextToken != ':') throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+		if (nextToken != ':') throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)nextToken);
 		reader.getNextToken();
 		int value = NumberConverter.deserializeInt(reader);
 		if ("X".equalsIgnoreCase(name)) {
@@ -159,7 +159,7 @@ public abstract class AndroidGeomConverter {
 			reader.getNextToken();
 			name = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
-			if (nextToken != ':') throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+			if (nextToken != ':') throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)nextToken);
 			reader.getNextToken();
 			value = NumberConverter.deserializeInt(reader);
 			if ("X".equalsIgnoreCase(name)) {
@@ -168,7 +168,7 @@ public abstract class AndroidGeomConverter {
 				y = value;
 			}
 		}
-		if (nextToken != '}') throw new IOException("Expecting '}' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+		if (nextToken != '}') throw new IOException("Expecting '}' " + reader.positionDescription() + ". Found " + (char)nextToken);
 		return new Point(x, y);
 
 	}
@@ -210,7 +210,7 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static Rect deserializeRectangle(final JsonReader reader) throws IOException {
-		if (reader.last() != '{') throw new IOException("Expecting '{' at position: " + reader.positionInStream() + ". Found " + (char)reader.last());
+		if (reader.last() != '{') throw new IOException("Expecting '{' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new Rect();
 		int x = 0;
@@ -219,7 +219,7 @@ public abstract class AndroidGeomConverter {
 		int height = 0;
 		String name = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
-		if (nextToken != ':') throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+		if (nextToken != ':') throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)nextToken);
 		reader.getNextToken();
 		int value = NumberConverter.deserializeInt(reader);
 		if ("X".equalsIgnoreCase(name)) {
@@ -235,7 +235,7 @@ public abstract class AndroidGeomConverter {
 			reader.getNextToken();
 			name = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
-			if (nextToken != ':') throw new IOException("Expecting ':' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+			if (nextToken != ':') throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)nextToken);
 			reader.getNextToken();
 			value = NumberConverter.deserializeInt(reader);
 			if ("X".equalsIgnoreCase(name)) {
@@ -248,7 +248,7 @@ public abstract class AndroidGeomConverter {
 				height = value;
 			}
 		}
-		if (nextToken != '}') throw new IOException("Expecting '}' at position: " + reader.positionInStream() + ". Found " + (char)nextToken);
+		if (nextToken != '}') throw new IOException("Expecting '}' " + reader.positionDescription() + ". Found " + (char)nextToken);
 		return new Rect(x, y, x + width, y + height);
 	}
 

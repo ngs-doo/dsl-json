@@ -63,21 +63,21 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			return readArrayFormat(reader);
 		}
 		if (canObjectFormat && canArrayFormat) {
-			throw new IOException("Expecting '{' or '[' at position: " + reader.positionInStream() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting '{' or '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else if (canObjectFormat) {
-			throw new IOException("Expecting '{' at position: " + reader.positionInStream() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting '{' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else {
-			throw new IOException("Expecting '[' at position: " + reader.positionInStream() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 	}
 
 	private T readObjectFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
-			throw new IOException("Expecting \"$type\" attribute as first element of mixin at position: " + reader.positionInStream() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting \"$type\" attribute as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		if (reader.fillName() != typeHash) {
 			String name = reader.getLastName();
-			throw new IOException("Expecting \"$type\" attribute as first element of mixin at position: " + reader.positionInStream(name.length() + 2) + ". Found: " + name);
+			throw new IOException("Expecting \"$type\" attribute as first element of mixin " + reader.positionDescription(name.length() + 2) + ". Found: " + name);
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();
@@ -95,7 +95,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 
 	private T readArrayFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
-			throw new IOException("Expecting \"$type\" value as first element of mixin at position: " + reader.positionInStream() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting \"$type\" value as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();

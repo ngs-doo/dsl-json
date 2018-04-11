@@ -14,9 +14,9 @@ public abstract class BigIntegerConverter {
 		final char[] buf = reader.prepareBuffer(reader.getCurrentIndex() - len, len);
 		if (len < reader.maxNumberDigits) {
 			final NumberFormatException error = new NumberFormatException(new String(buf, 0, len));
-			throw new IOException("Error parsing number at position: " + reader.positionInStream(len) + ". " + message, error);
+			throw new IOException("Error parsing number " + reader.positionDescription(len) + ". " + message, error);
 		}
-		throw new IOException("Error parsing number at position: " + reader.positionInStream(len) + ". " + message);
+		throw new IOException("Error parsing number " + reader.positionDescription(len) + ". " + message);
 	}
 
 	private static BigInteger parseNumberGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
@@ -27,7 +27,7 @@ public abstract class BigIntegerConverter {
 		try {
 			return new BigInteger(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Error parsing number at position: " + reader.positionInStream(len), nfe);
+			throw new IOException("Error parsing number " + reader.positionDescription(len), nfe);
 		}
 	}
 
@@ -54,6 +54,7 @@ public abstract class BigIntegerConverter {
 				}
 			}
 			final int newSize = tmp.length * 2;
+			//TODO: use position description instead
 			if (newSize > reader.maxNumberDigits) throw new IOException("Unable to read number at: " + position + ". Number of digits larger than " + reader.maxNumberDigits);
 			tmp = Arrays.copyOf(tmp, newSize);
 		}

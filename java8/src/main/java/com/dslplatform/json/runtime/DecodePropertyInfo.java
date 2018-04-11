@@ -126,8 +126,8 @@ public class DecodePropertyInfo<T> {
 			}
 		}
 		sb.setLength(sb.length() - 2);
-		sb.append(") not found at position: ");
-		sb.append(reader.positionInStream());
+		sb.append(") not found ");
+		sb.append(reader.positionDescription());
 		throw new IOException(sb.toString());
 	}
 }
