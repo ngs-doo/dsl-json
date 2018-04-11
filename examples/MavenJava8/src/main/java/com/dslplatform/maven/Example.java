@@ -28,7 +28,7 @@ public class Example {
 		public List<Abstract> absList;
 		public Interface iface;//interfaces without deserializedAs will also include $type attribute in JSON by default
 		public ParentClass inheritance;
-		@JsonAttribute(mandatory = true) // currently up to 64 mandatory properties can be used per bean
+		@JsonAttribute(mandatory = true)// mandatory adds check if property exist in JSON and will serialize it even in omit-defaults mode
 		public List<State> states;
 		public JsonObjectReference jsonObject; //object implementing JsonObject manage their own conversion. They must start with '{'
 		public List<JsonObjectReference> jsonObjects;

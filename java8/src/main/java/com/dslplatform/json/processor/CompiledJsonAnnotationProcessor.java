@@ -36,6 +36,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	static {
 		JsonIgnore = new HashSet<>();
 		JsonIgnore.add("com.fasterxml.jackson.annotation.JsonIgnore");
+		JsonIgnore.add("javax.json.bind.annotation.JsonbTransient");
 		NonNullable = new HashMap<>();
 		NonNullable.put("javax.validation.constraints.NotNull", null);
 		NonNullable.put("javax.annotation.Nonnull", null);

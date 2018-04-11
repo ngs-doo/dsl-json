@@ -36,6 +36,8 @@ public class OptionalTest {
 
 	private final DslJson<Object> dslJsonArray = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 	private final DslJson<Object> dslJsonObject = new DslJson<>(Settings.withRuntime().allowArrayFormat(false).includeServiceLoader());
+	//TODO: custom defaults
+	//private final DslJson<Object> dslJsonMinimal = new DslJson<>(Settings.withRuntime().allowArrayFormat(false).skipDefaultValues(true).includeServiceLoader());
 
 	@Test
 	public void objectRoundtrip() throws IOException {
@@ -54,6 +56,12 @@ public class OptionalTest {
 		res = dslJsonObject.deserialize(Composite.class, os.toByteArray(), os.size());
 		Assert.assertEquals(OptionalInt.empty(), c.oi);
 		Assert.assertEquals(Optional.empty(), res.os);
+		/*os.reset();
+		dslJsonMinimal.serialize(c, os);
+		Assert.assertEquals("{}", os.toString());
+		res = dslJsonMinimal.deserialize(Composite.class, os.toByteArray(), os.size());
+		Assert.assertEquals(OptionalInt.empty(), c.oi);
+		Assert.assertEquals(Optional.empty(), res.os);*/
 	}
 
 	@Test
@@ -74,5 +82,11 @@ public class OptionalTest {
 		res = dslJsonObject.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
 		Assert.assertEquals(OptionalInt.empty(), c.oi);
 		Assert.assertEquals(Optional.empty(), res.os);
+		/*os.reset();
+		dslJsonMinimal.serialize(c, os);
+		Assert.assertEquals("{\"oi\":null,\"os\":null}", os.toString());
+		res = dslJsonMinimal.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
+		Assert.assertEquals(OptionalInt.empty(), c.oi);
+		Assert.assertEquals(Optional.empty(), res.os);*/
 	}
 }

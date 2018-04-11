@@ -37,36 +37,43 @@ public class ObjectFormatTest {
 		}
 	}
 
-	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
+	private final DslJson<Object> dslJsonFull = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
+	private final DslJson<Object> dslJsonMinimal = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).skipDefaultValues(true).includeServiceLoader());
+
+	private final DslJson<Object>[] dslJsons = new DslJson[]{dslJsonFull, dslJsonMinimal};
 
 	@Test
 	public void objectRoundtrip() throws IOException {
-		Composite c = new Composite();
-		c.d = Double.parseDouble("123.456");
-		c.s = Arrays.asList("abc", "def", null, "ghi");
-		c.x = new int[] { 1, -1, -0 };
-		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		dslJson.serialize(c, os);
-		Assert.assertEquals("{\"d\":123.456,\"s\":[\"abc\",\"def\",null,\"ghi\"],\"x\":[1,-1,0]}", os.toString());
-		Composite res = dslJson.deserialize(Composite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(c.d, res.d);
-		Assert.assertEquals(c.s, res.s);
-		Assert.assertArrayEquals(c.x, res.x);
+		for (DslJson<Object> dslJson : dslJsons) {
+			Composite c = new Composite();
+			c.d = Double.parseDouble("123.456");
+			c.s = Arrays.asList("abc", "def", null, "ghi");
+			c.x = new int[]{1, -1, -0};
+			ByteArrayOutputStream os = new ByteArrayOutputStream();
+			dslJson.serialize(c, os);
+			Assert.assertEquals("{\"d\":123.456,\"s\":[\"abc\",\"def\",null,\"ghi\"],\"x\":[1,-1,0]}", os.toString());
+			Composite res = dslJson.deserialize(Composite.class, os.toByteArray(), os.size());
+			Assert.assertEquals(c.d, res.d);
+			Assert.assertEquals(c.s, res.s);
+			Assert.assertArrayEquals(c.x, res.x);
+		}
 	}
 
 	@Test
 	public void immutableRoundtrip() throws IOException {
-		ImmutableComposite c = new ImmutableComposite(
-				new int[] { 1, -1, -0 },
-				Arrays.asList("abc", "def", null, "ghi"),
-				Double.parseDouble("123.456")
-		);
-		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		dslJson.serialize(c, os);
-		Assert.assertEquals("{\"d\":123.456,\"s\":[\"abc\",\"def\",null,\"ghi\"],\"x\":[1,-1,0]}", os.toString());
-		ImmutableComposite res = dslJson.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(c.d, res.d);
-		Assert.assertEquals(c.s, res.s);
-		Assert.assertArrayEquals(c.x, res.x);
+		for (DslJson<Object> dslJson : dslJsons) {
+			ImmutableComposite c = new ImmutableComposite(
+					new int[]{1, -1, -0},
+					Arrays.asList("abc", "def", null, "ghi"),
+					Double.parseDouble("123.456")
+			);
+			ByteArrayOutputStream os = new ByteArrayOutputStream();
+			dslJson.serialize(c, os);
+			Assert.assertEquals("{\"d\":123.456,\"s\":[\"abc\",\"def\",null,\"ghi\"],\"x\":[1,-1,0]}", os.toString());
+			ImmutableComposite res = dslJson.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
+			Assert.assertEquals(c.d, res.d);
+			Assert.assertEquals(c.s, res.s);
+			Assert.assertArrayEquals(c.x, res.x);
+		}
 	}
 }

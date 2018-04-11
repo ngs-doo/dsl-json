@@ -53,14 +53,7 @@ public class DslJsonbProvider extends JsonbProvider {
 
 		@Override
 		public <T> T fromJson(String input, Class<T> as) throws JsonbException {
-			if (input == null) throw new JsonbException("input can't be null");
-			if (as == null) throw new JsonbException("as can't be null");
-			try {
-				byte[] bytes = input.getBytes("UTF-8");
-				return dslJson.deserialize(as, bytes, bytes.length);
-			} catch (IOException e) {
-				throw new JsonbException(e.getMessage(), e.getCause());
-			}
+			return (T)fromJson(input, (Type)as);
 		}
 
 		@Override
@@ -77,23 +70,18 @@ public class DslJsonbProvider extends JsonbProvider {
 
 		@Override
 		public <T> T fromJson(Reader reader, Class<T> as) throws JsonbException {
-			throw new JsonbException("DSL-JSON does not support Reader API");
+			return (T)fromJson(reader, (Type)as);
 		}
 
 		@Override
 		public <T> T fromJson(Reader reader, Type type) throws JsonbException {
-			throw new JsonbException("DSL-JSON does not support Reader API");
+			//TODO: maybe just use naive reader to stream conversion!?
+			throw new JsonbException("DSL-JSON does not support Reader API. Use InputStream API instead");
 		}
 
 		@Override
 		public <T> T fromJson(InputStream stream, Class<T> as) throws JsonbException {
-			if (stream == null) throw new JsonbException("stream can't be null");
-			if (as == null) throw new JsonbException("as can't be null");
-			try {
-				return (T)dslJson.deserialize(as, stream);
-			} catch (IOException e) {
-				throw new JsonbException(e.getMessage(), e.getCause());
-			}
+			return (T)fromJson(stream, (Type)as);
 		}
 
 		@Override
@@ -141,6 +129,7 @@ public class DslJsonbProvider extends JsonbProvider {
 				JsonWriter jw = localWriter.get();
 				jw.reset();
 				dslJson.serialize(jw, obj);
+				//TODO: not ideal... but lets use it instead of throwing an exception
 				writer.write(new String(jw.getByteBuffer(), 0, jw.size(), "UTF-8"));
 			} catch (IOException | SerializationException ex) {
 				throw new JsonbException(ex.getMessage(), ex.getCause());

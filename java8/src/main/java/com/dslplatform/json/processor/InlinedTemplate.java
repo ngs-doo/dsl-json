@@ -219,7 +219,7 @@ class InlinedTemplate {
 			code.append("\t\t\tif (instance.");
 			code.append(attr.readProperty);
 			code.append(" != ").append(defaultValue).append(") {\n");
-			code.append("\t\t\t\twriter.writeByte((byte)'\"'); writer.writeAscii(name_").append(attr.name).append(");").append(" writer.writeByte((byte)'\"');\n");
+			code.append("\t\t\t\twriter.writeByte((byte)'\"'); writer.writeAscii(name_").append(attr.name).append("); writer.writeByte((byte)'\"'); writer.writeByte((byte)':');\n");
 			writeProperty(attr, true);
 			code.append("\t\t\t\twriter.writeByte((byte)','); hasWritten = true;\n");
 			code.append("\t\t\t}");
