@@ -53,6 +53,9 @@ public final class JsonReader<TContext> {
 	private final StringCache valuesCache;
 	private final TypeLookup typeLookup;
 
+	private final byte[] originalBuffer;
+	private final int originalBufferLenWithExtraSpace;
+
 	public enum DoublePrecision {
 		EXACT(0),
 		HIGH(1),
@@ -105,6 +108,8 @@ public final class JsonReader<TContext> {
 		this.maxNumberDigits = maxNumberDigits;
 		this.maxStringBuffer = maxStringBuffer;
 		this.doubleLengthLimit = 15 + doublePrecision.level;
+		this.originalBuffer = buffer;
+		this.originalBufferLenWithExtraSpace = bufferLenWithExtraSpace;
 	}
 
 	/**
@@ -198,6 +203,18 @@ public final class JsonReader<TContext> {
 	@Deprecated
 	final void reset(final int size) {
 		process(null, size);
+	}
+
+	/**
+	 * Reset reader after processing input
+	 * It will release reference to provided byte[] or InputStream input
+	 */
+	final void reset() {
+		this.buffer = this.originalBuffer;
+		this.bufferLenWithExtraSpace = this.originalBufferLenWithExtraSpace;
+		currentIndex = 0;
+		this.length = 0;
+		this.stream = null;
 	}
 
 	/**

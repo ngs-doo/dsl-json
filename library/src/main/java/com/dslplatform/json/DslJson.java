@@ -1327,41 +1327,44 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (body == null) {
 			throw new IllegalArgumentException("body can't be null");
 		}
-		//TODO: ideally we should release reference to provided byte buffer
 		final JsonReader json = localReader.get().process(body, size);
-		json.getNextToken();
-		if (JsonObject.class.isAssignableFrom(manifest)) {
-			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
-			if (objectReader != null) {
+		try {
+			json.getNextToken();
+			if (JsonObject.class.isAssignableFrom(manifest)) {
+				final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
+				if (objectReader != null) {
+					if (json.wasNull()) {
+						return null;
+					} else if (json.last() == '{') {
+						json.getNextToken();
+						return (TResult) objectReader.deserialize(json);
+					} else throw json.expecting("{");
+				}
+			}
+			final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
+			if (simpleReader != null) {
+				return (TResult) simpleReader.read(json);
+			}
+			if (manifest.isArray()) {
 				if (json.wasNull()) {
 					return null;
-				} else if (json.last() == '{') {
-					json.getNextToken();
-					return (TResult) objectReader.deserialize(json);
-				} else throw json.expecting("{");
+				} else if (json.last() != '[') {
+					throw json.expecting("[");
+				}
+				final Class<?> elementManifest = manifest.getComponentType();
+				final List<?> list = deserializeList(elementManifest, body, size);
+				if (list == null) {
+					return null;
+				}
+				return (TResult) convertResultToArray(elementManifest, list);
 			}
-		}
-		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
-		if (simpleReader != null) {
-			return (TResult) simpleReader.read(json);
-		}
-		if (manifest.isArray()) {
-			if (json.wasNull()) {
-				return null;
-			} else if (json.last() != '[') {
-				throw json.expecting("[");
+			if (fallback != null) {
+				return (TResult) fallback.deserialize(context, manifest, body, size);
 			}
-			final Class<?> elementManifest = manifest.getComponentType();
-			final List<?> list = deserializeList(elementManifest, body, size);
-			if (list == null) {
-				return null;
-			}
-			return (TResult) convertResultToArray(elementManifest, list);
+			throw createErrorMessage(manifest);
+		} finally {
+			json.reset();
 		}
-		if (fallback != null) {
-			return (TResult) fallback.deserialize(context, manifest, body, size);
-		}
-		throw createErrorMessage(manifest);
 	}
 
 	/**
@@ -1391,16 +1394,19 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (body == null) {
 			throw new IllegalArgumentException("body can't be null");
 		}
-		//TODO: ideally we should release reference to provided byte buffer
 		final JsonReader json = localReader.get().process(body, size);
-		json.getNextToken();
-		final Object result = deserializeWith(manifest, json);
-		if (result != unknownValue) return result;
-		if (fallback != null) {
-			return fallback.deserialize(context, manifest, body, size);
+		try {
+			json.getNextToken();
+			final Object result = deserializeWith(manifest, json);
+			if (result != unknownValue) return result;
+			if (fallback != null) {
+				return fallback.deserialize(context, manifest, body, size);
+			}
+			throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+					"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
+		} finally {
+			json.reset();
 		}
-		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
-				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1546,45 +1552,48 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (body == null) {
 			throw new IllegalArgumentException("body can't be null");
 		}
-		if (size == 4 && body[0] == 'n' && body[1] == 'u'&& body[2] == 'l' && body[3] == 'l') {
+		if (size == 4 && body[0] == 'n' && body[1] == 'u' && body[2] == 'l' && body[3] == 'l') {
 			return null;
 		} else if (size == 2 && body[0] == '[' && body[1] == ']') {
 			return new ArrayList<TResult>(0);
 		}
-		//TODO: ideally we should release reference to provided byte buffer
 		final JsonReader json = localReader.get().process(body, size);
-		if (json.getNextToken() != '[') {
-			if (json.wasNull()) {
-				return null;
+		try {
+			if (json.getNextToken() != '[') {
+				if (json.wasNull()) {
+					return null;
+				}
+				throw json.expecting("[");
 			}
-			throw json.expecting("[");
-		}
-		if (json.getNextToken() == ']') {
-			return new ArrayList<TResult>(0);
-		}
-		if (JsonObject.class.isAssignableFrom(manifest)) {
-			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
-			if (reader != null) {
-				return (List<TResult>) json.deserializeNullableCollection(reader);
+			if (json.getNextToken() == ']') {
+				return new ArrayList<TResult>(0);
 			}
-		}
-		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
-		if (simpleReader != null) {
-			return json.deserializeNullableCollection(simpleReader);
-		}
-		if (fallback != null) {
-			final Object array = Array.newInstance(manifest, 0);
-			final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), body, size);
-			if (result == null) {
-				return null;
+			if (JsonObject.class.isAssignableFrom(manifest)) {
+				final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
+				if (reader != null) {
+					return (List<TResult>) json.deserializeNullableCollection(reader);
+				}
 			}
-			final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
-			for (TResult aResult : result) {
-				list.add(aResult);
+			final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
+			if (simpleReader != null) {
+				return json.deserializeNullableCollection(simpleReader);
 			}
-			return list;
+			if (fallback != null) {
+				final Object array = Array.newInstance(manifest, 0);
+				final TResult[] result = (TResult[]) fallback.deserialize(context, array.getClass(), body, size);
+				if (result == null) {
+					return null;
+				}
+				final ArrayList<TResult> list = new ArrayList<TResult>(result.length);
+				for (TResult aResult : result) {
+					list.add(aResult);
+				}
+				return list;
+			}
+			throw createErrorMessage(manifest);
+		} finally {
+			json.reset();
 		}
-		throw createErrorMessage(manifest);
 	}
 
 	/**
@@ -1659,7 +1668,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		//
 		final JsonReader json = localReader.get().process(stream);
-		return deserializeList(manifest, json, stream);
+		try {
+			return deserializeList(manifest, json, stream);
+		} finally {
+			json.reset();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1769,9 +1782,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (stream == null) {
 			throw new IllegalArgumentException("stream can't be null");
 		}
-		//TODO: ideally we should release reference to provided stream
 		final JsonReader json = localReader.get().process(stream);
-		return deserialize(manifest, json, stream);
+		try {
+			return deserialize(manifest, json, stream);
+		} finally {
+			json.reset();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1902,14 +1918,18 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			throw new IllegalArgumentException("stream can't be null");
 		}
 		final JsonReader json = localReader.get().process(stream);
-		json.getNextToken();
-		final Object result = deserializeWith(manifest, json);
-		if (result != unknownValue) return result;
-		if (fallback != null) {
-			return fallback.deserialize(context, manifest, new RereadStream(json.buffer, stream));
+		try {
+			json.getNextToken();
+			final Object result = deserializeWith(manifest, json);
+			if (result != unknownValue) return result;
+			if (fallback != null) {
+				return fallback.deserialize(context, manifest, new RereadStream(json.buffer, stream));
+			}
+			throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+					"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
+		} finally {
+			json.reset();
 		}
-		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
-				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
 	static class RereadStream extends InputStream {

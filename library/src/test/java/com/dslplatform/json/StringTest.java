@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 public class StringTest {
@@ -24,9 +25,16 @@ public class StringTest {
 		byte[] bytes = input.getBytes("UTF-8");
 		JsonReader<Object> reader = dslJson.newReader();
 		for(int i = 0; i < 1000; i++) {
-			reader.process(bytes, bytes.length);
-			reader.read();
+			reader.process(bytes, bytes.length).read();
 			Assert.assertEquals("RT @SivuNgcaba: \"Things we buy to cover up what's inside, coz they made us hate ourselves and love their wealth.\"", StringConverter.deserialize(reader));
+		}
+		reader.reset();
+		ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+		for(int i = 0; i < 1000; i++) {
+			is.reset();
+			reader.process(is).read();
+			Assert.assertEquals("RT @SivuNgcaba: \"Things we buy to cover up what's inside, coz they made us hate ourselves and love their wealth.\"", StringConverter.deserialize(reader));
+			reader.reset();
 		}
 	}
 }
