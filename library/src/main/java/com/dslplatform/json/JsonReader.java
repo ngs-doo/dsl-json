@@ -591,6 +591,7 @@ public final class JsonReader<TContext> {
 							final int sup = bc - 0x10000;
 							_tmp[soFar++] = (char) ((sup >>> 10) + 0xd800);
 							_tmp[soFar++] = (char) ((sup & 0x3ff) + 0xdc00);
+							continue;
 						}
 					}
 				}
