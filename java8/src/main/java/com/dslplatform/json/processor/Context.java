@@ -9,7 +9,7 @@ final class Context {
 	private final boolean allowInline;
 	final Map<String, OptimizedConverter> inlinedConverters;
 	final Map<String, String> defaults;
-	private final Map<String, StructInfo> structs;
+	final Map<String, StructInfo> structs;
 
 	Context(Writer code, boolean allowInline, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs) {
 		this.code = code;

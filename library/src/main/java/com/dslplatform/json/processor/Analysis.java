@@ -527,7 +527,7 @@ public class Analysis {
 							typeSignature,
 							converter,
 							isJsonObject,
-							structs.get(referenceName));
+							referenceName);
 			String[] alternativeNames = getAlternativeNames(attr.element);
 			if (alternativeNames != null) {
 				attr.alternativeNames.addAll(Arrays.asList(alternativeNames));
@@ -541,7 +541,18 @@ public class Analysis {
 						: elements.getTypeElement(objectType);
 				validateConverter(typeConverter, declaredType, objectType);
 			}
-			if (info.attributes.containsKey(attr.id)) {
+			AttributeInfo other = info.attributes.get(attr.id);
+			if (other != null
+					&& (other.annotation != null && attr.annotation == null
+						|| other.annotation == null && attr.annotation == null && other.field == null && attr.field != null)) {
+				//if other property has annotation, but this does not, skip over this property
+				//if both properties don't have annotation, use the non field one
+				path.pop();
+				return;
+			} else if (other != null
+					&& (!other.name.equals(attr.name)
+						|| other.id.equals(attr.id) && other.field == null && attr.field == null)) {
+				//if properties have different name or both are method based raise an error
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,

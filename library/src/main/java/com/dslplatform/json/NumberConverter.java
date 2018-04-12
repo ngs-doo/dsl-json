@@ -758,13 +758,13 @@ public abstract class NumberConverter {
 			return pos + 3 + off;
 		}
 		final int r2 = q1 - q2 * 1000;
-		final long q3 = q2 / 1000;
+		final int q3 = q2 / 1000;
 		final int v1 = DIGITS[r1];
 		final int v2 = DIGITS[r2];
 		if (q3 == 0) {
 			pos += writeFirstBuf(buf, DIGITS[q2], pos);
 		} else {
-			final int r3 = (int) (q2 - q3 * 1000);
+			final int r3 = q2 - q3 * 1000;
 			buf[pos++] = (byte) (q3 + '0');
 			writeBuf(buf, DIGITS[r3], pos);
 			pos += 3;

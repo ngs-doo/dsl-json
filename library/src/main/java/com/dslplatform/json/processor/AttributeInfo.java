@@ -6,6 +6,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class AttributeInfo {
 	public final String id;
@@ -26,7 +27,7 @@ public class AttributeInfo {
 	public final boolean isJsonObject;
 	public final List<String> alternativeNames = new ArrayList<String>();
 	public final String readProperty;
-	public final StructInfo target;
+	public final String targetName;
 
 	public AttributeInfo(
 			String name,
@@ -43,7 +44,7 @@ public class AttributeInfo {
 			CompiledJson.TypeSignature typeSignature,
 			TypeMirror converter,
 			boolean isJsonObject,
-			StructInfo target) {
+			String targetName) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
 		this.readMethod = readMethod;
@@ -60,11 +61,12 @@ public class AttributeInfo {
 		this.typeSignature = typeSignature;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
-		this.target = target;
+		this.targetName = targetName;
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 	}
 
-	public boolean isEnum() {
-		return target != null && target.type == ObjectType.ENUM;
+	public boolean isEnum(Map<String, StructInfo> structs) {
+		StructInfo struct = targetName == null ? null : structs.get(targetName);
+		return struct != null && struct.type == ObjectType.ENUM;
 	}
 }

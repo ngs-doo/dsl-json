@@ -4,6 +4,7 @@ import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.SerializationException;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 public final class CollectionEncoder<E, T extends Collection<E>> implements JsonWriter.WriteObject<T> {
@@ -26,15 +27,24 @@ public final class CollectionEncoder<E, T extends Collection<E>> implements Json
 		if (value == null) writer.writeNull();
 		else if (value.isEmpty()) writer.writeAscii(EMPTY);
 		else if (encoder != null) {
-			boolean pastFirst = false;
 			writer.writeByte(JsonWriter.ARRAY_START);
-			for (final E e : value) {
-				if (pastFirst) {
+			if (value instanceof ArrayList) {
+				final ArrayList<E> list = (ArrayList<E>)value;
+				encoder.write(writer, list.get(0));
+				for(int i = 1; i < list.size(); i++) {
 					writer.writeByte(JsonWriter.COMMA);
-				} else {
-					pastFirst = true;
+					encoder.write(writer, list.get(i));
 				}
-				encoder.write(writer, e);
+			} else {
+				boolean pastFirst = false;
+				for (final E e : value) {
+					if (pastFirst) {
+						writer.writeByte(JsonWriter.COMMA);
+					} else {
+						pastFirst = true;
+					}
+					encoder.write(writer, e);
+				}
 			}
 			writer.writeByte(JsonWriter.ARRAY_END);
 		} else {
