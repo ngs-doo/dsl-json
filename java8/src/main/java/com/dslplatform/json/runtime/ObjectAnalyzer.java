@@ -27,21 +27,23 @@ public abstract class ObjectAnalyzer {
 
 		private boolean checkSignatureNotFound() {
 			int i = 0;
+			ObjectFormatDescription local = null;
 			while (i < 50) {
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					throw new SerializationException(e);
 				}
-				if (resolved != null) {
-					resolvedWriter = resolved;
-					resolvedReader = resolved;
-					resolvedBinder = resolved;
+				local = resolved;
+				if (local != null) {
+					resolvedWriter = local;
+					resolvedReader = local;
+					resolvedBinder = local;
 					break;
 				}
 				i++;
 			}
-			return resolved == null;
+			return local == null;
 		}
 
 		@Override

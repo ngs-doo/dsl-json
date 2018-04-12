@@ -34,24 +34,9 @@ public abstract class Settings {
 			return new LazyAttributeObjectEncoder<>(read, name, json, type);
 		}
 		if (json.omitDefaults) {
-			//TODO: better default value look
-			return new AttributeObjectNonDefaultEncoder<>(read, name, encoder, null);
+			return new AttributeObjectNonDefaultEncoder<>(read, name, encoder, (R)json.getDefault(type));
 		}
 		return new AttributeObjectAlwaysEncoder<>(read, name, encoder);
-	}
-
-	public static <T, R> JsonWriter.WriteObject<T> createEncoder(
-			final Function<T, R> read,
-			final String name,
-			final DslJson json,
-			final JsonWriter.WriteObject<R> encoder) {
-		if (read == null) throw new IllegalArgumentException("read can't be null");
-		if (name == null) throw new IllegalArgumentException("name can't be null");
-		if (json == null) throw new IllegalArgumentException("json can't be null");
-		if (encoder == null) throw new IllegalArgumentException("encoder can't be null");
-		return json.omitDefaults
-				? new AttributeObjectNonDefaultEncoder<>(read, name, encoder, null)
-				: new AttributeObjectAlwaysEncoder<>(read, name, encoder);
 	}
 
 	public static <T, R> JsonWriter.WriteObject<T> createArrayEncoder(

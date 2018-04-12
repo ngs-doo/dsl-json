@@ -31,7 +31,7 @@ class AttributeObjectNonDefaultEncoder<T, R> implements JsonWriter.WriteObject<T
 	@Override
 	public void write(final JsonWriter writer, final T value) {
 		final R attr = read.apply(value);
-		if (attr != defaultValue) {
+		if (attr != null && attr != defaultValue) {
 			writer.writeAscii(quotedName);
 			encoder.write(writer, attr);
 		}

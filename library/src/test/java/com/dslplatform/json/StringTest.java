@@ -34,7 +34,6 @@ public class StringTest {
 			is.reset();
 			reader.process(is).read();
 			Assert.assertEquals("RT @SivuNgcaba: \"Things we buy to cover up what's inside, coz they made us hate ourselves and love their wealth.\"", StringConverter.deserialize(reader));
-			reader.reset();
 		}
 	}
 }

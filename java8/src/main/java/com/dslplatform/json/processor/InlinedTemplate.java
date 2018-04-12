@@ -157,9 +157,8 @@ class InlinedTemplate {
 		for (AttributeInfo attr : sortedAttributes) {
 			String typeName = attr.type.toString();
 			code.append("\t\t\t").append(typeName).append(" _").append(attr.name).append("_ = ");
-			OptimizedConverter converter = context.inlinedConverters.get(typeName);
-			if (converter == null || converter.defaultValue == null) code.append("null;\n");
-			else code.append(converter.defaultValue).append(";\n");
+			String defaultValue = context.getDefault(typeName);
+			code.append(defaultValue).append(";\n");
 			if (attr.mandatory) {
 				code.append("\t\t\tboolean __detected_").append(attr.name).append("__ = false;\n");
 			}
@@ -214,11 +213,16 @@ class InlinedTemplate {
 		code.append(className).append(" instance) {\n");
 		code.append("\t\t\tboolean hasWritten = false;\n");
 		for (AttributeInfo attr : sortedAttributes) {
-			OptimizedConverter converter = context.inlinedConverters.get(attr.type.toString());
-			String defaultValue = converter != null && converter.defaultValue != null ? converter.defaultValue : "null";
-			code.append("\t\t\tif (instance.");
-			code.append(attr.readProperty);
-			code.append(" != ").append(defaultValue).append(") {\n");
+			String typeName = attr.type.toString();
+			String defaultValue = context.getDefault(typeName);
+			code.append("\t\t\tif (");
+			String readValue = "instance." + attr.readProperty;
+			if ("null".equals(defaultValue) || typeName.indexOf('<') == -1) {
+				code.append(readValue).append(" != ").append(defaultValue);
+			} else {
+				code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+			}
+			code.append(") {\n");
 			code.append("\t\t\t\twriter.writeByte((byte)'\"'); writer.writeAscii(name_").append(attr.name).append("); writer.writeByte((byte)'\"'); writer.writeByte((byte)':');\n");
 			writeProperty(attr, true);
 			code.append("\t\t\t\twriter.writeByte((byte)','); hasWritten = true;\n");

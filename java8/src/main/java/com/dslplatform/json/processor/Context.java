@@ -8,13 +8,27 @@ final class Context {
 	final Writer code;
 	private final boolean allowInline;
 	final Map<String, OptimizedConverter> inlinedConverters;
+	final Map<String, String> defaults;
 	private final Map<String, StructInfo> structs;
 
-	Context(Writer code, boolean allowInline, Map<String, OptimizedConverter> inlinedConverters, Map<String, StructInfo> structs) {
+	Context(Writer code, boolean allowInline, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs) {
 		this.code = code;
 		this.allowInline = allowInline;
 		this.inlinedConverters = inlinedConverters;
+		this.defaults = defaults;
 		this.structs = structs;
+	}
+
+	String getDefault(String type) {
+		OptimizedConverter converter = inlinedConverters.get(type);
+		if (converter != null && converter.defaultValue != null) return converter.defaultValue;
+		String defVal = defaults.get(type);
+		if (defVal != null) return defVal;
+		if (type.contains("<")) {
+			defVal = defaults.get(type.substring(0, type.indexOf('<')));
+			if (defVal != null) return defVal;
+		}
+		return "null";
 	}
 
 	static String nonGenericObject(String type) {

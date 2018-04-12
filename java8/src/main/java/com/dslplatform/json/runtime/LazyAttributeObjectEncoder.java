@@ -16,6 +16,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 	private final byte[] quotedName;
 	private final boolean alwaysSerialize;
 	private JsonWriter.WriteObject<R> encoder;
+	private final Object defaultValue;
 	private final DslJson json;
 	private final Type type;
 
@@ -32,6 +33,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 		this.alwaysSerialize = !json.omitDefaults;
 		this.json = json;
 		this.type = type;
+		this.defaultValue = json.getDefault(type);
 	}
 
 	@Override
@@ -50,14 +52,19 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 					writer.writeNull();
 				}
 			} else {
-				final JsonWriter.WriteObject tmp = json.tryFindWriter(attr.getClass());
+				final Class<?> manifest = attr.getClass();
+				final JsonWriter.WriteObject tmp = json.tryFindWriter(manifest);
 				if (tmp == null) {
-					throw new SerializationException("Unable to find writer for " + attr.getClass());
+					throw new SerializationException("Unable to find writer for " + manifest);
+				}
+				if (!alwaysSerialize) {
+					final Object tmpDefault = json.getDefault(manifest);
+					if (attr == tmpDefault) return;
 				}
 				writer.writeAscii(quotedName);
 				tmp.write(writer, attr);
 			}
-		} else if (alwaysSerialize || attr != null) {
+		} else if (alwaysSerialize || attr != defaultValue) {
 			writer.writeAscii(quotedName);
 			encoder.write(writer, attr);
 		}

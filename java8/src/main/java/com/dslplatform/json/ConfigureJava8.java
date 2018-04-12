@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.time.*;
+import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
@@ -61,12 +62,9 @@ public class ConfigureJava8 implements Configuration {
 		json.registerWriter(ResultSet.class, ResultSetConverter.Writer);
 		json.registerWriter(byte.class, ByteWriter);
 		json.registerReader(byte.class, ByteReader);
+
 		json.registerWriter(Byte.class, ByteWriter);
 		json.registerReader(Byte.class, NullableByteReader);
-		json.registerWriter(short.class, ShortWriter);
-		json.registerReader(short.class, ShortReader);
-		json.registerWriter(Short.class, ShortWriter);
-		json.registerReader(Short.class, NullableShortReader);
 		json.registerWriter(OptionalDouble.class, new JsonWriter.WriteObject<OptionalDouble>() {
 			@Override
 			public void write(JsonWriter writer, OptionalDouble value) {
@@ -80,6 +78,7 @@ public class ConfigureJava8 implements Configuration {
 				return reader.wasNull() ? OptionalDouble.empty() : OptionalDouble.of(NumberConverter.deserializeDouble(reader));
 			}
 		});
+		json.registerDefault(OptionalDouble.class, OptionalDouble.empty());
 		json.registerWriter(OptionalInt.class, new JsonWriter.WriteObject<OptionalInt>() {
 			@Override
 			public void write(JsonWriter writer, OptionalInt value) {
@@ -93,6 +92,7 @@ public class ConfigureJava8 implements Configuration {
 				return reader.wasNull() ? OptionalInt.empty() : OptionalInt.of(NumberConverter.deserializeInt(reader));
 			}
 		});
+		json.registerDefault(OptionalInt.class, OptionalInt.empty());
 		json.registerWriter(OptionalLong.class, new JsonWriter.WriteObject<OptionalLong>() {
 			@Override
 			public void write(JsonWriter writer, OptionalLong value) {
@@ -106,8 +106,10 @@ public class ConfigureJava8 implements Configuration {
 				return reader.wasNull() ? OptionalLong.empty() : OptionalLong.of(NumberConverter.deserializeLong(reader));
 			}
 		});
+		json.registerDefault(OptionalLong.class, OptionalLong.empty());
 		json.registerWriter(BigInteger.class, BigIntegerConverter.Writer);
 		json.registerReader(BigInteger.class, BigIntegerConverter.Reader);
+		json.registerDefault(Optional.class, Optional.empty());
 		json.writerFactories.add(0, OptionalAnalyzer.WRITER);
 		json.readerFactories.add(0, OptionalAnalyzer.READER);
 	}

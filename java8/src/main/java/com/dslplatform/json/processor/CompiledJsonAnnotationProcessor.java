@@ -30,6 +30,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private static final Set<String> Constructors;
 	private static final Map<String, String> Indexes;
 	private static final Map<String, OptimizedConverter> InlinedConverters;
+	private static final Map<String, String> Defaults;
 
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
 
@@ -83,6 +84,19 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		InlinedConverters.put("java.util.UUID", new OptimizedConverter("com.dslplatform.json.UUIDConverter", "WRITER", "serialize", "READER", "deserialize", null));
 		InlinedConverters.put("java.time.LocalDate", new OptimizedConverter("com.dslplatform.json.JavaTimeConverter", "LOCAL_DATE_WRITER", "serialize", "LOCAL_DATE_READER", "deserializeLocalDate", null));
 		InlinedConverters.put("java.time.OffsetDateTime", new OptimizedConverter("com.dslplatform.json.JavaTimeConverter", "DATE_TIME_READER", "serialize", "DATE_TIME_WRITER", "deserializeDateTime", null));
+		Defaults = new HashMap<>();
+		Defaults.put("byte", "(byte)0");
+		Defaults.put("boolean", "false");
+		Defaults.put("int", "0");
+		Defaults.put("long", "0L");
+		Defaults.put("short", "(short)0");
+		Defaults.put("double", "0.0");
+		Defaults.put("float", "0.0f");
+		Defaults.put("char", "'\0'");
+		Defaults.put("java.util.OptionalLong", "java.util.OptionalLong.empty()");
+		Defaults.put("java.util.OptionalInt", "java.util.OptionalInt.empty()");
+		Defaults.put("java.util.OptionalDouble", "java.util.OptionalDouble.empty()");
+		Defaults.put("java.util.Optional", "java.util.Optional.empty()");
 	}
 
 	private LogLevel logLevel = LogLevel.ERRORS;
@@ -212,12 +226,14 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		SourceVersion latest = SourceVersion.latest();
 		if ("RELEASE_9".equals(latest.name())) {
 			return latest;
+		} else if ("RELEASE_10".equals(latest.name())) {
+			return latest;
 		}
 		return SourceVersion.RELEASE_8;
 	}
 
 	private static void buildCode(final Writer code, final Map<String, StructInfo> structs, final boolean allowInline) throws IOException {
-		final Context context = new Context(code, allowInline, InlinedConverters, structs);
+		final Context context = new Context(code, allowInline, InlinedConverters, Defaults, structs);
 		final DescriptionTemplate descriptionTemplate = new DescriptionTemplate(context);
 		final InlinedTemplate inlinedTemplate = new InlinedTemplate(context);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
@@ -327,23 +343,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 					}
 				} else if (si.constructor != null) {
 					if (!allowInline) {
-						code.append("\tprivate static class Builder").append(si.name).append(" {\n");
-						for (VariableElement p : si.constructor.getParameters()) {
-							//TODO: default
-							code.append("\t\tprivate ").append(p.asType().toString()).append(" _").append(p.getSimpleName()).append("_;\n");
-							code.append("\t\tvoid _").append(p.getSimpleName()).append("_(").append(p.asType().toString()).append(" v) { this._").append(p.getSimpleName()).append("_ = v; }\n");
-						}
-						code.append("\t\tpublic ").append(className).append(" __buildFromBuilder__() {\n");
-						code.append("\t\t\treturn new ").append(className).append("(");
-						int i = si.constructor.getParameters().size();
-						for (VariableElement p : si.constructor.getParameters()) {
-							code.append("_").append(p.getSimpleName()).append("_");
-							i--;
-							if (i > 0) code.append(", ");
-						}
-						code.append(");\n");
-						code.append("\t\t}\n");
-						code.append("\t}\n");
+						descriptionTemplate.createBuilder(si, className);
 					}
 					if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 						if (allowInline) inlinedTemplate.fromCtorObject(si, className);

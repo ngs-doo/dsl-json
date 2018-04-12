@@ -2,6 +2,7 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
 
+import javax.lang.model.element.VariableElement;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
@@ -171,6 +172,28 @@ class DescriptionTemplate {
 		}
 		code.append("\n\t\t\t}\n");
 		code.append("\t\t);\n");
+		code.append("\t}\n");
+	}
+
+	void createBuilder(final StructInfo si, final String className) throws IOException {
+		code.append("\tprivate static class Builder").append(si.name).append(" {\n");
+		for (VariableElement p : si.constructor.getParameters()) {
+			String typeName = p.asType().toString();
+			code.append("\t\tprivate ").append(typeName).append(" _").append(p.getSimpleName()).append("_ = ");
+			String defaultValue = context.getDefault(typeName);
+			code.append(defaultValue).append(";\n");
+			code.append("\t\tvoid _").append(p.getSimpleName()).append("_(").append(p.asType().toString()).append(" v) { this._").append(p.getSimpleName()).append("_ = v; }\n");
+		}
+		code.append("\t\tpublic ").append(className).append(" __buildFromBuilder__() {\n");
+		code.append("\t\t\treturn new ").append(className).append("(");
+		int i = si.constructor.getParameters().size();
+		for (VariableElement p : si.constructor.getParameters()) {
+			code.append("_").append(p.getSimpleName()).append("_");
+			i--;
+			if (i > 0) code.append(", ");
+		}
+		code.append(");\n");
+		code.append("\t\t}\n");
 		code.append("\t}\n");
 	}
 }

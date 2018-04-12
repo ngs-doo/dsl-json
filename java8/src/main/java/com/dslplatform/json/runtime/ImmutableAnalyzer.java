@@ -35,20 +35,22 @@ public abstract class ImmutableAnalyzer {
 
 		private boolean checkSignatureNotFound() {
 			int i = 0;
+			ImmutableDescription local = null;
 			while (i < 50) {
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					throw new SerializationException(e);
 				}
-				if (resolved != null) {
-					encoder = resolved;
-					decoder = resolved;
+				local = resolved;
+				if (local != null) {
+					encoder = local;
+					decoder = local;
 					break;
 				}
 				i++;
 			}
-			return resolved == null;
+			return local == null;
 		}
 
 		@Override
@@ -275,20 +277,7 @@ public abstract class ImmutableAnalyzer {
 		final Object[] defArgs = new Object[ctorParams.length];
 		for (int i = 0; i < ctorParams.length; i++) {
 			final Type concreteType = Generics.makeConcrete(ctorParams[i].getParameterizedType(), genericMappings);
-			if (ctorParams[i].getType().isPrimitive()) {
-				defArgs[i] = Array.get(Array.newInstance(ctorParams[i].getType(), 1), 0);
-			} else {
-				final JsonReader.ReadObject defReader = json.tryFindReader(concreteType);
-				//TODO: hack to avoid timeouts during  cyclic dependency resolution
-				if (defReader != null && !(defReader instanceof LazyImmutableDescription)) {
-					try {
-						final JsonReader nullJson = json.newReader(new byte[]{'n', 'u', 'l', 'l'});
-						nullJson.read();
-						defArgs[i] = defReader.read(nullJson);
-					} catch (Exception ignore) {
-					}
-				}
-			}
+			defArgs[i] = json.getDefault(concreteType);
 		}
 		return defArgs;
 	}

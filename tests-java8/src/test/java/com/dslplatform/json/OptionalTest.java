@@ -16,9 +16,9 @@ public class OptionalTest {
 	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
 	public static class Composite {
 		@JsonAttribute(index = 1)
-		public OptionalInt oi;
+		public OptionalInt oi = OptionalInt.empty();
 		@JsonAttribute(index = 2)
-		public Optional<String> os;
+		public Optional<String> os = Optional.empty();
 	}
 
 	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
@@ -36,8 +36,7 @@ public class OptionalTest {
 
 	private final DslJson<Object> dslJsonArray = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 	private final DslJson<Object> dslJsonObject = new DslJson<>(Settings.withRuntime().allowArrayFormat(false).includeServiceLoader());
-	//TODO: custom defaults
-	//private final DslJson<Object> dslJsonMinimal = new DslJson<>(Settings.withRuntime().allowArrayFormat(false).skipDefaultValues(true).includeServiceLoader());
+	private final DslJson<Object> dslJsonMinimal = new DslJson<>(Settings.withRuntime().allowArrayFormat(false).skipDefaultValues(true).includeServiceLoader());
 
 	@Test
 	public void objectRoundtrip() throws IOException {
@@ -48,20 +47,20 @@ public class OptionalTest {
 		dslJsonArray.serialize(c, os);
 		Assert.assertEquals("[null,null]", os.toString());
 		Composite res = dslJsonArray.deserialize(Composite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(OptionalInt.empty(), c.oi);
+		Assert.assertEquals(OptionalInt.empty(), res.oi);
 		Assert.assertEquals(Optional.empty(), res.os);
 		os.reset();
 		dslJsonObject.serialize(c, os);
 		Assert.assertEquals("{\"oi\":null,\"os\":null}", os.toString());
 		res = dslJsonObject.deserialize(Composite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(OptionalInt.empty(), c.oi);
+		Assert.assertEquals(OptionalInt.empty(), res.oi);
 		Assert.assertEquals(Optional.empty(), res.os);
-		/*os.reset();
+		os.reset();
 		dslJsonMinimal.serialize(c, os);
 		Assert.assertEquals("{}", os.toString());
 		res = dslJsonMinimal.deserialize(Composite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(OptionalInt.empty(), c.oi);
-		Assert.assertEquals(Optional.empty(), res.os);*/
+		Assert.assertEquals(OptionalInt.empty(), res.oi);
+		Assert.assertEquals(Optional.empty(), res.os);
 	}
 
 	@Test
@@ -74,19 +73,19 @@ public class OptionalTest {
 		dslJsonArray.serialize(c, os);
 		Assert.assertEquals("[null,null]", os.toString());
 		ImmutableComposite res = dslJsonArray.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(OptionalInt.empty(), c.oi);
+		Assert.assertEquals(OptionalInt.empty(), res.oi);
 		Assert.assertEquals(Optional.empty(), res.os);
 		os.reset();
 		dslJsonObject.serialize(c, os);
 		Assert.assertEquals("{\"oi\":null,\"os\":null}", os.toString());
 		res = dslJsonObject.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(OptionalInt.empty(), c.oi);
+		Assert.assertEquals(OptionalInt.empty(), res.oi);
 		Assert.assertEquals(Optional.empty(), res.os);
-		/*os.reset();
+		os.reset();
 		dslJsonMinimal.serialize(c, os);
-		Assert.assertEquals("{\"oi\":null,\"os\":null}", os.toString());
+		Assert.assertEquals("{}", os.toString());
 		res = dslJsonMinimal.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
-		Assert.assertEquals(OptionalInt.empty(), c.oi);
-		Assert.assertEquals(Optional.empty(), res.os);*/
+		Assert.assertEquals(OptionalInt.empty(), res.oi);
+		Assert.assertEquals(Optional.empty(), res.os);
 	}
 }
