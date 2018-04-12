@@ -1371,6 +1371,34 @@ public final class JsonReader<TContext> {
 		return binder.bind(this, instance);
 	}
 
+	public final <T> ArrayList<T> readCollection(final ReadObject<T> readObject) throws IOException {
+		if (wasNull()) return null;
+		if (last != '[') throw new IOException("Expecting '[' " + positionDescription() + ". Found " + (char) last);
+		if (getNextToken() == ']') return new ArrayList<T>(0);
+		final ArrayList<T> res = new ArrayList<T>(4);
+		res.add(readObject.read(this));
+		while (getNextToken() == ',') {
+			getNextToken();
+			res.add(readObject.read(this));
+		}
+		checkArrayEnd();
+		return res;
+	}
+
+	public final <T> T[] readArray(final ReadObject<T> readObject, final T[] emptyArray) throws IOException {
+		if (wasNull()) return null;
+		if (last != '[') throw new IOException("Expecting '[' " + positionDescription() + ". Found " + (char) last);
+		if (getNextToken() == ']') return emptyArray;
+		final ArrayList<T> res = new ArrayList<T>(4);
+		res.add(readObject.read(this));
+		while (getNextToken() == ',') {
+			getNextToken();
+			res.add(readObject.read(this));
+		}
+		checkArrayEnd();
+		return res.toArray(emptyArray);
+	}
+
 	public final <T, S extends T> ArrayList<T> deserializeCollection(final ReadObject<S> readObject) throws IOException {
 		final ArrayList<T> res = new ArrayList<T>(4);
 		deserializeCollection(readObject, res);

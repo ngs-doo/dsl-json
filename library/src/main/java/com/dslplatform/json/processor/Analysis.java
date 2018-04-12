@@ -526,8 +526,7 @@ public class Analysis {
 							isFullMatch(element, annotation),
 							typeSignature,
 							converter,
-							isJsonObject,
-							referenceName);
+							isJsonObject);
 			String[] alternativeNames = getAlternativeNames(attr.element);
 			if (alternativeNames != null) {
 				attr.alternativeNames.addAll(Arrays.asList(alternativeNames));
@@ -598,7 +597,9 @@ public class Analysis {
 			if (!structs.containsKey(st) && !supportedTypes.contains(st)) {
 				el = elements.getTypeElement(st);
 				if (el != null) {
-					//TODO: check for el.getQualifiedName().toString().equals(st)
+					if (!el.getTypeParameters().isEmpty()) {
+						if (containerSupport.isSupported(st)) continue;
+					}
 					findStructs(el, discoveredBy, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
 				}
 			}
@@ -827,7 +828,7 @@ public class Analysis {
 				found.put(st, true);
 			} else {
 				TypeElement el = elements.getTypeElement(st);
-				if (el == null || !el.getQualifiedName().toString().equals(st)) {
+				if (el == null || !el.getTypeParameters().isEmpty()) {
 					found.put(st, containerSupport.isSupported(st));
 				} else if (isJsonObject(el)) {
 					found.put(st, true);

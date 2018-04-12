@@ -3,10 +3,12 @@ package com.dslplatform.json.processor;
 import com.dslplatform.json.CompiledJson;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AttributeInfo {
 	public final String id;
@@ -27,7 +29,9 @@ public class AttributeInfo {
 	public final boolean isJsonObject;
 	public final List<String> alternativeNames = new ArrayList<String>();
 	public final String readProperty;
-	public final String targetName;
+	public final String typeName;
+	public final boolean isArray;
+	public final boolean isList;
 
 	public AttributeInfo(
 			String name,
@@ -43,8 +47,7 @@ public class AttributeInfo {
 			boolean fullMatch,
 			CompiledJson.TypeSignature typeSignature,
 			TypeMirror converter,
-			boolean isJsonObject,
-			String targetName) {
+			boolean isJsonObject) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
 		this.readMethod = readMethod;
@@ -61,12 +64,26 @@ public class AttributeInfo {
 		this.typeSignature = typeSignature;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
-		this.targetName = targetName;
+		this.typeName = type.toString();
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
+		this.isArray = type.getKind() == TypeKind.ARRAY;
+		this.isList = typeName.startsWith("java.util.List<") || typeName.startsWith("java.util.ArrayList<");
 	}
 
 	public boolean isEnum(Map<String, StructInfo> structs) {
-		StructInfo struct = targetName == null ? null : structs.get(targetName);
+		StructInfo struct = typeName == null ? null : structs.get(typeName);
 		return struct != null && struct.type == ObjectType.ENUM;
+	}
+
+	public String collectionContent(Set<String> knownTypes) {
+		if (isArray) {
+			String content = typeName.substring(0, typeName.length() - 2);
+			return knownTypes.contains(content) ? content : null;
+		} else if (isList) {
+			int ind = typeName.indexOf('<');
+			String content = typeName.substring(ind + 1, typeName.length() - 1);
+			return knownTypes.contains(content) ? content : null;
+		}
+		return null;
 	}
 }

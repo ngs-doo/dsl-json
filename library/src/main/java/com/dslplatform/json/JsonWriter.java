@@ -697,7 +697,7 @@ public final class JsonWriter {
 			return;
 		}
 		writeByte(ARRAY_START);
-		if (list.size() != 0) {
+		if (!list.isEmpty()) {
 			T item = list.get(0);
 			if (item != null) {
 				encoder.write(this, item);

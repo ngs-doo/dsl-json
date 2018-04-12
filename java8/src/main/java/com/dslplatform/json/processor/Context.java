@@ -10,13 +10,15 @@ final class Context {
 	final Map<String, OptimizedConverter> inlinedConverters;
 	final Map<String, String> defaults;
 	final Map<String, StructInfo> structs;
+	final Set<String> knownTypes;
 
-	Context(Writer code, boolean allowInline, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs) {
+	Context(Writer code, boolean allowInline, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, Set<String> knownTypes) {
 		this.code = code;
 		this.allowInline = allowInline;
 		this.inlinedConverters = inlinedConverters;
 		this.defaults = defaults;
 		this.structs = structs;
+		this.knownTypes = knownTypes;
 	}
 
 	String getDefault(String type) {

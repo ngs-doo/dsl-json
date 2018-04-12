@@ -8,7 +8,6 @@ import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
@@ -106,7 +105,6 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private boolean withJackson = false;
 	private boolean withJsonb = false;
 
-	private Analysis analysis;
 	private TypeElement jacksonCreatorElement;
 	private DeclaredType jacksonCreatorType;
 	private TypeElement jsonbCreatorElement;
@@ -140,6 +138,17 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		if (jsb != null && jsb.length() > 0) {
 			withJsonb = Boolean.parseBoolean(jsb);
 		}
+		jacksonCreatorElement = processingEnv.getElementUtils().getTypeElement("com.fasterxml.jackson.annotation.JsonCreator");
+		jacksonCreatorType = jacksonCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jacksonCreatorElement) : null;
+		jsonbCreatorElement = processingEnv.getElementUtils().getTypeElement("javax.json.bind.annotation.JsonbCreator");
+		jsonbCreatorType = jsonbCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jsonbCreatorElement) : null;
+	}
+
+	@Override
+	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+		if (roundEnv.processingOver()) {
+			return false;
+		}
 		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
 		Set<Type> knownDecoders = dslJson.getRegisteredDecoders();
@@ -149,7 +158,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				allTypes.add(t.getTypeName());
 			}
 		}
-		analysis = new Analysis(
+		final Analysis analysis = new Analysis(
 				processingEnv,
 				annotationUsage,
 				logLevel,
@@ -173,17 +182,6 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				true,
 				true,
 				true);
-		jacksonCreatorElement = processingEnv.getElementUtils().getTypeElement("com.fasterxml.jackson.annotation.JsonCreator");
-		jacksonCreatorType = jacksonCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jacksonCreatorElement) : null;
-		jsonbCreatorElement = processingEnv.getElementUtils().getTypeElement("javax.json.bind.annotation.JsonbCreator");
-		jsonbCreatorType = jsonbCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jsonbCreatorElement) : null;
-	}
-
-	@Override
-	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-		if (roundEnv.processingOver()) {
-			return false;
-		}
 		Set<? extends Element> compiledJsons = roundEnv.getElementsAnnotatedWith(analysis.compiledJsonElement);
 		Set<? extends Element> jacksonCreators = withJackson && jacksonCreatorElement != null ? roundEnv.getElementsAnnotatedWith(jacksonCreatorElement) : new HashSet<>();
 		Set<? extends Element> jsonbCreators = withJsonb && jsonbCreatorElement != null ? roundEnv.getElementsAnnotatedWith(jsonbCreatorElement) : new HashSet<>();
@@ -205,7 +203,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			try {
 				String className = "dsl_json_Annotation_Processor_External_Serialization";
 				Writer writer = processingEnv.getFiler().createSourceFile(className).openWriter();
-				buildCode(writer, structs, allowInline);
+				buildCode(writer, structs, allowInline, allTypes);
 				writer.close();
 				writer = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG).openWriter();
 				writer.write(className);
@@ -232,8 +230,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		return SourceVersion.RELEASE_8;
 	}
 
-	private static void buildCode(final Writer code, final Map<String, StructInfo> structs, final boolean allowInline) throws IOException {
-		final Context context = new Context(code, allowInline, InlinedConverters, Defaults, structs);
+	private static void buildCode(final Writer code, final Map<String, StructInfo> structs, final boolean allowInline, final Set<String> knownTypes) throws IOException {
+		final Context context = new Context(code, allowInline, InlinedConverters, Defaults, structs, knownTypes);
 		final DescriptionTemplate descriptionTemplate = new DescriptionTemplate(context);
 		final InlinedTemplate inlinedTemplate = new InlinedTemplate(context);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);

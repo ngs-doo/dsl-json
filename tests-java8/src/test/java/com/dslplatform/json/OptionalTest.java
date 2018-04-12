@@ -6,10 +6,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.OptionalInt;
+import java.util.*;
 
 public class OptionalTest {
 
@@ -87,5 +84,50 @@ public class OptionalTest {
 		res = dslJsonMinimal.deserialize(ImmutableComposite.class, os.toByteArray(), os.size());
 		Assert.assertEquals(OptionalInt.empty(), res.oi);
 		Assert.assertEquals(Optional.empty(), res.os);
+	}
+
+	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
+	public static class OptionInCollection {
+		@JsonAttribute(index = 1)
+		public List<OptionalInt> l1;
+		@JsonAttribute(index = 2)
+		public ArrayList<Optional<String>> l2;
+		@JsonAttribute(index = 3)
+		public Set<Optional<String>> l3;
+		@JsonAttribute(index = 4)
+		public OptionalDouble[] l4;
+	}
+
+	@Test
+	public void withCollections() throws IOException {
+		OptionInCollection c = new OptionInCollection();
+		c.l1 = Arrays.asList(OptionalInt.empty(), null, OptionalInt.of(3));
+		c.l2 = new ArrayList<>(Arrays.asList(null, Optional.of("abc"), Optional.empty()));
+		c.l3 = new LinkedHashSet<>(Arrays.asList(null, Optional.of("abc"), Optional.empty()));
+		c.l4 = new OptionalDouble[] { OptionalDouble.empty(), OptionalDouble.of(5), null };
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonArray.serialize(c, os);
+		Assert.assertEquals("[[null,null,3],[null,\"abc\",null],[null,\"abc\",null],[null,5.0,null]]", os.toString());
+		OptionInCollection res = dslJsonArray.deserialize(OptionInCollection.class, os.toByteArray(), os.size());
+		Assert.assertEquals(Arrays.asList(OptionalInt.empty(), OptionalInt.empty(), OptionalInt.of(3)), res.l1);
+		Assert.assertEquals(Arrays.asList(Optional.empty(), Optional.of("abc"), Optional.empty()), res.l2);
+		Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(Optional.empty(), Optional.of("abc"), Optional.empty())), res.l3);
+		Assert.assertArrayEquals(new OptionalDouble[] { OptionalDouble.empty(), OptionalDouble.of(5), OptionalDouble.empty() }, res.l4);
+		os.reset();
+		dslJsonObject.serialize(c, os);
+		Assert.assertEquals("{\"l1\":[null,null,3],\"l2\":[null,\"abc\",null],\"l3\":[null,\"abc\",null],\"l4\":[null,5.0,null]}", os.toString());
+		res = dslJsonObject.deserialize(OptionInCollection.class, os.toByteArray(), os.size());
+		Assert.assertEquals(Arrays.asList(OptionalInt.empty(), OptionalInt.empty(), OptionalInt.of(3)), res.l1);
+		Assert.assertEquals(Arrays.asList(Optional.empty(), Optional.of("abc"), Optional.empty()), res.l2);
+		Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(Optional.empty(), Optional.of("abc"), Optional.empty())), res.l3);
+		Assert.assertArrayEquals(new OptionalDouble[] { OptionalDouble.empty(), OptionalDouble.of(5), OptionalDouble.empty() }, res.l4);
+		os.reset();
+		dslJsonMinimal.serialize(c, os);
+		Assert.assertEquals("{\"l1\":[null,null,3],\"l2\":[null,\"abc\",null],\"l3\":[null,\"abc\",null],\"l4\":[null,5.0,null]}", os.toString());
+		res = dslJsonMinimal.deserialize(OptionInCollection.class, os.toByteArray(), os.size());
+		Assert.assertEquals(Arrays.asList(OptionalInt.empty(), OptionalInt.empty(), OptionalInt.of(3)), res.l1);
+		Assert.assertEquals(Arrays.asList(Optional.empty(), Optional.of("abc"), Optional.empty()), res.l2);
+		Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(Optional.empty(), Optional.of("abc"), Optional.empty())), res.l3);
+		Assert.assertArrayEquals(new OptionalDouble[] { OptionalDouble.empty(), OptionalDouble.of(5), OptionalDouble.empty() }, res.l4);
 	}
 }

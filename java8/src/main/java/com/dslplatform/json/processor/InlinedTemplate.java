@@ -35,26 +35,42 @@ class InlinedTemplate {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
 			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs)) {
-				String type = typeOrClass(nonGenericObject(typeName), typeName);
-				code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> reader_").append(attr.name).append(";\n");
-				code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> reader_").append(attr.name).append("() {\n");
-				code.append("\t\t\tif (reader_").append(attr.name).append(" == null) { reader_").append(attr.name).append(" = json.tryFindReader(");
-				code.append(type).append("); if (reader_").append(attr.name);
-				code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Unable to find reader for ").append(typeName).append("\"); }\n");
-				code.append("\t\t\treturn reader_").append(attr.name).append(";\n");
-				code.append("\t\t}\n");
-				code.append("\t\tprivate com.dslplatform.json.JsonWriter.WriteObject<").append(typeName).append("> writer_").append(attr.name).append(";\n");
-				code.append("\t\tprivate com.dslplatform.json.JsonWriter.WriteObject<").append(typeName).append("> writer_").append(attr.name).append("() {\n");
-				code.append("\t\t\tif (writer_").append(attr.name).append(" == null) { writer_").append(attr.name).append(" = json.tryFindWriter(");
-				code.append(type).append("); if (writer_").append(attr.name);
-				code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Unable to find writer for ").append(typeName).append("\"); }\n");
-				code.append("\t\t\treturn writer_").append(attr.name).append(";\n");
-				code.append("\t\t}\n");
+				String content = attr.collectionContent(context.knownTypes);
+				if (content != null) {
+					code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(content).append("> reader_").append(attr.name).append(";\n");
+					code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(content).append("> writer_").append(attr.name).append(";\n");
+				} else {
+					String type = typeOrClass(nonGenericObject(typeName), typeName);
+					code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> reader_").append(attr.name).append(";\n");
+					code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> reader_").append(attr.name).append("() {\n");
+					code.append("\t\t\tif (reader_").append(attr.name).append(" == null) { reader_").append(attr.name).append(" = json.tryFindReader(");
+					code.append(type).append("); if (reader_").append(attr.name);
+					code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Unable to find reader for ").append(typeName).append("\"); }\n");
+					code.append("\t\t\treturn reader_").append(attr.name).append(";\n");
+					code.append("\t\t}\n");
+					code.append("\t\tprivate com.dslplatform.json.JsonWriter.WriteObject<").append(typeName).append("> writer_").append(attr.name).append(";\n");
+					code.append("\t\tprivate com.dslplatform.json.JsonWriter.WriteObject<").append(typeName).append("> writer_").append(attr.name).append("() {\n");
+					code.append("\t\t\tif (writer_").append(attr.name).append(" == null) { writer_").append(attr.name).append(" = json.tryFindWriter(");
+					code.append(type).append("); if (writer_").append(attr.name);
+					code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Unable to find writer for ").append(typeName).append("\"); }\n");
+					code.append("\t\t\treturn writer_").append(attr.name).append(";\n");
+					code.append("\t\t}\n");
+				}
 			}
 		}
 		code.append("\t\t").append(name).append("(com.dslplatform.json.DslJson json) {\n");
 		code.append("\t\t\tthis.alwaysSerialize = !json.omitDefaults;\n");
 		code.append("\t\t\tthis.json = json;\n");
+		for (AttributeInfo attr : si.attributes.values()) {
+			String typeName = attr.type.toString();
+			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
+			String content = attr.collectionContent(context.knownTypes);
+			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs) && content != null) {
+				String type = typeOrClass(nonGenericObject(content), content);
+				code.append("\t\t\tthis.reader_").append(attr.name).append(" = json.tryFindReader(").append(type).append(");\n");
+				code.append("\t\t\tthis.writer_").append(attr.name).append(" = json.tryFindWriter(").append(type).append(");\n");
+			}
+		}
 		code.append("\t\t}\n");
 		if (binding) {
 			code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
@@ -371,6 +387,8 @@ class InlinedTemplate {
 				code.append(converter.nonNullableEncoder("writer", readValue));
 			} else if (attr.isEnum(context.structs)) {
 				EnumTemplate.writeName(context, attr, readValue);
+			} else if (attr.collectionContent(context.knownTypes) != null) {
+				code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(")");
 			} else {
 				code.append("writer_").append(attr.name).append("().write(writer, ").append(readValue).append(")");
 			}
@@ -439,8 +457,18 @@ class InlinedTemplate {
 				else code.append(converter.nonNullableDecoder()).append("(reader)");
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
-				StructInfo target = context.structs.get(attr.targetName);
+				StructInfo target = context.structs.get(attr.typeName);
 				code.append("Enum_").append(target.name).append(".readStatic(reader)");
+			} else if (attr.collectionContent(context.knownTypes) != null) {
+				if (attr.isArray) {
+					String content = attr.typeName.substring(0, attr.typeName.length() - 2);
+					int ind = content.indexOf('<');
+					if (ind != -1) content = content.substring(0, ind);
+					code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
+					code.append(", new ").append(content).append("[0])");
+				} else {
+					code.append("reader.readCollection(reader_").append(attr.name).append(")");
+				}
 			} else {
 				code.append("reader_").append(attr.name).append("().read(reader)");
 			}
@@ -459,20 +487,31 @@ class InlinedTemplate {
 		if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = reader.wasNull() ? null : ");
 			code.append(converter.nonNullableDecoder());
+			code.append("(reader);\n");
 		} else {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
 			if (attr.converter != null || converter != null) {
 				if (attr.converter != null) code.append(attr.converter.toString()).append(".JSON_READER.read");
 				else code.append(converter.nonNullableDecoder());
+				code.append("(reader);\n");
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
-				StructInfo target = context.structs.get(attr.targetName);
-				code.append("Enum_").append(target.name).append(".readStatic");
+				StructInfo target = context.structs.get(attr.typeName);
+				code.append("Enum_").append(target.name).append(".readStatic(reader);\n");
+			} else if (attr.collectionContent(context.knownTypes) != null) {
+				if (attr.isArray) {
+					String content = attr.typeName.substring(0, attr.typeName.length() - 2);
+					int ind = content.indexOf('<');
+					if (ind != -1) content = content.substring(0, ind);
+					code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
+					code.append(", new ").append(content).append("[0]);\n");
+				} else {
+					code.append("reader.readCollection(reader_").append(attr.name).append(");\n");
+				}
 			} else {
-				code.append("reader_").append(attr.name).append("().read");
+				code.append("reader_").append(attr.name).append("().read(reader);\n");
 			}
 		}
-		code.append("(reader);\n");
 	}
 
 	private static int calcWeakHash(String name) {

@@ -23,7 +23,7 @@ class EnumTemplate {
 	}
 
 	static void writeName(Context context, AttributeInfo attr, String readValue) throws IOException {
-		StructInfo target = context.structs.get(attr.targetName);
+		StructInfo target = context.structs.get(attr.typeName);
 		if (isAllSimple(target)) {
 			context.code.append("{ writer.writeByte((byte)'\"'); writer.writeAscii(").append(readValue).append(".name()); writer.writeByte((byte)'\"'); }");
 		} else {
