@@ -76,4 +76,29 @@ public class ArrayFormatTest {
 			Assert.assertArrayEquals(c.x, res.x);
 		}
 	}
+
+	public static class ImmutablePerson {
+		public final String firstName;
+		public final String lastName;
+		public final int age;
+
+		@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
+		public ImmutablePerson(String firstName, String lastName, int age) {
+			this.firstName = firstName;
+			this.lastName = lastName;
+			this.age = age;
+		}
+	}
+
+	@Test
+	public void implicitOrderThroughCtor() throws IOException {
+		ImmutablePerson c = new ImmutablePerson("first", "last", 42);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonArray.serialize(c, os);
+		Assert.assertEquals("[\"first\",\"last\",42]", os.toString());
+		ImmutablePerson res = dslJsonArray.deserialize(ImmutablePerson.class, os.toByteArray(), os.size());
+		Assert.assertEquals(c.firstName, res.firstName);
+		Assert.assertEquals(c.lastName, res.lastName);
+		Assert.assertEquals(c.age, res.age);
+	}
 }

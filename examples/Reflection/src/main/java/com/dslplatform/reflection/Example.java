@@ -10,6 +10,7 @@ import java.util.*;
 public class Example {
 
 	// supported via ObjectAnalyzer
+	// when in reflection DSL-JSON does not uses annotation for customization
 	public static class Model {
 		public String string;
 		public List<Integer> integers;

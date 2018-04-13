@@ -1,5 +1,6 @@
 package com.dslplatform.json.processor;
 
+import javax.lang.model.element.VariableElement;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
@@ -54,6 +55,28 @@ final class Context {
 			else if (a.index == -1) return 1;
 			return a.index - b.index;
 		});
+		if (info.constructor != null && !info.constructor.getParameters().isEmpty()) {
+			int firstNonSet = 0;
+			while (firstNonSet < result.size()) {
+				if (result.get(firstNonSet).index != -1) firstNonSet++;
+				else break;
+			}
+			for (VariableElement ve : info.constructor.getParameters()) {
+				int i = firstNonSet;
+				while (i < result.size()) {
+					AttributeInfo attr = result.get(i);
+					if (attr.name.equals(ve.getSimpleName().toString())) {
+						if (firstNonSet != i) {
+							result.remove(i);
+							result.add(firstNonSet, attr);
+						}
+						firstNonSet++;
+						break;
+					}
+					i++;
+				}
+			}
+		}
 		return result;
 	}
 

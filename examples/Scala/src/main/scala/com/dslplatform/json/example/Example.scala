@@ -16,7 +16,12 @@ object Example extends App {
 
   //This configuration will not support unknown types (eg AnyRef,...) or Java8 specific types
   //To allow support for unknown types use new DslJson[Any](Settings.withRuntime())
-  val dslJson = new DslJson[Any]()
+  implicit val dslJson = new DslJson[Any]()
+
+  //we can either put encoders on implicit scope, pass them in to encode/decode methods
+  //or put dslJson on implicit scope
+  //implicit val encoder = dslJson.encoder[Report]
+  //implicit val decoder = dslJson.decoder[Report]
 
   val os = new ByteArrayOutputStream()
   val report = Report(
@@ -29,11 +34,17 @@ object Example extends App {
   )
   //when using encode instead of serialize, types will be analyzed before conversion starts
   dslJson.encode(report, os)
+  //alternative syntax when neither DslJson nor encoder is in implicit scope would be
+  //beware that creating encoder allocates memory due to TypeTag allocation (even if encoder is already built and cached)
+  //dslJson.encode(report, os)(dslJson.encoder)
 
   val is = new ByteArrayInputStream(os.toByteArray)
   //by using decode TypeTags will be used to create accurate type representation
   //otherwise some types - eg classes nested in objects are not analyzed correctly due to missing metadata
   val result = dslJson.decode[Report](is)
+  //alternative syntax when neither DslJson nor decoder is in implicit scope would be
+  //beware that creating decoder allocates memory due to TypeTag allocation
+  //val result = dslJson.decode[Report](is)(dslJson.decoder)
 
   println(os)
   println(result == report)

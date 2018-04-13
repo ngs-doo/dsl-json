@@ -457,4 +457,9 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void simpleEnums() {
 		checkValidCompilation(WithEnums.class);
 	}
+
+	@Test
+	public void ctorIndexOrder() {
+		checkValidCompilation(ImmutablePerson.class);
+	}
 }

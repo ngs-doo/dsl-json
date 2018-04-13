@@ -16,7 +16,7 @@ Java JSON library designed for performance. Built for invasive software composit
  * extensibility - custom types can be registered for serialization/deserialization
  * streaming support - large JSON lists support streaming with minimal memory usage
  * zero-copy operations - converters avoid producing garbage
- * minimal size - runtime dependency weights around 150KB
+ * minimal size - runtime dependency weights around 200KB
  * no unsafe code - library doesn't rely on Java UNSAFE/internal methods
  * legacy name mapping - multiple versions of JSON property names can be mapped into a single POJO using alternativeNames annotation
  * binding to an existing instance - during deserialization an existing instance can be provided to reduce GC
@@ -25,6 +25,7 @@ Java JSON library designed for performance. Built for invasive software composit
  * support for other library annotations - Jackson annotations will be used and compile time analysis can be extended in various ways
  * Scala types support - Scala collections, primitives and boxed primitives work without any extra annotations or configuration
  * Kotlin support - annotation processor can be used from Kotlin. NonNull annotation is supported
+ * JsonB support - high level support for JsonB String and Stream API. Only minimal support for configuration
 
 ## Schema based serialization
 
@@ -45,8 +46,6 @@ This can be used to create serializers for pre-existing classes without annotati
 ### Java8 annotation processor
 
 Since v1.7.0 DSL-JSON supports compile time databinding without Mono/.NET dependency.
-It also provides more flexibility by going through `DslJson` APIs which incurs some additional overhead,
-mostly in the way of boxing, null checks and harder escape analysis.
 It provides most features and flexibility, due to integration with runtime analysis and combining of various generic analysis.
 Bean properties, public fields and classes without empty constructor are supported.
 
@@ -69,8 +68,7 @@ For use in Android, Gradle can be configured with:
 
 DSL Platform annotation processor requires .NET/Mono to create databindings.
 It works by translating Java code into equivalent DSL schema and running DSL Platform compiler on it.
-Generated code will avoid boxing/reflection issues at a cost of smaller set of types which are supported out-of-the-box.
-It provides most performance, but somewhat less features and flexibility.
+Since v1.7.2 Java8 version has similar performance, so the main benefit is ability to target Java6.
 Bean properties, public non-final fields and only classes with empty constructor are supported.
 
 Annotation processor can be added as Maven dependency with:
@@ -326,7 +324,7 @@ When used with Gradle, configuration can be done via:
  ***A***: Generic `TContext` is used for library specialization. Use `DslJson<Object>` when you don't need it and just provide `null` for it.
  
  ***Q***: Why is DSL-JSON faster than others?  
- ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching.
+ ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching. Reflection version is comparable with Jackson performance. Extra difference comes from compile-time databinding.
  
  ***Q***: DslJson is failing with unable to resolve reader/writer. What does it mean?  
  ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json_Annotation_Processor_External_Serialization` or `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. Make sure you've referenced processor library (which is responsible for setting up readers/writers during compilation) and double check if annotation processor is running. Refer to [example projects](examples) for how to set up environment.
@@ -338,4 +336,4 @@ When used with Gradle, configuration can be done via:
  ***A***: If you specify custom `dsljson.compiler` processor option or put `dsl-compiler.exe` in project root it will use that one and will not check online for updates
 
  ***Q***: What is this DSL Platform?  
- ***A***: DSL Platform is a proprietary compiler written in C#. It's free to use, but access to source code is licensed. If you need access to compiler or need performance consulting [let us know](https://dsl-platform.com)
+ ***A***: DSL Platform is a proprietary compiler written in C#. Since v1.7.0 DSL Platform is no longer required to create compile-time databinding. Compiler is free to use, but access to source code is licensed. If you need access to the compiler or need performance consulting [let us know](https://dsl-platform.com)
