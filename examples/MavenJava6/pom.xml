@@ -6,17 +6,17 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>maven-java6-example</artifactId>
-	<version>1.7.2</version>
+	<version>1.7.3</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json</artifactId>
-			<version>1.7.2</version>
+			<version>1.7.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-processor</artifactId>
-			<version>1.7.2</version>
+			<version>1.7.3</version>
 		</dependency>
 	</dependencies>
 

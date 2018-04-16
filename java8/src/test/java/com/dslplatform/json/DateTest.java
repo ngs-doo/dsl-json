@@ -1,5 +1,6 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -95,5 +96,27 @@ public class DateTest {
 			LocalDateTime deser = JavaTimeConverter.deserializeLocalDateTime(jr);
 			Assert.assertEquals(value, deser);
 		}
+	}
+
+	@Test
+	public void nineDigits() throws IOException {
+		OffsetDateTime dt = OffsetDateTime.parse("1930-09-04T00:03:48.750431006Z");
+		JsonWriter jw = new JsonWriter(null);
+		JavaTimeConverter.serialize(dt, jw);
+		Assert.assertEquals("\"" + dt.toString() + "\"", jw.toString());
+	}
+
+	public static class Nine {
+		public OffsetDateTime at;
+	}
+
+	@Test
+	public void nineDigitsInAClass() throws IOException {
+		Nine n = new Nine();
+		n.at = OffsetDateTime.parse("1930-09-04T00:03:48.750431006Z");
+		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime());
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(n, os);;
+		Assert.assertEquals("{\"at\":\"1930-09-04T00:03:48.750431006Z\"}", os.toString());
 	}
 }

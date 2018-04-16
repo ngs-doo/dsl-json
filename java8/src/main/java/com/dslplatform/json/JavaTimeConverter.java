@@ -93,8 +93,8 @@ public abstract class JavaTimeConverter {
 				end = 24;
 			}
 		}
-		if (buf[end - 1] == '0') end--;
-		if (buf[end - 1] == '0') end--;
+		if (buf[end + pos - 1] == '0') end--;
+		if (buf[end + pos - 1] == '0') end--;
 		return end;
 	}
 
