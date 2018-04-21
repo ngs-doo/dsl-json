@@ -153,7 +153,7 @@ public final class JsonWriter {
 	 *
 	 * @param value string to write
 	 */
-	public final void writeString(final String value) {
+	public final void writeString(final CharSequence value) {
 		final int len = value.length();
 		if (position + (len << 2) + (len << 1) + 2 >= buffer.length) {
 			enlargeOrFlush(position, (len << 2) + (len << 1) + 2);
@@ -174,7 +174,7 @@ public final class JsonWriter {
 		position = cur + 1;
 	}
 
-	private void writeQuotedString(final String str, int i, int cur, final int len) {
+	private void writeQuotedString(final CharSequence str, int i, int cur, final int len) {
 		final byte[] _result = this.buffer;
 		for (; i < len; i++) {
 			final char c = str.charAt(i);
@@ -320,7 +320,7 @@ public final class JsonWriter {
 			} else if (c < 0x007F) {
 				_result[cur++] = (byte) c;
 			} else {
-				final int cp = str.codePointAt(i);
+				final int cp = Character.codePointAt(str, i);
 				if (Character.isSupplementaryCodePoint(cp)) {
 					i++;
 				}
