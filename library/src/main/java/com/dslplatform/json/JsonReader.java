@@ -504,6 +504,18 @@ public final class JsonReader<TContext> {
 		return valuesCache == null ? new String(chars, 0, len) : valuesCache.get(chars, len);
 	}
 
+	public final StringBuilder appendString(StringBuilder builder) throws IOException {
+		final int len = parseString();
+		builder.append(chars, 0, len);
+		return builder;
+	}
+
+	public final StringBuffer appendString(StringBuffer buffer) throws IOException {
+		final int len = parseString();
+		buffer.append(chars, 0, len);
+		return buffer;
+	}
+
 	final int parseString() throws IOException {
 		final int startIndex = currentIndex;
 		if (last != '"') {

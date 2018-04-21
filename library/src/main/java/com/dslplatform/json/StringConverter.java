@@ -20,6 +20,29 @@ public abstract class StringConverter {
 			serializeNullable(value, writer);
 		}
 	};
+	public static final JsonWriter.WriteObject<CharSequence> WRITER_CHARS = new JsonWriter.WriteObject<CharSequence>() {
+		@Override
+		public void write(JsonWriter writer, CharSequence value) {
+			if (value == null) writer.writeNull();
+			else writer.writeString(value);
+		}
+	};
+	public static final JsonReader.ReadObject<StringBuilder> READER_BUILDER = new JsonReader.ReadObject<StringBuilder>() {
+		@Override
+		public StringBuilder read(JsonReader reader) throws IOException {
+			if (reader.wasNull()) return null;
+			StringBuilder builder = new StringBuilder();
+			return reader.appendString(builder);
+		}
+	};
+	public static final JsonReader.ReadObject<StringBuffer> READER_BUFFER = new JsonReader.ReadObject<StringBuffer>() {
+		@Override
+		public StringBuffer read(JsonReader reader) throws IOException {
+			if (reader.wasNull()) return null;
+			StringBuffer builder = new StringBuffer();
+			return reader.appendString(builder);
+		}
+	};
 
 	public static void serializeShortNullable(final String value, final JsonWriter sw) {
 		if (value == null) {

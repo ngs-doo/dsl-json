@@ -528,6 +528,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		registerReader(UUID.class, UUIDConverter.READER);
 		registerWriter(UUID.class, UUIDConverter.WRITER);
 		registerReader(Number.class, NumberConverter.NumberReader);
+		registerWriter(CharSequence.class, StringConverter.WRITER_CHARS);
+		registerReader(StringBuilder.class, StringConverter.READER_BUILDER);
+		registerReader(StringBuffer.class, StringConverter.READER_BUFFER);
 
 		for (Configuration serializer : settings.configurations) {
 			serializer.configure(this);

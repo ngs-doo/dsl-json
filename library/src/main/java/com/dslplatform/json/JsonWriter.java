@@ -153,6 +153,33 @@ public final class JsonWriter {
 	 *
 	 * @param value string to write
 	 */
+	public final void writeString(final String value) {
+		final int len = value.length();
+		if (position + (len << 2) + (len << 1) + 2 >= buffer.length) {
+			enlargeOrFlush(position, (len << 2) + (len << 1) + 2);
+		}
+		final byte[] _result = buffer;
+		_result[position] = QUOTE;
+		int cur = position + 1;
+		for (int i = 0; i < len; i++) {
+			final char c = value.charAt(i);
+			if (c > 31 && c != '"' && c != '\\' && c < 126) {
+				_result[cur++] = (byte) c;
+			} else {
+				writeQuotedString(value, i, cur, len);
+				return;
+			}
+		}
+		_result[cur] = QUOTE;
+		position = cur + 1;
+	}
+
+	/**
+	 * Write a quoted string into the JSON.
+	 * Char sequence will be appropriately escaped according to JSON escaping rules.
+	 *
+	 * @param value char sequence to write
+	 */
 	public final void writeString(final CharSequence value) {
 		final int len = value.length();
 		if (position + (len << 2) + (len << 1) + 2 >= buffer.length) {
