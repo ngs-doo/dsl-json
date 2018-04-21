@@ -53,8 +53,10 @@ public abstract class UUIDConverter {
 	}
 
 	public static void serialize(final UUID value, final JsonWriter sw) {
-		final long hi = value.getMostSignificantBits();
-		final long lo = value.getLeastSignificantBits();
+		serialize(value.getMostSignificantBits(), value.getLeastSignificantBits(), sw);
+	}
+
+	public static void serialize(final long hi, final long lo, final JsonWriter sw) {
 		final int hi1 = (int) (hi >> 32);
 		final int hi2 = (int) hi;
 		final int lo1 = (int) (lo >> 32);
