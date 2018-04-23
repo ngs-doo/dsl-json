@@ -356,7 +356,7 @@ public final class JsonWriter {
 				} else if (cp <= 0x7FF) {
 					_result[cur++] = (byte) (0xC0 | ((cp >> 6) & 0x1F));
 					_result[cur++] = (byte) (0x80 | (cp & 0x3F));
-				} else if ((cp < 0xD800) || (cp > 0xDFFF && cp <= 0xFFFD)) {
+				} else if ((cp < 0xD800) || (cp > 0xDFFF && cp <= 0xFFFF)) {
 					_result[cur++] = (byte) (0xE0 | ((cp >> 12) & 0x0F));
 					_result[cur++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
 					_result[cur++] = (byte) (0x80 | (cp & 0x3F));
