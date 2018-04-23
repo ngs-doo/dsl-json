@@ -92,9 +92,6 @@ public class StringConverterTest {
 			// and they will never be assigned a character, so there should be no reason to encode them.
 			if (value >= Character.MIN_SURROGATE && value <= Character.MAX_SURROGATE) continue;
 
-			// Do not test BOM markers (unicode non-characters)
-			if (value == 0xfffe || value == 0xffff) continue;
-
 			// init
 			final char ch = (char) value;
 
