@@ -89,17 +89,20 @@ public abstract class ObjectAnalyzer {
 		}
 	}
 
-	public static final DslJson.ConverterFactory<ObjectFormatDescription> CONVERTER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			return analyze(manifest, (Class<?>) manifest, dslJson);
-		}
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getRawType() instanceof Class<?>) {
-				return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<ObjectFormatDescription> CONVERTER = new DslJson.ConverterFactory<ObjectFormatDescription>() {
+		@Override
+		public ObjectFormatDescription tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				return analyze(manifest, (Class<?>) manifest, dslJson);
 			}
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getRawType() instanceof Class<?>) {
+					return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
+				}
+			}
+			return null;
 		}
-		return null;
 	};
 
 	private static <T> ObjectFormatDescription<T, T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
@@ -122,11 +125,14 @@ public abstract class ObjectAnalyzer {
 		} catch (InstantiationException | IllegalAccessException ignore) {
 			return null;
 		}
-		final InstanceFactory newInstance = () -> {
-			try {
-				return raw.newInstance();
-			} catch (Exception ex) {
-				throw new SerializationException("Unable to create an instance of " + raw);
+		final InstanceFactory newInstance = new InstanceFactory() {
+			@Override
+			public Object create() {
+				try {
+					return raw.newInstance();
+				} catch (Exception ex) {
+					throw new SerializationException("Unable to create an instance of " + raw);
+				}
 			}
 		};
 		final LazyObjectDescription lazy = new LazyObjectDescription(json, manifest);

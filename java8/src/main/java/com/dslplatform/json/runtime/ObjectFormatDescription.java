@@ -18,6 +18,13 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	private final boolean hasMandatory;
 	private final long mandatoryFlag;
 
+	private static final Function identity = new Function() {
+		@Override
+		public Object apply(Object t) {
+			return t;
+		}
+	};
+
 	public static <D> ObjectFormatDescription<D, D> create(
 			final Class<D> manifest,
 			final InstanceFactory<D> newInstance,
@@ -25,7 +32,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 			final DecodePropertyInfo<JsonReader.BindObject>[] decoders,
 			final DslJson json,
 			final boolean skipOnUnknown) {
-		return new ObjectFormatDescription<>(manifest, newInstance, t -> t, encoders, decoders, json, skipOnUnknown);
+		return new ObjectFormatDescription<>(manifest, newInstance, identity, encoders, decoders, json, skipOnUnknown);
 	}
 
 	public ObjectFormatDescription(

@@ -2,7 +2,7 @@ package dslplatform.com.androidexample;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import com.dslplatform.json.CompiledJson;
 import com.dslplatform.json.DslJson;
@@ -224,6 +224,7 @@ public class MainActivity extends AppCompatActivity {
         instance.map = new HashMap<String, Object>();
         instance.map.put("abc", 678);
         instance.map.put("array", new int[] { 2, 4, 8});
+        TextView tv = (TextView)findViewById(R.id.tvHello);
         try {
             ByteArrayOutputStream os = new ByteArrayOutputStream();
             //serialize into stream
@@ -232,9 +233,10 @@ public class MainActivity extends AppCompatActivity {
             ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
             //deserialized using stream API
             Model deserialized = dslJson.deserialize(Model.class, is);
-            Toast.makeText(this, deserialized.string, Toast.LENGTH_LONG);
+
+            tv.setText(deserialized.string);
         } catch (IOException ex) {
-            Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG);
+            tv.setText(ex.getMessage());
         }
     }
 }

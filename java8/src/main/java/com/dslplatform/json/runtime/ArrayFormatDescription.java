@@ -16,12 +16,19 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 	private final JsonWriter.WriteObject[] encoders;
 	private final JsonReader.BindObject[] decoders;
 
+	private static final Function identity = new Function() {
+		@Override
+		public Object apply(Object t) {
+			return t;
+		}
+	};
+
 	public static <D> ArrayFormatDescription<D, D> create(
 			final Class<D> manifest,
 			final InstanceFactory<D> newInstance,
 			final JsonWriter.WriteObject[] encoders,
 			final JsonReader.BindObject[] decoders) {
-		return new ArrayFormatDescription<>(manifest, newInstance, t -> t, encoders, decoders);
+		return new ArrayFormatDescription<>(manifest, newInstance, identity, encoders, decoders);
 	}
 
 	public ArrayFormatDescription(

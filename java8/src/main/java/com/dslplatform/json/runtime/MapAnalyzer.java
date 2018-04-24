@@ -4,6 +4,7 @@ import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
 
+import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
@@ -11,32 +12,43 @@ import java.util.concurrent.Callable;
 
 public abstract class MapAnalyzer {
 
-	private static final JsonReader.ReadObject<String> stringReader = reader -> reader.wasNull() ? null : reader.readString();
-
-	public static final DslJson.ConverterFactory<MapDecoder> READER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			return analyzeDecoder(manifest, Object.class, Object.class, (Class<?>)manifest, dslJson);
+	private static final JsonReader.ReadObject<String> stringReader = new JsonReader.ReadObject<String>() {
+		@Override
+		public String read(JsonReader reader) throws IOException {
+			return reader.wasNull() ? null : reader.readString();
 		}
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 2 && pt.getRawType() instanceof Class<?>) {
-				return analyzeDecoder(manifest, pt.getActualTypeArguments()[0], pt.getActualTypeArguments()[1], (Class<?>) pt.getRawType(), dslJson);
-			}
-		}
-		return null;
 	};
 
-	public static final DslJson.ConverterFactory<MapEncoder> WRITER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			return analyzeEncoder(manifest, Object.class, Object.class, (Class<?>)manifest, dslJson);
-		}
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 2 && pt.getRawType() instanceof Class<?>) {
-				return analyzeEncoder(manifest, pt.getActualTypeArguments()[0], pt.getActualTypeArguments()[1], (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<MapDecoder> READER = new DslJson.ConverterFactory<MapDecoder>() {
+		@Override
+		public MapDecoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				return analyzeDecoder(manifest, Object.class, Object.class, (Class<?>) manifest, dslJson);
 			}
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 2 && pt.getRawType() instanceof Class<?>) {
+					return analyzeDecoder(manifest, pt.getActualTypeArguments()[0], pt.getActualTypeArguments()[1], (Class<?>) pt.getRawType(), dslJson);
+				}
+			}
+			return null;
 		}
-		return null;
+	};
+
+	public static final DslJson.ConverterFactory<MapEncoder> WRITER = new DslJson.ConverterFactory<MapEncoder>() {
+		@Override
+		public MapEncoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				return analyzeEncoder(manifest, Object.class, Object.class, (Class<?>) manifest, dslJson);
+			}
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 2 && pt.getRawType() instanceof Class<?>) {
+					return analyzeEncoder(manifest, pt.getActualTypeArguments()[0], pt.getActualTypeArguments()[1], (Class<?>) pt.getRawType(), dslJson);
+				}
+			}
+			return null;
+		}
 	};
 
 	private static boolean canNew(final Class<?> map) {
@@ -52,9 +64,19 @@ public abstract class MapAnalyzer {
 		if (!Map.class.isAssignableFrom(map)) return null;
 		final Callable newInstance;
 		if (!map.isInterface() && canNew(map)) {
-			newInstance = map::newInstance;
+			newInstance = new Callable() {
+				@Override
+				public Object call() throws Exception {
+					return map.newInstance();
+				}
+			};
 		} else if (map.isAssignableFrom(LinkedHashMap.class)) {
-			newInstance = () -> new LinkedHashMap<>(4);
+			newInstance = new Callable() {
+				@Override
+				public Object call() {
+					return new LinkedHashMap<>(4);
+				}
+			};
 		} else {
 			return null;
 		}

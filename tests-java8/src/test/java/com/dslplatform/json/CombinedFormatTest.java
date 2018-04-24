@@ -1,6 +1,7 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import jdk.nashorn.internal.ir.debug.JSONWriter;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -17,7 +18,7 @@ public class CombinedFormatTest {
 		public int[] x;
 		@JsonAttribute(index = 2)
 		public List<String> s;
-		@JsonAttribute(index = 3)
+		@JsonAttribute(index = 3, converter = DoubleConverter.class)
 		public Double d;
 	}
 	@CompiledJson(formats = {CompiledJson.Format.OBJECT,CompiledJson.Format.ARRAY})
@@ -36,7 +37,7 @@ public class CombinedFormatTest {
 		public final int[] x;
 		@JsonAttribute(index = 2)
 		public final List<String> s;
-		@JsonAttribute(index = 3)
+		@JsonAttribute(index = 3, converter = DoubleConverter.class)
 		public final Double d;
 
 		public ImmutableComposite1(int[] x, List<String> s, Double d) {
@@ -58,6 +59,13 @@ public class CombinedFormatTest {
 			this.x = x;
 			this.s = s;
 			this.d = d;
+		}
+	}
+
+	public static abstract class DoubleConverter {
+		public static final JsonReader.ReadObject<Double> JSON_READER = NumberConverter.DOUBLE_READER;
+		public static JsonWriter.WriteObject<Double> JSON_WRITER() {
+			return NumberConverter.DOUBLE_WRITER;
 		}
 	}
 

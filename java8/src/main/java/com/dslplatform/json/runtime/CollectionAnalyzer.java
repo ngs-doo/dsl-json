@@ -11,30 +11,36 @@ import java.util.concurrent.Callable;
 
 public abstract class CollectionAnalyzer {
 
-	public static final DslJson.ConverterFactory<CollectionDecoder> READER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			return analyzeDecoding(manifest, Object.class, (Class<?>)manifest, dslJson);
-		}
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
-				return analyzeDecoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<CollectionDecoder> READER = new DslJson.ConverterFactory<CollectionDecoder>() {
+		@Override
+		public CollectionDecoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				return analyzeDecoding(manifest, Object.class, (Class<?>) manifest, dslJson);
 			}
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+					return analyzeDecoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+				}
+			}
+			return null;
 		}
-		return null;
 	};
 
-	public static final DslJson.ConverterFactory<CollectionEncoder> WRITER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			return analyzeEncoding(manifest, Object.class, (Class<?>)manifest, dslJson);
-		}
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
-				return analyzeEncoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<CollectionEncoder> WRITER = new DslJson.ConverterFactory<CollectionEncoder>() {
+		@Override
+		public CollectionEncoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				return analyzeEncoding(manifest, Object.class, (Class<?>) manifest, dslJson);
 			}
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+					return analyzeEncoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+				}
+			}
+			return null;
 		}
-		return null;
 	};
 
 	private static CollectionDecoder analyzeDecoding(final Type manifest, final Type element, final Class<?> collection, final DslJson json) {
@@ -46,13 +52,33 @@ public abstract class CollectionAnalyzer {
 			} catch (Exception ex) {
 				return null;
 			}
-			newInstance = collection::newInstance;
+			newInstance = new Callable() {
+				@Override
+				public Object call() throws Exception {
+					return collection.newInstance();
+				}
+			};
 		} else if (Set.class.isAssignableFrom(collection)) {
-			newInstance = () -> new LinkedHashSet<>(4);
+			newInstance = new Callable() {
+				@Override
+				public Object call() {
+					return new LinkedHashSet<>(4);
+				}
+			};
 		} else if (List.class.isAssignableFrom(collection) || Collection.class == collection) {
-			newInstance = () -> new ArrayList<>(4);
+			newInstance = new Callable() {
+				@Override
+				public Object call() throws Exception {
+					return new ArrayList<>(4);
+				}
+			};
 		} else if (Queue.class.isAssignableFrom(collection)) {
-			newInstance = LinkedList::new;
+			newInstance = new Callable() {
+				@Override
+				public Object call() throws Exception {
+					return new LinkedList();
+				}
+			};
 		} else {
 			return null;
 		}

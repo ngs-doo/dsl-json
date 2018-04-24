@@ -80,17 +80,9 @@ final class Context {
 		return result;
 	}
 
-	private String findConverter(AttributeInfo attr) {
-		if (attr.converter != null) return attr.converter.toString();
-		StructInfo target = structs.get(attr.type.toString());
-		if (target == null || target.type != ObjectType.CONVERTER) return null;
-		return target.converter;
-	}
-
 	void addAttributeWriter(final String className, final AttributeInfo attr) throws IOException {
 		final String actualType = attr.type.toString();
 		final String objectType = nonGenericObject(actualType);
-		final String converter = findConverter(attr);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
 		String inline = allowInline && optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
 		code.append("com.dslplatform.json.runtime.Settings.<");
@@ -98,7 +90,9 @@ final class Context {
 		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
 		else code.append("c -> c.").append(attr.field.getSimpleName());
 		code.append(", \"").append(attr.id).append("\", json, ");
-		if (converter != null) code.append(converter).append(".JSON_WRITER)");
+		if (attr.converter != null) {
+			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(")");
+		}
 		else if (inline != null) code.append(inline).append(")");
 		else code.append(typeOrClass(objectType, actualType)).append(")");
 	}
@@ -106,7 +100,6 @@ final class Context {
 	void addArrayWriter(final String className, final AttributeInfo attr) throws IOException {
 		final String actualType = attr.type.toString();
 		final String objectType = nonGenericObject(actualType);
-		final String converter = findConverter(attr);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
 		String inline = allowInline && optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
 		code.append("com.dslplatform.json.runtime.Settings.<");
@@ -114,7 +107,9 @@ final class Context {
 		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
 		else code.append("c -> c.").append(attr.field.getSimpleName());
 		code.append(", ");
-		if (converter != null) code.append(converter).append(".JSON_WRITER)");
+		if (attr.converter != null) {
+			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(")");
+		}
 		else if (inline != null) code.append(inline).append(")");
 		else code.append("json ,").append(typeOrClass(objectType, actualType)).append(")");
 	}
@@ -124,7 +119,6 @@ final class Context {
 		final String objectType = nonGenericObject(actualType);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
 		String inline = allowInline && optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
-		final String converter = findConverter(attr);
 		code.append("com.dslplatform.json.runtime.Settings.<");
 		code.append(className).append(", ").append(objectType).append(">createDecoder(");
 		code.append(readValue);
@@ -133,7 +127,9 @@ final class Context {
 		code.append(attr.mandatory ? "true" : "false").append(", ");
 		code.append(Integer.toString(attr.index)).append(", ");
 		code.append(attr.notNull ? "true" : "false").append(", ");
-		if (converter != null) code.append(converter).append(".JSON_READER)");
+		if (attr.converter != null) {
+			code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(")");
+		}
 		else if (inline != null) code.append(inline).append(")");
 		else code.append(typeOrClass(objectType, actualType)).append(")");
 	}
@@ -141,14 +137,15 @@ final class Context {
 	void addArrayReader(final String className, final AttributeInfo attr, final String readValue) throws IOException {
 		final String actualType = attr.type.toString();
 		final String objectType = nonGenericObject(actualType);
-		final String converter = findConverter(attr);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
 		String inline = allowInline && optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
 		code.append("com.dslplatform.json.runtime.Settings.<");
 		code.append(className).append(", ").append(objectType).append(">createArrayDecoder(");
 		code.append(readValue);
 		code.append(", ");
-		if (converter != null) code.append(converter).append(".JSON_READER)");
+		if (attr.converter != null) {
+			code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(")");
+		}
 		else if (inline != null) code.append(inline).append(")");
 		else code.append("json, ").append(typeOrClass(objectType, actualType)).append(")");
 	}

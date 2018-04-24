@@ -16,6 +16,8 @@ public class StructInfo {
 	public final String name;
 	public final ObjectType type;
 	public final String converter;
+	public final String converterReader;
+	public final String converterWriter;
 	public final List<ExecutableElement> matchingConstructors;
 	public final ExecutableElement constructor;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
@@ -54,6 +56,8 @@ public class StructInfo {
 		this.name = name;
 		this.type = type;
 		this.converter = isJsonObject ? "" : null;
+		this.converterReader = null;
+		this.converterWriter = null;
 		this.matchingConstructors = matchingConstructors;
 		this.annotation = annotation;
 		this.onUnknown = onUnknown;
@@ -78,12 +82,14 @@ public class StructInfo {
 		}
 	}
 
-	public StructInfo(TypeElement converter, DeclaredType discoveredBy, TypeElement target, String name) {
+	public StructInfo(TypeElement converter, DeclaredType discoveredBy, TypeElement target, String name, String reader, String writer) {
 		this.element = target;
 		this.discoveredBy = discoveredBy;
 		this.name = name;
 		this.type = ObjectType.CONVERTER;
 		this.converter = converter.getQualifiedName().toString();
+		this.converterReader = reader;
+		this.converterWriter = writer;
 		this.matchingConstructors = null;
 		this.constructor = null;
 		this.annotation = null;

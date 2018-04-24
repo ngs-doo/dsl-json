@@ -21,11 +21,10 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:27.0.2'
+    compile 'com.android.support:appcompat-v7:27.1.1'
 
-    compile 'com.dslplatform:dsl-json:1.7.3'
-    //compile 'com.dslplatform:dsl-json-java8:1.7.3'
-    //annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.3'
-    annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.3'
+    compile 'com.dslplatform:dsl-json:1.7.4'
+    //compile 'com.dslplatform:dsl-json-java8:1.7.4'
+    //annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.4'
+    annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.4'
 }

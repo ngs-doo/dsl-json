@@ -348,26 +348,48 @@ public class Analysis {
 			}
 		}
 		if (target == null) return;
-		validateConverter(converter, target.asElement(), target.toString());
+		ConverterInfo signature = validateConverter(converter, target.asElement(), target.toString());
 		//TODO: throw an error if multiple non-compatible converters were found!?
 		if (!structs.containsKey(target.toString())) {
 			String name = "struct" + structs.size();
 			TypeElement element = (TypeElement) target.asElement();
-			StructInfo info = new StructInfo(converter, converterType, element, name);
+			StructInfo info = new StructInfo(converter, converterType, element, name, signature.reader, signature.writer);
 			structs.put(target.toString(), info);
 		}
 	}
 
-	private void validateConverter(TypeElement converter, Element target, String fullName) {
-		VariableElement jsonReader = null;
-		VariableElement jsonWriter = null;
+	private ConverterInfo validateConverter(TypeElement converter, Element target, String fullName) {
+		VariableElement jsonReaderField = null;
+		VariableElement jsonWriterField = null;
+		ExecutableElement jsonReaderMethod = null;
+		ExecutableElement jsonWriterMethod = null;
+		boolean hasInstance = false;
 		for (VariableElement field : ElementFilter.fieldsIn(converter.getEnclosedElements())) {
-			if ("JSON_READER".equals(field.getSimpleName().toString())) {
-				jsonReader = field;
+			//Kotlin uses INSTANCE field with non static get methods
+			if ("INSTANCE".equals(field.getSimpleName().toString())) {
+				if (field.asType().toString().equals(converter.getQualifiedName().toString())
+						&& field.getModifiers().contains(Modifier.STATIC)
+						&& field.getModifiers().contains(Modifier.PUBLIC)
+						&& field.getModifiers().contains(Modifier.FINAL)) {
+					hasInstance = true;
+				}
+			} else if ("JSON_READER".equals(field.getSimpleName().toString())) {
+				jsonReaderField = field;
 			} else if ("JSON_WRITER".equals(field.getSimpleName().toString())) {
-				jsonWriter = field;
+				jsonWriterField = field;
 			}
 		}
+		//TODO: better name...
+		if (!mustHaveEmptyCtor) {
+			for (ExecutableElement method : ElementFilter.methodsIn(converter.getEnclosedElements())) {
+				if ("JSON_READER".equals(method.getSimpleName().toString()) || "getJSON_READER".equals(method.getSimpleName().toString())) {
+					jsonReaderMethod = method;
+				} else if ("JSON_WRITER".equals(method.getSimpleName().toString()) || "getJSON_WRITER".equals(method.getSimpleName().toString())) {
+					jsonWriterMethod = method;
+				}
+			}
+		}
+		String allowed = mustHaveEmptyCtor ? "field" : "field/method";
 		if (!converter.getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
@@ -399,38 +421,49 @@ public class Analysis {
 					"Specified converter: '" + converter.getQualifiedName() + "' is defined without a package name and cannot be accessed",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (jsonReader == null || jsonWriter == null) {
+		} else if (jsonReaderField == null && jsonReaderMethod == null || jsonWriterField == null && jsonWriterMethod == null) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER or JSON_WRITER field. It must have public static JSON_READER/JSON_WRITER fields for conversion.",
+					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER or JSON_WRITER " + allowed + ". It must have public static JSON_READER/JSON_WRITER " + allowed + " for conversion.",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (!jsonReader.getModifiers().contains(Modifier.PUBLIC)
-				|| !jsonReader.getModifiers().contains(Modifier.STATIC)
-				|| !jsonWriter.getModifiers().contains(Modifier.PUBLIC)
-				|| !jsonWriter.getModifiers().contains(Modifier.STATIC)) {
+		} else if (jsonReaderMethod == null && (!jsonReaderField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
+				|| jsonWriterMethod == null && (!jsonWriterField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
+				|| jsonReaderMethod != null && (!jsonReaderMethod.getModifiers().contains(Modifier.PUBLIC) || !hasInstance && !jsonReaderMethod.getModifiers().contains(Modifier.STATIC))
+				|| jsonWriterMethod != null && (!jsonWriterMethod.getModifiers().contains(Modifier.PUBLIC) || !hasInstance && !jsonWriterMethod.getModifiers().contains(Modifier.STATIC))) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER fields. They must be public and static for converter to work properly.",
+					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER " + allowed + ". They must be public and static for converter to work properly.",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (!("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReader.asType().toString())) {
+		} else if (jsonReaderField != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderField.asType().toString())
+				|| jsonReaderMethod != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderMethod.getReturnType().toString())) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_READER field. It must be of type: 'com.dslplatform.json.JsonReader.ReadObject<" + target + ">'",
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_READER field. It must be of type: 'com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">'",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (!("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriter.asType().toString())) {
+		} else if (jsonWriterField != null && !("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriterField.asType().toString())
+				|| jsonWriterMethod != null && !("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriterMethod.getReturnType().toString())) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_WRITER field. It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<" + target + ">'",
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_WRITER " + allowed + ". It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">'",
 					converter,
 					getAnnotation(converter, converterType));
 		}
+		return new ConverterInfo(
+				converter,
+				jsonReaderMethod != null
+						? (hasInstance ? "INSTANCE." : "") + jsonReaderMethod.getSimpleName().toString() + "()" : jsonReaderField != null
+						?  jsonReaderField.getSimpleName().toString() : "",
+				jsonWriterMethod != null
+						? (hasInstance ? "INSTANCE." : "") + jsonWriterMethod.getSimpleName().toString() + "()" : jsonWriterField != null
+						? jsonWriterField.getSimpleName().toString() : ""
+		);
 	}
 
 	public List<TypeElement> getTypeHierarchy(TypeElement element) {
@@ -496,7 +529,17 @@ public class Analysis {
 		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element)) {
 			TypeMirror referenceType = access.field != null ? access.field.asType() : access.read.getReturnType();
 			Element referenceElement = types.asElement(referenceType);
-			TypeMirror converter = findConverter(element);
+			TypeMirror converterMirror = findConverter(element);
+			final ConverterInfo converter;
+			if (converterMirror != null) {
+				TypeElement typeConverter = elements.getTypeElement(converterMirror.toString());
+				String javaType = type.toString();
+				String objectType = objectName(javaType);
+				Element declaredType = objectType.equals(javaType)
+						? types.asElement(type)
+						: elements.getTypeElement(objectType);
+				converter = validateConverter(typeConverter, declaredType, objectType);
+			} else converter = null;
 			String referenceName = referenceType.toString();
 			boolean isJsonObject = isJsonObject(referenceElement);
 			boolean typeResolved = converter != null || isJsonObject || supportedTypes.contains(referenceName) || structs.containsKey(referenceName);
@@ -530,15 +573,6 @@ public class Analysis {
 			String[] alternativeNames = getAlternativeNames(attr.element);
 			if (alternativeNames != null) {
 				attr.alternativeNames.addAll(Arrays.asList(alternativeNames));
-			}
-			if (attr.converter != null) {
-				TypeElement typeConverter = elements.getTypeElement(attr.converter.toString());
-				String javaType = type.toString();
-				String objectType = objectName(javaType);
-				Element declaredType = objectType.equals(javaType)
-						? types.asElement(type)
-						: elements.getTypeElement(objectType);
-				validateConverter(typeConverter, declaredType, objectType);
 			}
 			AttributeInfo other = info.attributes.get(attr.id);
 			if (other != null
@@ -879,6 +913,7 @@ public class Analysis {
 		TypeElement element = (TypeElement)el;
 		for (TypeMirror type : element.getInterfaces()) {
 			if (JsonObject.class.getName().equals(type.toString())) {
+				//TODO: JSON_READER method support
 				for (VariableElement field : ElementFilter.fieldsIn(element.getEnclosedElements())) {
 					if ("JSON_READER".equals(field.getSimpleName().toString())) {
 						if (!field.getModifiers().contains(Modifier.PUBLIC)
@@ -953,6 +988,18 @@ public class Analysis {
 		return arguments;
 	}
 
+	private boolean isCompatibileType(TypeMirror left, TypeMirror right) {
+		if (left.equals(right)) return true;
+		final String leftStr = left.toString();
+		final String rightStr = right.toString();
+		if (leftStr.equals(rightStr)) return true;
+		int ind = leftStr.indexOf('<');
+		if (ind == -1 || rightStr.indexOf('<') != ind) return false;
+		if (left.getKind() != right.getKind()) return false;
+		if (!leftStr.substring(0, ind).equals(rightStr.substring(0, ind))) return false;
+		return types.isAssignable(right, left);
+	}
+
 	public Map<String, AccessElements> getBeanProperties(TypeElement element, ExecutableElement ctor) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
@@ -997,7 +1044,7 @@ public class Analysis {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (!mustHaveEmptyCtor && ctorArg != null && ctorArg.asType().toString().equals(returnType)) {
+			} else if (!mustHaveEmptyCtor && ctorArg != null && isCompatibileType(ctorArg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), ctorArg, annotation));
 			}
 		}
@@ -1042,7 +1089,7 @@ public class Analysis {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (!mustHaveEmptyCtor && ctorArg != null && ctorArg.asType().toString().equals(returnType)) {
+			} else if (!mustHaveEmptyCtor && ctorArg != null && isCompatibileType(ctorArg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), ctorArg, annotation));
 			}
 		}

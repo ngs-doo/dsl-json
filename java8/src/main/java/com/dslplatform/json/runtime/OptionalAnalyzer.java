@@ -9,30 +9,36 @@ import java.util.Optional;
 
 public abstract class OptionalAnalyzer {
 
-	public static final DslJson.ConverterFactory<OptionalDecoder> READER = (manifest, dslJson) -> {
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
-				return analyzeDecoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<OptionalDecoder> READER = new DslJson.ConverterFactory<OptionalDecoder>() {
+		@Override
+		public OptionalDecoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+					return analyzeDecoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+				}
 			}
+			if (manifest == Optional.class) {
+				return analyzeDecoding(manifest, Object.class, Optional.class, dslJson);
+			}
+			return null;
 		}
-		if (manifest == Optional.class) {
-			return analyzeDecoding(manifest, Object.class, Optional.class, dslJson);
-		}
-		return null;
 	};
 
-	public static final DslJson.ConverterFactory<OptionalEncoder> WRITER = (manifest, dslJson) -> {
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
-				return analyzeEncoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<OptionalEncoder> WRITER = new DslJson.ConverterFactory<OptionalEncoder>() {
+		@Override
+		public OptionalEncoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+					return analyzeEncoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
+				}
 			}
+			if (manifest == Optional.class) {
+				return analyzeEncoding(manifest, Object.class, Optional.class, dslJson);
+			}
+			return null;
 		}
-		if (manifest == Optional.class) {
-			return analyzeEncoding(manifest, Object.class, Optional.class, dslJson);
-		}
-		return null;
 	};
 
 	private static OptionalDecoder analyzeDecoding(final Type manifest, final Type content, final Class<?> raw, final DslJson json) {

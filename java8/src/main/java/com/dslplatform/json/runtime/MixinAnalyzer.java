@@ -57,17 +57,20 @@ public abstract class MixinAnalyzer {
 		}
 	}
 
-	public static final DslJson.ConverterFactory<ObjectFormatDescription> WRITER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			return analyze(manifest, (Class<?>) manifest, dslJson);
-		}
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getRawType() instanceof Class<?>) {
-				return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<ObjectFormatDescription> WRITER = new DslJson.ConverterFactory<ObjectFormatDescription>() {
+		@Override
+		public ObjectFormatDescription tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				return analyze(manifest, (Class<?>) manifest, dslJson);
 			}
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getRawType() instanceof Class<?>) {
+					return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
+				}
+			}
+			return null;
 		}
-		return null;
 	};
 
 	private static <T> ObjectFormatDescription<T, T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
@@ -84,7 +87,11 @@ public abstract class MixinAnalyzer {
 		if (!currentDecoders.contains(manifest)) return null;
 		final JsonReader.ReadObject currentReader = json.tryFindReader(manifest);
 		if (currentReader instanceof FormatConverter == false) return null;
-		final InstanceFactory newInstance = () -> { throw new IllegalArgumentException("Internal DSL-JSON error. Should not be used for deserialization"); };
+		final InstanceFactory newInstance = new InstanceFactory() {
+			@Override
+			public Object create() {
+				throw new IllegalArgumentException("Internal DSL-JSON error. Should not be used for deserialization");			}
+		};
 		final LazyMixinDescription lazy = new LazyMixinDescription(json, manifest);
 		if (!hasEncoder) json.registerWriter(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();

@@ -6,6 +6,7 @@ import com.dslplatform.json.SerializationException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -84,10 +85,13 @@ public class DecodePropertyInfo<T> {
 			needsSorting = needsSorting || ri.index >= 0;
 		}
 		if (needsSorting) {
-			Arrays.sort(decoders, (a, b) -> {
-				if (b.index == -1) return -1;
-				else if (a.index == -1) return 1;
-				return a.index - b.index;
+			Arrays.sort(decoders, new Comparator<DecodePropertyInfo<T>>() {
+				@Override
+				public int compare(DecodePropertyInfo<T> a, DecodePropertyInfo<T> b) {
+					if (b.index == -1) return -1;
+					else if (a.index == -1) return 1;
+					return a.index - b.index;
+				}
 			});
 		}
 		final HashMap<String, Integer> nameOrder = new HashMap<>();

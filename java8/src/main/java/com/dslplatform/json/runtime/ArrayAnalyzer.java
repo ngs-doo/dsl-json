@@ -11,32 +11,38 @@ import java.lang.reflect.Type;
 
 public abstract class ArrayAnalyzer {
 
-	public static final DslJson.ConverterFactory<ArrayDecoder> READER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			final Class<?> array = (Class<?>)manifest;
-			if (array.isArray()) {
-				return analyzeDecoder(manifest, array.getComponentType(), dslJson);
+	public static final DslJson.ConverterFactory<ArrayDecoder> READER = new DslJson.ConverterFactory<ArrayDecoder>() {
+		@Override
+		public ArrayDecoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				final Class<?> array = (Class<?>) manifest;
+				if (array.isArray()) {
+					return analyzeDecoder(manifest, array.getComponentType(), dslJson);
+				}
 			}
+			if (manifest instanceof GenericArrayType) {
+				final GenericArrayType gat = (GenericArrayType) manifest;
+				return analyzeDecoder(manifest, gat.getGenericComponentType(), dslJson);
+			}
+			return null;
 		}
-		if (manifest instanceof GenericArrayType) {
-			final GenericArrayType gat = (GenericArrayType) manifest;
-			return analyzeDecoder(manifest, gat.getGenericComponentType(), dslJson);
-		}
-		return null;
 	};
 
-	public static final DslJson.ConverterFactory<ArrayEncoder> WRITER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			final Class<?> array = (Class<?>)manifest;
-			if (array.isArray()) {
-				return analyzeEncoder(manifest, array.getComponentType(), dslJson);
+	public static final DslJson.ConverterFactory<ArrayEncoder> WRITER = new DslJson.ConverterFactory<ArrayEncoder>() {
+		@Override
+		public ArrayEncoder tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				final Class<?> array = (Class<?>) manifest;
+				if (array.isArray()) {
+					return analyzeEncoder(manifest, array.getComponentType(), dslJson);
+				}
 			}
+			if (manifest instanceof GenericArrayType) {
+				final GenericArrayType gat = (GenericArrayType) manifest;
+				return analyzeEncoder(manifest, gat.getGenericComponentType(), dslJson);
+			}
+			return null;
 		}
-		if (manifest instanceof GenericArrayType) {
-			final GenericArrayType gat = (GenericArrayType) manifest;
-			return analyzeEncoder(manifest, gat.getGenericComponentType(), dslJson);
-		}
-		return null;
 	};
 
 	private static Class<?> checkSignature(final Type element) {

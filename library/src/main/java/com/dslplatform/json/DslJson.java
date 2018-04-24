@@ -775,11 +775,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return defaults.get(rawType);
 	}
 
-	private final ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>> objectReaders =
+	private final ConcurrentMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>> objectReaders =
 			new ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>>();
 
-	private final ConcurrentHashMap<Type, JsonReader.ReadObject<?>> readers = new ConcurrentHashMap<Type, JsonReader.ReadObject<?>>();
-	private final ConcurrentHashMap<Type, JsonReader.BindObject<?>> binders = new ConcurrentHashMap<Type, JsonReader.BindObject<?>>();
+	private final ConcurrentMap<Type, JsonReader.ReadObject<?>> readers = new ConcurrentHashMap<Type, JsonReader.ReadObject<?>>();
+	private final ConcurrentMap<Type, JsonReader.BindObject<?>> binders = new ConcurrentHashMap<Type, JsonReader.BindObject<?>>();
 
 	public final Set<Type> getRegisteredDecoders() {
 		return readers.keySet();
@@ -1094,8 +1094,15 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				try {
 					reader = (JsonReader.ReadJsonObject<JsonObject>) manifest.getField("JSON_READER").get(null);
 				} catch (Exception ignore) {
-					//log error!?
-					return null;
+					try {
+						reader = (JsonReader.ReadJsonObject<JsonObject>) manifest.getMethod("JSON_READER").invoke(null);
+					} catch (Exception ignore2) {
+						try {
+							reader = (JsonReader.ReadJsonObject<JsonObject>) manifest.getMethod("getJSON_READER").invoke(null);
+						} catch (Exception ignore3) {
+							return null;
+						}
+					}
 				}
 				objectReaders.putIfAbsent(manifest, reader);
 			}

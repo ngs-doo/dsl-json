@@ -8,6 +8,7 @@ import com.dslplatform.json.SerializationException;
 import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.Function;
 
 public abstract class ImmutableAnalyzer {
 
@@ -82,17 +83,20 @@ public abstract class ImmutableAnalyzer {
 		}
 	}
 
-	public static final DslJson.ConverterFactory<ImmutableDescription> CONVERTER = (manifest, dslJson) -> {
-		if (manifest instanceof Class<?>) {
-			return analyze(manifest, (Class<?>) manifest, dslJson);
-		}
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
-				return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
+	public static final DslJson.ConverterFactory<ImmutableDescription> CONVERTER = new DslJson.ConverterFactory<ImmutableDescription>() {
+		@Override
+		public ImmutableDescription tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof Class<?>) {
+				return analyze(manifest, (Class<?>) manifest, dslJson);
 			}
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+					return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
+				}
+			}
+			return null;
 		}
-		return null;
 	};
 
 	private static String[] tryParanamerIfPresent(Constructor<?> ctor) {
@@ -223,11 +227,14 @@ public abstract class ImmutableAnalyzer {
 		final ImmutableDescription<T> converter = new ImmutableDescription<T>(
 				manifest,
 				defArgs,
-				args -> {
-					try {
-						return (T) ctor.newInstance(args);
-					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-						throw new RuntimeException(e);
+				new Function<Object[], T>() {
+					@Override
+					public T apply(Object[] args) {
+						try {
+							return (T) ctor.newInstance(args);
+						} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+							throw new RuntimeException(e);
+						}
 					}
 				},
 				writeProps,

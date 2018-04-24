@@ -454,7 +454,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append("  mandatory;");
 				}
 				if (attr.converter != null) {
-					dsl.append("  external Java JSON converter '").append(attr.converter).append("' for '").append(javaType).append("';");
+					dsl.append("  external Java JSON converter '").append(attr.converter.fullName).append("' for '").append(javaType).append("';");
 				}
 				if (excludeTypeSignature) {
 					dsl.append("  exclude serialization signature;");

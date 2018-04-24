@@ -9,15 +9,18 @@ import java.time.ZoneId;
 
 public abstract class ResultSetConverter {
 
-	static final JsonWriter.WriteObject<ResultSet> Writer = (writer, value) -> {
-		if (value == null) writer.writeNull();
-		else {
-			try {
-				serialize(value, writer, null);
-			} catch (SQLException e) {
-				throw new SerializationException(e);
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
+	static final JsonWriter.WriteObject<ResultSet> Writer = new JsonWriter.WriteObject<ResultSet>() {
+		@Override
+		public void write(JsonWriter writer, ResultSet value) {
+			if (value == null) writer.writeNull();
+			else {
+				try {
+					serialize(value, writer, null);
+				} catch (SQLException e) {
+					throw new SerializationException(e);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
 			}
 		}
 	};

@@ -381,7 +381,7 @@ class InlinedTemplate {
 		}
 		if (checkedDefault) code.append("\t");
 		if (attr.converter != null) {
-			code.append(attr.converter.toString()).append(".JSON_WRITER.write(writer, ").append(readValue).append(")");
+			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(".write(writer, ").append(readValue).append(")");
 		} else {
 			if (converter != null) {
 				code.append(converter.nonNullableEncoder("writer", readValue));
@@ -452,9 +452,10 @@ class InlinedTemplate {
 			code.append(alignment).append("\t\tinstance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 			else code.append(attr.writeMethod.getSimpleName()).append("(");
-			if (attr.converter != null || converter != null) {
-				if (attr.converter != null) code.append(attr.converter.toString()).append(".JSON_READER.read(reader)");
-				else code.append(converter.nonNullableDecoder()).append("(reader)");
+			if (attr.converter != null) {
+				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader)");
+			} else if (converter != null) {
+				code.append(converter.nonNullableDecoder()).append("(reader)");
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
 				StructInfo target = context.structs.get(attr.typeName);
@@ -490,10 +491,10 @@ class InlinedTemplate {
 			code.append("(reader);\n");
 		} else {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
-			if (attr.converter != null || converter != null) {
-				if (attr.converter != null) code.append(attr.converter.toString()).append(".JSON_READER.read");
-				else code.append(converter.nonNullableDecoder());
-				code.append("(reader);\n");
+			if (attr.converter != null) {
+				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader);\n");
+			} else if (converter != null) {
+				code.append(converter.nonNullableDecoder()).append("(reader);\n");
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
 				StructInfo target = context.structs.get(attr.typeName);

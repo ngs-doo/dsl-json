@@ -315,9 +315,9 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		String error1 = diagnostics.get(0).getMessage(Locale.ENGLISH);
 		String error2 = diagnostics.get(1).getMessage(Locale.ENGLISH);
 		String error3 = diagnostics.get(2).getMessage(Locale.ENGLISH);
-		Assert.assertTrue(error1.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.CharConverter' doesn't have a JSON_READER or JSON_WRITER field"));
-		Assert.assertTrue(error2.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.DateConverter' doesn't have public and static JSON_READER and JSON_WRITER fields"));
-		Assert.assertTrue(error3.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.ShortConverter' has invalid type for JSON_WRITER field"));
+		Assert.assertTrue(error1.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.CharConverter' doesn't have a JSON_READER or JSON_WRITER field/method"));
+		Assert.assertTrue(error2.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.DateConverter' doesn't have public and static JSON_READER and JSON_WRITER field/method"));
+		Assert.assertTrue(error3.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.ShortConverter' has invalid type for JSON_WRITER field/method"));
 		Assert.assertTrue(error3.contains("must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<java.lang.Short>'"));
 	}
 
@@ -461,5 +461,20 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	@Test
 	public void ctorIndexOrder() {
 		checkValidCompilation(ImmutablePerson.class);
+	}
+
+	@Test
+	public void jsonReaderMethods() {
+		checkValidCompilation(JsonReaderMethods.class);
+	}
+
+	@Test
+	public void ctorWithLooseSignature() {
+		checkValidCompilation(CtorWithLooseSignature.class);
+	}
+
+	@Test
+	public void kotlinInstancePattern() {
+		checkValidCompilation(KotlinInstancePattern.class);
 	}
 }
