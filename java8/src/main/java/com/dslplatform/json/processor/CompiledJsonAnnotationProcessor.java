@@ -78,7 +78,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		InlinedConverters.put("java.lang.Double", new OptimizedConverter("com.dslplatform.json.NumberConverter", "DOUBLE_WRITER", "serialize", "NULLABLE_DOUBLE_READER", "deserializeDouble", null));
 		InlinedConverters.put("boolean", new OptimizedConverter("com.dslplatform.json.BoolConverter", "WRITER", "serialize", "READER", "deserialize", "false"));
 		InlinedConverters.put("boolean[]", new OptimizedConverter("com.dslplatform.json.BoolConverter", "ARRAY_WRITER", "serialize", "ARRAY_READER"));
-		InlinedConverters.put("java.lang.Boolean", new OptimizedConverter("com.dslplatform.BoolConverter", "WRITER", "serialize", "NULLABLE_READER", "deserialize", null));
+		InlinedConverters.put("java.lang.Boolean", new OptimizedConverter("com.dslplatform.json.BoolConverter", "WRITER", "serialize", "NULLABLE_READER", "deserialize", null));
 		InlinedConverters.put("java.lang.String", new OptimizedConverter("com.dslplatform.json.StringConverter", "WRITER", "serialize", "READER", "deserialize", null));
 		InlinedConverters.put("java.util.UUID", new OptimizedConverter("com.dslplatform.json.UUIDConverter", "WRITER", "serialize", "READER", "deserialize", null));
 		InlinedConverters.put("java.time.LocalDate", new OptimizedConverter("com.dslplatform.json.JavaTimeConverter", "LOCAL_DATE_WRITER", "serialize", "LOCAL_DATE_READER", "deserializeLocalDate", null));
