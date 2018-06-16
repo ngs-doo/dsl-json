@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.*;
 
 public class RecursiveTest {
 
@@ -63,7 +64,7 @@ public class RecursiveTest {
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		try {
 			dslJson.serialize(r, os);
-			Assert.fail("Expection expected");
+			Assert.fail("Exception expected");
 		} catch (StackOverflowError ignore) {
 		}
 	}
@@ -90,5 +91,51 @@ public class RecursiveTest {
 		Assert.assertEquals(r.x, res.x);
 		Assert.assertEquals(r.r.x, res.r.x);
 		Assert.assertEquals(r.r.r, res.r.r);
+	}
+
+	static class InstanceTracker {
+		static ThreadLocal<Set<Integer>> encoding = ThreadLocal.withInitial(HashSet::new);
+		static ThreadLocal<List<Recursive>> decoding = ThreadLocal.withInitial(ArrayList::new);
+	}
+
+	@Test
+	public void customCyclesHandling() throws IOException {
+		DslJson<Object> dslJson = new DslJson<>();
+		final JsonWriter.WriteObject<Recursive> oldEncoder = dslJson.tryFindWriter(Recursive.class);
+		final JsonReader.BindObject<Recursive> binder = dslJson.tryFindBinder(Recursive.class);
+		dslJson.registerWriter(Recursive.class, (writer, value) -> {
+			if (value == null) writer.writeNull();
+			else if (InstanceTracker.encoding.get().add(value.x)) oldEncoder.write(writer, value);
+			else NumberConverter.serialize(value.x, writer);
+		});
+		dslJson.registerReader(Recursive.class, reader -> {
+			if (reader.wasNull()) return null;
+			List<Recursive> parsed = InstanceTracker.decoding.get();
+			if (reader.last() == '{') {
+				Recursive instance = new Recursive();
+				parsed.add(instance);
+				binder.bind(reader, instance);
+				return instance;
+			} else {
+				int id = NumberConverter.deserializeInt(reader);
+				for (Recursive r : parsed) {
+					if (r.x == id) return r;
+				}
+				throw new IOException("Unable to find recursive with id: " + id);
+			}
+		});
+		Recursive r1 = new Recursive();
+		Recursive r2 = new Recursive();
+		r1.x = 5;
+		r1.r = r2;
+		r2.x = 6;
+		r2.r = r1;
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(r1, os);
+		Assert.assertEquals("{\"x\":5,\"r\":{\"x\":6,\"r\":5}}", os.toString());
+		Recursive res = dslJson.deserialize(Recursive.class, os.toByteArray(), os.size());
+		Assert.assertEquals(r1.x, res.x);
+		Assert.assertEquals(r1.r.x, res.r.x);
+		Assert.assertEquals(res, res.r.r);
 	}
 }
