@@ -282,7 +282,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		public Settings<TContext> includeServiceLoader() {
 			withServiceLoader = true;
-			for (Configuration c : ServiceLoader.load(Configuration.class)) {
+			for (Configuration c : ServiceLoader.load(Configuration.class, getClass().getClassLoader())) {
 				boolean hasConfiguration = false;
 				Class<?> manifest = c.getClass();
 				for (Configuration cur : configurations) {
