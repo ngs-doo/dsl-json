@@ -9,13 +9,13 @@
     <description>DSL Platform compatible Java JSON library (https://dsl-platform.com)</description>
     <url>https://github.com/ngs-doo/dsl-json</url>
     <packaging>jar</packaging>
-    <version>1.7.4</version>
+    <version>1.7.5</version>
 
     <dependencies>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>dsl-json</artifactId>
-            <version>1.7.4</version>
+            <version>1.7.5</version>
         </dependency>
         <dependency>
             <groupId>org.threeten</groupId>
@@ -97,7 +97,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <file>../java8/src/main/java/com/dslplatform/json/JavaTimeConverter.java</file>
+                    <file>${project.basedir}/../java8/src/main/java/com/dslplatform/json/JavaTimeConverter.java</file>
                     <outputFile>
                         ${project.build.directory}/generated-sources/java/com/dslplatform/json/ThreetenbpConverter.java
                     </outputFile>

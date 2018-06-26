@@ -1,7 +1,6 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
-import com.dslplatform.json.Configuration;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.runtime.Settings;
 
@@ -145,13 +144,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		jsonbCreatorType = jsonbCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jsonbCreatorElement) : null;
 	}
 
+
 	@Override
 	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 		if (roundEnv.processingOver() || annotations.isEmpty()) {
 			return false;
 		}
-		final ServiceLoader<Configuration> serviceLoader = ServiceLoader.load(Configuration.class, getClass().getClassLoader());
-		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader(serviceLoader));
+		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader(getClass().getClassLoader()));
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
 		Set<Type> knownDecoders = dslJson.getRegisteredDecoders();
 		Set<String> allTypes = new HashSet<>();
