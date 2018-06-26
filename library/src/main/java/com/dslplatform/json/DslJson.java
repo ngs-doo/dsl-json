@@ -124,6 +124,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private StringCache keyCache = new SimpleStringCache();
 		private StringCache valuesCache;
 		private boolean withServiceLoader;
+		private int fromServiceLoader;
 		private JsonReader.DoublePrecision doublePrecision = JsonReader.DoublePrecision.DEFAULT;
 		private JsonReader.UnknownNumberParsing unknownNumbers = JsonReader.UnknownNumberParsing.LONG_AND_BIGDECIMAL;
 		private int maxNumberDigits = 512;
@@ -281,7 +282,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * @return itself
 		 */
 		public Settings<TContext> includeServiceLoader() {
-			return includeServiceLoader(null);
+			return includeServiceLoader(Thread.currentThread().getContextClassLoader());
 		}
 		
 		/**
@@ -296,6 +297,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * @return itself
 		 */
 		public Settings<TContext> includeServiceLoader(ClassLoader loader) {
+			if (loader == null) throw new IllegalArgumentException("loader can't be null");
 			withServiceLoader = true;
 			for (Configuration c : ServiceLoader.load(Configuration.class, loader)) {
 				boolean hasConfiguration = false;
@@ -307,6 +309,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 					}
 				}
 				if (!hasConfiguration) {
+					fromServiceLoader++;
 					configurations.add(c);
 				}
 			}
@@ -550,7 +553,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		for (Configuration serializer : settings.configurations) {
 			serializer.configure(this);
 		}
-		if (settings.withServiceLoader && settings.configurations.isEmpty()) {
+		if (settings.withServiceLoader && settings.fromServiceLoader == 0) {
 			//TODO: workaround common issue with failed services registration. try to load common external name if exists
 			loadDefaultConverters(this, "dsl_json_Annotation_Processor_External_Serialization");
 			loadDefaultConverters(this, "dsl_json.json.ExternalSerialization");

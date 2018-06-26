@@ -23,8 +23,8 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:27.1.1'
 
-    compile 'com.dslplatform:dsl-json:1.7.4'
-    //compile 'com.dslplatform:dsl-json-java8:1.7.4'
-    //annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.4'
-    annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.4'
+    compile 'com.dslplatform:dsl-json:1.7.5'
+    //compile 'com.dslplatform:dsl-json-java8:1.7.5'
+    //annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.5'
+    annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.5'
 }
