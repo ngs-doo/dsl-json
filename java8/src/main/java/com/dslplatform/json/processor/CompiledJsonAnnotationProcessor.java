@@ -149,7 +149,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		if (roundEnv.processingOver()) {
 			return false;
 		}
-		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
+		final ServiceLoader<Configuration> serviceLoader = ServiceLoader.load(Configuration.class, getClass().getClassLoader());
+		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader(serviceLoader));
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
 		Set<Type> knownDecoders = dslJson.getRegisteredDecoders();
 		Set<String> allTypes = new HashSet<>();

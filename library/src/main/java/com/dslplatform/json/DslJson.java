@@ -272,17 +272,27 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 		/**
 		 * Load converters using `ServiceLoader.load(Configuration.class)`
+		 * 
+		 * @see #includeServiceLoader(ServiceLoader) 
+		 */
+		public Settings<TContext> includeServiceLoader() {
+			return includeServiceLoader(ServiceLoader.load(Configuration.class));
+		}
+		
+		/**
+		 * Load converters using provided `ServiceLoader` instance
 		 * Will scan through `META-INF/services/com.dslplatform.json.Configuration` file and register implementation during startup.
 		 * This will pick up compile time databindings if they are available in specific folder.
 		 * <p>
 		 * Note that gradle on Android has issues with preserving that file, in which case it can be provided manually.
 		 * DslJson will fall back to "expected" class name if it doesn't find anything during scanning.
 		 *
+		 * @param serviceLoader converters service loader
 		 * @return itself
 		 */
-		public Settings<TContext> includeServiceLoader() {
+		public Settings<TContext> includeServiceLoader(ServiceLoader<Configuration> serviceLoader) {
 			withServiceLoader = true;
-			for (Configuration c : ServiceLoader.load(Configuration.class, getClass().getClassLoader())) {
+			for (Configuration c : serviceLoader) {
 				boolean hasConfiguration = false;
 				Class<?> manifest = c.getClass();
 				for (Configuration cur : configurations) {
