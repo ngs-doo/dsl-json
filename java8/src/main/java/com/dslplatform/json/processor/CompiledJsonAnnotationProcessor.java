@@ -1,6 +1,7 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.Configuration;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.runtime.Settings;
 
@@ -146,7 +147,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	@Override
 	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-		if (roundEnv.processingOver()) {
+		if (roundEnv.processingOver() || annotations.isEmpty()) {
 			return false;
 		}
 		final ServiceLoader<Configuration> serviceLoader = ServiceLoader.load(Configuration.class, getClass().getClassLoader());
