@@ -21,7 +21,7 @@ import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.typeOrClass;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter", "com.fasterxml.jackson.annotation.JsonCreator", "javax.json.bind.annotation.JsonbCreator"})
-@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown", "dsljson.inline", "dsljson.jackson", "dsljson.jsonb"})
+@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown", "dsljson.inline", "dsljson.jackson", "dsljson.jsonb", "dsljson.configuration"})
 public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static final Set<String> JsonIgnore;
@@ -106,6 +106,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private boolean allowInline = true;
 	private boolean withJackson = false;
 	private boolean withJsonb = false;
+	private String configurationFileName = null;
 
 	private TypeElement jacksonCreatorElement;
 	private DeclaredType jacksonCreatorType;
@@ -139,6 +140,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		String jsb = options.get("dsljson.jsonb");
 		if (jsb != null && jsb.length() > 0) {
 			withJsonb = Boolean.parseBoolean(jsb);
+		}
+		String con = options.get("dsljson.configuration");
+		if (con != null && con.length() > 0) {
+			configurationFileName = con;
 		}
 		jacksonCreatorElement = processingEnv.getElementUtils().getTypeElement("com.fasterxml.jackson.annotation.JsonCreator");
 		jacksonCreatorType = jacksonCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jacksonCreatorElement) : null;
@@ -227,25 +232,43 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				}
 			}
 
-			try {
-				FileObject configFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG);
-				try (Writer writer = configFile.openWriter()) {
-					for (String name : generatedFiles) {
-						writer.write(name);
-						writer.write('\n');
+			final List<String> allConfigurations = new ArrayList<>(configurations);
+			if (configurationFileName != null) {
+				try {
+					FileObject configFile = processingEnv.getFiler().createSourceFile(configurationFileName);
+					try (Writer writer = configFile.openWriter()) {
+						buildRootConfiguration(writer, configurationFileName, generatedFiles);
+						allConfigurations.add(configurationFileName);
+					} catch (Exception e) {
+						processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+								"Failed saving configuration file " + configurationFileName);
 					}
-					for (String conf : configurations) {
-						writer.write(conf);
-						writer.write('\n');
-					}
-				} catch (Exception e) {
-					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving config file " + CONFIG);
+				} catch (IOException e) {
+					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+							"Failed creating configuration file " + configurationFileName);
 				}
-			} catch (IOException e) {
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed creating config file " + CONFIG);
+			} else {
+				allConfigurations.addAll(generatedFiles);
 			}
+			saveToServiceConfigFile(allConfigurations);
 		}
 		return false;
+	}
+
+	private void saveToServiceConfigFile(List<String> configurations) {
+		try {
+			FileObject configFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG);
+			try (Writer writer = configFile.openWriter()) {
+				for (String conf : configurations) {
+					writer.write(conf);
+					writer.write('\n');
+				}
+			} catch (Exception e) {
+				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving config file " + CONFIG);
+			}
+		} catch (IOException e) {
+			processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed creating config file " + CONFIG);
+		}
 	}
 
 	@Override
@@ -440,5 +463,22 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
 		}
 		code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
+	}
+
+	private static void buildRootConfiguration(final Writer code, final String configurationName,
+											   final List<String> configurations) throws IOException {
+		final int dotIndex = configurationName.lastIndexOf('.');
+		final String generateClassName = configurationName.substring(dotIndex + 1);
+		final String generatePackage = configurationName.substring(0, dotIndex);
+
+		code.append("package ").append(generatePackage).append(";\n\n");
+		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
+		code.append("\t@Override\n");
+		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
+		for (String configuration : configurations) {
+			code.append("\t\tnew ").append(configuration).append("().configure(json);\n");
+		}
+		code.append("\t}\n");
+		code.append("}");
 	}
 }
