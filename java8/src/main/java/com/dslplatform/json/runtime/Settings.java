@@ -36,10 +36,21 @@ public abstract class Settings {
 			final String name,
 			final DslJson json,
 			final Type type) {
+		return createEncoder(read, name, json, type, null);
+	}
+
+	public static <T, R> JsonWriter.WriteObject<T> createEncoder(
+			final Function<T, R> read,
+			final String name,
+			final DslJson json,
+			final Type type,
+			final JsonWriter.WriteObject<R> customEncoder) {
 		if (read == null) throw new IllegalArgumentException("read can't be null");
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
-		final JsonWriter.WriteObject<R> encoder = type != null ? json.tryFindWriter(type) : null;
+
+		final JsonWriter.WriteObject<R> encoder = customEncoder != null ? customEncoder :
+				(type != null ? json.tryFindWriter(type) : null);
 		if (encoder == null || Object.class.equals(type)) {
 			return new LazyAttributeObjectEncoder<>(read, name, json, type);
 		}

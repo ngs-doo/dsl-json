@@ -91,6 +91,7 @@ final class Context {
 		else code.append("c -> c.").append(attr.field.getSimpleName());
 		code.append(", \"").append(attr.id).append("\", json, ");
 		if (attr.converter != null) {
+			code.append(objectType).append(".class, ");
 			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(")");
 		}
 		else if (inline != null) code.append(inline).append(")");

@@ -37,8 +37,8 @@ class EnumTemplate {
 			hashCodes.add(StructInfo.calcHash(c));
 		}
 		boolean allSimple = isAllSimple(si);
-		code.append("\tfinal static class Enum_").append(si.name);
-		code.append(" implements com.dslplatform.json.JsonWriter.WriteObject<").append(className);
+		code.append("\tpublic final static class EnumConverter implements com.dslplatform.json.JsonWriter.WriteObject<");
+		code.append(className);
 		code.append(">, com.dslplatform.json.JsonReader.ReadObject<").append(className).append("> {\n");
 		code.append("\t\tpublic void write(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" value) {\n");
@@ -51,7 +51,7 @@ class EnumTemplate {
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\treturn reader.wasNull() ? null : readStatic(reader);\n");
 		code.append("\t\t}\n");
-		code.append("\t\tstatic ").append(className).append(" readStatic(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
+		code.append("\t\tpublic static ").append(className).append(" readStatic(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		if (hashCodes.size() == si.constants.size()) {
 			code.append("\t\t\tswitch (reader.calcHash()) {\n");
 			for(String c : si.constants) {

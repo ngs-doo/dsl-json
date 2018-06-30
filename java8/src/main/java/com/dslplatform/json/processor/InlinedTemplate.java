@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
 
+import static com.dslplatform.json.processor.CompiledJsonAnnotationProcessor.findConverterName;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.sortedAttributes;
 import static com.dslplatform.json.processor.Context.typeOrClass;
@@ -23,7 +24,7 @@ class InlinedTemplate {
 	}
 
 	private void asFormatConverter(final StructInfo si, final String name, final String className, final boolean binding) throws IOException {
-		code.append("\tfinal static class ").append(name);
+		code.append("\tpublic final static class ").append(name);
 		code.append(" implements com.dslplatform.json.runtime.FormatConverter<");
 		if (binding) {
 			code.append(className).append(">, com.dslplatform.json.JsonReader.BindObject<");
@@ -81,7 +82,7 @@ class InlinedTemplate {
 	}
 
 	void emptyCtorObject(final StructInfo si, final String className) throws IOException {
-		asFormatConverter(si, "Object_" + si.name, className, true);
+		asFormatConverter(si, "ObjectFormatConverter", className, true);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeObject(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" bind(final com.dslplatform.json.JsonReader reader, final ");
@@ -160,7 +161,7 @@ class InlinedTemplate {
 	}
 
 	void fromCtorObject(final StructInfo si, final String className) throws IOException {
-		asFormatConverter(si, "Object_" + si.name, className, false);
+		asFormatConverter(si, "ObjectFormatConverter", className, false);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeObject(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
@@ -274,7 +275,7 @@ class InlinedTemplate {
 	}
 
 	void emptyCtorArray(final StructInfo si, final String className) throws IOException {
-		asFormatConverter(si,"Array_" + si.name, className, true);
+		asFormatConverter(si,"ArrayFormatConverter", className, true);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeArray(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
@@ -299,7 +300,7 @@ class InlinedTemplate {
 	}
 
 	void fromCtorArray(final StructInfo si, final String className) throws IOException {
-		asFormatConverter(si,"Array_" + si.name, className, false);
+		asFormatConverter(si,"ArrayFormatConverter", className, false);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeArray(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
@@ -459,7 +460,7 @@ class InlinedTemplate {
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
 				StructInfo target = context.structs.get(attr.typeName);
-				code.append("Enum_").append(target.name).append(".readStatic(reader)");
+				code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader)");
 			} else if (attr.collectionContent(context.knownTypes) != null) {
 				if (attr.isArray) {
 					String content = attr.typeName.substring(0, attr.typeName.length() - 2);
@@ -498,7 +499,7 @@ class InlinedTemplate {
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
 				StructInfo target = context.structs.get(attr.typeName);
-				code.append("Enum_").append(target.name).append(".readStatic(reader);\n");
+				code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader);\n");
 			} else if (attr.collectionContent(context.knownTypes) != null) {
 				if (attr.isArray) {
 					String content = attr.typeName.substring(0, attr.typeName.length() - 2);
