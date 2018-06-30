@@ -286,7 +286,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		int dotIndex = structInfo.binaryName.lastIndexOf('.');
 		String packageName = structInfo.binaryName.substring(0, dotIndex);
 		String className = structInfo.binaryName.substring(dotIndex + 1);
-		return packageName + "._" + className + "_DslJsonConverter";
+		boolean isPackageSealed = Package.getPackage(packageName).isSealed();
+		return String.format("%s%s._%s_DslJsonConverter", isPackageSealed ? "dsl_json." : "", packageName, className);
 	}
 
 	private static void buildCode(final Writer code,
