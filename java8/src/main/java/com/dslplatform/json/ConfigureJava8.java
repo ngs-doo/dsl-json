@@ -111,7 +111,7 @@ public class ConfigureJava8 implements Configuration {
 		json.registerWriter(OptionalDouble.class, new JsonWriter.WriteObject<OptionalDouble>() {
 			@Override
 			public void write(JsonWriter writer, OptionalDouble value) {
-				if (value.isPresent()) NumberConverter.serialize(value.getAsDouble(), writer);
+				if (value != null && value.isPresent()) NumberConverter.serialize(value.getAsDouble(), writer);
 				else writer.writeNull();
 			}
 		});
@@ -125,7 +125,7 @@ public class ConfigureJava8 implements Configuration {
 		json.registerWriter(OptionalInt.class, new JsonWriter.WriteObject<OptionalInt>() {
 			@Override
 			public void write(JsonWriter writer, OptionalInt value) {
-				if (value.isPresent()) NumberConverter.serialize(value.getAsInt(), writer);
+				if (value != null && value.isPresent()) NumberConverter.serialize(value.getAsInt(), writer);
 				else writer.writeNull();
 			}
 		});
@@ -139,7 +139,7 @@ public class ConfigureJava8 implements Configuration {
 		json.registerWriter(OptionalLong.class, new JsonWriter.WriteObject<OptionalLong>() {
 			@Override
 			public void write(JsonWriter writer, OptionalLong value) {
-				if (value.isPresent()) NumberConverter.serialize(value.getAsLong(), writer);
+				if (value != null && value.isPresent()) NumberConverter.serialize(value.getAsLong(), writer);
 				else writer.writeNull();
 			}
 		});

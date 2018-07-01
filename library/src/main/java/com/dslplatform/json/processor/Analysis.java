@@ -353,7 +353,8 @@ public class Analysis {
 		if (!structs.containsKey(target.toString())) {
 			String name = "struct" + structs.size();
 			TypeElement element = (TypeElement) target.asElement();
-			StructInfo info = new StructInfo(converter, converterType, element, name, signature.reader, signature.writer);
+			String binaryName = elements.getBinaryName(element).toString();
+			StructInfo info = new StructInfo(converter, converterType, element, name, binaryName, signature.reader, signature.writer);
 			structs.put(target.toString(), info);
 		}
 	}
@@ -730,11 +731,13 @@ public class Analysis {
 						annotation);
 			}
 			String name = "struct" + structs.size();
+			String binaryName = elements.getBinaryName(element).toString();
 			StructInfo info =
 					new StructInfo(
 							element,
 							discoveredBy,
 							name,
+							binaryName,
 							type,
 							isJsonObject,
 							findMatchingConstructors(element),

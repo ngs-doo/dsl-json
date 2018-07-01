@@ -18,8 +18,8 @@ class DescriptionTemplate {
 	}
 
 	void emptyCtorObject(final StructInfo si, final String className) throws IOException {
-		code.append("\tprivate static com.dslplatform.json.runtime.ObjectFormatDescription<").append(className).append(", ");
-		code.append(className).append("> register_object_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
+		code.append("\tpublic static com.dslplatform.json.runtime.ObjectFormatDescription<").append(className).append(", ");
+		code.append(className).append("> createObjectFormatConverter(com.dslplatform.json.DslJson json) {\n");
 		code.append("\t\treturn com.dslplatform.json.runtime.ObjectFormatDescription.create(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
 		code.append("\t\t\t").append(className).append("::new,\n");
@@ -56,8 +56,8 @@ class DescriptionTemplate {
 	}
 
 	void emptyCtorArray(final StructInfo si, final String className) throws IOException {
-		code.append("\tprivate static com.dslplatform.json.runtime.ArrayFormatDescription<").append(className).append(", ");
-		code.append(className).append("> register_array_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
+		code.append("\tpublic static com.dslplatform.json.runtime.ArrayFormatDescription<").append(className).append(", ");
+		code.append(className).append("> createArrayFormatConverter(com.dslplatform.json.DslJson json) {\n");
 		code.append("\t\treturn com.dslplatform.json.runtime.ArrayFormatDescription.create(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
 		code.append("\t\t\t").append(className).append("::new,\n");
@@ -106,14 +106,13 @@ class DescriptionTemplate {
 	}
 
 	void fromCtorObject(final StructInfo si, final String className) throws IOException {
-		final String builderName = "Builder" + si.name;
-		code.append("\tprivate static com.dslplatform.json.runtime.ObjectFormatDescription<").append(builderName);
-		code.append(", ").append(className).append("> register_object_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
-		code.append("\t\treturn new com.dslplatform.json.runtime.ObjectFormatDescription<");
-		code.append(builderName).append(", ").append(className).append(">(\n");
+		code.append("\tpublic static com.dslplatform.json.runtime.ObjectFormatDescription<Builder, ");
+		code.append(className).append("> createObjectFormatConverter(com.dslplatform.json.DslJson json) {\n");
+		code.append("\t\treturn new com.dslplatform.json.runtime.ObjectFormatDescription<Builder, ");
+		code.append(className).append(">(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
-		code.append("\t\t\t").append(builderName).append("::new,\n");
-		code.append("\t\t\t").append(builderName).append("::__buildFromBuilder__,\n");
+		code.append("\t\t\tBuilder::new,\n");
+		code.append("\t\t\tBuilder::__buildFromBuilder__,\n");
 		code.append("\t\t\tnew com.dslplatform.json.JsonWriter.WriteObject[] {\n");
 		final List<AttributeInfo> sortedAttributes = Context.sortedAttributes(si);
 		int i = sortedAttributes.size();
@@ -127,11 +126,11 @@ class DescriptionTemplate {
 		i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
 			String mn = si.minifiedNames.get(attr.id);
-			final String readValue = builderName + "::_" + attr.name + "_";
-			addAttributeReader(builderName, attr, mn != null ? mn : attr.id, readValue);
+			final String readValue = "Builder::_" + attr.name + "_";
+			addAttributeReader("Builder", attr, mn != null ? mn : attr.id, readValue);
 			for (String an : attr.alternativeNames) {
 				code.append(",\n");
-				addAttributeReader(builderName, attr, an, readValue);
+				addAttributeReader("Builder", attr, an, readValue);
 			}
 			i--;
 			if (i > 0) code.append(",\n");
@@ -145,14 +144,13 @@ class DescriptionTemplate {
 	}
 
 	void fromCtorArray(final StructInfo si, final String className) throws IOException {
-		final String builderName = "Builder" + si.name;
-		code.append("\tprivate static com.dslplatform.json.runtime.ArrayFormatDescription<").append(builderName);
-		code.append(", ").append(className).append("> register_array_").append(si.name).append("(com.dslplatform.json.DslJson json) {\n");
-		code.append("\t\treturn new com.dslplatform.json.runtime.ArrayFormatDescription<");
-		code.append(builderName).append(", ").append(className).append(">(\n");
+		code.append("\tpublic static com.dslplatform.json.runtime.ArrayFormatDescription<Builder, ");
+		code.append(className).append("> createArrayFormatConverter(com.dslplatform.json.DslJson json) {\n");
+		code.append("\t\treturn new com.dslplatform.json.runtime.ArrayFormatDescription<Builder, ");
+		code.append(className).append(">(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
-		code.append("\t\t\t").append(builderName).append("::new,\n");
-		code.append("\t\t\t").append(builderName).append("::__buildFromBuilder__,\n");
+		code.append("\t\t\tBuilder::new,\n");
+		code.append("\t\t\tBuilder::__buildFromBuilder__,\n");
 		code.append("\t\t\tnew com.dslplatform.json.JsonWriter.WriteObject[] {\n");
 		final List<AttributeInfo> sortedAttributes = Context.sortedAttributes(si);
 		int i = sortedAttributes.size();
@@ -165,8 +163,8 @@ class DescriptionTemplate {
 		code.append("\t\t\tnew com.dslplatform.json.JsonReader.BindObject[] {\n");
 		i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
-			final String readValue = builderName + "::_" + attr.name + "_";
-			addArrayReader(builderName, attr, readValue);
+			final String readValue = "Builder::_" + attr.name + "_";
+			addArrayReader("Builder", attr, readValue);
 			i--;
 			if (i > 0) code.append(",\n");
 		}
@@ -176,7 +174,7 @@ class DescriptionTemplate {
 	}
 
 	void createBuilder(final StructInfo si, final String className) throws IOException {
-		code.append("\tprivate static class Builder").append(si.name).append(" {\n");
+		code.append("\tprivate static class Builder {\n");
 		for (VariableElement p : si.constructor.getParameters()) {
 			String typeName = p.asType().toString();
 			code.append("\t\tprivate ").append(typeName).append(" _").append(p.getSimpleName()).append("_ = ");

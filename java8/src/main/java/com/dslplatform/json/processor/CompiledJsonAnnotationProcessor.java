@@ -10,6 +10,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
+import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import java.io.*;
 import java.lang.reflect.Type;
@@ -19,7 +21,7 @@ import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.typeOrClass;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter", "com.fasterxml.jackson.annotation.JsonCreator", "javax.json.bind.annotation.JsonbCreator"})
-@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown", "dsljson.inline", "dsljson.jackson", "dsljson.jsonb"})
+@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown", "dsljson.inline", "dsljson.jackson", "dsljson.jsonb", "dsljson.configuration"})
 public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static final Set<String> JsonIgnore;
@@ -104,6 +106,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private boolean allowInline = true;
 	private boolean withJackson = false;
 	private boolean withJsonb = false;
+	private String configurationFileName = null;
 
 	private TypeElement jacksonCreatorElement;
 	private DeclaredType jacksonCreatorType;
@@ -137,6 +140,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		String jsb = options.get("dsljson.jsonb");
 		if (jsb != null && jsb.length() > 0) {
 			withJsonb = Boolean.parseBoolean(jsb);
+		}
+		String con = options.get("dsljson.configuration");
+		if (con != null && con.length() > 0) {
+			configurationFileName = con;
 		}
 		jacksonCreatorElement = processingEnv.getElementUtils().getTypeElement("com.fasterxml.jackson.annotation.JsonCreator");
 		jacksonCreatorType = jacksonCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jacksonCreatorElement) : null;
@@ -201,23 +208,67 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				return false;
 			}
 
-			try {
-				String className = "dsl_json_Annotation_Processor_External_Serialization";
-				Writer writer = processingEnv.getFiler().createSourceFile(className).openWriter();
-				buildCode(writer, structs, allowInline, allTypes);
-				writer.close();
-				writer = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG).openWriter();
-				writer.write(className);
-				for (String conf : configurations) {
-					writer.write('\n');
-					writer.write(conf);
+			List<String> generatedFiles = new ArrayList<>();
+
+			for (Map.Entry<String, StructInfo> entry : structs.entrySet()) {
+				StructInfo structInfo = entry.getValue();
+				if (structInfo.type == ObjectType.CLASS && structInfo.attributes.isEmpty()) {
+					continue;
 				}
-				writer.close();
-			} catch (IOException e) {
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving compiled json serialization files");
+
+				String classNamePath = findConverterName(entry.getValue());
+				try {
+					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath);
+					try (Writer writer = converterFile.openWriter()) {
+						buildCode(writer, entry.getKey(), structInfo, structs, allowInline, allTypes);
+						generatedFiles.add(classNamePath);
+					} catch (IOException e) {
+						processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+								"Failed saving compiled json serialization file " + classNamePath);
+					}
+				} catch (IOException e) {
+					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+							"Failed creating compiled json serialization file " + classNamePath);
+				}
 			}
+
+			final List<String> allConfigurations = new ArrayList<>(configurations);
+			if (configurationFileName != null) {
+				try {
+					FileObject configFile = processingEnv.getFiler().createSourceFile(configurationFileName);
+					try (Writer writer = configFile.openWriter()) {
+						buildRootConfiguration(writer, configurationFileName, generatedFiles);
+						allConfigurations.add(configurationFileName);
+					} catch (Exception e) {
+						processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+								"Failed saving configuration file " + configurationFileName);
+					}
+				} catch (IOException e) {
+					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+							"Failed creating configuration file " + configurationFileName);
+				}
+			} else {
+				allConfigurations.addAll(generatedFiles);
+			}
+			saveToServiceConfigFile(allConfigurations);
 		}
 		return false;
+	}
+
+	private void saveToServiceConfigFile(List<String> configurations) {
+		try {
+			FileObject configFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG);
+			try (Writer writer = configFile.openWriter()) {
+				for (String conf : configurations) {
+					writer.write(conf);
+					writer.write('\n');
+				}
+			} catch (Exception e) {
+				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed saving config file " + CONFIG);
+			}
+		} catch (IOException e) {
+			processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Failed creating config file " + CONFIG);
+		}
 	}
 
 	@Override
@@ -231,151 +282,143 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		return SourceVersion.RELEASE_8;
 	}
 
-	private static void buildCode(final Writer code, final Map<String, StructInfo> structs, final boolean allowInline, final Set<String> knownTypes) throws IOException {
+	static String findConverterName(StructInfo structInfo) {
+		int dotIndex = structInfo.binaryName.lastIndexOf('.');
+		String packageName = structInfo.binaryName.substring(0, dotIndex);
+		String className = structInfo.binaryName.substring(dotIndex + 1);
+		boolean isPackageSealed = Package.getPackage(packageName).isSealed();
+		return String.format("%s%s._%s_DslJsonConverter", isPackageSealed ? "dsl_json." : "", packageName, className);
+	}
+
+	private static void buildCode(final Writer code,
+								  final String className,
+								  final StructInfo si,
+								  final Map<String, StructInfo> structs,
+								  final boolean allowInline,
+								  final Set<String> knownTypes) throws IOException {
 		final Context context = new Context(code, allowInline, InlinedConverters, Defaults, structs, knownTypes);
 		final DescriptionTemplate descriptionTemplate = new DescriptionTemplate(context);
 		final InlinedTemplate inlinedTemplate = new InlinedTemplate(context);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
-		code.append("public class dsl_json_Annotation_Processor_External_Serialization implements com.dslplatform.json.Configuration {\n");
+
+		final String generateFullClassName = findConverterName(si);
+		final int dotIndex = generateFullClassName.lastIndexOf('.');
+		final String generateClassName = generateFullClassName.substring(dotIndex + 1, generateFullClassName.length());
+		final String generatePackacge = generateFullClassName.substring(0, dotIndex);
+
+		code.append("package ").append(generatePackacge).append(";\n\n");
+		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
 		code.append("\tprivate static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName(\"UTF-8\");\n");
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
-		for (Map.Entry<String, StructInfo> kv : structs.entrySet()) {
-			final String className = kv.getKey();
-			final StructInfo si = kv.getValue();
-			if (si.type == ObjectType.CLASS && si.constructor != null && !si.attributes.isEmpty()) {
-				String descriptionName = si.name;
-				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-					if (allowInline) {
-						code.append("\t\tObject_").append(si.name).append(" object_").append(si.name);
-						code.append(" = new Object_").append(si.name).append("(json);\n");
-					} else {
-						code.append("\t\tcom.dslplatform.json.runtime.ObjectFormatDescription object_").append(si.name);
-						code.append(" = register_object_").append(si.name).append("(json);\n");
-					}
-					descriptionName = "object_" + si.name;
-				}
-				if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-					if (allowInline) {
-						code.append("\t\tArray_").append(si.name).append(" array_").append(si.name);
-						code.append(" = new Array_").append(si.name).append("(json);\n");
-					} else {
-						code.append("\t\tcom.dslplatform.json.runtime.ArrayFormatDescription array_").append(si.name);
-						code.append(" = register_array_").append(si.name).append("(json);\n");
-					}
-					descriptionName = "array_" + si.name;
-				}
-				if (si.formats.contains(CompiledJson.Format.OBJECT) && si.formats.contains(CompiledJson.Format.ARRAY)) {
-					descriptionName = si.name;
-					code.append("\t\tcom.dslplatform.json.runtime.FormatDescription ").append(descriptionName).append(" = new com.dslplatform.json.runtime.FormatDescription(\n");
-					code.append("\t\t\t").append(className).append(".class,\n");
-					code.append("\t\t\tobject_").append(si.name).append(",\n");
-					code.append("\t\t\tarray_").append(si.name).append(",\n");
-					if (si.isObjectFormatFirst) code.append("\t\t\ttrue,\n");
-					else code.append("\t\t\tfalse,\n");
-					String typeAlias = si.deserializeName.isEmpty() ? className : si.deserializeName;
-					code.append("\t\t\t\"").append(typeAlias).append("\",\n");
-					code.append("\t\t\tjson);\n");
-					if (si.hasEmptyCtor()) {
-						code.append("\t\tjson.registerBinder(").append(className).append(".class, ").append(si.name).append(");\n");
-					}
-					code.append("\t\tjson.registerReader(").append(className).append(".class, ").append(si.name).append(");\n");
-					code.append("\t\tjson.registerWriter(").append(className).append(".class, ").append(si.name).append(");\n");
+
+        if (si.type == ObjectType.CLASS && si.constructor != null && !si.attributes.isEmpty()) {
+            String objectFormatConverterName = "converter";
+            if (si.formats.contains(CompiledJson.Format.OBJECT)) {
+                if (allowInline) {
+                    code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(json);\n");
+                } else {
+                    code.append("\t\tcom.dslplatform.json.runtime.ObjectFormatDescription objectConverter = createObjectFormatConverter(json);\n");
+                }
+				objectFormatConverterName = "objectConverter";
+			}
+            if (si.formats.contains(CompiledJson.Format.ARRAY)) {
+                if (allowInline) {
+                    code.append("\t\tArrayFormatConverter arrayConverter = new ArrayFormatConverter(json);\n");
+                } else {
+                    code.append("\t\tcom.dslplatform.json.runtime.ArrayFormatDescription arrayConverter = createArrayFormatConverter(json);\n");
+                }
+				objectFormatConverterName = "arrayConverter";
+			}
+            if (si.formats.contains(CompiledJson.Format.OBJECT) && si.formats.contains(CompiledJson.Format.ARRAY)) {
+                code.append("\t\tcom.dslplatform.json.runtime.FormatDescription description = new com.dslplatform.json.runtime.FormatDescription(\n");
+                code.append("\t\t\t").append(className).append(".class,\n");
+                code.append("\t\t\tobjectConverter,\n");
+                code.append("\t\t\tarrayConverter,\n");
+                if (si.isObjectFormatFirst) code.append("\t\t\ttrue,\n");
+                else code.append("\t\t\tfalse,\n");
+                String typeAlias = si.deserializeName.isEmpty() ? className : si.deserializeName;
+                code.append("\t\t\t\"").append(typeAlias).append("\",\n");
+                code.append("\t\t\tjson);\n");
+                if (si.hasEmptyCtor()) {
+                    code.append("\t\tjson.registerBinder(").append(className).append(".class, description);\n");
+                }
+                code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
+                code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
+            } else {
+                if (si.hasEmptyCtor()) {
+                    code.append("\t\tjson.registerBinder(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
+                }
+                code.append("\t\tjson.registerReader(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
+                code.append("\t\tjson.registerWriter(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
+            }
+        } else if (si.type == ObjectType.CONVERTER) {
+            String type = typeOrClass(nonGenericObject(className), className);
+            code.append("\t\tjson.registerWriter(").append(type).append(", ").append(si.converter).append(".").append(si.converterWriter).append(");\n");
+            code.append("\t\tjson.registerReader(").append(type).append(", ").append(si.converter).append(".").append(si.converterReader).append(");\n");
+        } else if (si.type == ObjectType.ENUM) {
+            code.append("\t\tEnumConverter enumConverter = new EnumConverter();\n");
+            code.append("\t\tjson.registerWriter(").append(className).append(".class, enumConverter);\n");
+            code.append("\t\tjson.registerReader(").append(className).append(".class, enumConverter);\n");
+        }
+
+        if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
+            mixin(code, si.deserializeAs != null, si, className, allowInline);
+        }
+        if (si.type == ObjectType.MIXIN && si.deserializeAs != null) {
+            String typeMixin = typeOrClass(nonGenericObject(className), className);
+            StructInfo target = si.deserializeTarget();
+            code.append("\t\tjson.registerReader(").append(typeMixin).append(", ");
+            if (!target.formats.contains(CompiledJson.Format.OBJECT)) {
+            	if (allowInline) {
+					code.append("new ").append(findConverterName(target)).append(".ArrayFormatConverter(json));\n");
 				} else {
-					if (si.hasEmptyCtor()) {
-						code.append("\t\tjson.registerBinder(").append(className).append(".class, ").append(descriptionName).append(");\n");
-					}
-					code.append("\t\tjson.registerReader(").append(className).append(".class, ").append(descriptionName).append(");\n");
-					code.append("\t\tjson.registerWriter(").append(className).append(".class, ").append(descriptionName).append(");\n");
+					code.append(findConverterName(target)).append(".createArrayFormatConverter(json));\n");
 				}
-			} else if (si.type == ObjectType.CONVERTER) {
-				String type = typeOrClass(nonGenericObject(className), className);
-				code.append("\t\tjson.registerWriter(").append(type).append(", ").append(si.converter).append(".").append(si.converterWriter).append(");\n");
-				code.append("\t\tjson.registerReader(").append(type).append(", ").append(si.converter).append(".").append(si.converterReader).append(");\n");
-			} else if (si.type == ObjectType.ENUM) {
-				code.append("\t\tEnum_").append(si.name).append(" ").append(si.name);
-				code.append(" = new Enum_").append(si.name).append("();\n");
-				code.append("\t\tjson.registerWriter(").append(className).append(".class, ").append(si.name).append(");\n");
-				code.append("\t\tjson.registerReader(").append(className).append(".class, ").append(si.name).append(");\n");
-			}
-		}
-		for (Map.Entry<String, StructInfo> kv : structs.entrySet()) {
-			StructInfo si = kv.getValue();
-			if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
-				code.append("\t\tregister_").append(si.name).append("(json");
-				for (StructInfo im : si.implementations) {
-					if (im.formats.contains(CompiledJson.Format.OBJECT) && im.formats.contains(CompiledJson.Format.ARRAY)) {
-						code.append(", ").append(im.name);
-					} else if (im.formats.contains(CompiledJson.Format.OBJECT)) {
-						code.append(", object_").append(im.name);
-					} else if (im.formats.contains(CompiledJson.Format.ARRAY)) {
-						code.append(", array_").append(im.name);
-					}
+            } else if (!target.formats.contains(CompiledJson.Format.ARRAY)) {
+            	if (allowInline) {
+					code.append("new ").append(findConverterName(target)).append(".ObjectFormatConverter(json));\n");
+				} else {
+					code.append(findConverterName(target)).append(".createObjectFormatConverter(json));\n");
 				}
-				code.append(");\n");
-			}
-			if (si.type == ObjectType.MIXIN && si.deserializeAs != null) {
-				String typeMixin = typeOrClass(nonGenericObject(kv.getKey()), kv.getKey());
-				StructInfo target = si.deserializeTarget();
-				code.append("\t\tjson.registerReader(").append(typeMixin).append(", ");
-				if (!target.formats.contains(CompiledJson.Format.OBJECT)) {
-					code.append("array_");
-				} else if (!target.formats.contains(CompiledJson.Format.ARRAY)) {
-					code.append("object_");
-				}
-				code.append(target.name).append(");\n");
-			}
-		}
+            }
+        }
+
 		code.append("\t}\n");
-		for (Map.Entry<String, StructInfo> it : structs.entrySet()) {
-			StructInfo si = it.getValue();
-			String className = it.getKey();
-			if (si.type == ObjectType.CLASS && !si.attributes.isEmpty()) {
-				if (si.hasEmptyCtor()) {
-					if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-						if (allowInline) inlinedTemplate.emptyCtorObject(si, className);
-						else descriptionTemplate.emptyCtorObject(si, className);
-					}
-					if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-						if (allowInline) inlinedTemplate.emptyCtorArray(si, className);
-						else descriptionTemplate.emptyCtorArray(si, className);
-					}
-				} else if (si.constructor != null) {
-					if (!allowInline) {
-						descriptionTemplate.createBuilder(si, className);
-					}
-					if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-						if (allowInline) inlinedTemplate.fromCtorObject(si, className);
-						else descriptionTemplate.fromCtorObject(si, className);
-					}
-					if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-						if (allowInline) inlinedTemplate.fromCtorArray(si, className);
-						else descriptionTemplate.fromCtorArray(si, className);
-					}
-				}
-			} else if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
-				if (si.deserializeAs == null) mixin(code, false, si, className);
-				else mixin(code, true, si, className);
-			} else if (si.type == ObjectType.ENUM) {
-				enumTemplate.create(si, className);
-			}
-		}
+
+        if (si.type == ObjectType.CLASS && !si.attributes.isEmpty()) {
+            if (si.hasEmptyCtor()) {
+                if (si.formats.contains(CompiledJson.Format.OBJECT)) {
+                    if (allowInline) inlinedTemplate.emptyCtorObject(si, className);
+                    else descriptionTemplate.emptyCtorObject(si, className);
+                }
+                if (si.formats.contains(CompiledJson.Format.ARRAY)) {
+                    if (allowInline) inlinedTemplate.emptyCtorArray(si, className);
+                    else descriptionTemplate.emptyCtorArray(si, className);
+                }
+            } else if (si.constructor != null) {
+                if (!allowInline) {
+                    descriptionTemplate.createBuilder(si, className);
+                }
+                if (si.formats.contains(CompiledJson.Format.OBJECT)) {
+                    if (allowInline) inlinedTemplate.fromCtorObject(si, className);
+                    else descriptionTemplate.fromCtorObject(si, className);
+                }
+                if (si.formats.contains(CompiledJson.Format.ARRAY)) {
+                    if (allowInline) inlinedTemplate.fromCtorArray(si, className);
+                    else descriptionTemplate.fromCtorArray(si, className);
+                }
+            }
+        } else if (si.type == ObjectType.ENUM) {
+            enumTemplate.create(si, className);
+        }
+
 		code.append("}\n");
 	}
 
-	private static void mixin(final Writer code, final boolean writeOnly, final StructInfo si, final String className) throws IOException {
+	private static void mixin(final Writer code, final boolean writeOnly, final StructInfo si, final String className, final boolean allowInline) throws IOException {
 		final String mixinType = writeOnly ? "MixinWriter" : "MixinDescription";
-		code.append("\tprivate static com.dslplatform.json.runtime.").append(mixinType).append("<").append(className).append("> register_").append(si.name).append("(com.dslplatform.json.DslJson json");
-		for(StructInfo im : si.implementations) {
-			if (im.formats.contains(CompiledJson.Format.OBJECT) && im.formats.contains(CompiledJson.Format.ARRAY)) {
-				code.append(", com.dslplatform.json.runtime.FormatDescription ").append(im.name);
-			} else if (im.formats.contains(CompiledJson.Format.OBJECT)) {
-				code.append(", com.dslplatform.json.runtime.FormatConverter object_").append(im.name);
-			} else if (im.formats.contains(CompiledJson.Format.ARRAY)) {
-				code.append(", com.dslplatform.json.runtime.FormatConverter array_").append(im.name);
-			}
-		}
-		code.append(") {\n");
+
 		code.append("\t\tcom.dslplatform.json.runtime.").append(mixinType).append("<").append(className).append("> description = new com.dslplatform.json.runtime.").append(mixinType).append("<>(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
 		code.append("\t\t\tjson,\n");
@@ -388,12 +431,20 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				code.append("\t\t\t\tnew com.dslplatform.json.runtime.FormatDescription(");
 				code.append(im.element.getQualifiedName()).append(".class, ");
 				if (im.formats.contains(CompiledJson.Format.OBJECT)) {
-					code.append("object_").append(im.name).append(", ");
+					if (allowInline) {
+						code.append("new ").append(findConverterName(im)).append(".ObjectFormatConverter(json), ");
+					} else {
+						code.append(findConverterName(im)).append(".createObjectFormatConverter(json), ");
+					}
 				} else {
 					code.append("null, ");
 				}
 				if (im.formats.contains(CompiledJson.Format.ARRAY)) {
-					code.append("array_").append(im.name).append(", ");
+					if (allowInline) {
+						code.append("new ").append(findConverterName(im)).append(".ArrayFormatConverter(json), ");
+					} else {
+						code.append(findConverterName(im)).append(".createArrayFormatConverter(json), ");
+					}
 				} else {
 					code.append("null, ");
 				}
@@ -413,7 +464,22 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
 		}
 		code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
-		code.append("\t\treturn description;\n");
+	}
+
+	private static void buildRootConfiguration(final Writer code, final String configurationName,
+											   final List<String> configurations) throws IOException {
+		final int dotIndex = configurationName.lastIndexOf('.');
+		final String generateClassName = configurationName.substring(dotIndex + 1);
+		final String generatePackage = configurationName.substring(0, dotIndex);
+
+		code.append("package ").append(generatePackage).append(";\n\n");
+		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
+		code.append("\t@Override\n");
+		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
+		for (String configuration : configurations) {
+			code.append("\t\tnew ").append(configuration).append("().configure(json);\n");
+		}
 		code.append("\t}\n");
+		code.append("}");
 	}
 }

@@ -14,6 +14,7 @@ public class StructInfo {
 	public final TypeElement element;
 	public final DeclaredType discoveredBy;
 	public final String name;
+	public final String binaryName;
 	public final ObjectType type;
 	public final String converter;
 	public final String converterReader;
@@ -40,6 +41,7 @@ public class StructInfo {
 			TypeElement element,
 			DeclaredType discoveredBy,
 			String name,
+			String binaryName,
 			ObjectType type,
 			boolean isJsonObject,
 			List<ExecutableElement> matchingConstructors,
@@ -54,6 +56,7 @@ public class StructInfo {
 		this.element = element;
 		this.discoveredBy = discoveredBy;
 		this.name = name;
+		this.binaryName = binaryName;
 		this.type = type;
 		this.converter = isJsonObject ? "" : null;
 		this.converterReader = null;
@@ -82,10 +85,11 @@ public class StructInfo {
 		}
 	}
 
-	public StructInfo(TypeElement converter, DeclaredType discoveredBy, TypeElement target, String name, String reader, String writer) {
+	public StructInfo(TypeElement converter, DeclaredType discoveredBy, TypeElement target, String name, String binaryName, String reader, String writer) {
 		this.element = target;
 		this.discoveredBy = discoveredBy;
 		this.name = name;
+		this.binaryName = binaryName;
 		this.type = ObjectType.CONVERTER;
 		this.converter = converter.getQualifiedName().toString();
 		this.converterReader = reader;
