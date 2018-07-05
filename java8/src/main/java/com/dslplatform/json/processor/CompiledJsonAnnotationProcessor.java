@@ -237,6 +237,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			}
 
 			final List<String> generatedFiles = new ArrayList<>();
+			final List<Element> originatingElements = new ArrayList<>();
 
 			for (Map.Entry<String, StructInfo> entry : structs.entrySet()) {
 				StructInfo structInfo = entry.getValue();
@@ -246,10 +247,11 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 				String classNamePath = findConverterName(entry.getValue());
 				try {
-					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath);
+					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
 						buildCode(writer, entry.getKey(), structInfo, structs, allowInline, allTypes);
 						generatedFiles.add(classNamePath);
+						originatingElements.add(structInfo.element);
 					} catch (IOException e) {
 						processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
 								"Failed saving compiled json serialization file " + classNamePath);
@@ -263,7 +265,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			if (configurationFileName != null) {
 				final List<String> allConfigurations = new ArrayList<>(configurations);
 				try {
-					FileObject configFile = processingEnv.getFiler().createSourceFile(configurationFileName);
+					FileObject configFile = processingEnv.getFiler()
+							.createSourceFile(configurationFileName, originatingElements.toArray(new Element[0]));
 					try (Writer writer = configFile.openWriter()) {
 						buildRootConfiguration(writer, configurationFileName, generatedFiles);
 						allConfigurations.add(configurationFileName);
