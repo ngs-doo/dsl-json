@@ -19,9 +19,9 @@ import java.util.*;
 
 import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.typeOrClass;
+import static java.util.Arrays.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter", "com.fasterxml.jackson.annotation.JsonCreator", "javax.json.bind.annotation.JsonbCreator"})
-@SupportedOptions({"dsljson.loglevel", "dsljson.annotation", "dsljson.unknown", "dsljson.inline", "dsljson.jackson", "dsljson.jsonb", "dsljson.configuration"})
 public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static final Set<String> JsonIgnore;
@@ -35,6 +35,25 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
 
+	private static final String GRADLE_OPTION_ISOLATING = "org.gradle.annotation.processing.isolating";
+	private static final String GRADLE_OPTION_AGGREGATING = "org.gradle.annotation.processing.aggregating";
+
+	private enum Options {
+		LOG_LEVEL("dsljson.loglevel"),
+		ANNOTATION("dsljson.annotation"),
+		UNKNOWN("dsljson.unknown"),
+		INLINE("dsljson.inline"),
+		JACKSON("dsljson.jackson"),
+		JSONB("dsljson.jsonb"),
+		CONFIGURATION("dsljson.configuration");
+
+		final String value;
+
+		Options(String value) {
+			this.value = value;
+		}
+	}
+
 	static {
 		JsonIgnore = new HashSet<>();
 		JsonIgnore.add("com.fasterxml.jackson.annotation.JsonIgnore");
@@ -46,7 +65,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		NonNullable.put("org.jetbrains.annotations.NotNull", null);
 		NonNullable.put(
 				"javax.json.bind.annotation.JsonbNillable",
-				Arrays.asList(
+				asList(
 						new Analysis.AnnotationMapping<>("value()", null),
 						new Analysis.AnnotationMapping<>("value()", true)));
 		NonNullable.put(
@@ -117,31 +136,31 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	public synchronized void init(ProcessingEnvironment processingEnv) {
 		super.init(processingEnv);
 		Map<String, String> options = processingEnv.getOptions();
-		String ll = options.get("dsljson.loglevel");
+		String ll = options.get(Options.LOG_LEVEL.value);
 		if (ll != null && ll.length() > 0) {
 			logLevel = LogLevel.valueOf(ll);
 		}
-		String au = options.get("dsljson.annotation");
+		String au = options.get(Options.ANNOTATION.value);
 		if (au != null && au.length() > 0) {
 			annotationUsage = AnnotationUsage.valueOf(au);
 		}
-		String unk = options.get("dsljson.unknown");
+		String unk = options.get(Options.UNKNOWN.value);
 		if (unk != null && unk.length() > 0) {
 			unknownTypes = UnknownTypes.valueOf(unk);
 		}
-		String inl = options.get("dsljson.inline");
+		String inl = options.get(Options.INLINE.value);
 		if (inl != null && inl.length() > 0) {
 			allowInline = Boolean.parseBoolean(inl);
 		}
-		String jks = options.get("dsljson.jackson");
+		String jks = options.get(Options.JACKSON.value);
 		if (jks != null && jks.length() > 0) {
 			withJackson = Boolean.parseBoolean(jks);
 		}
-		String jsb = options.get("dsljson.jsonb");
+		String jsb = options.get(Options.JSONB.value);
 		if (jsb != null && jsb.length() > 0) {
 			withJsonb = Boolean.parseBoolean(jsb);
 		}
-		String con = options.get("dsljson.configuration");
+		String con = options.get(Options.CONFIGURATION.value);
 		if (con != null && con.length() > 0) {
 			configurationFileName = con;
 		}
@@ -151,6 +170,15 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		jsonbCreatorType = jsonbCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jsonbCreatorElement) : null;
 	}
 
+	@Override
+	public Set<String> getSupportedOptions() {
+		Set<String> options = new HashSet<>();
+		for (Options option : Options.values()) {
+			options.add(option.value);
+		}
+		options.add(configurationFileName == null ? GRADLE_OPTION_ISOLATING : GRADLE_OPTION_AGGREGATING);
+		return options;
+	}
 
 	@Override
 	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
