@@ -952,6 +952,10 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
 		if (writer != null) return writer;
+		if (tryFindAndRegisterExternalConverter(manifest)) {
+			writer = jsonWriters.get(manifest);
+			if (writer != null) return writer;
+		}
 		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
 			writer = wrt.tryCreate(manifest, this);
 			if (writer != null) {
@@ -996,6 +1000,10 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
 		if (found != null) return found;
+		if (tryFindAndRegisterExternalConverter(manifest)) {
+			found = readers.get(manifest);
+			if (found != null) return found;
+		}
 		for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
 			found = rdr.tryCreate(manifest, this);
 			if (found != null) {
@@ -1022,16 +1030,58 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 */
 	public JsonReader.BindObject<?> tryFindBinder(final Type manifest) {
 		JsonReader.BindObject found = binders.get(manifest);
-		if (found == null) {
-			for (ConverterFactory<JsonReader.BindObject> bnd : binderFactories) {
-				found = bnd.tryCreate(manifest, this);
-				if (found != null) {
-					binders.put(manifest, found);
-					break;
-				}
+		if (found != null) return found;
+		if (tryFindAndRegisterExternalConverter(manifest)) {
+			found = binders.get(manifest);
+			if (found != null) return found;
+		}
+		for (ConverterFactory<JsonReader.BindObject> bnd : binderFactories) {
+			found = bnd.tryCreate(manifest, this);
+			if (found != null) {
+				binders.put(manifest, found);
+				return found;
 			}
 		}
-		return found;
+		return null;
+	}
+
+	private boolean tryFindAndRegisterExternalConverter(final Type manifest) {
+		if (manifest instanceof Class) {
+			return tryFindAndRegisterExternalConverter((Class) manifest);
+		}
+		return false;
+	}
+
+	private boolean tryFindAndRegisterExternalConverter(final Class<?> manifest) {
+		String converterClassName = resolveExternalConverterClassName(manifest.getName());
+		if (converterClassName == null) {
+			return false;
+		}
+		try {
+			Class converterClass = Class.forName(converterClassName);
+			Configuration converter = (Configuration) converterClass.newInstance();
+			converter.configure(this);
+			return true;
+		} catch (ClassNotFoundException ignored) {
+		} catch (IllegalAccessException ignored) {
+		} catch (InstantiationException ignored) {
+		}
+		return false;
+	}
+
+	private String resolveExternalConverterClassName(final String fullClassName) {
+		int dotIndex = fullClassName.lastIndexOf('.');
+		if (dotIndex == -1) {
+			return null;
+		}
+		String packageName = fullClassName.substring(0, dotIndex);
+		Package classPackage = Package.getPackage(packageName);
+		if (classPackage == null) {
+			return null;
+		}
+		String className = fullClassName.substring(dotIndex + 1);
+		return String.format("%s%s._%s_DslJsonConverter",
+				classPackage.isSealed() ? "dsl_json." : "", packageName, className);
 	}
 
 	/**

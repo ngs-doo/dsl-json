@@ -208,7 +208,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				return false;
 			}
 
-			List<String> generatedFiles = new ArrayList<>();
+			final List<String> generatedFiles = new ArrayList<>();
 
 			for (Map.Entry<String, StructInfo> entry : structs.entrySet()) {
 				StructInfo structInfo = entry.getValue();
@@ -232,8 +232,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				}
 			}
 
-			final List<String> allConfigurations = new ArrayList<>(configurations);
 			if (configurationFileName != null) {
+				final List<String> allConfigurations = new ArrayList<>(configurations);
 				try {
 					FileObject configFile = processingEnv.getFiler().createSourceFile(configurationFileName);
 					try (Writer writer = configFile.openWriter()) {
@@ -247,10 +247,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
 							"Failed creating configuration file " + configurationFileName);
 				}
-			} else {
-				allConfigurations.addAll(generatedFiles);
+				saveToServiceConfigFile(allConfigurations);
 			}
-			saveToServiceConfigFile(allConfigurations);
 		}
 		return false;
 	}
