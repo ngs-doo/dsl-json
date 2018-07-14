@@ -7,15 +7,13 @@ import java.util.*;
 
 final class Context {
 	final Writer code;
-	private final boolean allowInline;
 	final Map<String, OptimizedConverter> inlinedConverters;
 	final Map<String, String> defaults;
 	final Map<String, StructInfo> structs;
 	final Set<String> knownTypes;
 
-	Context(Writer code, boolean allowInline, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, Set<String> knownTypes) {
+	Context(Writer code, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, Set<String> knownTypes) {
 		this.code = code;
-		this.allowInline = allowInline;
 		this.inlinedConverters = inlinedConverters;
 		this.defaults = defaults;
 		this.structs = structs;
@@ -84,7 +82,7 @@ final class Context {
 		final String actualType = attr.type.toString();
 		final String objectType = nonGenericObject(actualType);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = allowInline && optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
+		String inline = optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
 		code.append("com.dslplatform.json.runtime.Settings.<");
 		code.append(className).append(", ").append(objectType).append(">createEncoder(");
 		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
@@ -102,7 +100,7 @@ final class Context {
 		final String actualType = attr.type.toString();
 		final String objectType = nonGenericObject(actualType);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = allowInline && optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
+		String inline = optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
 		code.append("com.dslplatform.json.runtime.Settings.<");
 		code.append(className).append(", ").append(objectType).append(">createArrayEncoder(");
 		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
@@ -119,7 +117,7 @@ final class Context {
 		final String actualType = attr.type.toString();
 		final String objectType = nonGenericObject(actualType);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = allowInline && optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
+		String inline = optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
 		code.append("com.dslplatform.json.runtime.Settings.<");
 		code.append(className).append(", ").append(objectType).append(">createDecoder(");
 		code.append(readValue);
@@ -139,7 +137,7 @@ final class Context {
 		final String actualType = attr.type.toString();
 		final String objectType = nonGenericObject(actualType);
 		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = allowInline && optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
+		String inline = optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
 		code.append("com.dslplatform.json.runtime.Settings.<");
 		code.append(className).append(", ").append(objectType).append(">createArrayDecoder(");
 		code.append(readValue);

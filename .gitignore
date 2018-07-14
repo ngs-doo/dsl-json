@@ -6,6 +6,8 @@ out/
 target/
 build/
 .gradle/
+processor/com/dslplatform/json/models
+processor/java
 *.iml
 *.jar
 

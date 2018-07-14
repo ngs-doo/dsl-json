@@ -13,12 +13,12 @@ import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.sortedAttributes;
 import static com.dslplatform.json.processor.Context.typeOrClass;
 
-class InlinedTemplate {
+class ConverterTemplate {
 
 	private final Writer code;
 	private final Context context;
 
-	InlinedTemplate(Context context) {
+	ConverterTemplate(Context context) {
 		this.code = context.code;
 		this.context = context;
 	}
