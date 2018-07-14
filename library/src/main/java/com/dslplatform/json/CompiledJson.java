@@ -12,7 +12,7 @@ import java.lang.annotation.*;
  * will behave as they have @CompiledJson annotation (this can be controlled via compiler option).
  * This can be used to create converters for objects which can't be modified.
  */
-@Target({ElementType.TYPE, ElementType.CONSTRUCTOR})
+@Target({ElementType.TYPE, ElementType.CONSTRUCTOR, ElementType.METHOD})
 @Retention(RetentionPolicy.CLASS)
 public @interface CompiledJson {
 	/**

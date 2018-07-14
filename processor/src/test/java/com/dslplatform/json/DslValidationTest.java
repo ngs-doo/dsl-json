@@ -271,6 +271,24 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void cantUseAnnotationOnStaticMethod() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				19,
+				compileTestCase(OnStaticMethod.class),
+				"Factory methods are not available with curent setup");
+	}
+
+	@Test
+	public void cantUseAnnotationOnNonstaticMethod() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				19,
+				compileTestCase(OnNonStaticMethod.class),
+				"Factory method in 'com.dslplatform.json.models.OnNonStaticMethod' is annotated with com.dslplatform.json.CompiledJson, but it's not accessible.");
+	}
+
+	@Test
 	public void selfDeserializeAs() {
 		assertCompilationSuccessful(compileTestCase(DeserializeAsSelf.class));
 	}

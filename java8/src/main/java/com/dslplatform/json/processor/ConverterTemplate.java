@@ -76,12 +76,17 @@ class ConverterTemplate {
 		if (binding) {
 			code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 			code.append("\t\t\tif (reader.wasNull()) return null;\n");
-			code.append("\t\t\treturn bind(reader, new ").append(className).append("());\n");
+			code.append("\t\t\treturn bind(reader, ");
+			if (si.factory != null) {
+				code.append(className).append(".").append(si.factory.getSimpleName()).append("());\n");
+			} else {
+				code.append("new ").append(className).append("());\n");
+			}
 			code.append("\t\t}\n");
 		}
 	}
 
-	void emptyCtorObject(final StructInfo si, final String className) throws IOException {
+	void emptyObject(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si, "ObjectFormatConverter", className, true);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeObject(className, sortedAttributes);
@@ -93,7 +98,12 @@ class ConverterTemplate {
 		code.append("\t\t\treturn instance;\n");
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
-		code.append("\t\t\t").append(className).append(" instance = new ").append(className).append("();\n");
+		code.append("\t\t\t").append(className).append(" instance = ");
+		if (si.factory != null) {
+			code.append(className).append(".").append(si.factory.getSimpleName()).append("();\n ");
+		} else {
+			code.append("new ").append(className).append("();\n ");
+		}
 		code.append("\t\t\tbindContent(reader, instance);\n");
 		code.append("\t\t\treturn instance;\n");
 		code.append("\t\t}\n");
@@ -160,7 +170,7 @@ class ConverterTemplate {
 		code.append("\t}\n");
 	}
 
-	void fromCtorObject(final StructInfo si, final String className) throws IOException {
+	void fromObject(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si, "ObjectFormatConverter", className, false);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeObject(className, sortedAttributes);
@@ -182,7 +192,7 @@ class ConverterTemplate {
 		}
 		code.append("\t\t\tif (reader.last() == '}') {\n");
 		checkMandatory(sortedAttributes);
-		returnInstance("\t\t\t\t", si.constructor, className);
+		returnInstance("\t\t\t\t", si.constructor, si.factory, className);
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tswitch(reader.fillName()) {\n");
 		handleSwitch(si, "\t\t\t", true);
@@ -195,7 +205,7 @@ class ConverterTemplate {
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		checkMandatory(sortedAttributes);
-		returnInstance("\t\t\t", si.constructor, className);
+		returnInstance("\t\t\t", si.constructor, si.factory, className);
 		code.append("\t\t}\n");
 		code.append("\t}\n");
 	}
@@ -274,12 +284,17 @@ class ConverterTemplate {
 		}
 	}
 
-	void emptyCtorArray(final StructInfo si, final String className) throws IOException {
+	void emptyArray(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si,"ArrayFormatConverter", className, true);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeArray(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
-		code.append("\t\t\t").append(className).append(" instance = new ").append(className).append("();\n");
+		code.append("\t\t\t").append(className).append(" instance = ");
+		if (si.factory != null) {
+			code.append(className).append(".").append(si.factory.getSimpleName()).append("();\n ");
+		} else {
+			code.append("new ").append(className).append("();\n ");
+		}
 		code.append("\t\t\tbind(reader, instance);\n");
 		code.append("\t\t\treturn instance;\n");
 		code.append("\t\t}\n");
@@ -299,7 +314,7 @@ class ConverterTemplate {
 		code.append("\t}\n");
 	}
 
-	void fromCtorArray(final StructInfo si, final String className) throws IOException {
+	void fromArray(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si,"ArrayFormatConverter", className, false);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
 		writeArray(className, sortedAttributes);
@@ -318,15 +333,23 @@ class ConverterTemplate {
 			if (i > 0) code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		}
 		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
-		returnInstance("\t\t\t", si.constructor, className);
+		returnInstance("\t\t\t", si.constructor, si.factory, className);
 		code.append("\t\t}\n");
 		code.append("\t}\n");
 	}
 
-	private void returnInstance(final String alignment, final ExecutableElement constructor, final String className) throws IOException {
-		code.append(alignment).append("return new ").append(className).append("(");
-		int i = constructor.getParameters().size();
-		for (VariableElement p : constructor.getParameters()) {
+	private void returnInstance(final String alignment, final ExecutableElement constructor, final ExecutableElement factory, final String className) throws IOException {
+		code.append(alignment).append("return ");
+		final List<? extends VariableElement> params;
+		if (factory != null) {
+			code.append(className).append(".").append(factory.getSimpleName()).append("(");
+			params = factory.getParameters();
+		} else {
+			code.append("new ").append(className).append("(");
+			params = constructor.getParameters();
+		}
+		int i = params.size();
+		for (VariableElement p : params) {
 			code.append("_").append(p.getSimpleName()).append("_");
 			i--;
 			if (i > 0) code.append(", ");

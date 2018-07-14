@@ -21,6 +21,7 @@ public class StructInfo {
 	public final String converterWriter;
 	public final List<ExecutableElement> matchingConstructors;
 	public final ExecutableElement constructor;
+	public final ExecutableElement factory;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
 	public final Map<String, String> minifiedNames = new HashMap<String, String>();
 	public final AnnotationMirror annotation;
@@ -46,6 +47,7 @@ public class StructInfo {
 			boolean isJsonObject,
 			List<ExecutableElement> matchingConstructors,
 			ExecutableElement annotatedConstructor,
+			ExecutableElement annotatedFactory,
 			AnnotationMirror annotation,
 			CompiledJson.Behavior onUnknown,
 			CompiledJson.TypeSignature typeSignature,
@@ -62,6 +64,7 @@ public class StructInfo {
 		this.converterReader = null;
 		this.converterWriter = null;
 		this.matchingConstructors = matchingConstructors;
+		this.factory = annotatedFactory;
 		this.annotation = annotation;
 		this.onUnknown = onUnknown;
 		this.typeSignature = typeSignature;
@@ -96,6 +99,7 @@ public class StructInfo {
 		this.converterWriter = writer;
 		this.matchingConstructors = null;
 		this.constructor = null;
+		this.factory = null;
 		this.annotation = null;
 		this.onUnknown = null;
 		this.typeSignature = null;
@@ -108,6 +112,11 @@ public class StructInfo {
 
 	public boolean hasEmptyCtor() {
 		return constructor != null && constructor.getParameters().size() == 0;
+	}
+
+	public boolean canCreateEmptyInstance() {
+		if (factory != null) return factory.getParameters().size() == 0;
+		return hasEmptyCtor();
 	}
 
 	public boolean hasAnnotation() {

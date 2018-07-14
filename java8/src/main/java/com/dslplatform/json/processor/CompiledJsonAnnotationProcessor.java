@@ -29,7 +29,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> NonNullable;
 	private static final Map<String, String> PropertyAlias;
 	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> JsonRequired;
-	private static final Set<String> Constructors;
+	private static final Set<String> Creators;
 	private static final Map<String, String> Indexes;
 	private static final Map<String, OptimizedConverter> InlinedConverters;
 	private static final Map<String, String> Defaults;
@@ -79,9 +79,9 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		JsonRequired.put(
 				"com.fasterxml.jackson.annotation.JsonProperty",
 				Collections.singletonList(new Analysis.AnnotationMapping<>("required()", true)));
-		Constructors = new HashSet<>();
-		Constructors.add("com.fasterxml.jackson.annotation.JsonCreator");
-		Constructors.add("javax.json.bind.annotation.JsonbCreator");
+		Creators = new HashSet<>();
+		Creators.add("com.fasterxml.jackson.annotation.JsonCreator");
+		Creators.add("javax.json.bind.annotation.JsonbCreator");
 		Indexes = new HashMap<>();
 		Indexes.put("com.fasterxml.jackson.annotation.JsonProperty", "index()");
 		InlinedConverters = new HashMap<>();
@@ -207,7 +207,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				NonNullable,
 				PropertyAlias,
 				JsonRequired,
-				Constructors,
+				Creators,
+				Creators,
 				Indexes,
 				unknownTypes,
 				false,
@@ -354,7 +355,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
 
-		if (si.type == ObjectType.CLASS && si.constructor != null && !si.attributes.isEmpty()) {
+		if (si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null) && !si.attributes.isEmpty()) {
 			String objectFormatConverterName = "converter";
 			if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(json);\n");
@@ -374,13 +375,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				String typeAlias = si.deserializeName.isEmpty() ? className : si.deserializeName;
 				code.append("\t\t\t\"").append(typeAlias).append("\",\n");
 				code.append("\t\t\tjson);\n");
-				if (si.hasEmptyCtor()) {
+				if (si.canCreateEmptyInstance()) {
 					code.append("\t\tjson.registerBinder(").append(className).append(".class, description);\n");
 				}
 				code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
 				code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
 			} else {
-				if (si.hasEmptyCtor()) {
+				if (si.canCreateEmptyInstance()) {
 					code.append("\t\tjson.registerBinder(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
 				}
 				code.append("\t\tjson.registerReader(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
@@ -413,19 +414,19 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t}\n");
 
 		if (si.type == ObjectType.CLASS && !si.attributes.isEmpty()) {
-			if (si.hasEmptyCtor()) {
+			if (si.canCreateEmptyInstance()) {
 				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-					converterTemplate.emptyCtorObject(si, className);
+					converterTemplate.emptyObject(si, className);
 				}
 				if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-					converterTemplate.emptyCtorArray(si, className);
+					converterTemplate.emptyArray(si, className);
 				}
-			} else if (si.constructor != null) {
+			} else if (si.constructor != null || si.factory != null) {
 				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-					converterTemplate.fromCtorObject(si, className);
+					converterTemplate.fromObject(si, className);
 				}
 				if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-					converterTemplate.fromCtorArray(si, className);
+					converterTemplate.fromArray(si, className);
 				}
 			}
 		} else if (si.type == ObjectType.ENUM) {

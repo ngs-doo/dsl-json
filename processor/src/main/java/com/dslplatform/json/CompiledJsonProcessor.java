@@ -171,6 +171,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				PropertyAlias,
 				JsonRequired,
 				Collections.<String>emptySet(),
+				Collections.<String>emptySet(),
 				PropertyIndex,
 				UnknownTypes.ERROR,
 				true,

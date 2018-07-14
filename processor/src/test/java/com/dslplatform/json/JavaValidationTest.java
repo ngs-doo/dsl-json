@@ -53,6 +53,29 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void canUseAnnotationOnStaticMethod() {
+		checkValidCompilation(OnStaticMethod.class);
+	}
+
+	@Test
+	public void cantUseAnnotationOnNonstaticMethod() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				19,
+				compileTestCase(OnNonStaticMethod.class),
+				"Factory method in 'com.dslplatform.json.models.OnNonStaticMethod' is annotated with com.dslplatform.json.CompiledJson, but it's not accessible.");
+	}
+
+	@Test
+	public void wrongTypeOnStaticMethod() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				19,
+				compileTestCase(StaticMethodWrongType.class),
+				"Wrong factory result type: 'com.dslplatform.json.models.InterfaceType'. Result must be assignable to 'com.dslplatform.json.models.StaticMethodWrongType'");
+	}
+
+	@Test
 	public void testValidPropertyType() {
 		checkValidCompilation(ValidType.class);
 	}

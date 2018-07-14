@@ -1,7 +1,7 @@
 package com.dslplatform.json.processor;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
-import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
 
@@ -53,13 +53,14 @@ final class Context {
 			else if (a.index == -1) return 1;
 			return a.index - b.index;
 		});
-		if (info.constructor != null && !info.constructor.getParameters().isEmpty()) {
+		final ExecutableElement factoryOrCtor = info.factory != null ? info.factory : info.constructor;
+		if (factoryOrCtor != null && !factoryOrCtor.getParameters().isEmpty()) {
 			int firstNonSet = 0;
 			while (firstNonSet < result.size()) {
 				if (result.get(firstNonSet).index != -1) firstNonSet++;
 				else break;
 			}
-			for (VariableElement ve : info.constructor.getParameters()) {
+			for (VariableElement ve : factoryOrCtor.getParameters()) {
 				int i = firstNonSet;
 				while (i < result.size()) {
 					AttributeInfo attr = result.get(i);
@@ -77,76 +78,4 @@ final class Context {
 		}
 		return result;
 	}
-
-	void addAttributeWriter(final String className, final AttributeInfo attr) throws IOException {
-		final String actualType = attr.type.toString();
-		final String objectType = nonGenericObject(actualType);
-		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
-		code.append("com.dslplatform.json.runtime.Settings.<");
-		code.append(className).append(", ").append(objectType).append(">createEncoder(");
-		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
-		else code.append("c -> c.").append(attr.field.getSimpleName());
-		code.append(", \"").append(attr.id).append("\", json, ");
-		if (attr.converter != null) {
-			code.append(objectType).append(".class, ");
-			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(")");
-		}
-		else if (inline != null) code.append(inline).append(")");
-		else code.append(typeOrClass(objectType, actualType)).append(")");
-	}
-
-	void addArrayWriter(final String className, final AttributeInfo attr) throws IOException {
-		final String actualType = attr.type.toString();
-		final String objectType = nonGenericObject(actualType);
-		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = optimized != null ? optimized.encoder(attr.name, attr.notNull) : null;
-		code.append("com.dslplatform.json.runtime.Settings.<");
-		code.append(className).append(", ").append(objectType).append(">createArrayEncoder(");
-		if (attr.readMethod != null) code.append(className).append("::").append(attr.readMethod.getSimpleName());
-		else code.append("c -> c.").append(attr.field.getSimpleName());
-		code.append(", ");
-		if (attr.converter != null) {
-			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(")");
-		}
-		else if (inline != null) code.append(inline).append(")");
-		else code.append("json ,").append(typeOrClass(objectType, actualType)).append(")");
-	}
-
-	void addAttributeReader(final String className, final AttributeInfo attr, final String alias, final String readValue) throws IOException {
-		final String actualType = attr.type.toString();
-		final String objectType = nonGenericObject(actualType);
-		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
-		code.append("com.dslplatform.json.runtime.Settings.<");
-		code.append(className).append(", ").append(objectType).append(">createDecoder(");
-		code.append(readValue);
-		code.append(", \"").append(alias).append("\", json, ");
-		code.append(attr.fullMatch ? "true" : "false").append(", ");
-		code.append(attr.mandatory ? "true" : "false").append(", ");
-		code.append(Integer.toString(attr.index)).append(", ");
-		code.append(attr.notNull ? "true" : "false").append(", ");
-		if (attr.converter != null) {
-			code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(")");
-		}
-		else if (inline != null) code.append(inline).append(")");
-		else code.append(typeOrClass(objectType, actualType)).append(")");
-	}
-
-	void addArrayReader(final String className, final AttributeInfo attr, final String readValue) throws IOException {
-		final String actualType = attr.type.toString();
-		final String objectType = nonGenericObject(actualType);
-		OptimizedConverter optimized = inlinedConverters.get(actualType);
-		String inline = optimized != null ? optimized.decoder(attr.name, attr.notNull) : null;
-		code.append("com.dslplatform.json.runtime.Settings.<");
-		code.append(className).append(", ").append(objectType).append(">createArrayDecoder(");
-		code.append(readValue);
-		code.append(", ");
-		if (attr.converter != null) {
-			code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(")");
-		}
-		else if (inline != null) code.append(inline).append(")");
-		else code.append("json, ").append(typeOrClass(objectType, actualType)).append(")");
-	}
-
 }
