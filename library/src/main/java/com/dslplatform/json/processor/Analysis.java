@@ -108,8 +108,8 @@ public class Analysis {
 		this.includeExactMethods = includeExactMethods;
 	}
 
-	public List<String> processConverters(Set<? extends Element> converters) {
-		List<String> configurations = new ArrayList<String>();
+	public Map<String, Element> processConverters(Set<? extends Element> converters) {
+		Map<String, Element> configurations = new LinkedHashMap<String, Element>();
 		for (Element el : converters) {
 			findConverters(el);
 			if (el instanceof TypeElement) {
@@ -118,9 +118,9 @@ public class Analysis {
 					for (TypeElement it : getTypeHierarchy((TypeElement) el)) {
 						if (Configuration.class.getName().equals(it.toString())) {
 							if (te.getNestingKind().isNested()) {
-								configurations.add(te.getEnclosingElement().asType().toString() + "$" + te.getSimpleName().toString());
+								configurations.put(te.getEnclosingElement().asType().toString() + "$" + te.getSimpleName().toString(), te);
 							} else {
-								configurations.add(te.asType().toString());
+								configurations.put(te.asType().toString(), te);
 							}
 							break;
 						}

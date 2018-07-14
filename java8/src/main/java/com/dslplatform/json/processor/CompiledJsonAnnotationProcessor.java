@@ -1,7 +1,9 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.Configuration;
 import com.dslplatform.json.DslJson;
+import com.dslplatform.json.JsonConverter;
 import com.dslplatform.json.runtime.Settings;
 
 import javax.annotation.processing.*;
@@ -19,7 +21,6 @@ import java.util.*;
 
 import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.typeOrClass;
-import static java.util.Arrays.*;
 
 @SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter", "com.fasterxml.jackson.annotation.JsonCreator", "javax.json.bind.annotation.JsonbCreator"})
 public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
@@ -64,7 +65,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		NonNullable.put("org.jetbrains.annotations.NotNull", null);
 		NonNullable.put(
 				"javax.json.bind.annotation.JsonbNillable",
-				asList(
+				Arrays.asList(
 						new Analysis.AnnotationMapping<>("value()", null),
 						new Analysis.AnnotationMapping<>("value()", true)));
 		NonNullable.put(
@@ -170,7 +171,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		for (Options option : Options.values()) {
 			options.add(option.value);
 		}
-		options.add(configurationFileName == null ? GRADLE_OPTION_ISOLATING : GRADLE_OPTION_AGGREGATING);
+		//TODO: this is not fully correct. It should be only configurationFileName.isEmpty() but that requires additional configuration
+		options.add(configurationFileName == null || configurationFileName.isEmpty() ? GRADLE_OPTION_ISOLATING : GRADLE_OPTION_AGGREGATING);
 		return options;
 	}
 
@@ -217,7 +219,18 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		Set<? extends Element> jsonbCreators = withJsonb && jsonbCreatorElement != null ? roundEnv.getElementsAnnotatedWith(jsonbCreatorElement) : new HashSet<>();
 		if (!compiledJsons.isEmpty() || !jacksonCreators.isEmpty() || !jsonbCreators.isEmpty()) {
 			Set<? extends Element> jsonConverters = roundEnv.getElementsAnnotatedWith(analysis.converterElement);
-			List<String> configurations = analysis.processConverters(jsonConverters);
+			Map<String, Element> configurations = analysis.processConverters(jsonConverters);
+			if (!configurations.isEmpty() && "".equals(configurationFileName)) {
+				for (Map.Entry<String, Element> kv : configurations.entrySet()) {
+					if (logLevel.isVisible(LogLevel.INFO)) {
+						processingEnv.getMessager().printMessage(
+								Diagnostic.Kind.WARNING,
+								"Configuration file is disabled, but @" + JsonConverter.class.getName() + " which implements " + Configuration.class.getName() + " found: '" + kv.getKey() + "'. Manual converter registration with DslJson is required.",
+								kv.getValue());
+					}
+				}
+				return false;
+			}
 			analysis.processAnnotation(analysis.compiledJsonType, compiledJsons);
 			if (!jacksonCreators.isEmpty() && jacksonCreatorType != null) {
 				analysis.processAnnotation(jacksonCreatorType, jacksonCreators);
@@ -230,7 +243,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				return false;
 			}
 
-			final List<String> generatedFiles = new ArrayList<>();
+			final Map<String, StructInfo> generatedFiles = new HashMap<>();
 			final List<Element> originatingElements = new ArrayList<>();
 
 			for (Map.Entry<String, StructInfo> entry : structs.entrySet()) {
@@ -244,7 +257,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
 						buildCode(writer, entry.getKey(), structInfo, structs, allTypes);
-						generatedFiles.add(classNamePath);
+						generatedFiles.put(classNamePath, structInfo);
 						originatingElements.add(structInfo.element);
 					} catch (IOException e) {
 						processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
@@ -256,13 +269,14 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				}
 			}
 
+			final List<String> allConfigurations = new ArrayList<>(configurations.keySet());
 			if (configurationFileName != null) {
-				final List<String> allConfigurations = new ArrayList<>(configurations);
 				try {
 					FileObject configFile = processingEnv.getFiler()
 							.createSourceFile(configurationFileName, originatingElements.toArray(new Element[0]));
 					try (Writer writer = configFile.openWriter()) {
-						buildRootConfiguration(writer, configurationFileName, generatedFiles);
+						if (!buildRootConfiguration(writer, configurationFileName, generatedFiles, processingEnv))
+							return false;
 						allConfigurations.add(configurationFileName);
 					} catch (Exception e) {
 						processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
@@ -272,15 +286,18 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
 							"Failed creating configuration file " + configurationFileName);
 				}
-				saveToServiceConfigFile(allConfigurations);
+			}
+			if (!allConfigurations.isEmpty()) {
+				originatingElements.addAll(configurations.values());
+				saveToServiceConfigFile(allConfigurations, originatingElements);
 			}
 		}
 		return false;
 	}
 
-	private void saveToServiceConfigFile(List<String> configurations) {
+	private void saveToServiceConfigFile(List<String> configurations, List<Element> elements) {
 		try {
-			FileObject configFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG);
+			FileObject configFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG, elements.toArray(new Element[0]));
 			try (Writer writer = configFile.openWriter()) {
 				for (String conf : configurations) {
 					writer.write(conf);
@@ -460,20 +477,35 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
 	}
 
-	private static void buildRootConfiguration(final Writer code, final String configurationName,
-											   final List<String> configurations) throws IOException {
+	private static boolean buildRootConfiguration(
+			final Writer code,
+			final String configurationName,
+			final Map<String, StructInfo> configurations,
+			final ProcessingEnvironment processingEnv) throws IOException {
 		final int dotIndex = configurationName.lastIndexOf('.');
 		final String generateClassName = configurationName.substring(dotIndex + 1);
-		final String generatePackage = configurationName.substring(0, dotIndex);
-
-		code.append("package ").append(generatePackage).append(";\n\n");
+		final boolean hasNamespace = dotIndex != -1;
+		if (hasNamespace) {
+			code.append("package ").append(configurationName, 0, dotIndex).append(";\n\n");
+		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
-		for (String configuration : configurations) {
-			code.append("\t\tnew ").append(configuration).append("().configure(json);\n");
+		boolean allValid = true;
+		for (Map.Entry<String, StructInfo> kv : configurations.entrySet()) {
+			if (hasNamespace && kv.getKey().indexOf('.') == -1) {
+				processingEnv.getMessager().printMessage(
+						Diagnostic.Kind.ERROR,
+						"Configuration file: '" + configurationName + "' is not in root package, but referenced element does not have a package specified: '"
+								+ kv.getValue().binaryName + "'. Use configuration name without package, eg: 'dsl_json_Annotation_Processor_External_Serialization' to allow access to specified class.",
+						kv.getValue().element,
+						kv.getValue().annotation);
+				allValid = false;
+			}
+			code.append("\t\tnew ").append(kv.getKey()).append("().configure(json);\n");
 		}
 		code.append("\t}\n");
 		code.append("}");
+		return allValid;
 	}
 }

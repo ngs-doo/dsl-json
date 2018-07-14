@@ -202,7 +202,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		Set<? extends Element> compiledJsons = roundEnv.getElementsAnnotatedWith(analysis.compiledJsonElement);
 		if (!compiledJsons.isEmpty()) {
 			Set<? extends Element> jsonConverters = roundEnv.getElementsAnnotatedWith(analysis.converterElement);
-			List<String> configurations = analysis.processConverters(jsonConverters);
+			Map<String, Element> configurations = analysis.processConverters(jsonConverters);
 			analysis.processAnnotation(analysis.compiledJsonType, compiledJsons);
 			Map<String, StructInfo> structs = analysis.analyze();
 			CompileOptions options = new CompileOptions();
@@ -229,7 +229,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				writer.close();
 				writer = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", CONFIG).openWriter();
 				writer.write(className);
-				for (String conf : configurations) {
+				for (String conf : configurations.keySet()) {
 					writer.write('\n');
 					writer.write(conf);
 				}
