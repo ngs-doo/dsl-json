@@ -299,7 +299,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		SourceVersion latest = SourceVersion.latest();
 		if ("RELEASE_9".equals(latest.name())) {
 			return latest;
-		} else if ("RELEASE_10".equals(latest.name())) {
+		} else if (latest.name().length() > "RELEASE_9".length()) {
 			return latest;
 		}
 		return SourceVersion.RELEASE_8;
@@ -307,18 +307,20 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	static String findConverterName(StructInfo structInfo) {
 		int dotIndex = structInfo.binaryName.lastIndexOf('.');
-		String packageName = structInfo.binaryName.substring(0, dotIndex);
 		String className = structInfo.binaryName.substring(dotIndex + 1);
+		if (dotIndex == -1) return String.format("_%s_DslJsonConverter", className);
+		String packageName = structInfo.binaryName.substring(0, dotIndex);
 		Package packageClass = Package.getPackage(packageName);
-		boolean isPackageSealed = packageClass != null && packageClass.isSealed();
-		return String.format("%s%s._%s_DslJsonConverter", isPackageSealed ? "dsl_json." : "", packageName, className);
+		boolean useDslPackage = packageClass != null && packageClass.isSealed() || structInfo.binaryName.startsWith("java.");
+		return String.format("%s%s._%s_DslJsonConverter", useDslPackage ? "dsl_json." : "", packageName, className);
 	}
 
-	private static void buildCode(final Writer code,
-								  final String className,
-								  final StructInfo si,
-								  final Map<String, StructInfo> structs,
-								  final Set<String> knownTypes) throws IOException {
+	private static void buildCode(
+			final Writer code,
+			final String className,
+			final StructInfo si,
+			final Map<String, StructInfo> structs,
+			final Set<String> knownTypes) throws IOException {
 		final Context context = new Context(code, InlinedConverters, Defaults, structs, knownTypes);
 		final ConverterTemplate converterTemplate = new ConverterTemplate(context);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
@@ -326,9 +328,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		final String generateFullClassName = findConverterName(si);
 		final int dotIndex = generateFullClassName.lastIndexOf('.');
 		final String generateClassName = generateFullClassName.substring(dotIndex + 1, generateFullClassName.length());
-		final String generatePackacge = generateFullClassName.substring(0, dotIndex);
-
-		code.append("package ").append(generatePackacge).append(";\n\n");
+		if (dotIndex != -1) {
+			final String generatePackage = generateFullClassName.substring(0, dotIndex);
+			code.append("package ").append(generatePackage).append(";\n\n");
+		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
 		code.append("\tprivate static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName(\"UTF-8\");\n");
 		code.append("\t@Override\n");

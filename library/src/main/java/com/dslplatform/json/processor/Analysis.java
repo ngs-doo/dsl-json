@@ -19,7 +19,7 @@ public class Analysis {
 	private final AnnotationUsage annotationUsage;
 	private final LogLevel logLevel;
 	private final UnknownTypes unknownTypes;
-	private final boolean mustHaveEmptyCtor;
+	private final boolean onlyBasicFeatures;
 	private final boolean includeFields;
 	private final boolean includeBeanMethods;
 	private final boolean includeExactMethods;
@@ -78,7 +78,7 @@ public class Analysis {
 			Set<String> alternativeCtors,
 			Map<String, String> alternativeIndex,
 			UnknownTypes unknownTypes,
-			boolean mustHaveEmptyCtor,
+			boolean onlyBasicFeatures,
 			boolean includeFields,
 			boolean includeBeanMethods,
 			boolean includeExactMethods) {
@@ -102,7 +102,7 @@ public class Analysis {
 		this.alternativeCtors = alternativeCtors == null ? new HashSet<String>() : alternativeCtors;
 		this.alternativeIndex = alternativeIndex == null ? new HashMap<String, String>() : alternativeIndex;
 		this.unknownTypes = unknownTypes == null ? UnknownTypes.ERROR : unknownTypes;
-		this.mustHaveEmptyCtor = mustHaveEmptyCtor;
+		this.onlyBasicFeatures = onlyBasicFeatures;
 		this.includeFields = includeFields;
 		this.includeBeanMethods = includeBeanMethods;
 		this.includeExactMethods = includeExactMethods;
@@ -290,14 +290,14 @@ public class Analysis {
 					}
 				}
 			}
-			if (info.type == ObjectType.CLASS && mustHaveEmptyCtor && info.converter == null && !info.hasEmptyCtor()) {
+			if (info.type == ObjectType.CLASS && onlyBasicFeatures && info.converter == null && !info.hasEmptyCtor()) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
 						"'" + className + "' requires public no argument constructor" + info.pathDescription(),
 						info.element,
 						info.annotation);
-			} else if (info.type == ObjectType.CLASS && !mustHaveEmptyCtor && !info.hasEmptyCtor() && info.converter == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
+			} else if (info.type == ObjectType.CLASS && !onlyBasicFeatures && !info.hasEmptyCtor() && info.converter == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
@@ -380,8 +380,7 @@ public class Analysis {
 				jsonWriterField = field;
 			}
 		}
-		//TODO: better name...
-		if (!mustHaveEmptyCtor) {
+		if (!onlyBasicFeatures) {
 			for (ExecutableElement method : ElementFilter.methodsIn(converter.getEnclosedElements())) {
 				if ("JSON_READER".equals(method.getSimpleName().toString()) || "getJSON_READER".equals(method.getSimpleName().toString())) {
 					jsonReaderMethod = method;
@@ -390,7 +389,7 @@ public class Analysis {
 				}
 			}
 		}
-		String allowed = mustHaveEmptyCtor ? "field" : "field/method";
+		String allowed = onlyBasicFeatures ? "field" : "field/method";
 		if (!converter.getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
@@ -412,10 +411,10 @@ public class Analysis {
 					"Specified converter: '" + converter.asType() + "' can't be a nested member. Only public static nested classes are supported",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (converter.getQualifiedName().contentEquals(converter.getSimpleName())
+		} else if (onlyBasicFeatures && (converter.getQualifiedName().contentEquals(converter.getSimpleName())
 				|| converter.getNestingKind().isNested() && converter.getModifiers().contains(Modifier.STATIC)
 				&& converter.getEnclosingElement() instanceof TypeElement
-				&& ((TypeElement) converter.getEnclosingElement()).getQualifiedName().contentEquals(converter.getEnclosingElement().getSimpleName())) {
+				&& ((TypeElement) converter.getEnclosingElement()).getQualifiedName().contentEquals(converter.getEnclosingElement().getSimpleName()))) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
@@ -501,7 +500,7 @@ public class Analysis {
 					}
 				}
 				if (includeFields) {
-					for (Map.Entry<String, AccessElements> f : getPublicFields(info.element, mustHaveEmptyCtor, info.constructor).entrySet()) {
+					for (Map.Entry<String, AccessElements> f : getPublicFields(info.element, onlyBasicFeatures, info.constructor).entrySet()) {
 						if (!info.attributes.containsKey(f.getKey()) || info.annotation != null) {
 							analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path);
 						}
@@ -664,10 +663,10 @@ public class Analysis {
 					errorMessge + ", therefore '" + element.asType() + "' can't be a nested member. Only static nested classes are supported.",
 					element,
 					annotation);
-		} else if (element.getQualifiedName().contentEquals(element.getSimpleName())
+		} else if (onlyBasicFeatures && (element.getQualifiedName().contentEquals(element.getSimpleName())
 				|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
 				&& element.getEnclosingElement() instanceof TypeElement
-				&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName())) {
+				&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName()))) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
@@ -762,11 +761,10 @@ public class Analysis {
 			return "must be public";
 		} else if (target.getNestingKind().isNested() && !target.getModifiers().contains(Modifier.STATIC)) {
 			return "can't be a nested member. Only public static nested classes are supported";
-		} else if (target.getQualifiedName().contentEquals(target.getSimpleName())
+		} else if (onlyBasicFeatures && (target.getQualifiedName().contentEquals(target.getSimpleName())
 				|| target.getNestingKind().isNested() && target.getModifiers().contains(Modifier.STATIC)
 				&& target.getEnclosingElement() instanceof TypeElement
-				&& ((TypeElement) target.getEnclosingElement()).getQualifiedName().contentEquals(target.getEnclosingElement().getSimpleName())) {
-			//TODO: create converters in root package
+				&& ((TypeElement) target.getEnclosingElement()).getQualifiedName().contentEquals(target.getEnclosingElement().getSimpleName()))) {
 			return "is defined without a package name and cannot be accessed";
 		} else if (target.getKind() == ElementKind.INTERFACE || target.getModifiers().contains(Modifier.ABSTRACT)) {
 			return "must be a concrete type";
@@ -1047,7 +1045,7 @@ public class Analysis {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (!mustHaveEmptyCtor && ctorArg != null && isCompatibileType(ctorArg.asType(), kv.getValue().getReturnType())) {
+			} else if (!onlyBasicFeatures && ctorArg != null && isCompatibileType(ctorArg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), ctorArg, annotation));
 			}
 		}
@@ -1092,7 +1090,7 @@ public class Analysis {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (!mustHaveEmptyCtor && ctorArg != null && isCompatibileType(ctorArg.asType(), kv.getValue().getReturnType())) {
+			} else if (!onlyBasicFeatures && ctorArg != null && isCompatibileType(ctorArg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), ctorArg, annotation));
 			}
 		}

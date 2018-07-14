@@ -95,6 +95,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	private final int maxStringSize;
 	protected final ThreadLocal<JsonWriter> localWriter;
 	protected final ThreadLocal<JsonReader> localReader;
+	protected final List<ClassLoader> classLoaders = new ArrayList<ClassLoader>();
 
 	public interface Fallback<TContext> {
 		void serialize(Object instance, OutputStream stream) throws IOException;
@@ -123,7 +124,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private boolean allowArrayFormat;
 		private StringCache keyCache = new SimpleStringCache();
 		private StringCache valuesCache;
-		private boolean withServiceLoader;
 		private int fromServiceLoader;
 		private JsonReader.DoublePrecision doublePrecision = JsonReader.DoublePrecision.DEFAULT;
 		private JsonReader.UnknownNumberParsing unknownNumbers = JsonReader.UnknownNumberParsing.LONG_AND_BIGDECIMAL;
@@ -133,6 +133,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
 		private final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
 		private final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
+		private final Set<ClassLoader> classLoaders = new HashSet<ClassLoader>();
 
 		/**
 		 * Pass in context for DslJson.
@@ -298,7 +299,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		public Settings<TContext> includeServiceLoader(ClassLoader loader) {
 			if (loader == null) throw new IllegalArgumentException("loader can't be null");
-			withServiceLoader = true;
+			classLoaders.add(loader);
 			for (Configuration c : ServiceLoader.load(Configuration.class, loader)) {
 				boolean hasConfiguration = false;
 				Class<?> manifest = c.getClass();
@@ -388,7 +389,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 		private Settings<TContext> with(Iterable<Configuration> confs) {
 			if (confs != null) {
-				withServiceLoader = true;
 				for (Configuration c : confs)
 					configurations.add(c);
 			}
@@ -471,6 +471,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.writerFactories.addAll(settings.writerFactories);
 		this.readerFactories.addAll(settings.readerFactories);
 		this.binderFactories.addAll(settings.binderFactories);
+		this.classLoaders.addAll(settings.classLoaders);
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
 		registerReader(boolean.class, BoolConverter.READER);
@@ -553,7 +554,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		for (Configuration serializer : settings.configurations) {
 			serializer.configure(this);
 		}
-		if (settings.withServiceLoader && settings.fromServiceLoader == 0) {
+		if (!settings.classLoaders.isEmpty() && settings.fromServiceLoader == 0) {
 			//TODO: workaround common issue with failed services registration. try to load common external name if exists
 			loadDefaultConverters(this, "dsl_json_Annotation_Processor_External_Serialization");
 			loadDefaultConverters(this, "dsl_json.json.ExternalSerialization");
@@ -1053,26 +1054,30 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	private boolean tryFindAndRegisterExternalConverter(final Class<?> manifest) {
-		String converterClassName = resolveExternalConverterClassName(manifest.getName());
-		if (converterClassName == null) {
+		List<String> converterClassNames = resolveExternalConverterClassName(manifest.getName());
+		if (converterClassNames == null) {
 			return false;
 		}
-		try {
-			Class converterClass = Class.forName(converterClassName);
-			Configuration converter = (Configuration) converterClass.newInstance();
-			converter.configure(this);
-			return true;
-		} catch (ClassNotFoundException ignored) {
-		} catch (IllegalAccessException ignored) {
-		} catch (InstantiationException ignored) {
+		for(ClassLoader cl : classLoaders) {
+			for (String ccn : converterClassNames) {
+				try {
+					Class<?> converterClass = cl.loadClass(ccn);
+					Configuration converter = (Configuration) converterClass.newInstance();
+					converter.configure(this);
+					return true;
+				} catch (ClassNotFoundException ignored) {
+				} catch (IllegalAccessException ignored) {
+				} catch (InstantiationException ignored) {
+				}
+			}
 		}
 		return false;
 	}
 
-	private String resolveExternalConverterClassName(final String fullClassName) {
+	private List<String> resolveExternalConverterClassName(final String fullClassName) {
 		int dotIndex = fullClassName.lastIndexOf('.');
 		if (dotIndex == -1) {
-			return null;
+			return Collections.singletonList(String.format("_%s_DslJsonConverter", fullClassName));
 		}
 		String packageName = fullClassName.substring(0, dotIndex);
 		Package classPackage = Package.getPackage(packageName);
@@ -1080,8 +1085,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			return null;
 		}
 		String className = fullClassName.substring(dotIndex + 1);
-		return String.format("%s%s._%s_DslJsonConverter",
-				classPackage.isSealed() ? "dsl_json." : "", packageName, className);
+		return Arrays.asList(
+				String.format("dsl_json.%s._%s_DslJsonConverter", packageName, className),
+				String.format("%s._%s_DslJsonConverter", packageName, className));
 	}
 
 	/**
