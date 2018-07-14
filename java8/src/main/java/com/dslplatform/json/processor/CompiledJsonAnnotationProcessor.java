@@ -496,7 +496,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			if (hasNamespace && kv.getKey().indexOf('.') == -1) {
 				processingEnv.getMessager().printMessage(
 						Diagnostic.Kind.ERROR,
-						"Configuration file: '" + configurationName + "' is not in root package, but referenced element does not have a package specified: '"
+						"Configuration file: '" + configurationName + "' is not in the root package, but referenced element does not have a package specified: '"
 								+ kv.getValue().binaryName + "'. Use configuration name without package, eg: 'dsl_json_Annotation_Processor_External_Serialization' to allow access to specified class.",
 						kv.getValue().element,
 						kv.getValue().annotation);

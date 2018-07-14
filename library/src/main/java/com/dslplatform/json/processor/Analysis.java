@@ -640,6 +640,16 @@ public class Analysis {
 		}
 	}
 
+	private boolean requiresPublic(Element element) {
+		if (onlyBasicFeatures) return true;
+		final String name = element.asType().toString();
+		if (name.startsWith("java.")) return true; //TODO: maybe some other namespaces !?
+		final PackageElement pkg = elements.getPackageOf(element);
+		if (pkg == null) return false;
+		final Package packageClass = Package.getPackage(pkg.getQualifiedName().toString());
+		return packageClass != null && packageClass.isSealed();
+	}
+
 	private void findStructs(Element el, DeclaredType discoveredBy, String errorMessge, Stack<String> path) {
 		if (!(el instanceof TypeElement)) return;
 		String typeName = el.asType().toString();
@@ -649,13 +659,20 @@ public class Analysis {
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
 		boolean isJsonObject = isJsonObject(element);
 		final AnnotationMirror annotation = scanClassForAnnotation(element, discoveredBy);
-		if (!element.getModifiers().contains(Modifier.PUBLIC)) {
+		if (element.getModifiers().contains(Modifier.PRIVATE)) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore '" + element.asType() + "' must be public ",
+					errorMessge + ", therefore '" + element.asType() + "' can't be private ",
 					element,
 					annotation);
+		} else if (requiresPublic(element) && !element.getModifiers().contains(Modifier.PUBLIC)) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						errorMessge + ", therefore '" + element.asType() + "' must be public ",
+						element,
+						annotation);
 		} else if (element.getNestingKind().isNested() && !element.getModifiers().contains(Modifier.STATIC)) {
 			hasError = true;
 			messager.printMessage(
@@ -671,6 +688,13 @@ public class Analysis {
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessge + ", but class '" + element.getQualifiedName() + "' is defined without a package name and cannot be accessed.",
+					element,
+					annotation);
+		} else if (element.getNestingKind().isNested() && requiresPublic(element.getEnclosingElement()) && !element.getEnclosingElement().getModifiers().contains(Modifier.PUBLIC)) {
+			hasError = true;
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					errorMessge + ", therefore '" + element.getEnclosingElement().asType() + "' must be public ",
 					element,
 					annotation);
 		} else {
@@ -757,10 +781,14 @@ public class Analysis {
 	}
 
 	private String validateDeserializeAs(TypeElement source, TypeElement target) {
-		if (!target.getModifiers().contains(Modifier.PUBLIC)) {
+		if (target.getModifiers().contains(Modifier.PRIVATE)) {
+			return "can't be private";
+		} else if (requiresPublic(target) && !target.getModifiers().contains(Modifier.PUBLIC)) {
 			return "must be public";
 		} else if (target.getNestingKind().isNested() && !target.getModifiers().contains(Modifier.STATIC)) {
 			return "can't be a nested member. Only public static nested classes are supported";
+		} else if (target.getNestingKind().isNested() && !target.getModifiers().contains(Modifier.PUBLIC)) {
+			return "must be public when nested in another class";
 		} else if (onlyBasicFeatures && (target.getQualifiedName().contentEquals(target.getSimpleName())
 				|| target.getNestingKind().isNested() && target.getModifiers().contains(Modifier.STATIC)
 				&& target.getEnclosingElement() instanceof TypeElement
@@ -785,7 +813,9 @@ public class Analysis {
 		}
 		List<ExecutableElement> matchingCtors = new ArrayList<ExecutableElement>();
 		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
-			if (constructor.getModifiers().contains(Modifier.PUBLIC)) {
+			if (!constructor.getModifiers().contains(Modifier.PRIVATE)
+					&& !constructor.getModifiers().contains(Modifier.PROTECTED)
+					&& (!requiresPublic(element) || constructor.getModifiers().contains(Modifier.PUBLIC))) {
 				matchingCtors.add(constructor);
 			}
 		}
@@ -801,11 +831,13 @@ public class Analysis {
 		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
 			AnnotationMirror discAnn = getAnnotation(constructor, discoveredBy);
 			if (discAnn != null) {
-				if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+				if (constructor.getModifiers().contains(Modifier.PRIVATE)
+						|| constructor.getModifiers().contains(Modifier.PROTECTED)
+						|| requiresPublic(element) && !constructor.getModifiers().contains(Modifier.PUBLIC)) {
 					hasError = true;
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
-							"Constructor in '" + element.asType() + "' is annotated with " + discoveredBy + ", but it's not public.",
+							"Constructor in '" + element.asType() + "' is annotated with " + discoveredBy + ", but it's not accessible.",
 							constructor,
 							discAnn);
 				}

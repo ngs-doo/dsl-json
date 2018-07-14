@@ -5,7 +5,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-public class PackageTest {
+public class RootPackageTest {
 
 	private final DslJson<Object> dslJson = new DslJson<>();
 

@@ -49,11 +49,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 	@Test
 	public void testNonPublicClass() {
-		assertCompilationReturned(
-				Diagnostic.Kind.ERROR,
-				3,
-				compileTestCase(NonPublicClass.class),
-				"therefore 'com.dslplatform.json.NonPublicClass' must be public");
+		checkValidCompilation(NonPublicClass.class);
 	}
 
 	@Test
