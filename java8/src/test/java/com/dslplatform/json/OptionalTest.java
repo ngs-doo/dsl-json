@@ -1,6 +1,7 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -23,8 +24,8 @@ public class OptionalTest {
 		public Optional<Optional<OptionalDouble>> optOptOptDouble = Optional.empty();
 	}
 
-	private final DslJson<Object> jsonFull = new DslJson<Object>(Settings.withRuntime());
-	private final DslJson<Object> jsonMinimal = new DslJson<Object>(Settings.withRuntime().skipDefaultValues(true));
+	private final DslJson<Object> jsonFull = new DslJson<>(Settings.withRuntime().with(new ConfigureJava8()));
+	private final DslJson<Object> jsonMinimal = new DslJson<>(Settings.withRuntime().with(new ConfigureJava8()).skipDefaultValues(true));
 	private final DslJson<Object>[] dslJsons = new DslJson[] { jsonFull, jsonMinimal };
 
 	@Test
@@ -76,5 +77,33 @@ public class OptionalTest {
 		baos.reset();
 		jsonMinimal.serialize(owu, baos);
 		Assert.assertEquals("{\"something\":0}", baos.toString());
+	}
+
+	public static class Opt<T> {
+		public final Optional<Integer> x;
+		public final Optional<T> s;
+		public final Optional<Opt<T>> self;
+
+		public Opt(Optional<Integer> x, Optional<T> s, Optional<Opt<T>> self) {
+			this.x = x;
+			this.s = s;
+			this.self = self;
+		}
+	}
+
+	@Test
+	public void checkOptional() throws IOException {
+		for (DslJson<Object> json : dslJsons) {
+			Opt<String> im1 = new Opt<>(Optional.of(5), Optional.of("abc"), Optional.empty());
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			json.serialize(im1, baos);
+			ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+			Opt<String> im2 = (Opt<String>) json.deserialize(new TypeDefinition<Opt<String>>(){}.type, bais);
+			Assert.assertEquals(im2.x, im1.x);
+			Assert.assertEquals(im2.x.get(), im1.x.get());
+			Assert.assertEquals(im2.s, im1.s);
+			Assert.assertEquals(im2.s.get(), im1.s.get());
+			Assert.assertEquals(im2.self, im1.self);
+		}
 	}
 }

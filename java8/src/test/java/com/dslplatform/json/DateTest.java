@@ -114,7 +114,7 @@ public class DateTest {
 	public void nineDigitsInAClass() throws IOException {
 		Nine n = new Nine();
 		n.at = OffsetDateTime.parse("1930-09-04T00:03:48.750431006Z");
-		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime());
+		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().with(new ConfigureJava8()));
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(n, os);;
 		Assert.assertEquals("{\"at\":\"1930-09-04T00:03:48.750431006Z\"}", os.toString());

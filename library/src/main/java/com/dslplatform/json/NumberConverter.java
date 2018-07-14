@@ -206,6 +206,25 @@ public abstract class NumberConverter {
 			return reader.wasNull() ? null : deserializeNumber(reader);
 		}
 	};
+	public static final JsonWriter.WriteObject<Byte> ByteWriter = new JsonWriter.WriteObject<Byte>() {
+		@Override
+		public void write(JsonWriter writer, Byte value) {
+			if (value == null) writer.writeNull();
+			else NumberConverter.serialize(value, writer);
+		}
+	};
+	public static final JsonReader.ReadObject<Byte> ByteReader = new JsonReader.ReadObject<Byte>() {
+		@Override
+		public Byte read(JsonReader reader) throws IOException {
+			return (byte)NumberConverter.deserializeInt(reader);
+		}
+	};
+	static final JsonReader.ReadObject<Byte> NullableByteReader = new JsonReader.ReadObject<Byte>() {
+		@Override
+		public Byte read(JsonReader reader) throws IOException {
+			return reader.wasNull() ? null : (byte)NumberConverter.deserializeInt(reader);
+		}
+	};
 
 	static {
 		for (int i = 0; i < DIGITS.length; i++) {
