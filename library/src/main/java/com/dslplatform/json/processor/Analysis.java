@@ -508,14 +508,19 @@ public class Analysis {
 
 	public List<TypeElement> getTypeHierarchy(TypeElement element) {
 		List<TypeElement> result = new ArrayList<TypeElement>();
+		getAllTypes(element, result, new HashSet<TypeElement>());
+		return result;
+	}
+
+	private void getAllTypes(TypeElement element, List<TypeElement> result, Set<TypeElement> processed) {
+		if (!processed.add(element) || element.getQualifiedName().contentEquals("java.lang.Object")) return;
 		result.add(element);
 		for (TypeMirror type : types.directSupertypes(element.asType())) {
 			Element current = types.asElement(type);
 			if (current instanceof TypeElement) {
-				result.add((TypeElement) current);
+				getAllTypes((TypeElement) current, result, processed);
 			}
 		}
-		return result;
 	}
 
 	public void findRelatedReferences() {
@@ -1237,17 +1242,25 @@ public class Analysis {
 	public void findImplementations(Collection<StructInfo> structs) {
 		for (StructInfo current : structs) {
 			if (current.type == ObjectType.MIXIN) {
-				String iface = current.element.asType().toString();
+				String signature = current.element.asType().toString();
 				for (StructInfo info : structs) {
 					if (info.type == ObjectType.CLASS) {
-						for (TypeMirror type : types.directSupertypes(info.element.asType())) {
-							if (type.toString().equals(iface)) {
-								current.implementations.add(info);
-								break;
-							}
-						}
+						checkParentSignatures(info, info.element, current.implementations, signature, new HashSet<TypeElement>());
 					}
 				}
+			}
+		}
+	}
+
+	private void checkParentSignatures(StructInfo info, TypeElement element, Set<StructInfo> implementations, String signature, Set<TypeElement> processed) {
+		if (!processed.add(element) || element.getQualifiedName().contentEquals("java.lang.Object")) return;
+		if (element.asType().toString().equals(signature)) {
+			implementations.add(info);
+		}
+		for (TypeMirror type : types.directSupertypes(element.asType())) {
+			Element current = types.asElement(type);
+			if (current instanceof TypeElement) {
+				checkParentSignatures(info, (TypeElement) current, implementations, signature, processed);
 			}
 		}
 	}

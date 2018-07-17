@@ -468,6 +468,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void immutableAndInheritance() {
+		checkValidCompilation(ImmutableHierarchy.Father.class);
+	}
+
+	@Test
 	public void customCtorName() {
 		checkValidCompilation(CustomCtorPropertyName.class);
 	}
