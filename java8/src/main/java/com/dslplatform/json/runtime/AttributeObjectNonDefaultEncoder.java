@@ -3,19 +3,18 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.JsonWriter;
 
 import java.nio.charset.Charset;
-import java.util.function.Function;
 
 class AttributeObjectNonDefaultEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
 
-	private final Function<T, R> read;
+	private final Settings.Function<T, R> read;
 	private final byte[] quotedName;
 	private final JsonWriter.WriteObject<R> encoder;
 	private final R defaultValue;
 
 	AttributeObjectNonDefaultEncoder(
-			final Function<T, R> read,
+			final Settings.Function<T, R> read,
 			final String name,
 			final JsonWriter.WriteObject<R> encoder,
 			final R defaultValue) {

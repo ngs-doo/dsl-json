@@ -5,18 +5,17 @@ import com.dslplatform.json.JsonWriter;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.function.Function;
 
 public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, JsonReader.BindObject<B> {
 
 	private final Type manifest;
 	private final InstanceFactory<B> newInstance;
-	private final Function<B, T> finalize;
+	private final Settings.Function<B, T> finalize;
 	private final boolean isEmpty;
 	private final JsonWriter.WriteObject[] encoders;
 	private final JsonReader.BindObject[] decoders;
 
-	private static final Function identity = new Function() {
+	private static final Settings.Function identity = new Settings.Function() {
 		@Override
 		public Object apply(Object t) {
 			return t;
@@ -34,7 +33,7 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 	public ArrayFormatDescription(
 			final Type manifest,
 			final InstanceFactory<B> newInstance,
-			final Function<B, T> finalize,
+			final Settings.Function<B, T> finalize,
 			final JsonWriter.WriteObject[] encoders,
 			final JsonReader.BindObject[] decoders) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");

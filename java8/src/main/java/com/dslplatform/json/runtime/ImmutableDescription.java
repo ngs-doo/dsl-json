@@ -5,13 +5,12 @@ import com.dslplatform.json.JsonWriter;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.function.Function;
 
 public final class ImmutableDescription<T> extends WriteDescription<T> implements JsonReader.ReadObject<T> {
 
 	private final Type manifest;
 	private final Object[] defArgs;
-	private final Function<Object[], T> newInstance;
+	private final Settings.Function<Object[], T> newInstance;
 	private final DecodePropertyInfo<JsonReader.ReadObject>[] decoders;
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
@@ -20,7 +19,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	public ImmutableDescription(
 			final Class<T> manifest,
 			final Object[] defArgs,
-			final Function<Object[], T> newInstance,
+			final Settings.Function<Object[], T> newInstance,
 			final JsonWriter.WriteObject[] encoders,
 			final DecodePropertyInfo<JsonReader.ReadObject>[] decoders,
 			final boolean alwaysSerialize,
@@ -31,7 +30,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	ImmutableDescription(
 			final Type manifest,
 			final Object[] defArgs,
-			final Function<Object[], T> newInstance,
+			final Settings.Function<Object[], T> newInstance,
 			final JsonWriter.WriteObject[] encoders,
 			final DecodePropertyInfo<JsonReader.ReadObject>[] decoders,
 			final boolean alwaysSerialize,

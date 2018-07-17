@@ -8,7 +8,6 @@ import com.dslplatform.json.SerializationException;
 import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.function.Function;
 
 public abstract class ImmutableAnalyzer {
 
@@ -227,7 +226,7 @@ public abstract class ImmutableAnalyzer {
 		final ImmutableDescription<T> converter = new ImmutableDescription<T>(
 				manifest,
 				defArgs,
-				new Function<Object[], T>() {
+				new Settings.Function<Object[], T>() {
 					@Override
 					public T apply(Object[] args) {
 						try {

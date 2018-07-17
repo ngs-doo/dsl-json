@@ -6,17 +6,16 @@ import com.dslplatform.json.SerializationException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.function.BiConsumer;
 
 class LazyAttributeDecoder<T, P> implements JsonReader.BindObject<T> {
 
-	private final BiConsumer<T, P> write;
+	private final Settings.BiConsumer<T, P> write;
 	private JsonReader.ReadObject<P> decoder;
 	private final DslJson json;
 	private final Type type;
 
 	LazyAttributeDecoder(
-			final BiConsumer<T, P> write,
+			final Settings.BiConsumer<T, P> write,
 			final DslJson json,
 			final Type type) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");

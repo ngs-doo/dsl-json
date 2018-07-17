@@ -305,7 +305,7 @@ object ScalaClassAnalyzer {
         val converter = new ImmutableDescription[AnyRef](
           manifest,
           defArgs,
-          new function.Function[Array[AnyRef], AnyRef] {
+          new Settings.Function[Array[AnyRef], AnyRef] {
             override def apply(args: Array[AnyRef]): AnyRef = ctor.newInstance(args:_*)
           },
           writeProps,
@@ -330,7 +330,7 @@ object ScalaClassAnalyzer {
     } else None
   }
 
-  private class GetProductIndex(index: Int) extends function.Function[Product, Any] {
+  private class GetProductIndex(index: Int) extends Settings.Function[Product, Any] {
     override def apply(t: Product): Any = t.productElement(index)
   }
 

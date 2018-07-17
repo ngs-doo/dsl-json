@@ -2,15 +2,13 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonWriter;
 
-import java.util.function.Function;
-
 class AttributeArrayEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
-	private final Function<T, R> read;
+	private final Settings.Function<T, R> read;
 	private final JsonWriter.WriteObject<R> encoder;
 
 	AttributeArrayEncoder(
-			final Function<T, R> read,
+			final Settings.Function<T, R> read,
 			final JsonWriter.WriteObject<R> encoder) {
 		if (read == null) throw new IllegalArgumentException("read can't be null");
 		if (encoder == null) throw new IllegalArgumentException("encoder can't be null");

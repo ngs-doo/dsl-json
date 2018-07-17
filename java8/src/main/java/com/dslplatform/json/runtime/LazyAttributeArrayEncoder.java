@@ -5,17 +5,16 @@ import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.SerializationException;
 
 import java.lang.reflect.Type;
-import java.util.function.Function;
 
 class LazyAttributeArrayEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
-	private final Function<T, R> read;
+	private final Settings.Function<T, R> read;
 	private JsonWriter.WriteObject<R> encoder;
 	private final DslJson json;
 	private final Type type;
 
 	LazyAttributeArrayEncoder(
-			final Function<T, R> read,
+			final Settings.Function<T, R> read,
 			final DslJson json,
 			final Type type) {
 		if (read == null) throw new IllegalArgumentException("read can't be null");

@@ -5,8 +5,6 @@ import com.dslplatform.json.*;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 public abstract class Settings {
 	private static final DslJson.ConverterFactory<JsonReader.ReadObject> UNKNOWN_READER = new DslJson.ConverterFactory<JsonReader.ReadObject>() {
@@ -20,6 +18,13 @@ public abstract class Settings {
 			} : null;
 		}
 	};
+
+	public interface Function<TIn, TOut> {
+		TOut apply(TIn arguments);
+	}
+	public interface BiConsumer<T, U> {
+		void accept(T t, U u);
+	}
 
 	static boolean isKnownType(final Type type) {
 		if (type == Object.class) return false;

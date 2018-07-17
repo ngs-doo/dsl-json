@@ -6,13 +6,12 @@ import com.dslplatform.json.SerializationException;
 
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
-import java.util.function.Function;
 
 class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
 
-	private final Function<T, R> read;
+	private final Settings.Function<T, R> read;
 	private final byte[] quotedName;
 	private final boolean alwaysSerialize;
 	private JsonWriter.WriteObject<R> encoder;
@@ -21,7 +20,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 	private final Type type;
 
 	LazyAttributeObjectEncoder(
-			final Function<T, R> read,
+			final Settings.Function<T, R> read,
 			final String name,
 			final DslJson json,
 			final Type type) {

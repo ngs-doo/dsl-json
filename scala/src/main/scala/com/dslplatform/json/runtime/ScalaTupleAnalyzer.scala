@@ -68,7 +68,7 @@ object ScalaTupleAnalyzer {
     }
     val writeProps = arguments.map { ti =>
       Settings.createArrayEncoder[Product, Any](
-        new function.Function[Product, Any] {
+        new Settings.Function[Product, Any] {
           override def apply(p: Product): Any = p.productElement(ti.index)
         },
         json,
@@ -78,7 +78,7 @@ object ScalaTupleAnalyzer {
       if (ti.isUnknown || json.tryFindWriter(ti.rawType) != null && json.tryFindReader(ti.rawType) != null) {
         val isNullable = ti.rawType.getTypeName.startsWith("scala.Option<") || ti.rawType.getTypeName == "scala.Option"
         val decoder = Settings.createArrayDecoder[Array[AnyRef], AnyRef](
-          new java.util.function.BiConsumer[Array[AnyRef], AnyRef] {
+          new Settings.BiConsumer[Array[AnyRef], AnyRef] {
             override def accept(
               arr: Array[AnyRef],
               u: AnyRef): Unit = arr(ti.index) = u
@@ -98,7 +98,7 @@ object ScalaTupleAnalyzer {
       val converter = new ArrayFormatDescription[Array[AnyRef], Product](
         manifest,
         () => new Array[AnyRef](params.size),
-        new function.Function[Array[AnyRef], Product] {
+        new Settings.Function[Array[AnyRef], Product] {
           override def apply(args: Array[AnyRef]): Product = ctor.newInstance(args: _*)
         },
         writeProps,

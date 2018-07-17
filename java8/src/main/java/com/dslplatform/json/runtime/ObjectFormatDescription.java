@@ -6,19 +6,18 @@ import com.dslplatform.json.JsonWriter;
 
 import java.io.IOException;
 import java.lang.reflect.*;
-import java.util.function.Function;
 
 public final class ObjectFormatDescription<B, T> extends WriteDescription<T> implements FormatConverter<T>, JsonReader.BindObject<B> {
 
 	private final Type manifest;
 	private final InstanceFactory<B> newInstance;
-	private final Function<B, T> finalize;
+	private final Settings.Function<B, T> finalize;
 	private final DecodePropertyInfo<JsonReader.BindObject>[] decoders;
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
 	private final long mandatoryFlag;
 
-	private static final Function identity = new Function() {
+	private static final Settings.Function identity = new Settings.Function() {
 		@Override
 		public Object apply(Object t) {
 			return t;
@@ -38,7 +37,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	public ObjectFormatDescription(
 			final Type manifest,
 			final InstanceFactory<B> newInstance,
-			final Function<B, T> finalize,
+			final Settings.Function<B, T> finalize,
 			final JsonWriter.WriteObject[] encoders,
 			final DecodePropertyInfo<JsonReader.BindObject>[] decoders,
 			final DslJson json,

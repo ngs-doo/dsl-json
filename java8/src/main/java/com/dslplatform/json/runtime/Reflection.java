@@ -5,12 +5,10 @@ import com.dslplatform.json.SerializationException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 abstract class Reflection {
 
-	static final class ReadField implements Function {
+	static final class ReadField implements Settings.Function {
 		private final Field field;
 
 		ReadField(Field field) {
@@ -27,7 +25,7 @@ abstract class Reflection {
 		}
 	}
 
-	static final class ReadMethod implements Function {
+	static final class ReadMethod implements Settings.Function {
 		private final Method method;
 
 		ReadMethod(Method method) {
@@ -44,7 +42,7 @@ abstract class Reflection {
 		}
 	}
 
-	static final class SetField implements BiConsumer {
+	static final class SetField implements Settings.BiConsumer {
 		private final Field field;
 
 		SetField(Field field) {
@@ -61,7 +59,7 @@ abstract class Reflection {
 		}
 	}
 
-	static final class SetMethod implements BiConsumer {
+	static final class SetMethod implements Settings.BiConsumer {
 		private final Method method;
 
 		SetMethod(Method method) {
