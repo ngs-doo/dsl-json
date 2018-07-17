@@ -13,7 +13,7 @@ public class VariousTest {
 	class CollectionWriter implements JsonWriter.WriteObject<Collection> {
 		private final DslJson dslJson;
 
-		public CollectionWriter(DslJson dslJson) {
+		CollectionWriter(DslJson dslJson) {
 			this.dslJson = dslJson;
 		}
 
@@ -33,7 +33,7 @@ public class VariousTest {
 
 	@Test
 	public void testNestedCollection() throws IOException {
-		DslJson dsl = new DslJson<Object>();
+		DslJson<Object> dsl = new DslJson<Object>();
 		dsl.registerWriter(Collection.class, new CollectionWriter(dsl));
 		JsonWriter jw = dsl.newWriter();
 		dsl.serializeMap(
@@ -46,7 +46,7 @@ public class VariousTest {
 	}
 
 	@Test
-	public void stringIndexIssue() throws IOException {
+	public void stringIndexIssue() {
 		try {
 			String json = "{ \"a\": 1, \"b\": { \"c\": { \"d\": \"e\" } } }";
 			DslJson<Object> dsl = new DslJson<Object>();

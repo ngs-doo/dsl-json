@@ -3,7 +3,6 @@ package com.dslplatform.json;
 import com.dslplatform.json.runtime.OptionalAnalyzer;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
@@ -14,45 +13,6 @@ import java.util.OptionalInt;
 import java.util.OptionalLong;
 
 public class ConfigureJava8 implements Configuration {
-	private static final JsonWriter.WriteObject<Byte> ByteWriter = new JsonWriter.WriteObject<Byte>() {
-		@Override
-		public void write(JsonWriter writer, Byte value) {
-			if (value == null) writer.writeNull();
-			else NumberConverter.serialize(value, writer);
-		}
-	};
-	static final JsonReader.ReadObject<Byte> ByteReader = new JsonReader.ReadObject<Byte>() {
-		@Override
-		public Byte read(JsonReader reader) throws IOException {
-			return (byte)NumberConverter.deserializeInt(reader);
-		}
-	};
-	static final JsonReader.ReadObject<Byte> NullableByteReader = new JsonReader.ReadObject<Byte>() {
-		@Override
-		public Byte read(JsonReader reader) throws IOException {
-			return reader.wasNull() ? null : (byte)NumberConverter.deserializeInt(reader);
-		}
-	};
-	private static final JsonWriter.WriteObject<Short> ShortWriter = new JsonWriter.WriteObject<Short>() {
-		@Override
-		public void write(JsonWriter writer, Short value) {
-			if (value == null) writer.writeNull();
-			else NumberConverter.serialize(value, writer);
-		}
-	};
-	static final JsonReader.ReadObject<Short> ShortReader = new JsonReader.ReadObject<Short>() {
-		@Override
-		public Short read(JsonReader reader) throws IOException {
-			return (short)NumberConverter.deserializeInt(reader);
-		}
-	};
-	static final JsonReader.ReadObject<Short> NullableShortReader = new JsonReader.ReadObject<Short>() {
-		@Override
-		public Short read(JsonReader reader) throws IOException {
-			return reader.wasNull() ? null : (short)NumberConverter.deserializeInt(reader);
-		}
-	};
-
 	@Override
 	public void configure(DslJson json) {
 		json.registerReader(LocalDate.class, JavaTimeConverter.LOCAL_DATE_READER);
@@ -103,11 +63,7 @@ public class ConfigureJava8 implements Configuration {
 			}
 		});
 		json.registerWriter(ResultSet.class, ResultSetConverter.Writer);
-		json.registerWriter(byte.class, ByteWriter);
-		json.registerReader(byte.class, ByteReader);
 
-		json.registerWriter(Byte.class, ByteWriter);
-		json.registerReader(Byte.class, NullableByteReader);
 		json.registerWriter(OptionalDouble.class, new JsonWriter.WriteObject<OptionalDouble>() {
 			@Override
 			public void write(JsonWriter writer, OptionalDouble value) {
@@ -150,8 +106,6 @@ public class ConfigureJava8 implements Configuration {
 			}
 		});
 		json.registerDefault(OptionalLong.class, OptionalLong.empty());
-		json.registerWriter(BigInteger.class, BigIntegerConverter.Writer);
-		json.registerReader(BigInteger.class, BigIntegerConverter.Reader);
 		json.registerDefault(Optional.class, Optional.empty());
 		json.writerFactories.add(0, OptionalAnalyzer.WRITER);
 		json.readerFactories.add(0, OptionalAnalyzer.READER);

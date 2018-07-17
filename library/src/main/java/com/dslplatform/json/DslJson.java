@@ -8,6 +8,7 @@ import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
@@ -542,11 +543,17 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		registerWriter(Long.class, NumberConverter.LONG_WRITER);
 		registerReader(BigDecimal.class, NumberConverter.DecimalReader);
 		registerWriter(BigDecimal.class, NumberConverter.DecimalWriter);
+		registerWriter(BigInteger.class, BigIntegerConverter.Writer);
+		registerReader(BigInteger.class, BigIntegerConverter.Reader);
 		registerReader(String.class, StringConverter.READER);
 		registerWriter(String.class, StringConverter.WRITER);
 		registerReader(UUID.class, UUIDConverter.READER);
 		registerWriter(UUID.class, UUIDConverter.WRITER);
 		registerReader(Number.class, NumberConverter.NumberReader);
+		registerWriter(byte.class, NumberConverter.ByteWriter);
+		registerReader(byte.class, NumberConverter.ByteReader);
+		registerWriter(Byte.class, NumberConverter.ByteWriter);
+		registerReader(Byte.class, NumberConverter.NullableByteReader);
 		registerWriter(CharSequence.class, StringConverter.WRITER_CHARS);
 		registerReader(StringBuilder.class, StringConverter.READER_BUILDER);
 		registerReader(StringBuffer.class, StringConverter.READER_BUFFER);
@@ -1186,12 +1193,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 	}
 
-	public void serializeMap(final Map<String, Object> value, final JsonWriter sw) throws IOException {
+	public void serializeMap(final Map<String, ?> value, final JsonWriter sw) throws IOException {
 		sw.writeByte(JsonWriter.OBJECT_START);
 		final int size = value.size();
 		if (size > 0) {
-			final Iterator<Map.Entry<String, Object>> iterator = value.entrySet().iterator();
-			Map.Entry<String, Object> kv = iterator.next();
+			final Iterator<? extends Map.Entry<String, ?>> iterator = value.entrySet().iterator();
+			Map.Entry<String, ?> kv = iterator.next();
 			sw.writeString(kv.getKey());
 			sw.writeByte(JsonWriter.SEMI);
 			serialize(sw, kv.getValue());
