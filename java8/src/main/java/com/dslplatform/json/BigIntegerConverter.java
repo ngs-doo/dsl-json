@@ -6,13 +6,13 @@ import java.util.Arrays;
 
 public abstract class BigIntegerConverter {
 
-	static final JsonReader.ReadObject<BigInteger> Reader = new JsonReader.ReadObject<BigInteger>() {
+	public static final JsonReader.ReadObject<BigInteger> READER = new JsonReader.ReadObject<BigInteger>() {
 		@Override
 		public BigInteger read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<BigInteger> Writer = new JsonWriter.WriteObject<BigInteger>() {
+	public static final JsonWriter.WriteObject<BigInteger> WRITER = new JsonWriter.WriteObject<BigInteger>() {
 		@Override
 		public void write(JsonWriter writer, BigInteger value) {
 			serialize(value, writer);

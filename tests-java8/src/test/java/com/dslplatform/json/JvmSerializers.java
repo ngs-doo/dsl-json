@@ -175,7 +175,7 @@ public class JvmSerializers {
 		}
 	}
 
-	private final DslJson<Object> dslJsonObject = new DslJson<>(Settings.withRuntime().includeServiceLoader());
+	private final DslJson<Object> dslJsonObject = new DslJson<>(Settings.basicSetup());
 	private final DslJson<Object> dslJsonArray = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 
 	private final Charset utf8 = Charset.forName("UTF-8");

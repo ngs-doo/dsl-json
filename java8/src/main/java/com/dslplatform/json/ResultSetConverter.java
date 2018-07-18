@@ -2,24 +2,21 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.UncheckedIOException;
 import java.sql.*;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
 public abstract class ResultSetConverter {
 
-	static final JsonWriter.WriteObject<ResultSet> Writer = new JsonWriter.WriteObject<ResultSet>() {
+	public static final JsonWriter.WriteObject<ResultSet> WRITER = new JsonWriter.WriteObject<ResultSet>() {
 		@Override
 		public void write(JsonWriter writer, ResultSet value) {
 			if (value == null) writer.writeNull();
 			else {
 				try {
 					serialize(value, writer, null);
-				} catch (SQLException e) {
+				} catch (SQLException | IOException e) {
 					throw new SerializationException(e);
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
 				}
 			}
 		}
@@ -81,7 +78,6 @@ public abstract class ResultSetConverter {
 		}
 	}
 
-	@FunctionalInterface
 	public interface Writer {
 		void write(ResultSet rs, JsonWriter buffer) throws SQLException;
 	}

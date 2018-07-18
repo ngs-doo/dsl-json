@@ -9,49 +9,49 @@ import java.util.Collection;
 
 public abstract class AndroidGeomConverter {
 
-	static final JsonReader.ReadObject<PointF> LocationReader = new JsonReader.ReadObject<PointF>() {
+	public static final JsonReader.ReadObject<PointF> LOCATION_READER = new JsonReader.ReadObject<PointF>() {
 		@Override
 		public PointF read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeLocation(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<PointF> LocationWriter = new JsonWriter.WriteObject<PointF>() {
+	public static final JsonWriter.WriteObject<PointF> LOCATION_WRITER = new JsonWriter.WriteObject<PointF>() {
 		@Override
 		public void write(JsonWriter writer, PointF value) {
 			serializeLocationNullable(value, writer);
 		}
 	};
-	static final JsonReader.ReadObject<Point> PointReader = new JsonReader.ReadObject<Point>() {
+	public static final JsonReader.ReadObject<Point> POINT_READER = new JsonReader.ReadObject<Point>() {
 		@Override
 		public Point read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializePoint(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<Point> PointWriter = new JsonWriter.WriteObject<Point>() {
+	public static final JsonWriter.WriteObject<Point> POINT_WRITER = new JsonWriter.WriteObject<Point>() {
 		@Override
 		public void write(JsonWriter writer, Point value) {
 			serializePointNullable(value, writer);
 		}
 	};
-	static final JsonReader.ReadObject<Rect> RectangleReader = new JsonReader.ReadObject<Rect>() {
+	public static final JsonReader.ReadObject<Rect> RECTANGLE_READER = new JsonReader.ReadObject<Rect>() {
 		@Override
 		public Rect read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeRectangle(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<Rect> RectangleWriter = new JsonWriter.WriteObject<Rect>() {
+	public static final JsonWriter.WriteObject<Rect> RECTANGLE_WRITER = new JsonWriter.WriteObject<Rect>() {
 		@Override
 		public void write(JsonWriter writer, Rect value) {
 			serializeRectangleNullable(value, writer);
 		}
 	};
-	static final JsonReader.ReadObject<Bitmap> ImageReader = new JsonReader.ReadObject<Bitmap>() {
+	public static final JsonReader.ReadObject<Bitmap> IMAGE_READER = new JsonReader.ReadObject<Bitmap>() {
 		@Override
 		public Bitmap read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeImage(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<Bitmap> ImageWriter = new JsonWriter.WriteObject<Bitmap>() {
+	public static final JsonWriter.WriteObject<Bitmap> IMAGE_WRITER = new JsonWriter.WriteObject<Bitmap>() {
 		@Override
 		public void write(JsonWriter writer, Bitmap value) {
 			serialize(value, writer);
@@ -108,19 +108,19 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static ArrayList<PointF> deserializeLocationCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(LocationReader);
+		return reader.deserializeCollection(LOCATION_READER);
 	}
 
 	public static void deserializeLocationCollection(final JsonReader reader, final Collection<PointF> res) throws IOException {
-		reader.deserializeCollection(LocationReader, res);
+		reader.deserializeCollection(LOCATION_READER, res);
 	}
 
 	public static ArrayList<PointF> deserializeLocationNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(LocationReader);
+		return reader.deserializeNullableCollection(LOCATION_READER);
 	}
 
 	public static void deserializeLocationNullableCollection(final JsonReader reader, final Collection<PointF> res) throws IOException {
-		reader.deserializeNullableCollection(LocationReader, res);
+		reader.deserializeNullableCollection(LOCATION_READER, res);
 	}
 
 	public static void serializePointNullable(final Point value, final JsonWriter sw) {
@@ -174,19 +174,19 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static ArrayList<Point> deserializePointCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(PointReader);
+		return reader.deserializeCollection(POINT_READER);
 	}
 
 	public static void deserializePointCollection(final JsonReader reader, final Collection<Point> res) throws IOException {
-		reader.deserializeCollection(PointReader, res);
+		reader.deserializeCollection(POINT_READER, res);
 	}
 
 	public static ArrayList<Point> deserializePointNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(PointReader);
+		return reader.deserializeNullableCollection(POINT_READER);
 	}
 
 	public static void deserializePointNullableCollection(final JsonReader reader, final Collection<Point> res) throws IOException {
-		reader.deserializeNullableCollection(PointReader, res);
+		reader.deserializeNullableCollection(POINT_READER, res);
 	}
 
 	public static void serializeRectangleNullable(final Rect value, final JsonWriter sw) {
@@ -253,19 +253,19 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static ArrayList<Rect> deserializeRectangleCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(RectangleReader);
+		return reader.deserializeCollection(RECTANGLE_READER);
 	}
 
 	public static void deserializeRectangleCollection(final JsonReader reader, final Collection<Rect> res) throws IOException {
-		reader.deserializeCollection(RectangleReader, res);
+		reader.deserializeCollection(RECTANGLE_READER, res);
 	}
 
 	public static ArrayList<Rect> deserializeRectangleNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(RectangleReader);
+		return reader.deserializeNullableCollection(RECTANGLE_READER);
 	}
 
 	public static void deserializeRectangleNullableCollection(final JsonReader reader, final Collection<Rect> res) throws IOException {
-		reader.deserializeNullableCollection(RectangleReader, res);
+		reader.deserializeNullableCollection(RECTANGLE_READER, res);
 	}
 
 	public static void serialize(final Bitmap value, final JsonWriter sw) {
@@ -284,18 +284,18 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static ArrayList<Bitmap> deserializeImageCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(ImageReader);
+		return reader.deserializeCollection(IMAGE_READER);
 	}
 
 	public static void deserializeImageCollection(final JsonReader reader, final Collection<Bitmap> res) throws IOException {
-		reader.deserializeCollection(ImageReader, res);
+		reader.deserializeCollection(IMAGE_READER, res);
 	}
 
 	public static ArrayList<Bitmap> deserializeImageNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(ImageReader);
+		return reader.deserializeNullableCollection(IMAGE_READER);
 	}
 
 	public static void deserializeImageNullableCollection(final JsonReader reader, final Collection<Bitmap> res) throws IOException {
-		reader.deserializeNullableCollection(ImageReader, res);
+		reader.deserializeNullableCollection(IMAGE_READER, res);
 	}
 }

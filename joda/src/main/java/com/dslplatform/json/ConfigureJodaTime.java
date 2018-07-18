@@ -1,11 +1,11 @@
 package com.dslplatform.json;
 
+import dsl_json.org.joda.time.*;
+
 public class ConfigureJodaTime implements Configuration {
 	@Override
 	public void configure(DslJson json) {
-		json.registerReader(org.joda.time.LocalDate.class, JodaTimeConverter.LocalDateReader);
-		json.registerWriter(org.joda.time.LocalDate.class, JodaTimeConverter.LocalDateWriter);
-		json.registerReader(org.joda.time.DateTime.class, JodaTimeConverter.DateTimeReader);
-		json.registerWriter(org.joda.time.DateTime.class, JodaTimeConverter.DateTimeWriter);
+		new LocalDateDslJsonConverter().configure(json);
+		new DateTimeDslJsonConverter().configure(json);
 	}
 }

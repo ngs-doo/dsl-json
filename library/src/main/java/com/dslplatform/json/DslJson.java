@@ -3,17 +3,13 @@ package com.dslplatform.json;
 import org.w3c.dom.Element;
 
 import java.io.*;
-import java.lang.reflect.Array;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 
 /**
  * Main DSL-JSON class.
@@ -86,9 +82,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	protected final StringCache keyCache;
 	protected final StringCache valuesCache;
-	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new ArrayList<ConverterFactory<JsonWriter.WriteObject>>();
-	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
-	protected final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
+	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new CopyOnWriteArrayList<ConverterFactory<JsonWriter.WriteObject>>();
+	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new CopyOnWriteArrayList<ConverterFactory<JsonReader.ReadObject>>();
+	protected final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new CopyOnWriteArrayList<ConverterFactory<JsonReader.BindObject>>();
 	private final JsonReader.DoublePrecision doublePrecision;
 	private final JsonReader.UnknownNumberParsing unknownNumbers;
 	private final int maxNumberDigits;
@@ -556,9 +552,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (!settings.classLoaders.isEmpty() && settings.fromServiceLoader == 0) {
 			//TODO: workaround common issue with failed services registration. try to load common external name if exists
-			loadDefaultConverters(this, "dsl_json_Annotation_Processor_External_Serialization");
-			loadDefaultConverters(this, "dsl_json.json.ExternalSerialization");
-			loadDefaultConverters(this, "dsl_json_ExternalSerialization");
+			loadDefaultConverters(this, settings.classLoaders, "dsl_json_Annotation_Processor_External_Serialization");
+			loadDefaultConverters(this, settings.classLoaders, "dsl_json.json.ExternalSerialization");
+			loadDefaultConverters(this, settings.classLoaders, "dsl_json_ExternalSerialization");
 		}
 	}
 
@@ -744,14 +740,15 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
-	private static void loadDefaultConverters(final DslJson json, final String name) {
-		try {
-			ClassLoader loader = Thread.currentThread().getContextClassLoader();
-			Class<?> external = loader.loadClass(name);
-			Configuration instance = (Configuration) external.newInstance();
-			instance.configure(json);
-		} catch (NoClassDefFoundError ignore) {
-		} catch (Exception ignore) {
+	private static void loadDefaultConverters(final DslJson json, Set<ClassLoader> loaders, final String name) {
+		for (ClassLoader loader : loaders) {
+			try {
+				Class<?> external = loader.loadClass(name);
+				Configuration instance = (Configuration) external.newInstance();
+				instance.configure(json);
+			} catch (NoClassDefFoundError ignore) {
+			} catch (Exception ignore) {
+			}
 		}
 	}
 
@@ -771,10 +768,24 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		json.registerWriter(Element.class, XmlConverter.Writer);
 	}
 
-	private final Map<Type, Object> defaults = new HashMap<Type, Object>();
-	<T> void registerDefault(Class<T> manifest, T instance) {
+	private final Map<Type, Object> defaults = new ConcurrentHashMap<Type, Object>();
+
+	public <T> void registerDefault(Class<T> manifest, T instance) {
 		defaults.put(manifest, instance);
 	}
+	public void registerWriterFactory(ConverterFactory<JsonWriter.WriteObject> factory) {
+		if (factory == null) throw new IllegalArgumentException("factory can't be null");
+		writerFactories.add(0, factory);
+	}
+	public void registerReaderFactory(ConverterFactory<JsonReader.ReadObject> factory) {
+		if (factory == null) throw new IllegalArgumentException("factory can't be null");
+		readerFactories.add(0, factory);
+	}
+	public void registerBinderFactory(ConverterFactory<JsonReader.BindObject> factory) {
+		if (factory == null) throw new IllegalArgumentException("factory can't be null");
+		binderFactories.add(0, factory);
+	}
+
 	public final Object getDefault(Type manifest) {
 		if (manifest == null) return null;
 		Object instance = defaults.get(manifest);
@@ -953,15 +964,16 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
 		if (writer != null) return writer;
-		if (tryFindAndRegisterExternalConverter(manifest)) {
-			writer = jsonWriters.get(manifest);
-			if (writer != null) return writer;
+		if (manifest instanceof Class) {
+			tryFindAndRegisterExternalConverter((Class) manifest);
 		}
-		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
-			writer = wrt.tryCreate(manifest, this);
-			if (writer != null) {
-				jsonWriters.put(manifest, writer);
-				return writer;
+		writer = lookupWritersFromFactories(manifest);
+		if (writer != null) return writer;
+		if (manifest instanceof ParameterizedType) {
+			ParameterizedType pt = (ParameterizedType) manifest;
+			if (pt.getRawType() instanceof Class && tryFindAndRegisterExternalConverter((Class) pt.getRawType())) {
+				writer = lookupWritersFromFactories(manifest);
+				if (writer != null) return writer;
 			}
 		}
 		if (manifest instanceof Class<?> == false) {
@@ -976,8 +988,24 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		findAllSignatures(container, signatures);
 		for (final Class<?> sig : signatures) {
 			writer = jsonWriters.get(sig);
+			if (writer == null && tryFindAndRegisterExternalConverter(sig)) {
+				writer = lookupWritersFromFactories(sig);
+			}
 			if (writer != null) {
 				writerMap.putIfAbsent(container, sig);
+				return writer;
+			}
+		}
+		return null;
+	}
+
+	private JsonWriter.WriteObject<?> lookupWritersFromFactories(Type manifest) {
+		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
+		if (writer != null) return writer;
+		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
+			writer = wrt.tryCreate(manifest, this);
+			if (writer != null) {
+				jsonWriters.put(manifest, writer);
 				return writer;
 			}
 		}
@@ -1001,7 +1029,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
 		if (found != null) return found;
-		if (tryFindAndRegisterExternalConverter(manifest)) {
+		if (manifest instanceof Class && tryFindAndRegisterExternalConverter((Class)manifest)) {
 			found = readers.get(manifest);
 			if (found != null) return found;
 		}
@@ -1010,6 +1038,18 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (found != null) {
 				readers.put(manifest, found);
 				return found;
+			}
+		}
+		if (manifest instanceof ParameterizedType) {
+			ParameterizedType pt = (ParameterizedType) manifest;
+			if (pt.getRawType() instanceof Class && tryFindAndRegisterExternalConverter((Class) pt.getRawType())) {
+				for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
+					found = rdr.tryCreate(manifest, this);
+					if (found != null) {
+						readers.put(manifest, found);
+						return found;
+					}
+				}
 			}
 		}
 		return null;
@@ -1032,7 +1072,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.BindObject<?> tryFindBinder(final Type manifest) {
 		JsonReader.BindObject found = binders.get(manifest);
 		if (found != null) return found;
-		if (tryFindAndRegisterExternalConverter(manifest)) {
+		if (manifest instanceof Class && tryFindAndRegisterExternalConverter((Class)manifest)) {
 			found = binders.get(manifest);
 			if (found != null) return found;
 		}
@@ -1043,38 +1083,25 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				return found;
 			}
 		}
-		return null;
-	}
-
-	private boolean tryFindAndRegisterExternalConverter(final Type manifest) {
-		if (manifest instanceof Class) {
-			return tryFindAndRegisterExternalConverter((Class) manifest);
-		}
-		return false;
-	}
-
-	private boolean tryFindAndRegisterExternalConverter(final Class<?> manifest) {
-		List<String> converterClassNames = resolveExternalConverterClassName(manifest.getName());
-		if (converterClassNames == null) {
-			return false;
-		}
-		for(ClassLoader cl : classLoaders) {
-			for (String ccn : converterClassNames) {
-				try {
-					Class<?> converterClass = cl.loadClass(ccn);
-					Configuration converter = (Configuration) converterClass.newInstance();
-					converter.configure(this);
-					return true;
-				} catch (ClassNotFoundException ignored) {
-				} catch (IllegalAccessException ignored) {
-				} catch (InstantiationException ignored) {
+		if (manifest instanceof ParameterizedType) {
+			ParameterizedType pt = (ParameterizedType) manifest;
+			if (pt.getRawType() instanceof Class && tryFindAndRegisterExternalConverter((Class) pt.getRawType())) {
+				for (ConverterFactory<JsonReader.BindObject> bnd : binderFactories) {
+					found = bnd.tryCreate(manifest, this);
+					if (found != null) {
+						binders.put(manifest, found);
+						return found;
+					}
 				}
 			}
 		}
-		return false;
+		return null;
 	}
 
+	private final HashSet<String> lookedUpClasses = new HashSet<String>();
+
 	private List<String> resolveExternalConverterClassName(final String fullClassName) {
+		if (!lookedUpClasses.add(fullClassName)) return null;
 		int dotIndex = fullClassName.lastIndexOf('.');
 		if (dotIndex == -1) {
 			return Collections.singletonList(String.format("_%s_DslJsonConverter", fullClassName));
@@ -1087,7 +1114,30 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		String className = fullClassName.substring(dotIndex + 1);
 		return Arrays.asList(
 				String.format("dsl_json.%s._%s_DslJsonConverter", packageName, className),
-				String.format("%s._%s_DslJsonConverter", packageName, className));
+				String.format("%s._%s_DslJsonConverter", packageName, className),
+				String.format("dsl_json.%s.%sDslJsonConverter", packageName, className));
+	}
+
+	private synchronized boolean tryFindAndRegisterExternalConverter(final Class<?> manifest) {
+		List<String> converterClassNames = resolveExternalConverterClassName(manifest.getName());
+		if (converterClassNames == null) {
+			return false;
+		}
+		for (ClassLoader cl : classLoaders) {
+			for (String ccn : converterClassNames) {
+				try {
+					Class<?> converterClass = cl.loadClass(ccn);
+					if (!Configuration.class.isAssignableFrom(converterClass)) continue;
+					Configuration converter = (Configuration) converterClass.newInstance();
+					converter.configure(this);
+					return true;
+				} catch (ClassNotFoundException ignored) {
+				} catch (IllegalAccessException ignored) {
+				} catch (InstantiationException ignored) {
+				}
+			}
+		}
+		return false;
 	}
 
 	/**
