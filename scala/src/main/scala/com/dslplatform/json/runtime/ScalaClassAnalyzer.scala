@@ -3,7 +3,6 @@ package runtime
 
 import java.io.IOException
 import java.lang.reflect.{Constructor, Method, Modifier, ParameterizedType, Type => JavaType}
-import java.util.function
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe

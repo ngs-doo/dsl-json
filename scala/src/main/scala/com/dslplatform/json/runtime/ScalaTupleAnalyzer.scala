@@ -3,7 +3,6 @@ package runtime
 
 import java.io.IOException
 import java.lang.reflect.{Constructor, Modifier, ParameterizedType, Type => JavaType}
-import java.util.function
 
 import scala.reflect.runtime.universe
 import scala.util.{Success, Try}

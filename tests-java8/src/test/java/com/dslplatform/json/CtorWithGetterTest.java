@@ -33,6 +33,19 @@ public class CtorWithGetterTest {
 		}
 	}
 
+	@CompiledJson
+	public static class Response {
+		private final String queryResult;
+
+		public Response(@JsonAttribute(name = "QueryResult") String queryResult) {
+			this.queryResult = queryResult;
+		}
+
+		public String getQueryResult() {
+			return queryResult;
+		}
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 
 	@Test
@@ -53,5 +66,15 @@ public class CtorWithGetterTest {
 		Assert.assertEquals("{\"i2\":505}", os.toString("UTF-8"));
 		ChangeName res = dslJson.deserialize(ChangeName.class, os.toByteArray(), os.size());
 		Assert.assertEquals(c.i, res.i);
+	}
+
+	@Test
+	public void casingOnArgument() throws IOException {
+		Response r = new Response("505");
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(r, os);
+		Assert.assertEquals("{\"QueryResult\":\"505\"}", os.toString("UTF-8"));
+		Response res = dslJson.deserialize(Response.class, os.toByteArray(), os.size());
+		Assert.assertEquals(r.getQueryResult(), res.getQueryResult());
 	}
 }

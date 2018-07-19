@@ -6,17 +6,17 @@ import runtime._
 
 class ConfigureScala extends Configuration {
   override def configure(json: DslJson[_]): Unit = {
-    json.readerFactories.add(0, ScalaCollectionAnalyzer.Reader)
-    json.writerFactories.add(0, ScalaCollectionAnalyzer.Writer)
-    json.readerFactories.add(0, ScalaMapAnalyzer.Reader)
-    json.writerFactories.add(0, ScalaMapAnalyzer.Writer)
-    json.readerFactories.add(0, ScalaClassAnalyzer.Reader)
-    json.writerFactories.add(0, ScalaClassAnalyzer.Writer)
-    json.binderFactories.add(0, ScalaClassAnalyzer.Binder)
-    json.readerFactories.add(0, ScalaTupleAnalyzer.Reader)
-    json.writerFactories.add(0, ScalaTupleAnalyzer.Writer)
-    json.readerFactories.add(0, OptionAnalyzer.Reader)
-    json.writerFactories.add(0, OptionAnalyzer.Writer)
+    json.registerReaderFactory(ScalaCollectionAnalyzer.Reader)
+    json.registerWriterFactory(ScalaCollectionAnalyzer.Writer)
+    json.registerReaderFactory(ScalaMapAnalyzer.Reader)
+    json.registerWriterFactory(ScalaMapAnalyzer.Writer)
+    json.registerReaderFactory(ScalaClassAnalyzer.Reader)
+    json.registerWriterFactory(ScalaClassAnalyzer.Writer)
+    json.registerBinderFactory(ScalaClassAnalyzer.Binder)
+    json.registerReaderFactory(ScalaTupleAnalyzer.Reader)
+    json.registerWriterFactory(ScalaTupleAnalyzer.Writer)
+    json.registerReaderFactory(OptionAnalyzer.Reader)
+    json.registerWriterFactory(OptionAnalyzer.Writer)
     json.registerReader(classOf[BigDecimal], new ReadObject[BigDecimal] {
       override def read(reader: JsonReader[_]): BigDecimal = {
         BigDecimal(NumberConverter.deserializeDecimal(reader))
