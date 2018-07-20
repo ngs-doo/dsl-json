@@ -134,10 +134,11 @@ public abstract class ImmutableAnalyzer {
 				ctors.add(ctor);
 			}
 		}
-		if (ctors.size() != 1 || ctors.get(0).getParameterCount() == 0) return null;
+		if (ctors.size() != 1) return null;
 		final Constructor<?> ctor = ctors.get(0);
-		String[] names = extractNames(ctor).orElse(null);
 		final Parameter[] ctorParams = ctor.getParameters();
+		if (ctorParams.length == 0) return null;
+		String[] names = extractNames(ctor).orElse(null);
 		if (names == null) {
 			final Set<Type> types = new HashSet<>();
 			for(Parameter p : ctorParams) {
