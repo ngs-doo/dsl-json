@@ -16,7 +16,7 @@ public class PrimitivePropertyConverter {
 			}
 		};
 		public static final JsonWriter.WriteObject<Integer> JSON_WRITER = new JsonWriter.WriteObject<Integer>() {
-			public void write(JsonWriter writer, Integer value) {
+			public void write(JsonWriter writer, @Nullable Integer value) {
 				NumberConverter.serialize(value, writer);
 			}
 		};

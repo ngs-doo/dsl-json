@@ -6,6 +6,7 @@ import java.util.*;
 public abstract class ObjectConverter {
 
 	private static final JsonReader.ReadObject<Map<String, Object>> TypedMapReader = new JsonReader.ReadObject<Map<String, Object>>() {
+		@Nullable
 		@Override
 		public Map<String, Object> read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeMap(reader);
@@ -13,13 +14,14 @@ public abstract class ObjectConverter {
 	};
 	@SuppressWarnings("rawtypes")
 	static final JsonReader.ReadObject<LinkedHashMap> MapReader = new JsonReader.ReadObject<LinkedHashMap>() {
+		@Nullable
 		@Override
 		public LinkedHashMap read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeMap(reader);
 		}
 	};
 
-	public static void serializeNullableMap(final Map<String, Object> value, final JsonWriter sw) {
+	public static void serializeNullableMap(@Nullable final Map<String, Object> value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -47,10 +49,11 @@ public abstract class ObjectConverter {
 		sw.writeByte(JsonWriter.OBJECT_END);
 	}
 
-	public static void serializeObject(final Object value, final JsonWriter sw) throws IOException {
+	public static void serializeObject(@Nullable final Object value, final JsonWriter sw) throws IOException {
 		sw.serializeObject(value);
 	}
 
+	@Nullable
 	public static Object deserializeObject(final JsonReader reader) throws IOException {
 		switch (reader.last()) {
 			case 'n':

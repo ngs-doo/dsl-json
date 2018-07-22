@@ -402,7 +402,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 		if (si.type == ObjectType.MIXIN && si.deserializeAs != null) {
 			String typeMixin = typeOrClass(nonGenericObject(className), className);
-			StructInfo target = si.deserializeTarget();
+			StructInfo target = si.getDeserializeTarget();
 			code.append("\t\tjson.registerReader(").append(typeMixin).append(", ");
 			if (!target.formats.contains(CompiledJson.Format.OBJECT)) {
 				code.append("new ").append(findConverterName(target)).append(".ArrayFormatConverter(json));\n");

@@ -2,6 +2,7 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -49,6 +50,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		hasMandatory = mandatoryFlag != 0;
 	}
 
+	@Nullable
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		else if (reader.last() != '{') {
@@ -81,6 +83,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		return finalChecks(args, reader, currentMandatory);
 	}
 
+	@Nullable
 	private T readObjectSlow(final Object[] args, final JsonReader reader, long currentMandatory) throws IOException {
 		boolean processed = false;
 		final int oldHash = reader.getLastHash();
@@ -124,6 +127,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		return finalChecks(args, reader, currentMandatory);
 	}
 
+	@Nullable
 	private T finalChecks(Object[] args, JsonReader reader, long currentMandatory) throws IOException {
 		if (reader.last() != '}') {
 			if (reader.last() == ',') {

@@ -10,7 +10,7 @@ public abstract class ResultSetConverter {
 
 	public static final JsonWriter.WriteObject<ResultSet> WRITER = new JsonWriter.WriteObject<ResultSet>() {
 		@Override
-		public void write(JsonWriter writer, ResultSet value) {
+		public void write(JsonWriter writer, @Nullable ResultSet value) {
 			if (value == null) writer.writeNull();
 			else {
 				try {
@@ -25,7 +25,7 @@ public abstract class ResultSetConverter {
 	public static void serialize(
 			final ResultSet rs,
 			final JsonWriter buffer,
-			final OutputStream stream) throws SQLException, IOException {
+			@Nullable final OutputStream stream) throws SQLException, IOException {
 		final ResultSetMetaData metadata = rs.getMetaData();
 		final int columns = metadata.getColumnCount();
 		if (columns == 0) throw new SerializationException("No columns found in ResultSet");
@@ -39,7 +39,7 @@ public abstract class ResultSetConverter {
 
 	public static void serialize(
 			final ResultSet rs,
-			final OutputStream stream,
+			@Nullable final OutputStream stream,
 			final JsonWriter buffer,
 			final Writer[] writers) throws SQLException, IOException {
 		if (stream != null) {
@@ -82,6 +82,7 @@ public abstract class ResultSetConverter {
 		void write(ResultSet rs, JsonWriter buffer) throws SQLException;
 	}
 
+	@Nullable
 	public static Writer createWriter(
 			final ResultSetMetaData metaData,
 			final int index) throws SQLException {

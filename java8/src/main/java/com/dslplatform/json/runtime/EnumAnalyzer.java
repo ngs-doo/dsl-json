@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.DslJson;
+import com.dslplatform.json.Nullable;
 
 import java.lang.reflect.*;
 import java.util.Collection;
@@ -10,6 +11,7 @@ import java.util.LinkedHashMap;
 public abstract class EnumAnalyzer {
 
 	public static final DslJson.ConverterFactory<EnumDescription> CONVERTER = new DslJson.ConverterFactory<EnumDescription>() {
+		@Nullable
 		@Override
 		public EnumDescription tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?> && ((Class<?>) manifest).isEnum()) {
@@ -27,6 +29,7 @@ public abstract class EnumAnalyzer {
 		}
 	};
 
+	@Nullable
 	private static EnumDescription analyze(final Type manifest, final Class<Enum> raw, final DslJson json) {
 		if (raw.isArray()
 				|| Collection.class.isAssignableFrom(raw)

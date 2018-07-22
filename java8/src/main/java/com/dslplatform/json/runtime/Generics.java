@@ -1,5 +1,7 @@
 package com.dslplatform.json.runtime;
 
+import com.dslplatform.json.Nullable;
+
 import java.lang.reflect.*;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -90,6 +92,7 @@ public abstract class Generics {
 			return raw;
 		}
 
+		@Nullable
 		@Override
 		public Type getOwnerType() {
 			return null;

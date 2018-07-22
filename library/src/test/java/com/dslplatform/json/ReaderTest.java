@@ -52,6 +52,7 @@ public class ReaderTest {
 	public void testReaderOnInterface() throws IOException {
 		DslJson<Object> dslJson = new DslJson<Object>();
 		dslJson.registerReader(Implementation.class, new JsonReader.ReadObject<Implementation>() {
+			@Nullable
 			@Override
 			public Implementation read(JsonReader reader) throws IOException {
 				return null;

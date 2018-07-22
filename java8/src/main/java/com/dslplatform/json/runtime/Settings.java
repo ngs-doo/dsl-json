@@ -8,6 +8,7 @@ import java.lang.reflect.Type;
 
 public abstract class Settings {
 	private static final DslJson.ConverterFactory<JsonReader.ReadObject> UNKNOWN_READER = new DslJson.ConverterFactory<JsonReader.ReadObject>() {
+		@Nullable
 		@Override
 		public JsonReader.ReadObject tryCreate(Type manifest, DslJson dslJson) {
 			return Object.class == manifest ? new JsonReader.ReadObject() {
@@ -20,13 +21,14 @@ public abstract class Settings {
 	};
 
 	public interface Function<TIn, TOut> {
-		TOut apply(TIn arguments);
+		@Nullable
+		TOut apply(@Nullable TIn arguments);
 	}
 	public interface BiConsumer<T, U> {
-		void accept(T t, U u);
+		void accept(T t, @Nullable U u);
 	}
 
-	static boolean isKnownType(final Type type) {
+	static boolean isKnownType(@Nullable final Type type) {
 		if (type == Object.class) return false;
 		if (type instanceof Class<?>) {
 			Class<?> manifest = (Class<?>)type;
@@ -40,7 +42,7 @@ public abstract class Settings {
 			final Function<T, R> read,
 			final String name,
 			final DslJson json,
-			final Type type) {
+			@Nullable final Type type) {
 		return createEncoder(read, name, json, type, null);
 	}
 
@@ -48,8 +50,8 @@ public abstract class Settings {
 			final Function<T, R> read,
 			final String name,
 			final DslJson json,
-			final Type type,
-			final JsonWriter.WriteObject<R> customEncoder) {
+			@Nullable final Type type,
+			@Nullable final JsonWriter.WriteObject<R> customEncoder) {
 		if (read == null) throw new IllegalArgumentException("read can't be null");
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
@@ -68,7 +70,7 @@ public abstract class Settings {
 	public static <T, R> JsonWriter.WriteObject<T> createArrayEncoder(
 			final Function<T, R> read,
 			final DslJson json,
-			final Type type) {
+			@Nullable final Type type) {
 		if (read == null) throw new IllegalArgumentException("read can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonWriter.WriteObject<R> encoder = type != null ? json.tryFindWriter(type) : null;
@@ -100,7 +102,7 @@ public abstract class Settings {
 			final boolean isMandatory,
 			final int index,
 			final boolean nonNull,
-			final Type type) {
+			@Nullable final Type type) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
 		if (name == null) throw new IllegalArgumentException("name can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
@@ -128,7 +130,7 @@ public abstract class Settings {
 	public static <T, R> JsonReader.BindObject<T> createArrayDecoder(
 			final BiConsumer<T, R> write,
 			final DslJson json,
-			final Type type) {
+			@Nullable final Type type) {
 		if (write == null) throw new IllegalArgumentException("write can't be null");
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		final JsonReader.ReadObject<R> decoder = type != null ? json.tryFindReader(type) : null;

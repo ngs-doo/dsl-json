@@ -16,6 +16,7 @@ public class JsonReaderMethods {
 	public static class ImplProper1 {
 
 		public static final JsonReader.ReadObject<ImplProper1> JSON_READER = new JsonReader.ReadObject<ImplProper1>() {
+			@Nullable
 			@Override
 			public ImplProper1 read(JsonReader reader) throws IOException {
 				return null;
@@ -23,12 +24,11 @@ public class JsonReaderMethods {
 		};
 		public static final JsonWriter.WriteObject<ImplProper1> JSON_WRITER = new JsonWriter.WriteObject<ImplProper1>() {
 			@Override
-			public void write(JsonWriter writer, ImplProper1 inst) {
+			public void write(JsonWriter writer, @Nullable ImplProper1 inst) {
 			}
 		};
 	}
 	public static class ImplProper2 {
-
 		public static JsonReader.ReadObject<ImplProper2> JSON_READER() {
 			return null;
 		}
@@ -38,7 +38,6 @@ public class JsonReaderMethods {
 	}
 	@JsonConverter(target = ImplProper3.class)
 	public static class ImplProper3 {
-
 		public static JsonReader.ReadObject<ImplProper3> getJSON_READER() {
 			return null;
 		}
@@ -51,6 +50,7 @@ public class JsonReaderMethods {
 	public static class ImplProper4 {
 
 		public static final JsonReader.ReadObject<ImplProper4> JSON_READER = new JsonReader.ReadObject<ImplProper4>() {
+			@Nullable
 			@Override
 			public ImplProper4 read(JsonReader reader) throws IOException {
 				return null;

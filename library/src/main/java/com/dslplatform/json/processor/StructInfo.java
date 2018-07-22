@@ -1,6 +1,7 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -45,16 +46,16 @@ public class StructInfo {
 			String binaryName,
 			ObjectType type,
 			boolean isJsonObject,
-			List<ExecutableElement> matchingConstructors,
-			ExecutableElement annotatedConstructor,
-			ExecutableElement annotatedFactory,
-			AnnotationMirror annotation,
-			CompiledJson.Behavior onUnknown,
-			CompiledJson.TypeSignature typeSignature,
-			TypeElement deserializeAs,
-			String deserializeName,
+			@Nullable List<ExecutableElement> matchingConstructors,
+			@Nullable ExecutableElement annotatedConstructor,
+			@Nullable ExecutableElement annotatedFactory,
+			@Nullable AnnotationMirror annotation,
+			@Nullable CompiledJson.Behavior onUnknown,
+			@Nullable CompiledJson.TypeSignature typeSignature,
+			@Nullable TypeElement deserializeAs,
+			@Nullable String deserializeName,
 			boolean isMinified,
-			CompiledJson.Format[] formats) {
+			@Nullable CompiledJson.Format[] formats) {
 		this.element = element;
 		this.discoveredBy = discoveredBy;
 		this.name = name;
@@ -143,8 +144,9 @@ public class StructInfo {
 	}
 
 	private StructInfo deserializeTarget;
-	public StructInfo deserializeTarget() { return deserializeTarget; }
-	public void deserializeTarget(StructInfo value) { deserializeTarget = value; }
+	@Nullable
+	public StructInfo getDeserializeTarget() { return deserializeTarget; }
+	public void setDeserializeTarget(@Nullable StructInfo value) { deserializeTarget = value; }
 
 	public String pathDescription() {
 		if (annotation != null) return " since it has @CompiledJson annotation.";

@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.SerializationException;
+import com.dslplatform.json.*;
 
 import java.io.IOException;
 import java.lang.reflect.*;
@@ -39,6 +36,7 @@ public abstract class ImmutableAnalyzer {
 		}
 	}
 
+	@Nullable
 	public static String[] extractNames(Constructor<?> ctor) {
 		if (ctor == null) throw new IllegalArgumentException("ctor can't be null");
 		return parameterNameExtractor.extractNames(ctor);
@@ -92,7 +90,7 @@ public abstract class ImmutableAnalyzer {
 		}
 
 		@Override
-		public void write(final JsonWriter writer, final Object value) {
+		public void write(final JsonWriter writer, @Nullable final Object value) {
 			if (encoder == null) {
 				if (checkSignatureNotFound()) {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
@@ -107,6 +105,7 @@ public abstract class ImmutableAnalyzer {
 	}
 
 	public static final DslJson.ConverterFactory<ImmutableDescription> CONVERTER = new DslJson.ConverterFactory<ImmutableDescription>() {
+		@Nullable
 		@Override
 		public ImmutableDescription tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -122,6 +121,7 @@ public abstract class ImmutableAnalyzer {
 		}
 	};
 
+	@Nullable
 	private static <T> ImmutableDescription<T> analyze(final Type manifest, final Class<T> raw, final DslJson<?> json) {
 		if (raw.isArray()
 				|| Collection.class.isAssignableFrom(raw)
@@ -273,7 +273,8 @@ public abstract class ImmutableAnalyzer {
 		}
 	}
 
-	private static <T> ImmutableDescription<T> unregister(Type manifest, DslJson<?> json, JsonWriter.WriteObject oldWriter, JsonReader.ReadObject oldReader) {
+	@Nullable
+	private static <T> ImmutableDescription<T> unregister(Type manifest, DslJson<?> json, @Nullable JsonWriter.WriteObject oldWriter, @Nullable JsonReader.ReadObject oldReader) {
 		json.registerWriter(manifest, oldWriter);
 		json.registerReader(manifest, oldReader);
 		return null;

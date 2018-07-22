@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonReader;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ public final class ArrayDecoder<T> implements JsonReader.ReadObject<T[]> {
 		this.decoder = decoder;
 	}
 
+	@Nullable
 	@Override
 	public T[] read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;

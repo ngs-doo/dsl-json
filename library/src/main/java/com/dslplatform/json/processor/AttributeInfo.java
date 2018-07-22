@@ -1,6 +1,7 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.TypeKind;
@@ -37,16 +38,16 @@ public class AttributeInfo {
 			String name,
 			ExecutableElement readMethod,
 			ExecutableElement writeMethod,
-			VariableElement field,
+			@Nullable VariableElement field,
 			TypeMirror type,
 			AnnotationMirror annotation,
 			boolean notNull,
 			boolean mandatory,
 			final int index,
-			String alias,
+			@Nullable String alias,
 			boolean fullMatch,
-			CompiledJson.TypeSignature typeSignature,
-			ConverterInfo converter,
+			@Nullable CompiledJson.TypeSignature typeSignature,
+			@Nullable ConverterInfo converter,
 			boolean isJsonObject) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
@@ -75,6 +76,7 @@ public class AttributeInfo {
 		return struct != null && struct.type == ObjectType.ENUM;
 	}
 
+	@Nullable
 	public String collectionContent(Set<String> knownTypes) {
 		if (isArray) {
 			String content = typeName.substring(0, typeName.length() - 2);

@@ -3,6 +3,7 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -12,6 +13,7 @@ import java.util.concurrent.Callable;
 public abstract class CollectionAnalyzer {
 
 	public static final DslJson.ConverterFactory<CollectionDecoder> READER = new DslJson.ConverterFactory<CollectionDecoder>() {
+		@Nullable
 		@Override
 		public CollectionDecoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -28,6 +30,7 @@ public abstract class CollectionAnalyzer {
 	};
 
 	public static final DslJson.ConverterFactory<CollectionEncoder> WRITER = new DslJson.ConverterFactory<CollectionEncoder>() {
+		@Nullable
 		@Override
 		public CollectionEncoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -43,6 +46,7 @@ public abstract class CollectionAnalyzer {
 		}
 	};
 
+	@Nullable
 	private static CollectionDecoder analyzeDecoding(final Type manifest, final Type element, final Class<?> collection, final DslJson json) {
 		if (!Collection.class.isAssignableFrom(collection)) return null;
 		final Callable newInstance;
@@ -91,6 +95,7 @@ public abstract class CollectionAnalyzer {
 		return decoder;
 	}
 
+	@Nullable
 	private static CollectionEncoder analyzeEncoding(final Type manifest, final Type element, final Class<?> collection, final DslJson json) {
 		if (!Collection.class.isAssignableFrom(collection)) return null;
 		final JsonWriter.WriteObject<?> writer = Object.class == element ? null : json.tryFindWriter(element);

@@ -11,6 +11,7 @@ public abstract class JavaTimeConverter {
 	public static final LocalDate MIN_LOCAL_DATE = LocalDate.of(1, 1, 1);
 
 	public static final JsonReader.ReadObject<LocalDate> LOCAL_DATE_READER = new JsonReader.ReadObject<LocalDate>() {
+		@Nullable
 		@Override
 		public LocalDate read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : JavaTimeConverter.deserializeLocalDate(reader);
@@ -18,11 +19,12 @@ public abstract class JavaTimeConverter {
 	};
 	public static final JsonWriter.WriteObject<LocalDate> LOCAL_DATE_WRITER = new JsonWriter.WriteObject<LocalDate>() {
 		@Override
-		public void write(JsonWriter writer, LocalDate value) {
+		public void write(JsonWriter writer, @Nullable LocalDate value) {
 			serializeNullable(value, writer);
 		}
 	};
 	public static final JsonReader.ReadObject<OffsetDateTime> DATE_TIME_READER = new JsonReader.ReadObject<OffsetDateTime>() {
+		@Nullable
 		@Override
 		public OffsetDateTime read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : JavaTimeConverter.deserializeDateTime(reader);
@@ -30,11 +32,12 @@ public abstract class JavaTimeConverter {
 	};
 	public static final JsonWriter.WriteObject<OffsetDateTime> DATE_TIME_WRITER = new JsonWriter.WriteObject<OffsetDateTime>() {
 		@Override
-		public void write(JsonWriter writer, OffsetDateTime value) {
+		public void write(JsonWriter writer, @Nullable OffsetDateTime value) {
 			serializeNullable(value, writer);
 		}
 	};
 	public static final JsonReader.ReadObject<LocalDateTime> LOCAL_DATE_TIME_READER = new JsonReader.ReadObject<LocalDateTime>() {
+		@Nullable
 		@Override
 		public LocalDateTime read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : JavaTimeConverter.deserializeLocalDateTime(reader);
@@ -42,11 +45,12 @@ public abstract class JavaTimeConverter {
 	};
 	public static final JsonWriter.WriteObject<LocalDateTime> LOCAL_DATE_TIME_WRITER = new JsonWriter.WriteObject<LocalDateTime>() {
 		@Override
-		public void write(JsonWriter writer, LocalDateTime value) {
+		public void write(JsonWriter writer, @Nullable LocalDateTime value) {
 			serializeNullable(value, writer);
 		}
 	};
 	public static final JsonReader.ReadObject<ZonedDateTime> ZONED_DATE_TIME_READER = new JsonReader.ReadObject<ZonedDateTime>() {
+		@Nullable
 		@Override
 		public ZonedDateTime read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : JavaTimeConverter.deserializeDateTime(reader).toZonedDateTime();
@@ -54,13 +58,13 @@ public abstract class JavaTimeConverter {
 	};
 	public static final JsonWriter.WriteObject<ZonedDateTime> ZONED_DATE_TIME_WRITER = new JsonWriter.WriteObject<ZonedDateTime>() {
 		@Override
-		public void write(JsonWriter writer, ZonedDateTime value) {
+		public void write(JsonWriter writer, @Nullable ZonedDateTime value) {
 			if (value == null) writer.writeNull();
 			else serialize(value.toOffsetDateTime(), writer);
 		}
 	};
 
-	public static void serializeNullable(final OffsetDateTime value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final OffsetDateTime value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -68,7 +72,7 @@ public abstract class JavaTimeConverter {
 		}
 	}
 
-	public static void serializeNullable(final LocalDateTime value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final LocalDateTime value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -304,7 +308,7 @@ public abstract class JavaTimeConverter {
 		reader.deserializeNullableCollection(LOCAL_DATE_TIME_READER, res);
 	}
 
-	public static void serializeNullable(final LocalDate value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final LocalDate value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {

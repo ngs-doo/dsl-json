@@ -75,7 +75,7 @@ public abstract class ObjectAnalyzer {
 		}
 
 		@Override
-		public void write(final JsonWriter writer, final Object value) {
+		public void write(final JsonWriter writer, @Nullable final Object value) {
 			if (resolvedWriter == null) {
 				if (checkSignatureNotFound()) {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
@@ -90,6 +90,7 @@ public abstract class ObjectAnalyzer {
 	}
 
 	public static final DslJson.ConverterFactory<ObjectFormatDescription> CONVERTER = new DslJson.ConverterFactory<ObjectFormatDescription>() {
+		@Nullable
 		@Override
 		public ObjectFormatDescription tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -105,6 +106,7 @@ public abstract class ObjectAnalyzer {
 		}
 	};
 
+	@Nullable
 	private static <T> ObjectFormatDescription<T, T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
 		if (raw.isArray()
 				|| Object.class == manifest

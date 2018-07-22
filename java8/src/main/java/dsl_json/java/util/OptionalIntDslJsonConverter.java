@@ -10,7 +10,7 @@ public class OptionalIntDslJsonConverter implements Configuration {
 	public void configure(DslJson json) {
 		json.registerWriter(OptionalInt.class, new JsonWriter.WriteObject<OptionalInt>() {
 			@Override
-			public void write(JsonWriter writer, OptionalInt value) {
+			public void write(JsonWriter writer, @Nullable OptionalInt value) {
 				if (value != null && value.isPresent()) NumberConverter.serialize(value.getAsInt(), writer);
 				else writer.writeNull();
 			}

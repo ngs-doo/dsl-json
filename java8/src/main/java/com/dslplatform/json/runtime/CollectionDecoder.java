@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonReader;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -25,6 +26,7 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 		this.decoder = decoder;
 	}
 
+	@Nullable
 	@Override
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;

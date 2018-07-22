@@ -18,6 +18,7 @@ import java.util.*;
 public abstract class XmlConverter {
 
 	static final JsonReader.ReadObject<Element> Reader = new JsonReader.ReadObject<Element>() {
+		@Nullable
 		@Override
 		public Element read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
@@ -25,7 +26,7 @@ public abstract class XmlConverter {
 	};
 	static final JsonWriter.WriteObject<Element> Writer = new JsonWriter.WriteObject<Element>() {
 		@Override
-		public void write(JsonWriter writer, Element value) {
+		public void write(JsonWriter writer, @Nullable Element value) {
 			serializeNullable(value, writer);
 		}
 	};
@@ -41,7 +42,7 @@ public abstract class XmlConverter {
 		}
 	}
 
-	public static void serializeNullable(final Element value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final Element value, final JsonWriter sw) {
 		if (value == null)
 			sw.writeNull();
 		else
@@ -103,7 +104,7 @@ public abstract class XmlConverter {
 	private static void buildXmlFromHashMap(
 			final Document doc,
 			final Element subtreeRootElement,
-			final Object elementContent) {
+			@Nullable final Object elementContent) {
 		if (elementContent instanceof HashMap) {
 			final HashMap<String, Object> elementContentMap = (HashMap<String, Object>) elementContent;
 			for (final Map.Entry<String, Object> childEntry : elementContentMap.entrySet()) {

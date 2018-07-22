@@ -1,5 +1,6 @@
 package com.dslplatform.json.runtime;
 
+import com.dslplatform.json.Nullable;
 import com.dslplatform.json.SerializationException;
 
 import java.lang.reflect.Field;
@@ -16,7 +17,7 @@ abstract class Reflection {
 		}
 
 		@Override
-		public Object apply(Object instance) {
+		public Object apply(@Nullable Object instance) {
 			try {
 				return field.get(instance);
 			} catch (IllegalAccessException e) {
@@ -33,7 +34,7 @@ abstract class Reflection {
 		}
 
 		@Override
-		public Object apply(Object instance) {
+		public Object apply(@Nullable Object instance) {
 			try {
 				return method.invoke(instance);
 			} catch (IllegalAccessException | InvocationTargetException e) {
@@ -50,7 +51,7 @@ abstract class Reflection {
 		}
 
 		@Override
-		public void accept(Object instance, Object value) {
+		public void accept(Object instance, @Nullable Object value) {
 			try {
 				field.set(instance, value);
 			} catch (IllegalAccessException e) {
@@ -67,7 +68,7 @@ abstract class Reflection {
 		}
 
 		@Override
-		public void accept(Object instance, Object value) {
+		public void accept(Object instance, @Nullable Object value) {
 			try {
 				method.invoke(instance, value);
 			} catch (IllegalAccessException | InvocationTargetException e) {

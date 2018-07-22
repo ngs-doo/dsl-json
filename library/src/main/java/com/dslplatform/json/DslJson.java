@@ -66,7 +66,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * The context of this instance.
 	 * Can be used for library specialization
 	 */
+	@Nullable
 	public final TContext context;
+	@Nullable
 	protected final Fallback<TContext> fallback;
 	/**
 	 * Should properties with default values be omitted from the resulting JSON?
@@ -94,14 +96,17 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	protected final List<ClassLoader> classLoaders = new ArrayList<ClassLoader>();
 
 	public interface Fallback<TContext> {
-		void serialize(Object instance, OutputStream stream) throws IOException;
+		void serialize(@Nullable Object instance, OutputStream stream) throws IOException;
 
-		Object deserialize(TContext context, Type manifest, byte[] body, int size) throws IOException;
+		@Nullable
+		Object deserialize(@Nullable TContext context, Type manifest, byte[] body, int size) throws IOException;
 
-		Object deserialize(TContext context, Type manifest, InputStream stream) throws IOException;
+		@Nullable
+		Object deserialize(@Nullable TContext context, Type manifest, InputStream stream) throws IOException;
 	}
 
 	public interface ConverterFactory<T> {
+		@Nullable
 		T tryCreate(Type manifest, DslJson dslJson);
 	}
 
@@ -138,7 +143,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * @param context context propagated to JsonReaders
 		 * @return itself
 		 */
-		public Settings<TContext> withContext(TContext context) {
+		public Settings<TContext> withContext(@Nullable TContext context) {
 			this.context = context;
 			return this;
 		}
@@ -162,7 +167,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * @return which fallback to use in case of unsupported type
 		 */
 		@Deprecated
-		public Settings<TContext> fallbackTo(Fallback<TContext> fallback) {
+		public Settings<TContext> fallbackTo(@Nullable Fallback<TContext> fallback) {
 			this.fallback = fallback;
 			return this;
 		}
@@ -206,7 +211,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * @param keyCache which key cache to use
 		 * @return itself
 		 */
-		public Settings<TContext> useKeyCache(StringCache keyCache) {
+		public Settings<TContext> useKeyCache(@Nullable StringCache keyCache) {
 			this.keyCache = keyCache;
 			return this;
 		}
@@ -224,7 +229,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * @param valuesCache which values cache to use
 		 * @return itself
 		 */
-		public Settings<TContext> useStringValuesCache(StringCache valuesCache) {
+		public Settings<TContext> useStringValuesCache(@Nullable StringCache valuesCache) {
 			this.valuesCache = valuesCache;
 			return this;
 		}
@@ -417,11 +422,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 */
 	@Deprecated
 	public DslJson(
-			final TContext context,
+			@Nullable final TContext context,
 			final boolean javaSpecifics,
-			final Fallback<TContext> fallback,
+			@Nullable final Fallback<TContext> fallback,
 			final boolean omitDefaults,
-			final StringCache keyCache,
+			@Nullable final StringCache keyCache,
 			final Iterable<Configuration> serializers) {
 		this(new Settings<TContext>()
 				.withContext(context)
@@ -485,7 +490,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		registerReader(Map.class, ObjectConverter.MapReader);
 		registerWriter(Map.class, new JsonWriter.WriteObject<Map>() {
 			@Override
-			public void write(JsonWriter writer, Map value) {
+			public void write(JsonWriter writer, @Nullable Map value) {
 				if (value == null) {
 					writer.writeNull();
 				} else {
@@ -786,7 +791,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		binderFactories.add(0, factory);
 	}
 
-	public final Object getDefault(Type manifest) {
+	@Nullable
+	public final Object getDefault(@Nullable Type manifest) {
 		if (manifest == null) return null;
 		Object instance = defaults.get(manifest);
 		if (instance != null) return instance;
@@ -837,7 +843,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param <T>      type
 	 * @param <S>      type or subtype
 	 */
-	public <T, S extends T> void registerReader(final Class<T> manifest, final JsonReader.ReadObject<S> reader) {
+	public <T, S extends T> void registerReader(final Class<T> manifest, @Nullable final JsonReader.ReadObject<S> reader) {
 		if (reader == null) readers.remove(manifest);
 		else readers.put(manifest, reader);
 	}
@@ -855,7 +861,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param reader   provide custom implementation for reading JSON into an object instance
 	 * @return old registered value
 	 */
-	public JsonReader.ReadObject registerReader(final Type manifest, final JsonReader.ReadObject<?> reader) {
+	@Nullable
+	public JsonReader.ReadObject registerReader(final Type manifest, @Nullable final JsonReader.ReadObject<?> reader) {
 		if (reader == null) return readers.remove(manifest);
 		try {
 			return readers.get(manifest);
@@ -879,7 +886,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param <T>      type
 	 * @param <S>      type or subtype
 	 */
-	public <T, S extends T> void registerBinder(final Class<T> manifest, final JsonReader.BindObject<S> binder) {
+	public <T, S extends T> void registerBinder(final Class<T> manifest, @Nullable final JsonReader.BindObject<S> binder) {
 		if (binder == null) binders.remove(manifest);
 		else binders.put(manifest, binder);
 	}
@@ -897,7 +904,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param manifest specified type
 	 * @param binder   provide custom implementation for binding JSON to an object instance
 	 */
-	public void registerBinder(final Type manifest, final JsonReader.BindObject<?> binder) {
+	public void registerBinder(final Type manifest, @Nullable final JsonReader.BindObject<?> binder) {
 		if (binder == null) binders.remove(manifest);
 		else binders.put(manifest, binder);
 	}
@@ -917,7 +924,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param writer   provide custom implementation for writing JSON from object instance
 	 * @param <T>      type
 	 */
-	public <T> void registerWriter(final Class<T> manifest, final JsonWriter.WriteObject<T> writer) {
+	public <T> void registerWriter(final Class<T> manifest, @Nullable final JsonWriter.WriteObject<T> writer) {
 		if (writer == null) {
 			writerMap.remove(manifest);
 			jsonWriters.remove(manifest);
@@ -940,7 +947,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param writer   provide custom implementation for writing JSON from object instance
 	 * @return old registered value
 	 */
-	public JsonWriter.WriteObject registerWriter(final Type manifest, final JsonWriter.WriteObject<?> writer) {
+	@Nullable
+	public JsonWriter.WriteObject registerWriter(final Type manifest, @Nullable final JsonWriter.WriteObject<?> writer) {
 		if (writer == null) return jsonWriters.remove(manifest);
 		try {
 			return jsonWriters.get(manifest);
@@ -961,6 +969,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param manifest specified type
 	 * @return writer for specified type if found
 	 */
+	@Nullable
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
 		if (writer != null) return writer;
@@ -999,6 +1008,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return null;
 	}
 
+	@Nullable
 	private JsonWriter.WriteObject<?> lookupWritersFromFactories(Type manifest) {
 		JsonWriter.WriteObject writer = jsonWriters.get(manifest);
 		if (writer != null) return writer;
@@ -1026,6 +1036,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param manifest specified type
 	 * @return found reader for specified type
 	 */
+	@Nullable
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
 		if (found != null) return found;
@@ -1069,6 +1080,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param manifest specified type
 	 * @return found reader for specified type
 	 */
+	@Nullable
 	public JsonReader.BindObject<?> tryFindBinder(final Type manifest) {
 		JsonReader.BindObject found = binders.get(manifest);
 		if (found != null) return found;
@@ -1100,6 +1112,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	private final HashSet<String> lookedUpClasses = new HashSet<String>();
 
+	@Nullable
 	private List<String> resolveExternalConverterClassName(final String fullClassName) {
 		if (!lookedUpClasses.add(fullClassName)) return null;
 		int dotIndex = fullClassName.lastIndexOf('.');
@@ -1152,6 +1165,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return found writer for specified class or null
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <T> JsonWriter.WriteObject<T> tryFindWriter(final Class<T> manifest) {
 		return (JsonWriter.WriteObject<T>) tryFindWriter((Type) manifest);
 	}
@@ -1172,6 +1186,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return found reader for specified class or null
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <T> JsonReader.ReadObject<T> tryFindReader(final Class<T> manifest) {
 		return (JsonReader.ReadObject<T>) tryFindReader((Type) manifest);
 	}
@@ -1192,6 +1207,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return found reader for specified class or null
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <T> JsonReader.BindObject<T> tryFindBinder(final Class<T> manifest) {
 		return (JsonReader.BindObject<T>) tryFindBinder((Type) manifest);
 	}
@@ -1211,6 +1227,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@SuppressWarnings("unchecked")
+	@Nullable
 	protected final JsonReader.ReadJsonObject<JsonObject> getObjectReader(final Class<?> manifest) {
 		try {
 			JsonReader.ReadJsonObject<JsonObject> reader = objectReaders.get(manifest);
@@ -1257,6 +1274,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@Deprecated
+	@Nullable
 	public static Object deserializeObject(final JsonReader reader) throws IOException {
 		return ObjectConverter.deserializeObject(reader);
 	}
@@ -1451,6 +1469,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
 	 */
+	@Nullable
 	public <T> T deserialize(
 			final JsonReader.ReadObject<T> converter,
 			final JsonReader<TContext> input) throws IOException {
@@ -1480,6 +1499,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException error during deserialization
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> TResult deserialize(
 			final Class<TResult> manifest,
 			final byte[] body,
@@ -1544,6 +1564,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
 	 */
+	@Nullable
 	public Object deserialize(
 			final Type manifest,
 			final byte[] body,
@@ -1573,6 +1594,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@SuppressWarnings("unchecked")
+	@Nullable
 	private Object deserializeWith(Type manifest, JsonReader json) throws IOException {
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
@@ -1705,6 +1727,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException error during deserialization
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> List<TResult> deserializeList(
 			final Class<TResult> manifest,
 			final byte[] body,
@@ -1786,6 +1809,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException error during deserialization
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> List<TResult> deserializeList(
 			final Class<TResult> manifest,
 			final InputStream stream,
@@ -1820,6 +1844,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException error during deserialization
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> List<TResult> deserializeList(
 			final Class<TResult> manifest,
 			final InputStream stream) throws IOException {
@@ -1839,6 +1864,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@SuppressWarnings("unchecked")
+	@Nullable
 	private <TResult> List<TResult> deserializeList(
 			final Class<TResult> manifest,
 			JsonReader<TContext> json,
@@ -1901,6 +1927,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException error during deserialization
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> TResult deserialize(
 			final Class<TResult> manifest,
 			final InputStream stream,
@@ -1936,6 +1963,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException error during deserialization
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> TResult deserialize(
 			final Class<TResult> manifest,
 			final InputStream stream) throws IOException {
@@ -1954,6 +1982,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@SuppressWarnings("unchecked")
+	@Nullable
 	private <TResult> TResult deserialize(
 			final Class<TResult> manifest,
 			final JsonReader json,
@@ -2025,6 +2054,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
 	 */
+	@Nullable
 	public Object deserialize(
 			final Type manifest,
 			final InputStream stream,
@@ -2068,6 +2098,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return deserialized instance
 	 * @throws IOException error during deserialization
 	 */
+	@Nullable
 	public Object deserialize(
 			final Type manifest,
 			final InputStream stream) throws IOException {
@@ -2144,6 +2175,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		public void remove() {
 		}
 
+		@Nullable
 		@Override
 		public Object next() {
 			return null;
@@ -2170,6 +2202,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException if reader is not found or there is an error processing input stream
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> Iterator<TResult> iterateOver(
 			final Class<TResult> manifest,
 			final InputStream stream) throws IOException {
@@ -2206,6 +2239,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @throws IOException if reader is not found or there is an error processing input stream
 	 */
 	@SuppressWarnings("unchecked")
+	@Nullable
 	public <TResult> Iterator<TResult> iterateOver(
 			final Class<TResult> manifest,
 			final InputStream stream,
@@ -2223,6 +2257,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@SuppressWarnings("unchecked")
+	@Nullable
 	private <TResult> Iterator<TResult> iterateOver(
 			final Class<TResult> manifest,
 			final JsonReader json,
@@ -2263,34 +2298,34 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	private final JsonWriter.WriteObject OBJECT_WRITER = new JsonWriter.WriteObject() {
 		@Override
-		public void write(JsonWriter writer, Object value) {
+		public void write(JsonWriter writer, @Nullable Object value) {
 			((JsonObject) value).serialize(writer, omitDefaults);
 		}
 	};
 
 	private final JsonWriter.WriteObject OBJECT_ARRAY_WRITER = new JsonWriter.WriteObject() {
 		@Override
-		public void write(JsonWriter writer, Object value) {
+		public void write(JsonWriter writer, @Nullable Object value) {
 			serialize(writer, (JsonObject[]) value);
 		}
 	};
 
 	private static final JsonWriter.WriteObject CHAR_ARRAY_WRITER = new JsonWriter.WriteObject() {
 		@Override
-		public void write(JsonWriter writer, Object value) {
+		public void write(JsonWriter writer, @Nullable Object value) {
 			StringConverter.serialize(new String((char[]) value), writer);
 		}
 	};
 
 	private final JsonWriter.WriteObject NULL_WRITER = new JsonWriter.WriteObject() {
 		@Override
-		public void write(JsonWriter writer, Object value) {
+		public void write(JsonWriter writer, @Nullable Object value) {
 			writer.writeNull();
 		}
 	};
 
 	@SuppressWarnings("unchecked")
-	private JsonWriter.WriteObject getOrCreateWriter(final Object instance, final Class<?> instanceManifest) throws IOException {
+	private JsonWriter.WriteObject getOrCreateWriter(@Nullable final Object instance, final Class<?> instanceManifest) throws IOException {
 		if (instance instanceof JsonObject) {
 			return OBJECT_WRITER;
 		}
@@ -2317,7 +2352,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 					//TODO: cache writer for next lookup
 					return new JsonWriter.WriteObject() {
 						@Override
-						public void write(JsonWriter writer, Object value) {
+						public void write(JsonWriter writer, @Nullable Object value) {
 							writer.serialize((Object[]) value, elementWriter);
 						}
 					};
@@ -2327,7 +2362,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (instance instanceof Collection || Collection.class.isAssignableFrom(manifest)) {
 			return new JsonWriter.WriteObject() {
 				@Override
-				public void write(JsonWriter writer, final Object value) {
+				public void write(JsonWriter writer, @Nullable final Object value) {
 					final Collection items = (Collection) value;
 					Class<?> baseType = null;
 					final Iterator iterator = items.iterator();
@@ -2398,7 +2433,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public <T> void iterateOver(
 			final Iterator<T> iterator,
 			final OutputStream stream,
-			final JsonWriter writer) throws IOException {
+			@Nullable final JsonWriter writer) throws IOException {
 		if (iterator == null) {
 			throw new IllegalArgumentException("iterator can't be null");
 		}
@@ -2472,7 +2507,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			final Iterator<T> iterator,
 			final Class<T> manifest,
 			final OutputStream stream,
-			final JsonWriter writer) throws IOException {
+			@Nullable final JsonWriter writer) throws IOException {
 		if (iterator == null) {
 			throw new IllegalArgumentException("iterator can't be null");
 		}
@@ -2523,7 +2558,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param <T> type
 	 */
 	@Deprecated
-	public <T extends JsonObject> void serialize(final JsonWriter writer, final T[] array) {
+	public <T extends JsonObject> void serialize(final JsonWriter writer, @Nullable final T[] array) {
 		if (array == null) {
 			writer.writeNull();
 			return;
@@ -2595,7 +2630,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param <T> type
 	 */
 	@Deprecated
-	public <T extends JsonObject> void serialize(final JsonWriter writer, final List<T> list) {
+	public <T extends JsonObject> void serialize(final JsonWriter writer, @Nullable final List<T> list) {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
 		}
@@ -2632,7 +2667,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param <T> type
 	 */
 	@Deprecated
-	public <T extends JsonObject> void serialize(final JsonWriter writer, final Collection<T> collection) {
+	public <T extends JsonObject> void serialize(final JsonWriter writer, @Nullable final Collection<T> collection) {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
 		}
@@ -2678,7 +2713,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return successful serialization
 	 */
 	@SuppressWarnings("unchecked")
-	public boolean serialize(final JsonWriter writer, final Type manifest, final Object value) {
+	public boolean serialize(final JsonWriter writer, final Type manifest, @Nullable final Object value) {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
 		}
@@ -2803,7 +2838,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param stream where to write resulting JSON
 	 * @throws IOException error when unable to serialize instance
 	 */
-	public final void serialize(final Object value, final OutputStream stream) throws IOException {
+	public final void serialize(@Nullable final Object value, final OutputStream stream) throws IOException {
 		if (stream == null) {
 			throw new IllegalArgumentException("stream can't be null");
 		}
@@ -2838,7 +2873,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @param value  object instance to serialize
 	 * @throws IOException error when unable to serialize instance
 	 */
-	public final void serialize(final JsonWriter writer, final Object value) throws IOException {
+	public final void serialize(final JsonWriter writer, @Nullable final Object value) throws IOException {
 		if (writer == null) {
 			throw new IllegalArgumentException("writer can't be null");
 		}

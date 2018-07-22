@@ -11,6 +11,7 @@ public class TimestampDslJsonConverter implements Configuration {
 	@Override
 	public void configure(DslJson json) {
 		json.registerReader(java.sql.Timestamp.class, new JsonReader.ReadObject<Timestamp>() {
+			@Nullable
 			@Override
 			public Timestamp read(JsonReader reader) throws IOException {
 				return reader.wasNull() ? null : java.sql.Timestamp.from(JavaTimeConverter.deserializeDateTime(reader).toInstant());
@@ -18,7 +19,7 @@ public class TimestampDslJsonConverter implements Configuration {
 		});
 		json.registerWriter(java.sql.Timestamp.class, new JsonWriter.WriteObject<java.sql.Timestamp>() {
 			@Override
-			public void write(JsonWriter writer, java.sql.Timestamp value) {
+			public void write(JsonWriter writer, @Nullable java.sql.Timestamp value) {
 				if (value == null) writer.writeNull();
 				else JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
 			}

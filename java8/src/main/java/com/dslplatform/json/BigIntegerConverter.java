@@ -7,6 +7,7 @@ import java.util.Arrays;
 public abstract class BigIntegerConverter {
 
 	public static final JsonReader.ReadObject<BigInteger> READER = new JsonReader.ReadObject<BigInteger>() {
+		@Nullable
 		@Override
 		public BigInteger read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
@@ -14,7 +15,7 @@ public abstract class BigIntegerConverter {
 	};
 	public static final JsonWriter.WriteObject<BigInteger> WRITER = new JsonWriter.WriteObject<BigInteger>() {
 		@Override
-		public void write(JsonWriter writer, BigInteger value) {
+		public void write(JsonWriter writer, @Nullable BigInteger value) {
 			serialize(value, writer);
 		}
 	};
@@ -71,7 +72,7 @@ public abstract class BigIntegerConverter {
 		return new NumberInfo(tmp, i);
 	}
 
-	public static void serialize(final BigInteger value, final JsonWriter sw) {
+	public static void serialize(@Nullable final BigInteger value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {

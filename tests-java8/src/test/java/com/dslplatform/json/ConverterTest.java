@@ -22,7 +22,7 @@ public class ConverterTest {
 		public static JsonWriter.WriteObject<ClosedClass> JSON_WRITER() {
 			return new JsonWriter.WriteObject<ClosedClass>() {
 				@Override
-				public void write(JsonWriter writer, ClosedClass value) {
+				public void write(JsonWriter writer, @Nullable ClosedClass value) {
 					writer.writeString(value.value);
 				}
 			};

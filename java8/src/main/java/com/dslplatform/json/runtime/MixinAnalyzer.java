@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.SerializationException;
+import com.dslplatform.json.*;
 
 import java.lang.reflect.*;
 import java.util.Collection;
@@ -43,7 +40,7 @@ public abstract class MixinAnalyzer {
 		}
 
 		@Override
-		public void write(final JsonWriter writer, final Object value) {
+		public void write(final JsonWriter writer, @Nullable final Object value) {
 			if (resolvedWriter == null) {
 				if (checkSignatureNotFound()) {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
@@ -58,6 +55,7 @@ public abstract class MixinAnalyzer {
 	}
 
 	public static final DslJson.ConverterFactory<ObjectFormatDescription> WRITER = new DslJson.ConverterFactory<ObjectFormatDescription>() {
+		@Nullable
 		@Override
 		public ObjectFormatDescription tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -73,6 +71,7 @@ public abstract class MixinAnalyzer {
 		}
 	};
 
+	@Nullable
 	private static <T> ObjectFormatDescription<T, T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
 		if (raw.isArray()
 				|| Object.class == manifest

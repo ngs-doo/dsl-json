@@ -48,7 +48,7 @@ public class Analysis {
 	public static class AnnotationMapping<T> {
 		public final String name;
 		public final T value;
-		public AnnotationMapping(String name, T value) {
+		public AnnotationMapping(String name, @Nullable T value) {
 			this.name = name;
 			this.value = value;
 		}
@@ -72,14 +72,14 @@ public class Analysis {
 			LogLevel logLevel,
 			Set<String> supportedTypes,
 			ContainerSupport containerSupport,
-			Set<String> alternativeIgnore,
-			Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable,
-			Map<String, String> alternativeAlias,
-			Map<String, List<AnnotationMapping<Boolean>>> alternativeMandatory,
-			Set<String> alternativeCtors,
-			Set<String> alternativeFactories,
-			Map<String, String> alternativeIndex,
-			UnknownTypes unknownTypes,
+			@Nullable Set<String> alternativeIgnore,
+			@Nullable Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable,
+			@Nullable Map<String, String> alternativeAlias,
+			@Nullable Map<String, List<AnnotationMapping<Boolean>>> alternativeMandatory,
+			@Nullable Set<String> alternativeCtors,
+			@Nullable Set<String> alternativeFactories,
+			@Nullable Map<String, String> alternativeIndex,
+			@Nullable UnknownTypes unknownTypes,
 			boolean onlyBasicFeatures,
 			boolean includeFields,
 			boolean includeBeanMethods,
@@ -298,7 +298,7 @@ public class Analysis {
 			}
 			if (info.deserializeAs != null) {
 				StructInfo target = structs.get(info.deserializeAs.asType().toString());
-				info.deserializeTarget(target);
+				info.setDeserializeTarget(target);
 				if (target == null) {
 					hasError = true;
 					messager.printMessage(
@@ -826,6 +826,7 @@ public class Analysis {
 		}
 	}
 
+	@Nullable
 	private String validateDeserializeAs(TypeElement source, TypeElement target) {
 		if (target.getModifiers().contains(Modifier.PRIVATE)) {
 			return "can't be private";
@@ -851,6 +852,7 @@ public class Analysis {
 		}
 	}
 
+	@Nullable
 	public List<ExecutableElement> findMatchingConstructors(Element element) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM
@@ -868,6 +870,7 @@ public class Analysis {
 		return matchingCtors;
 	}
 
+	@Nullable
 	public ExecutableElement findAnnotatedConstructor(Element element, DeclaredType discoveredBy) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM
@@ -908,6 +911,7 @@ public class Analysis {
 		return null;
 	}
 
+	@Nullable
 	public ExecutableElement findAnnotatedFactory(Element element, DeclaredType discoveredBy) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM) {
@@ -1078,7 +1082,9 @@ public class Analysis {
 		public final VariableElement arg;
 		public final AnnotationMirror annotation;
 
-		private AccessElements(ExecutableElement read, ExecutableElement write, VariableElement arg, VariableElement field, AnnotationMirror annotation) {
+		private AccessElements(@Nullable ExecutableElement read, @Nullable ExecutableElement write,
+                               @Nullable VariableElement arg, @Nullable VariableElement field,
+                               @Nullable AnnotationMirror annotation) {
 			this.read = read;
 			this.write = write;
 			this.field = field;
@@ -1086,20 +1092,20 @@ public class Analysis {
 			this.annotation = annotation;
 		}
 
-		public static AccessElements readWrite(ExecutableElement read, ExecutableElement write, AnnotationMirror annotation) {
+		public static AccessElements readWrite(ExecutableElement read, ExecutableElement write, @Nullable AnnotationMirror annotation) {
 			return new AccessElements(read, write, null, null, annotation);
 		}
 
-		public static AccessElements field(VariableElement field, VariableElement arg, AnnotationMirror annotation) {
+		public static AccessElements field(VariableElement field, VariableElement arg, @Nullable AnnotationMirror annotation) {
 			return new AccessElements(null, null, arg, field, annotation);
 		}
 
-		public static AccessElements readOnly(ExecutableElement read, VariableElement arg, AnnotationMirror annotation) {
+		public static AccessElements readOnly(ExecutableElement read, VariableElement arg, @Nullable AnnotationMirror annotation) {
 			return new AccessElements(read, null, arg, null, annotation);
 		}
 	}
 
-	private Map<String, VariableElement> getArguments(ExecutableElement element) {
+	private Map<String, VariableElement> getArguments(@Nullable ExecutableElement element) {
 		if (element == null) return Collections.emptyMap();
 		Map<String, VariableElement> arguments = new HashMap<String, VariableElement>();
 		for (VariableElement p : element.getParameters()) {
@@ -1120,7 +1126,7 @@ public class Analysis {
 		return types.isAssignable(right, left);
 	}
 
-	public Map<String, AccessElements> getBeanProperties(TypeElement element, ExecutableElement ctor, ExecutableElement factory) {
+	public Map<String, AccessElements> getBeanProperties(TypeElement element, ExecutableElement ctor, @Nullable ExecutableElement factory) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		Map<String, VariableElement> arguments = getArguments(factory != null ? factory : ctor);
@@ -1171,7 +1177,7 @@ public class Analysis {
 		return result;
 	}
 
-	public Map<String, AccessElements> getExactProperties(TypeElement element, ExecutableElement ctor, ExecutableElement factory) {
+	public Map<String, AccessElements> getExactProperties(TypeElement element, ExecutableElement ctor, @Nullable ExecutableElement factory) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		Map<String, VariableElement> arguments = getArguments(factory != null ? factory : ctor);
@@ -1216,7 +1222,7 @@ public class Analysis {
 		return result;
 	}
 
-	public Map<String, AccessElements> getPublicFields(TypeElement element, boolean mustHaveEmptyCtor, ExecutableElement ctor, ExecutableElement factory) {
+	public Map<String, AccessElements> getPublicFields(TypeElement element, boolean mustHaveEmptyCtor, ExecutableElement ctor, @Nullable ExecutableElement factory) {
 		Map<String, AccessElements> result = new HashMap<String, AccessElements>();
 		Map<String, VariableElement> arguments = getArguments(factory != null ? factory : ctor);
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
@@ -1265,6 +1271,7 @@ public class Analysis {
 		}
 	}
 
+	@Nullable
 	public String[] getAlternativeNames(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
 		if (dslAnn == null) return null;
@@ -1284,7 +1291,7 @@ public class Analysis {
 		return null;
 	}
 
-	public boolean isFullMatch(Element property, AnnotationMirror dslAnn) {
+	public boolean isFullMatch(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn == null) return false;
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -1296,7 +1303,7 @@ public class Analysis {
 		return false;
 	}
 
-	public int index(Element property, AnnotationMirror dslAnn) {
+	public int index(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 			for (ExecutableElement ee : values.keySet()) {
@@ -1314,7 +1321,9 @@ public class Analysis {
 		return -1;
 	}
 
-	private AnnotationMirror annotation(ExecutableElement read, ExecutableElement write, VariableElement field, VariableElement arg) {
+	@Nullable
+	private AnnotationMirror annotation(@Nullable ExecutableElement read, @Nullable ExecutableElement write,
+                                        @Nullable VariableElement field, @Nullable VariableElement arg) {
 		AnnotationMirror dslAnn = read == null ? null : getAnnotation(read, attributeType);
 		if (dslAnn != null) return dslAnn;
 		dslAnn = write == null ? null : getAnnotation(write, attributeType);
@@ -1337,6 +1346,7 @@ public class Analysis {
 		return false;
 	}
 
+	@Nullable
 	public AnnotationMirror scanClassForAnnotation(TypeElement element, DeclaredType annotationType) {
 		AnnotationMirror target = getAnnotation(element, annotationType);
 		if (target != null) return target;
@@ -1351,6 +1361,7 @@ public class Analysis {
 		return null;
 	}
 
+	@Nullable
 	public AnnotationMirror getAnnotation(Element element, DeclaredType annotationType) {
 		for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
 			if (types.isSameType(mirror.getAnnotationType(), annotationType)) {
@@ -1360,7 +1371,7 @@ public class Analysis {
 		return null;
 	}
 
-	public boolean hasNonNullable(Element property, AnnotationMirror dslAnn) {
+	public boolean hasNonNullable(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 			for (ExecutableElement ee : values.keySet()) {
@@ -1378,6 +1389,7 @@ public class Analysis {
 		return false;
 	}
 
+	@Nullable
 	public static TypeElement deserializeAs(AnnotationMirror annotation) {
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -1389,7 +1401,7 @@ public class Analysis {
 		return null;
 	}
 
-	public static String deserializeName(AnnotationMirror annotation) {
+	public static String deserializeName(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -1400,7 +1412,7 @@ public class Analysis {
 		return "";
 	}
 
-	public boolean hasMandatoryAnnotation(Element property, AnnotationMirror dslAnn) {
+	public boolean hasMandatoryAnnotation(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			return booleanAnnotationValue(dslAnn, "mandatory()", false);
 		}
@@ -1422,7 +1434,8 @@ public class Analysis {
 		return defaultValue;
 	}
 
-	public CompiledJson.Behavior onUnknownValue(AnnotationMirror annotation) {
+	@Nullable
+	public CompiledJson.Behavior onUnknownValue(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return null;
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -1435,7 +1448,8 @@ public class Analysis {
 		return null;
 	}
 
-	public CompiledJson.TypeSignature typeSignatureValue(AnnotationMirror annotation) {
+	@Nullable
+	public CompiledJson.TypeSignature typeSignatureValue(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return null;
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -1448,7 +1462,7 @@ public class Analysis {
 		return null;
 	}
 
-	public CompiledJson.Format[] getFormats(AnnotationMirror ann) {
+	public CompiledJson.Format[] getFormats(@Nullable AnnotationMirror ann) {
 		if (ann == null) return new CompiledJson.Format[]{CompiledJson.Format.OBJECT};
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = ann.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -1467,7 +1481,7 @@ public class Analysis {
 		return new CompiledJson.Format[]{CompiledJson.Format.OBJECT};
 	}
 
-	public boolean isMinified(AnnotationMirror ann) {
+	public boolean isMinified(@Nullable AnnotationMirror ann) {
 		if (ann == null) return false;
 		for (ExecutableElement ee : ann.getElementValues().keySet()) {
 			if ("minified()".equals(ee.toString())) {
@@ -1478,6 +1492,7 @@ public class Analysis {
 		return false;
 	}
 
+	@Nullable
 	public TypeMirror findConverter(Element property) {
 		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
 		if (dslAnn == null) return null;
@@ -1491,7 +1506,8 @@ public class Analysis {
 		return null;
 	}
 
-	public String findNameAlias(Element property, AnnotationMirror dslAnn) {
+	@Nullable
+	public String findNameAlias(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 			for (ExecutableElement ee : values.keySet()) {
@@ -1510,6 +1526,7 @@ public class Analysis {
 		return null;
 	}
 
+	@Nullable
 	private static Boolean matchCustomBoolean(
 			AnnotationMirror ann,
 			Map<String, List<AnnotationMapping<Boolean>>> alternatives) {
@@ -1531,6 +1548,7 @@ public class Analysis {
 		return null;
 	}
 
+	@Nullable
 	private static String matchCustomString(
 			AnnotationMirror ann,
 			Map<String, String> alternatives) {
@@ -1549,6 +1567,7 @@ public class Analysis {
 		return null;
 	}
 
+	@Nullable
 	private static Integer matchCustomInteger(
 			AnnotationMirror ann,
 			Map<String, String> alternatives) {

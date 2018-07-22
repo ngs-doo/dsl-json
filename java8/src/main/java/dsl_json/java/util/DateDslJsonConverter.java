@@ -10,6 +10,7 @@ public class DateDslJsonConverter implements Configuration {
 	@Override
 	public void configure(DslJson json) {
 		json.registerReader(java.util.Date.class, new JsonReader.ReadObject<java.util.Date>() {
+			@Nullable
 			@Override
 			public java.util.Date read(JsonReader reader) throws IOException {
 				return reader.wasNull() ? null : java.util.Date.from(JavaTimeConverter.deserializeDateTime(reader).toInstant());
@@ -17,7 +18,7 @@ public class DateDslJsonConverter implements Configuration {
 		});
 		json.registerWriter(java.util.Date.class, new JsonWriter.WriteObject<java.util.Date>() {
 			@Override
-			public void write(JsonWriter writer, java.util.Date value) {
+			public void write(JsonWriter writer, @Nullable java.util.Date value) {
 				if (value == null) writer.writeNull();
 				else JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
 			}
