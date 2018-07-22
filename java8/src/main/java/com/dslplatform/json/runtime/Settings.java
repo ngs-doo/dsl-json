@@ -145,17 +145,18 @@ public abstract class Settings {
 	}
 
 	public static <T> DslJson.Settings<T> withRuntime() {
-		DslJson.Settings<T> settings = withAnalyzers(new DslJson.Settings<>().resolveReader(UNKNOWN_READER));
+		DslJson.Settings<T> settings = withAnalyzers();
 		return settings.with(new ConfigureJava8());
 	}
 
 	public static <T> DslJson.Settings<T> basicSetup() {
-		DslJson.Settings<T> settings = withAnalyzers(new DslJson.Settings<>());
+		DslJson.Settings<T> settings = withAnalyzers();
 		return settings.includeServiceLoader();
 	}
 
-	public static <T> DslJson.Settings<T> withAnalyzers(DslJson.Settings settings) {
-		return settings
+	public static <T> DslJson.Settings<T> withAnalyzers() {
+		return new DslJson.Settings()
+				.resolveReader(UNKNOWN_READER)
 				.resolveReader(CollectionAnalyzer.READER)
 				.resolveWriter(CollectionAnalyzer.WRITER)
 				.resolveReader(ArrayAnalyzer.READER)

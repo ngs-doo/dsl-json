@@ -12,11 +12,30 @@ import java.util.*;
 public abstract class ImmutableAnalyzer {
 
 	private static final Set<String> objectMethods = new HashSet<>();
+	private static final ParameterNameExtractor parameterNameExtractor;
 	static {
 		for (Method m : Object.class.getMethods()) {
 			if (m.getParameterTypes().length == 0) {
 				objectMethods.add(m.getName());
 			}
+		}
+
+		List<ParameterNameExtractor> extractors = new ArrayList<>();
+		if (isClassAvailable("java.lang.reflect.Parameter")) {
+			extractors.add(new Java8ParameterNameExtractor());
+		}
+		if (isClassAvailable("com.thoughtworks.paranamer.Paranamer")) {
+			extractors.add(new ParanamerParameterNameExtractor());
+		}
+		parameterNameExtractor = new CompositeParameterNameExtractor(extractors);
+	}
+
+	private static boolean isClassAvailable(String className) {
+		try {
+			Class.forName(className);
+			return true;
+		} catch (ClassNotFoundException e) {
+			return false;
 		}
 	}
 
@@ -98,28 +117,7 @@ public abstract class ImmutableAnalyzer {
 		}
 	};
 
-	private static String[] tryParanamerIfPresent(Constructor<?> ctor) {
-		com.thoughtworks.paranamer.AdaptiveParanamer paranamer = new com.thoughtworks.paranamer.AdaptiveParanamer();
-		return paranamer.lookupParameterNames(ctor);
-	}
-
-	public static Optional<String[]> extractNames(Constructor<?> ctor) {
-		final Parameter[] ctorParams = ctor.getParameters();
-		final String[] names = new String[ctorParams.length];
-		for (int i = 0; i < ctorParams.length; i++) {
-			if (!ctorParams[i].isNamePresent()) {
-				try {
-					return Optional.ofNullable(tryParanamerIfPresent(ctor));
-				} catch (NoClassDefFoundError | Exception ignore) {
-					return Optional.empty();
-				}
-			}
-			names[i] = ctorParams[i].getName();
-		}
-		return Optional.of(names);
-	}
-
-	private static <T> ImmutableDescription<T> analyze(final Type manifest, final Class<T> raw, final DslJson json) {
+	private static <T> ImmutableDescription<T> analyze(final Type manifest, final Class<T> raw, final DslJson<?> json) {
 		if (raw.isArray()
 				|| Collection.class.isAssignableFrom(raw)
 				|| (raw.getModifiers() & Modifier.ABSTRACT) != 0
@@ -136,15 +134,17 @@ public abstract class ImmutableAnalyzer {
 		}
 		if (ctors.size() != 1) return null;
 		final Constructor<?> ctor = ctors.get(0);
-		final Parameter[] ctorParams = ctor.getParameters();
-		if (ctorParams.length == 0) return null;
-		String[] names = extractNames(ctor).orElse(null);
+		final Type[] paramTypes = ctor.getGenericParameterTypes();
+		if (paramTypes.length == 0) {
+			return null;
+		}
+		String[] names = parameterNameExtractor.extractNames(ctor);
 		if (names == null) {
 			final Set<Type> types = new HashSet<>();
-			for(Parameter p : ctorParams) {
+			for(Type p : paramTypes) {
 				//only allow registration without name when all types are different
 				//TODO: ideally we could allow some ad hoc heuristics to test which value goes to which parameter.... but meh
-				if (!types.add(p.getParameterizedType())) return null;
+				if (!types.add(p)) return null;
 			}
 		}
 		final LazyImmutableDescription lazy = new LazyImmutableDescription(json, manifest);
@@ -153,7 +153,7 @@ public abstract class ImmutableAnalyzer {
 		final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();
 		final LinkedHashMap<String, JsonWriter.WriteObject> methods = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
-		final Object[] defArgs = findDefaultArguments(ctorParams, genericMappings, json);
+		final Object[] defArgs = findDefaultArguments(paramTypes, genericMappings, json);
 		final LinkedHashMap<String, Field> matchingFields = new LinkedHashMap<>();
 		for (final Field f : raw.getFields()) {
 			if (isPublicFinalNonStatic(f.getModifiers())) {
@@ -172,37 +172,37 @@ public abstract class ImmutableAnalyzer {
 		}
 		final JsonWriter.WriteObject[] writeProps;
 		if (names != null) {
-			if (matchingFields.size() == ctorParams.length) {
-				for (int i = 0; i < ctorParams.length; i++) {
+			if (matchingFields.size() == paramTypes.length) {
+				for (int i = 0; i < paramTypes.length; i++) {
 					final Field f = matchingFields.get(names[i]);
-					if (f == null || !analyzeField(json, ctorParams[i], fields, f, genericMappings)) {
+					if (f == null || !analyzeField(json, paramTypes[i], fields, f, genericMappings)) {
 						return unregister(manifest, json, oldWriter, oldReader);
 					}
 				}
 				writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
 			} else {
-				for (int i = 0; i < ctorParams.length; i++) {
+				for (int i = 0; i < paramTypes.length; i++) {
 					final Method m = matchingMethods.get(names[i]);
-					if (m == null || !analyzeMethod(m, json, ctorParams[i], names[i], methods, genericMappings)) {
+					if (m == null || !analyzeMethod(m, json, paramTypes[i], names[i], methods, genericMappings)) {
 						return unregister(manifest, json, oldWriter, oldReader);
 					}
 				}
 				writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
 			}
 		} else {
-			names = new String[ctorParams.length];
-			if (matchingFields.size() == ctorParams.length) {
+			names = new String[paramTypes.length];
+			if (matchingFields.size() == paramTypes.length) {
 				List<Field> orderedFields = new ArrayList<>(matchingFields.values());
-				for (int i = 0; i < ctorParams.length; i++) {
+				for (int i = 0; i < paramTypes.length; i++) {
 					final Field f = orderedFields.get(i);
-					if (!analyzeField(json, ctorParams[i], fields, f, genericMappings)) {
+					if (!analyzeField(json, paramTypes[i], fields, f, genericMappings)) {
 						return unregister(manifest, json, oldWriter, oldReader);
 					}
 					names[i] = f.getName();
 				}
 				writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
 			} else {
-				for (Parameter p : ctorParams) {
+				for (Type p : paramTypes) {
 					for (Map.Entry<String, Method> kv : matchingMethods.entrySet()) {
 						final Method m = kv.getValue();
 						if (analyzeMethod(m, json, p, kv.getKey(), methods, genericMappings)) {
@@ -211,7 +211,7 @@ public abstract class ImmutableAnalyzer {
 						}
 					}
 				}
-				if (methods.size() == ctorParams.length) {
+				if (methods.size() == paramTypes.length) {
 					writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
 				} else {
 					return unregister(manifest, json, oldWriter, oldReader);
@@ -219,22 +219,19 @@ public abstract class ImmutableAnalyzer {
 				names = (fields.isEmpty() ? methods.keySet() : fields.keySet()).toArray(new String[0]);
 			}
 		}
-		final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[ctorParams.length];
-		for (int i = 0; i < ctorParams.length; i++) {
-			final Type concreteType = Generics.makeConcrete(ctorParams[i].getParameterizedType(), genericMappings);
+		final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[paramTypes.length];
+		for (int i = 0; i < paramTypes.length; i++) {
+			final Type concreteType = Generics.makeConcrete(paramTypes[i], genericMappings);
 			readProps[i] = new DecodePropertyInfo<>(names[i], false, false, i, false, new WriteCtor(json, concreteType, ctor));
 		}
-		final ImmutableDescription<T> converter = new ImmutableDescription<T>(
+		final ImmutableDescription<T> converter = new ImmutableDescription<>(
 				manifest,
 				defArgs,
-				new Settings.Function<Object[], T>() {
-					@Override
-					public T apply(Object[] args) {
-						try {
-							return (T) ctor.newInstance(args);
-						} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-							throw new RuntimeException(e);
-						}
+				args -> {
+					try {
+						return raw.cast(ctor.newInstance(args));
+					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+						throw new RuntimeException(e);
 					}
 				},
 				writeProps,
@@ -271,19 +268,19 @@ public abstract class ImmutableAnalyzer {
 		}
 	}
 
-	private static <T> ImmutableDescription<T> unregister(Type manifest, DslJson json, JsonWriter.WriteObject oldWriter, JsonReader.ReadObject oldReader) {
+	private static <T> ImmutableDescription<T> unregister(Type manifest, DslJson<?> json, JsonWriter.WriteObject oldWriter, JsonReader.ReadObject oldReader) {
 		json.registerWriter(manifest, oldWriter);
 		json.registerReader(manifest, oldReader);
 		return null;
 	}
 
 	private static Object[] findDefaultArguments(
-			final Parameter[] ctorParams,
+			final Type[] paramTypes,
 			final HashMap<Type, Type> genericMappings,
 			final DslJson json) {
-		final Object[] defArgs = new Object[ctorParams.length];
-		for (int i = 0; i < ctorParams.length; i++) {
-			final Type concreteType = Generics.makeConcrete(ctorParams[i].getParameterizedType(), genericMappings);
+		final Object[] defArgs = new Object[paramTypes.length];
+		for (int i = 0; i < paramTypes.length; i++) {
+			final Type concreteType = Generics.makeConcrete(paramTypes[i], genericMappings);
 			defArgs[i] = json.getDefault(concreteType);
 		}
 		return defArgs;
@@ -291,14 +288,14 @@ public abstract class ImmutableAnalyzer {
 
 	private static boolean analyzeField(
 			final DslJson json,
-			final Parameter ctorParam,
+			final Type paramType,
 			final LinkedHashMap<String, JsonWriter.WriteObject> found,
 			final Field field,
 			final HashMap<Type, Type> genericMappings) {
 		final Type type = field.getGenericType();
 		final Type concreteType = Generics.makeConcrete(type, genericMappings);
 		final boolean isUnknown = Generics.isUnknownType(type);
-		if (type.equals(ctorParam.getParameterizedType())
+		if (type.equals(paramType)
 				&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
 			found.put(
 					field.getName(),
@@ -315,14 +312,14 @@ public abstract class ImmutableAnalyzer {
 	private static boolean analyzeMethod(
 			final Method mget,
 			final DslJson json,
-			final Parameter ctorParam,
+			final Type paramType,
 			final String name,
 			final HashMap<String, JsonWriter.WriteObject> found,
 			final HashMap<Type, Type> genericMappings) {
 		final Type type = mget.getGenericReturnType();
 		final Type concreteType = Generics.makeConcrete(type, genericMappings);
 		final boolean isUnknown = Generics.isUnknownType(type);
-		if (type.equals(ctorParam.getParameterizedType())
+		if (type.equals(paramType)
 				&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
 			found.put(
 					name,
