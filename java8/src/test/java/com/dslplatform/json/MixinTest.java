@@ -107,7 +107,7 @@ public class MixinTest {
 			json.deserialize(Iface.class, is);
 			Assert.fail("Expecting error");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Expecting \"$type\" attribute as first element of mixin at position: 2. Found: $typ"));
+			Assert.assertTrue(ex.getMessage().contains("Expecting \"$type\" attribute as first element of mixin at position: 2, following: `{\"`, before: `$typ\":123}`. Found: $typ"));
 		}
 	}
 
