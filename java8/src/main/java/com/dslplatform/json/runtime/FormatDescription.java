@@ -3,6 +3,7 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -24,8 +25,8 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 
 	public FormatDescription(
 			final Type manifest,
-			final FormatConverter<T> objectFormat,
-			final FormatConverter<T> arrayFormat,
+			@Nullable final FormatConverter<T> objectFormat,
+			@Nullable final FormatConverter<T> arrayFormat,
 			final boolean isObjectFormatFirst,
 			final String typeName,
 			final DslJson json) {
@@ -52,7 +53,7 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 		this.typeHash = DecodePropertyInfo.calcHash(name);
 	}
 
-	public final void write(final JsonWriter writer, final T instance) {
+	public final void write(final JsonWriter writer, @Nullable final T instance) {
 		if (instance == null) {
 			writer.writeNull();
 		} else if (isObjectFormatFirst) {
@@ -62,6 +63,7 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 		}
 	}
 
+	@Nullable
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() == '{') {

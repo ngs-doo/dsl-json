@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.NumberConverter;
-import com.dslplatform.json.SerializationException;
+import com.dslplatform.json.*;
 
 import java.util.Map;
 
@@ -17,8 +14,8 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 	public MapEncoder(
 			final DslJson json,
 			final boolean checkForConversionToString,
-			final JsonWriter.WriteObject<K> keyEncoder,
-			final JsonWriter.WriteObject<V> valueEncoder) {
+			@Nullable final JsonWriter.WriteObject<K> keyEncoder,
+			@Nullable final JsonWriter.WriteObject<V> valueEncoder) {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		this.json = json;
 		this.checkForConversionToString = checkForConversionToString;
@@ -29,7 +26,7 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 	private static final byte[] EMPTY = {'{', '}'};
 
 	@Override
-	public void write(JsonWriter writer, T value) {
+	public void write(JsonWriter writer, @Nullable T value) {
 		if (value == null) writer.writeNull();
 		else if (value.isEmpty()) writer.writeAscii(EMPTY);
 		else if (keyEncoder != null && valueEncoder != null) {

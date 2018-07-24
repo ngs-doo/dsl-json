@@ -18,7 +18,7 @@ public class CustomArrayConverter {
 			}
 		};
 		public static final JsonWriter.WriteObject<ArrayList<Integer>> JSON_WRITER = new JsonWriter.WriteObject<ArrayList<Integer>>() {
-			public void write(JsonWriter writer, ArrayList<Integer> value) {
+			public void write(JsonWriter writer, @Nullable ArrayList<Integer> value) {
 				writer.writeAscii("[]");
 			}
 		};

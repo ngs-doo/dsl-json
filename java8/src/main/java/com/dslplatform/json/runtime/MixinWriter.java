@@ -2,6 +2,7 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 import com.dslplatform.json.SerializationException;
 
 import java.lang.reflect.Type;
@@ -31,7 +32,7 @@ public final class MixinWriter<T> implements JsonWriter.WriteObject<T> {
 	}
 
 	@Override
-	public void write(final JsonWriter writer, final T instance) {
+	public void write(final JsonWriter writer, @Nullable final T instance) {
 		if (instance == null) {
 			writer.writeNull();
 			return;

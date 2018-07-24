@@ -56,15 +56,15 @@ public final class JsonWriter {
 		this(512, null);
 	}
 
-	JsonWriter(final UnknownSerializer unknownSerializer) {
+	JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
 		this(512, unknownSerializer);
 	}
 
-	JsonWriter(final int size, final UnknownSerializer unknownSerializer) {
+	JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer) {
 		this(new byte[size], unknownSerializer);
 	}
 
-	JsonWriter(final byte[] buffer, final UnknownSerializer unknownSerializer) {
+	JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer) {
 		this.buffer = buffer;
 		this.unknownSerializer = unknownSerializer;
 	}
@@ -559,7 +559,7 @@ public final class JsonWriter {
 	 *
 	 * @param stream sets/clears the target stream
 	 */
-	public final void reset(OutputStream stream) {
+	public final void reset(@Nullable OutputStream stream) {
 		position = 0;
 		target = stream;
 		flushed = 0;
@@ -606,7 +606,7 @@ public final class JsonWriter {
 	 * @param <T> type
 	 */
 	public interface WriteObject<T> {
-		void write(JsonWriter writer, T value);
+		void write(JsonWriter writer, @Nullable T value);
 	}
 
 	/**
@@ -680,7 +680,7 @@ public final class JsonWriter {
 	 * @param encoder instance serializer
 	 * @param <T> type of object
 	 */
-	public <T> void serialize(final T[] array, final WriteObject<T> encoder) {
+	public <T> void serialize(@Nullable final T[] array, final WriteObject<T> encoder) {
 		if (array == null) {
 			writeNull();
 			return;
@@ -718,7 +718,7 @@ public final class JsonWriter {
 	 * @param encoder instance serializer
 	 * @param <T> type of object
 	 */
-	public <T> void serialize(final List<T> list, final WriteObject<T> encoder) {
+	public <T> void serialize(@Nullable final List<T> list, final WriteObject<T> encoder) {
 		if (list == null) {
 			writeNull();
 			return;
@@ -753,7 +753,7 @@ public final class JsonWriter {
 	 * @param encoder instance serializer
 	 * @param <T> type of object
 	 */
-	public <T> void serialize(final Collection<T> collection, final WriteObject<T> encoder) {
+	public <T> void serialize(@Nullable final Collection<T> collection, final WriteObject<T> encoder) {
 		if (collection == null) {
 			writeNull();
 			return;
@@ -788,7 +788,7 @@ public final class JsonWriter {
 	 *
 	 * @param value instance to serialize
 	 */
-	public void serializeObject(final Object value) {
+	public void serializeObject(@Nullable final Object value) {
 		if (value == null) {
 			writeNull();
 		} else if (unknownSerializer != null) {

@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 
@@ -15,7 +16,7 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 		this.isEmpty = encoders.length == 0;
 	}
 
-	public final void write(final JsonWriter writer, final T instance) {
+	public final void write(final JsonWriter writer, @Nullable final T instance) {
 		if (instance == null) {
 			writer.writeNull();
 		} else if (alwaysSerialize) {
@@ -32,7 +33,7 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 		}
 	}
 
-	public final void writeContentFull(final JsonWriter writer, final T instance) {
+	public final void writeContentFull(final JsonWriter writer, @Nullable final T instance) {
 		if (isEmpty) return;
 		encoders[0].write(writer, instance);
 		for (int i = 1; i < encoders.length; i++) {
@@ -41,7 +42,7 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 		}
 	}
 
-	public final boolean writeContentMinimal(final JsonWriter writer, final T instance) {
+	public final boolean writeContentMinimal(final JsonWriter writer, @Nullable final T instance) {
 		if (isEmpty) return false;
 		final int originalPos = writer.size();
 		final long originalFlushed = writer.flushed();

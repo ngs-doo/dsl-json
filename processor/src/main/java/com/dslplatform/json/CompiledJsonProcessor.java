@@ -332,8 +332,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append("    in ").append(info.name);
 					dsl.append(info.onUnknown == CompiledJson.Behavior.FAIL ? " fail on" : " ignore");
 					dsl.append(" unknown;\n");
-				} else if (info.deserializeTarget() != null) {
-					dsl.append("    deserialize ").append(info.name).append(" as ").append(info.deserializeTarget().name).append(";\n");
+				} else if (info.getDeserializeTarget() != null) {
+					dsl.append("    deserialize ").append(info.name).append(" as ").append(info.getDeserializeTarget().name).append(";\n");
 				}
 			}
 			dsl.append("  }\n");
@@ -342,6 +342,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		return dsl.toString();
 	}
 
+	@Nullable
 	private String getDslType(AttributeInfo attr, Map<String, StructInfo> structs) {
 		String simpleType = SupportedTypes.get(attr.type.toString());
 		boolean hasNonNullable = attr.notNull;
@@ -390,7 +391,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			TypeCheck[] checks,
 			StructInfo info,
 			AttributeInfo attr,
-			String dslType,
+			@Nullable String dslType,
 			Map<String, StructInfo> structs) {
 		String javaType = attr.type.toString();
 		boolean fieldAccess = attr.field != null;
@@ -477,6 +478,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 	}
 
+	@Nullable
 	private static StructInfo findReferenced(TypeMirror type, Map<String, StructInfo> structs) {
 		if (type instanceof ArrayType) {
 			ArrayType at = (ArrayType) type;

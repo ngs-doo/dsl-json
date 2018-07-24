@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.SerializationException;
+import com.dslplatform.json.*;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -55,6 +52,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		this.exactMatch = uniqueHashNames.size() != descriptions.length;
 	}
 
+	@Nullable
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() == '{' && canObjectFormat) {
@@ -71,6 +69,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		}
 	}
 
+	@Nullable
 	private T readObjectFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
 			throw new IOException("Expecting \"$type\" attribute as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
@@ -93,6 +92,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		throw new IOException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest.getTypeName() + " which supports object format. Add @CompiledJson to specified type to allow deserialization into it");
 	}
 
+	@Nullable
 	private T readArrayFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
 			throw new IOException("Expecting \"$type\" value as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
@@ -112,7 +112,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 	}
 
 	@Override
-	public void write(final JsonWriter writer, final T instance) {
+	public void write(final JsonWriter writer, @Nullable final T instance) {
 		if (instance == null) {
 			writer.writeNull();
 			return;

@@ -12,6 +12,7 @@ import java.util.Collection;
 public abstract class JavaGeomConverter {
 
 	static final JsonReader.ReadObject<Point2D.Double> LocationReader = new JsonReader.ReadObject<Point2D.Double>() {
+		@Nullable
 		@Override
 		public Point2D.Double read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeLocation(reader);
@@ -19,11 +20,12 @@ public abstract class JavaGeomConverter {
 	};
 	static final JsonWriter.WriteObject<Point2D> LocationWriter = new JsonWriter.WriteObject<Point2D>() {
 		@Override
-		public void write(JsonWriter writer, Point2D value) {
+		public void write(JsonWriter writer, @Nullable Point2D value) {
 			serializeLocationNullable(value, writer);
 		}
 	};
 	static final JsonReader.ReadObject<Point> PointReader = new JsonReader.ReadObject<Point>() {
+		@Nullable
 		@Override
 		public Point read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializePoint(reader);
@@ -31,11 +33,12 @@ public abstract class JavaGeomConverter {
 	};
 	static final JsonWriter.WriteObject<Point> PointWriter = new JsonWriter.WriteObject<Point>() {
 		@Override
-		public void write(JsonWriter writer, Point value) {
+		public void write(JsonWriter writer, @Nullable Point value) {
 			serializePointNullable(value, writer);
 		}
 	};
 	static final JsonReader.ReadObject<Rectangle2D.Double> RectangleReader = new JsonReader.ReadObject<Rectangle2D.Double>() {
+		@Nullable
 		@Override
 		public Rectangle2D.Double read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeRectangle(reader);
@@ -43,24 +46,25 @@ public abstract class JavaGeomConverter {
 	};
 	static final JsonWriter.WriteObject<Rectangle2D> RectangleWriter = new JsonWriter.WriteObject<Rectangle2D>() {
 		@Override
-		public void write(JsonWriter writer, Rectangle2D value) {
+		public void write(JsonWriter writer, @Nullable Rectangle2D value) {
 			serializeRectangleNullable(value, writer);
 		}
 	};
 	static final JsonWriter.WriteObject<Image> ImageWriter = new JsonWriter.WriteObject<Image>() {
 		@Override
-		public void write(JsonWriter writer, Image value) {
+		public void write(JsonWriter writer, @Nullable Image value) {
 			serialize(value, writer);
 		}
 	};
 	static final JsonReader.ReadObject<BufferedImage> ImageReader = new JsonReader.ReadObject<BufferedImage>() {
+		@Nullable
 		@Override
 		public BufferedImage read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeImage(reader);
 		}
 	};
 
-	public static void serializeLocationNullable(final Point2D value, final JsonWriter sw) {
+	public static void serializeLocationNullable(@Nullable final Point2D value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -137,7 +141,7 @@ public abstract class JavaGeomConverter {
 		reader.deserializeNullableCollection(LocationReader, res);
 	}
 
-	public static void serializePointNullable(final Point value, final JsonWriter sw) {
+	public static void serializePointNullable(@Nullable final Point value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -213,7 +217,7 @@ public abstract class JavaGeomConverter {
 		reader.deserializeNullableCollection(PointReader, res);
 	}
 
-	public static void serializeRectangleNullable(final Rectangle2D value, final JsonWriter sw) {
+	public static void serializeRectangleNullable(@Nullable final Rectangle2D value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -304,7 +308,7 @@ public abstract class JavaGeomConverter {
 		reader.deserializeNullableCollection(RectangleReader, res);
 	}
 
-	public static void serialize(final Image value, final JsonWriter sw) {
+	public static void serialize(@Nullable final Image value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 			return;

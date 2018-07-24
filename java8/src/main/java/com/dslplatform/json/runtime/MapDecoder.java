@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonReader;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -29,6 +30,7 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 		this.valueDecoder = valueDecoder;
 	}
 
+	@Nullable
 	@Override
 	public T read(JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;

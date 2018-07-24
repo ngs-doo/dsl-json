@@ -14,6 +14,7 @@ public abstract class BoolConverter {
 		}
 	};
 	public static final JsonReader.ReadObject<Boolean> NULLABLE_READER = new JsonReader.ReadObject<Boolean>() {
+		@Nullable
 		@Override
 		public Boolean read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
@@ -21,11 +22,12 @@ public abstract class BoolConverter {
 	};
 	public static final JsonWriter.WriteObject<Boolean> WRITER = new JsonWriter.WriteObject<Boolean>() {
 		@Override
-		public void write(JsonWriter writer, Boolean value) {
+		public void write(JsonWriter writer, @Nullable Boolean value) {
 			serializeNullable(value, writer);
 		}
 	};
 	public static final JsonReader.ReadObject<boolean[]> ARRAY_READER = new JsonReader.ReadObject<boolean[]>() {
+		@Nullable
 		@Override
 		public boolean[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
@@ -36,12 +38,12 @@ public abstract class BoolConverter {
 	};
 	public static final JsonWriter.WriteObject<boolean[]> ARRAY_WRITER = new JsonWriter.WriteObject<boolean[]>() {
 		@Override
-		public void write(JsonWriter writer, boolean[] value) {
+		public void write(JsonWriter writer, @Nullable boolean[] value) {
 			serialize(value, writer);
 		}
 	};
 
-	public static void serializeNullable(final Boolean value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final Boolean value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value) {
@@ -59,7 +61,7 @@ public abstract class BoolConverter {
 		}
 	}
 
-	public static void serialize(final boolean[] value, final JsonWriter sw) {
+	public static void serialize(@Nullable final boolean[] value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value.length == 0) {

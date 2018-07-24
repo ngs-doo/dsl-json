@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 class AttributeArrayEncoder<T, R> implements JsonWriter.WriteObject<T> {
 
@@ -17,7 +18,7 @@ class AttributeArrayEncoder<T, R> implements JsonWriter.WriteObject<T> {
 	}
 
 	@Override
-	public void write(final JsonWriter writer, final T value) {
+	public void write(final JsonWriter writer, @Nullable final T value) {
 		final R attr = read.apply(value);
 		encoder.write(writer, attr);
 	}

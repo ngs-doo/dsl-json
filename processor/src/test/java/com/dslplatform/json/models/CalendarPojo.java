@@ -17,7 +17,7 @@ public class CalendarPojo {
 			}
 		};
 		public static final JsonWriter.WriteObject<GregorianCalendar> JSON_WRITER = new JsonWriter.WriteObject<GregorianCalendar>() {
-			public void write(JsonWriter writer, GregorianCalendar value) {
+			public void write(JsonWriter writer, @Nullable GregorianCalendar value) {
 			}
 		};
 	}

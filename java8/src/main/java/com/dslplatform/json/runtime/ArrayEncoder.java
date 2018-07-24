@@ -2,6 +2,7 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 import com.dslplatform.json.SerializationException;
 
 public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]> {
@@ -11,7 +12,7 @@ public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]> {
 
 	public ArrayEncoder(
 			final DslJson json,
-			final JsonWriter.WriteObject<T> encoder) {
+			@Nullable final JsonWriter.WriteObject<T> encoder) {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		this.json = json;
 		this.encoder = encoder;
@@ -20,7 +21,7 @@ public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]> {
 	private static final byte[] EMPTY = {'[', ']'};
 
 	@Override
-	public void write(final JsonWriter writer, final T[] value) {
+	public void write(final JsonWriter writer, @Nullable final T[] value) {
 		if (value == null) writer.writeNull();
 		else if (value.length == 0) writer.writeAscii(EMPTY);
 		else if (encoder != null) {

@@ -1,9 +1,6 @@
 package com.dslplatform.json.models;
 
-import com.dslplatform.json.CompiledJson;
-import com.dslplatform.json.JsonObject;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.*;
 
 import java.io.IOException;
 
@@ -17,6 +14,7 @@ public class ValidReferenceJsonObject {
 		public void serialize(JsonWriter writer, boolean minimal) {
 		}
 		public static final JsonReader.ReadJsonObject<ImplProper> JSON_READER = new JsonReader.ReadJsonObject<ImplProper>() {
+			@Nullable
 			@Override
 			public ImplProper deserialize(JsonReader reader) throws IOException {
 				return null;

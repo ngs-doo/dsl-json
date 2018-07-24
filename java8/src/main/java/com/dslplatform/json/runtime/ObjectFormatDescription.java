@@ -3,6 +3,7 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.*;
@@ -19,7 +20,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 
 	private static final Settings.Function identity = new Settings.Function() {
 		@Override
-		public Object apply(Object t) {
+		public Object apply(@Nullable Object t) {
 			return t;
 		}
 	};
@@ -56,6 +57,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 		this.hasMandatory = mandatoryFlag != 0;
 	}
 
+	@Nullable
 	@Override
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;

@@ -6,13 +6,14 @@ import java.util.*;
 public abstract class MapConverter {
 
 	private static final JsonReader.ReadObject<Map<String, String>> TypedMapReader = new JsonReader.ReadObject<Map<String, String>>() {
+		@Nullable
 		@Override
 		public Map<String, String> read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
 
-	public static void serializeNullable(final Map<String, String> value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final Map<String, String> value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {

@@ -8,6 +8,7 @@ import java.util.List;
 public abstract class StringConverter {
 
 	public static final JsonReader.ReadObject<String> READER = new JsonReader.ReadObject<String>() {
+		@Nullable
 		@Override
 		public String read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
@@ -16,18 +17,19 @@ public abstract class StringConverter {
 	};
 	public static final JsonWriter.WriteObject<String> WRITER = new JsonWriter.WriteObject<String>() {
 		@Override
-		public void write(JsonWriter writer, String value) {
+		public void write(JsonWriter writer, @Nullable String value) {
 			serializeNullable(value, writer);
 		}
 	};
 	public static final JsonWriter.WriteObject<CharSequence> WRITER_CHARS = new JsonWriter.WriteObject<CharSequence>() {
 		@Override
-		public void write(JsonWriter writer, CharSequence value) {
+		public void write(JsonWriter writer, @Nullable CharSequence value) {
 			if (value == null) writer.writeNull();
 			else writer.writeString(value);
 		}
 	};
 	public static final JsonReader.ReadObject<StringBuilder> READER_BUILDER = new JsonReader.ReadObject<StringBuilder>() {
+		@Nullable
 		@Override
 		public StringBuilder read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
@@ -36,6 +38,7 @@ public abstract class StringConverter {
 		}
 	};
 	public static final JsonReader.ReadObject<StringBuffer> READER_BUFFER = new JsonReader.ReadObject<StringBuffer>() {
+		@Nullable
 		@Override
 		public StringBuffer read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
@@ -44,7 +47,7 @@ public abstract class StringConverter {
 		}
 	};
 
-	public static void serializeShortNullable(final String value, final JsonWriter sw) {
+	public static void serializeShortNullable(@Nullable final String value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -56,7 +59,7 @@ public abstract class StringConverter {
 		sw.writeString(value);
 	}
 
-	public static void serializeNullable(final String value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final String value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -72,6 +75,7 @@ public abstract class StringConverter {
 		return reader.readString();
 	}
 
+	@Nullable
 	public static String deserializeNullable(final JsonReader reader) throws IOException {
 		if (reader.last() == 'n') {
 			if (!reader.wasNull()) throw new IOException("Expecting 'null' " + reader.positionDescription() + ". Found " + (char)reader.last());

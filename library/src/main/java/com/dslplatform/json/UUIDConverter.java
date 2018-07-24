@@ -9,6 +9,7 @@ public abstract class UUIDConverter {
 
 	public static final UUID MIN_UUID = new java.util.UUID(0L, 0L);
 	public static final JsonReader.ReadObject<UUID> READER = new JsonReader.ReadObject<UUID>() {
+		@Nullable
 		@Override
 		public UUID read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
@@ -16,7 +17,7 @@ public abstract class UUIDConverter {
 	};
 	public static final JsonWriter.WriteObject<UUID> WRITER = new JsonWriter.WriteObject<UUID>() {
 		@Override
-		public void write(JsonWriter writer, UUID value) {
+		public void write(JsonWriter writer, @Nullable UUID value) {
 			serializeNullable(value, writer);
 		}
 	};
@@ -44,7 +45,7 @@ public abstract class UUIDConverter {
 	}
 
 
-	public static void serializeNullable(final UUID value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final UUID value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {

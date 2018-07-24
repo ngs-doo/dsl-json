@@ -3,6 +3,7 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
@@ -13,6 +14,7 @@ import java.util.concurrent.Callable;
 public abstract class MapAnalyzer {
 
 	private static final JsonReader.ReadObject<String> stringReader = new JsonReader.ReadObject<String>() {
+		@Nullable
 		@Override
 		public String read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : reader.readString();
@@ -20,6 +22,7 @@ public abstract class MapAnalyzer {
 	};
 
 	public static final DslJson.ConverterFactory<MapDecoder> READER = new DslJson.ConverterFactory<MapDecoder>() {
+		@Nullable
 		@Override
 		public MapDecoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -36,6 +39,7 @@ public abstract class MapAnalyzer {
 	};
 
 	public static final DslJson.ConverterFactory<MapEncoder> WRITER = new DslJson.ConverterFactory<MapEncoder>() {
+		@Nullable
 		@Override
 		public MapEncoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -60,6 +64,7 @@ public abstract class MapAnalyzer {
 		}
 	}
 
+	@Nullable
 	private static MapDecoder analyzeDecoder(final Type manifest, final Type key, final Type value, final Class<?> map, final DslJson json) {
 		if (!Map.class.isAssignableFrom(map)) return null;
 		final Callable newInstance;
@@ -95,6 +100,7 @@ public abstract class MapAnalyzer {
 		return decoder;
 	}
 
+	@Nullable
 	private static MapEncoder analyzeEncoder(final Type manifest, final Type key, final Type value, final Class<?> map, final DslJson json) {
 		if (!Map.class.isAssignableFrom(map)) return null;
 		final JsonWriter.WriteObject<?> keyWriter = Object.class == key ? null : json.tryFindWriter(key);

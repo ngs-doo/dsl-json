@@ -14,6 +14,7 @@ public class InvalidConveterErrors {
 	@JsonConverter(target = Character.class)
 	public static abstract class CharConverter {
 		public static final JsonReader.ReadObject<Character> JSON_READER = new JsonReader.ReadObject<Character>() {
+			@Nullable
 			public Character read(JsonReader reader) throws IOException {
 				return null;
 			}
@@ -28,7 +29,7 @@ public class InvalidConveterErrors {
 			}
 		};
 		public static final JsonWriter.WriteObject<Date> JSON_WRITER = new JsonWriter.WriteObject<Date>() {
-			public void write(JsonWriter writer, Date value) {
+			public void write(JsonWriter writer, @Nullable Date value) {
 			}
 		};
 	}
@@ -41,7 +42,7 @@ public class InvalidConveterErrors {
 			}
 		};
 		public static final JsonWriter.WriteObject<Integer> JSON_WRITER = new JsonWriter.WriteObject<Integer>() {
-			public void write(JsonWriter writer, Integer value) {
+			public void write(JsonWriter writer, @Nullable Integer value) {
 			}
 		};
 	}

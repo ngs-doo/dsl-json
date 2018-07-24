@@ -10,7 +10,7 @@ public class OptionalLongDslJsonConverter implements Configuration {
 	public void configure(DslJson json) {
 		json.registerWriter(OptionalLong.class, new JsonWriter.WriteObject<OptionalLong>() {
 			@Override
-			public void write(JsonWriter writer, OptionalLong value) {
+			public void write(JsonWriter writer, @Nullable OptionalLong value) {
 				if (value != null && value.isPresent()) NumberConverter.serialize(value.getAsLong(), writer);
 				else writer.writeNull();
 			}

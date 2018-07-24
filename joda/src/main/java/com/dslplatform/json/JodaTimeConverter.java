@@ -18,6 +18,7 @@ public abstract class JodaTimeConverter {
 	private static final DateTimeZone utcZone = DateTimeZone.UTC;
 
 	public static final JsonReader.ReadObject<LocalDate> LOCAL_DATE_READER = new JsonReader.ReadObject<LocalDate>() {
+		@Nullable
 		@Override
 		public LocalDate read(final JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeLocalDate(reader);
@@ -25,11 +26,12 @@ public abstract class JodaTimeConverter {
 	};
 	public static final JsonWriter.WriteObject<LocalDate> LOCAL_DATE_WRITER = new JsonWriter.WriteObject<LocalDate>() {
 		@Override
-		public void write(JsonWriter writer, LocalDate value) {
+		public void write(JsonWriter writer, @Nullable LocalDate value) {
 			serializeNullable(value, writer);
 		}
 	};
 	public static final JsonReader.ReadObject<DateTime> DATE_TIME_READER = new JsonReader.ReadObject<DateTime>() {
+		@Nullable
 		@Override
 		public DateTime read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeDateTime(reader);
@@ -37,12 +39,12 @@ public abstract class JodaTimeConverter {
 	};
 	public static final JsonWriter.WriteObject<DateTime> DATE_TIME_WRITER = new JsonWriter.WriteObject<DateTime>() {
 		@Override
-		public void write(JsonWriter writer, DateTime value) {
+		public void write(JsonWriter writer, @Nullable DateTime value) {
 			serializeNullable(value, writer);
 		}
 	};
 
-	public static void serializeNullable(final DateTime value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final DateTime value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -168,7 +170,7 @@ public abstract class JodaTimeConverter {
 		reader.deserializeNullableCollection(DATE_TIME_READER, res);
 	}
 
-	public static void serializeNullable(final LocalDate value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final LocalDate value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {

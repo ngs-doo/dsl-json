@@ -1,5 +1,7 @@
 package com.dslplatform.json.processor;
 
+import com.dslplatform.json.Nullable;
+
 final class OptimizedConverter {
 	private final String encoderField;
 	private final String nonNullableEncoderMethod;
@@ -11,7 +13,7 @@ final class OptimizedConverter {
 		this(converter, encoderField, nonNullableEncoderMethod, decoderField, null, null);
 	}
 
-	OptimizedConverter(String converter, String encoderField, String nonNullableEncoderMethod, String decoderField, String nonNullableDecoderMethod, String defaultValue) {
+	OptimizedConverter(String converter, String encoderField, @Nullable String nonNullableEncoderMethod, String decoderField, @Nullable String nonNullableDecoderMethod, @Nullable String defaultValue) {
 		this.encoderField = converter + "." + encoderField;
 		this.nonNullableEncoderMethod = nonNullableEncoderMethod != null ? converter + "." + nonNullableEncoderMethod : null;
 		this.decoderField = converter + "." + decoderField;

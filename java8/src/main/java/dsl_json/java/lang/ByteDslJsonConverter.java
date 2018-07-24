@@ -7,7 +7,7 @@ import java.io.IOException;
 public class ByteDslJsonConverter implements Configuration {
 	private static final JsonWriter.WriteObject<Byte> ByteWriter = new JsonWriter.WriteObject<Byte>() {
 		@Override
-		public void write(JsonWriter writer, Byte value) {
+		public void write(JsonWriter writer, @Nullable Byte value) {
 			if (value == null) writer.writeNull();
 			else NumberConverter.serialize(value, writer);
 		}
@@ -19,6 +19,7 @@ public class ByteDslJsonConverter implements Configuration {
 		}
 	};
 	private static final JsonReader.ReadObject<Byte> NullableByteReader = new JsonReader.ReadObject<Byte>() {
+		@Nullable
 		@Override
 		public Byte read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : (byte)NumberConverter.deserializeInt(reader);

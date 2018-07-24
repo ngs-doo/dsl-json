@@ -18,7 +18,7 @@ public class VariousTest {
 		}
 
 		@Override
-		public void write(JsonWriter writer, Collection value) {
+		public void write(JsonWriter writer, @Nullable Collection value) {
 			writer.writeByte((byte) '[');
 			boolean isFirst = true;
 			for (Object it : value) {

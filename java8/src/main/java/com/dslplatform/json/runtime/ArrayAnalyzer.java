@@ -3,6 +3,7 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
@@ -12,6 +13,7 @@ import java.lang.reflect.Type;
 public abstract class ArrayAnalyzer {
 
 	public static final DslJson.ConverterFactory<ArrayDecoder> READER = new DslJson.ConverterFactory<ArrayDecoder>() {
+		@Nullable
 		@Override
 		public ArrayDecoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -29,6 +31,7 @@ public abstract class ArrayAnalyzer {
 	};
 
 	public static final DslJson.ConverterFactory<ArrayEncoder> WRITER = new DslJson.ConverterFactory<ArrayEncoder>() {
+		@Nullable
 		@Override
 		public ArrayEncoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof Class<?>) {
@@ -45,6 +48,7 @@ public abstract class ArrayAnalyzer {
 		}
 	};
 
+	@Nullable
 	private static Class<?> checkSignature(final Type element) {
 		final Class<?> raw;
 		if (element instanceof Class<?>) {
@@ -63,6 +67,7 @@ public abstract class ArrayAnalyzer {
 		return raw;
 	}
 
+	@Nullable
 	private static <T> ArrayDecoder<T> analyzeDecoder(final Type manifest, final Type element, final DslJson json) {
 		final Class<?> raw = checkSignature(element);
 		if (raw == null) return null;
@@ -75,6 +80,7 @@ public abstract class ArrayAnalyzer {
 		return decoder;
 	}
 
+	@Nullable
 	private static <T> ArrayEncoder<T> analyzeEncoder(final Type manifest, final Type element, final DslJson json) {
 		final Class<?> raw = checkSignature(element);
 		if (raw == null) return null;

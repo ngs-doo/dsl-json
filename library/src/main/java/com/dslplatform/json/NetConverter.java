@@ -9,6 +9,7 @@ import java.util.Collection;
 public abstract class NetConverter {
 
 	static final JsonReader.ReadObject<URI> UriReader = new JsonReader.ReadObject<URI>() {
+		@Nullable
 		@Override
 		public URI read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeUri(reader);
@@ -16,11 +17,12 @@ public abstract class NetConverter {
 	};
 	static final JsonWriter.WriteObject<URI> UriWriter = new JsonWriter.WriteObject<URI>() {
 		@Override
-		public void write(JsonWriter writer, URI value) {
+		public void write(JsonWriter writer, @Nullable URI value) {
 			serializeNullable(value, writer);
 		}
 	};
 	static final JsonReader.ReadObject<InetAddress> AddressReader = new JsonReader.ReadObject<InetAddress>() {
+		@Nullable
 		@Override
 		public InetAddress read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeIp(reader);
@@ -28,12 +30,12 @@ public abstract class NetConverter {
 	};
 	static final JsonWriter.WriteObject<InetAddress> AddressWriter = new JsonWriter.WriteObject<InetAddress>() {
 		@Override
-		public void write(JsonWriter writer, InetAddress value) {
+		public void write(JsonWriter writer, @Nullable InetAddress value) {
 			serializeNullable(value, writer);
 		}
 	};
 
-	public static void serializeNullable(final URI value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final URI value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {
@@ -67,7 +69,7 @@ public abstract class NetConverter {
 		reader.deserializeNullableCollection(UriReader, res);
 	}
 
-	public static void serializeNullable(final InetAddress value, final JsonWriter sw) {
+	public static void serializeNullable(@Nullable final InetAddress value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
 		} else {

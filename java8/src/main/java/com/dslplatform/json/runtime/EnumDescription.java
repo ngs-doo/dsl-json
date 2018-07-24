@@ -2,6 +2,7 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
+import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 
@@ -25,11 +26,12 @@ public final class EnumDescription<T extends Enum<T>> implements JsonWriter.Writ
 	}
 
 	@Override
-	public void write(final JsonWriter writer, final T value) {
+	public void write(final JsonWriter writer, @Nullable final T value) {
 		if (value == null) writer.writeNull();
 		else writer.writeString(value.name());
 	}
 
+	@Nullable
 	@Override
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
