@@ -64,7 +64,7 @@ class OptionTest extends Specification with ScalaCheck {
       wo === WithOption(i = None, l = None)
     }
     "missing property will throw an error" >> {
-      dslJson.decode[WithOption]("{\"l\":null}".getBytes("UTF-8")) must throwA(new IOException("Mandatory property (i) not found at position: 10"))
+      dslJson.decode[WithOption]("{\"l\":null}".getBytes("UTF-8")) must throwA(new IOException("Mandatory property (i) not found at position: 10, following: `{\"l\":null}`"))
     }
   }
 }

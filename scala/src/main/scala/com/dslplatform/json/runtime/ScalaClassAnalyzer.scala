@@ -238,7 +238,7 @@ object ScalaClassAnalyzer {
     val sameTypes = tpe.members.filter { it =>
       !it.name.toString.contains("$") && types.contains(it.typeSignature)
     }
-    lazy val names = Option(ImmutableAnalyzer.extractNames(ctors.head).orElseGet(null))
+    lazy val names = Option(ImmutableAnalyzer.extractNames(ctors.head))
     val arguments = params.zipWithIndex.flatMap { case (p, i) =>
       val defMethod = defaults.find(_.name.toString.endsWith("$" + (i + 1))).flatMap { d =>
         val name = d.name.toString

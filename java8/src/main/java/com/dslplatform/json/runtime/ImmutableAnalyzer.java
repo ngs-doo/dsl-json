@@ -39,6 +39,11 @@ public abstract class ImmutableAnalyzer {
 		}
 	}
 
+	public static String[] extractNames(Constructor<?> ctor) {
+		if (ctor == null) throw new IllegalArgumentException("ctor can't be null");
+		return parameterNameExtractor.extractNames(ctor);
+	}
+
 	private static class LazyImmutableDescription implements JsonWriter.WriteObject, JsonReader.ReadObject {
 
 		private final DslJson json;
@@ -138,7 +143,7 @@ public abstract class ImmutableAnalyzer {
 		if (paramTypes.length == 0) {
 			return null;
 		}
-		String[] names = parameterNameExtractor.extractNames(ctor);
+		String[] names = extractNames(ctor);
 		if (names == null) {
 			final Set<Type> types = new HashSet<>();
 			for(Type p : paramTypes) {
