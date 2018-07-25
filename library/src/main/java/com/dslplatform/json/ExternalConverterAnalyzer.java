@@ -12,7 +12,7 @@ class ExternalConverterAnalyzer {
 		this.classLoaders = classLoaders.toArray(new ClassLoader[0]);
 	}
 
-	public synchronized void tryFindConverter(Type manifest, DslJson<?> dslJson) {
+	synchronized void tryFindConverter(Type manifest, DslJson<?> dslJson) {
 		if (manifest instanceof Class<?>) {
 			tryFindConverter(((Class<?>) manifest).getName(), dslJson);
 		} else if (manifest instanceof ParameterizedType) {
@@ -23,7 +23,7 @@ class ExternalConverterAnalyzer {
 
 	private void tryFindConverter(String className, DslJson<?> dslJson) {
 		if (!lookedUpClasses.add(className)) return;
-		List<String> converterClassNames = resolveExternalConverterClassNames(className);
+		String[] converterClassNames = resolveExternalConverterClassNames(className);
 		for (ClassLoader cl : classLoaders) {
 			for (String ccn : converterClassNames) {
 				try {
@@ -40,16 +40,16 @@ class ExternalConverterAnalyzer {
 		}
 	}
 
-	private List<String> resolveExternalConverterClassNames(final String fullClassName) {
+	private String[] resolveExternalConverterClassNames(final String fullClassName) {
 		int dotIndex = fullClassName.lastIndexOf('.');
 		if (dotIndex == -1) {
-			return Collections.singletonList(String.format("_%s_DslJsonConverter", fullClassName));
+			return new String[]{String.format("_%s_DslJsonConverter", fullClassName)};
 		}
 		String packageName = fullClassName.substring(0, dotIndex);
 		String className = fullClassName.substring(dotIndex + 1);
-		return Arrays.asList(
+		return new String[]{
 				String.format("%s._%s_DslJsonConverter", packageName, className),
 				String.format("dsl_json.%s._%s_DslJsonConverter", packageName, className),
-				String.format("dsl_json.%s.%sDslJsonConverter", packageName, className));
+				String.format("dsl_json.%s.%sDslJsonConverter", packageName, className)};
 	}
 }
