@@ -469,12 +469,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.maxNumberDigits = settings.maxNumberDigits;
 		this.maxStringSize = settings.maxStringBuffer;
 		ExternalConverterAnalyzer externalConverterAnalyzer = new ExternalConverterAnalyzer(settings.classLoaders);
-        this.writerFactories.add(externalConverterAnalyzer.writerFactory);
-        this.readerFactories.add(externalConverterAnalyzer.readerFactory);
-        this.binderFactories.add(externalConverterAnalyzer.binderFactory);
-        this.writerFactories.addAll(settings.writerFactories);
-        this.readerFactories.addAll(settings.readerFactories);
-        this.binderFactories.addAll(settings.binderFactories);
+		this.writerFactories.add(externalConverterAnalyzer.writerFactory);
+		this.readerFactories.add(externalConverterAnalyzer.readerFactory);
+		this.binderFactories.add(externalConverterAnalyzer.binderFactory);
+		this.writerFactories.addAll(settings.writerFactories);
+		this.readerFactories.addAll(settings.readerFactories);
+		this.binderFactories.addAll(settings.binderFactories);
 
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
@@ -819,7 +819,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	private final ConcurrentMap<Type, JsonReader.ReadObject<?>> readers = new ConcurrentHashMap<Type, JsonReader.ReadObject<?>>();
 	private final ConcurrentMap<Type, JsonReader.BindObject<?>> binders = new ConcurrentHashMap<Type, JsonReader.BindObject<?>>();
-    private final ConcurrentMap<Type, JsonWriter.WriteObject<?>> writers = new ConcurrentHashMap<Type, JsonWriter.WriteObject<?>>();
+	private final ConcurrentMap<Type, JsonWriter.WriteObject<?>> writers = new ConcurrentHashMap<Type, JsonWriter.WriteObject<?>>();
 
 
 	public final Set<Type> getRegisteredDecoders() {
@@ -835,19 +835,19 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@Nullable
-    public final JsonReader.ReadObject<?> getRegisteredDecoder(Type manifest) {
-        return readers.get(manifest);
-    }
+	public final JsonReader.ReadObject<?> getRegisteredDecoder(Type manifest) {
+		return readers.get(manifest);
+	}
 
 	@Nullable
-    public final JsonReader.BindObject<?> getRegisteredBinder(Type manifest) {
-        return binders.get(manifest);
-    }
+	public final JsonReader.BindObject<?> getRegisteredBinder(Type manifest) {
+		return binders.get(manifest);
+	}
 
 	@Nullable
-    public final JsonWriter.WriteObject<?> getRegisteredEncoder(Type manifest) {
-        return writers.get(manifest);
-    }
+	public final JsonWriter.WriteObject<?> getRegisteredEncoder(Type manifest) {
+		return writers.get(manifest);
+	}
 
 	/**
 	 * Register custom reader for specific type (JSON -&gt; instance conversion).
@@ -992,8 +992,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		JsonWriter.WriteObject writer = writers.get(manifest);
 		if (writer != null) return writer;
 
-        writer = lookupWritersFromFactories(manifest);
-        if (writer != null) return writer;
+		writer = lookupWritersFromFactories(manifest);
+		if (writer != null) return writer;
 
 		if (!(manifest instanceof Class<?>)) {
 			return null;
@@ -1021,7 +1021,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	@Nullable
 	private JsonWriter.WriteObject<?> lookupWritersFromFactories(Type manifest) {
 		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
-            JsonWriter.WriteObject writer = wrt.tryCreate(manifest, this);
+			JsonWriter.WriteObject writer = wrt.tryCreate(manifest, this);
 			if (writer != null) {
 				writers.putIfAbsent(manifest, writer);
 				return writer;
