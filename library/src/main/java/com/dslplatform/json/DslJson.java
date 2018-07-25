@@ -93,7 +93,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	private final int maxStringSize;
 	protected final ThreadLocal<JsonWriter> localWriter;
 	protected final ThreadLocal<JsonReader> localReader;
-	protected final List<ClassLoader> classLoaders = new ArrayList<ClassLoader>();
 
 	public interface Fallback<TContext> {
 		void serialize(@Nullable Object instance, OutputStream stream) throws IOException;
@@ -469,8 +468,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.doublePrecision = settings.doublePrecision;
 		this.maxNumberDigits = settings.maxNumberDigits;
 		this.maxStringSize = settings.maxStringBuffer;
-		this.classLoaders.addAll(settings.classLoaders);
-		ExternalConverterAnalyzer externalConverterAnalyzer = new ExternalConverterAnalyzer();
+		ExternalConverterAnalyzer externalConverterAnalyzer = new ExternalConverterAnalyzer(settings.classLoaders);
         this.writerFactories.add(externalConverterAnalyzer.writerFactory);
         this.readerFactories.add(externalConverterAnalyzer.readerFactory);
         this.binderFactories.add(externalConverterAnalyzer.binderFactory);

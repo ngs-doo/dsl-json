@@ -5,6 +5,11 @@ import java.util.*;
 
 class ExternalConverterAnalyzer {
     private final Set<String> lookedUpClasses = new HashSet<String>();
+    private final ClassLoader[] classLoaders;
+
+    ExternalConverterAnalyzer(Collection<ClassLoader> classLoaders) {
+        this.classLoaders = classLoaders.toArray(new ClassLoader[0]);
+    }
 
     final DslJson.ConverterFactory<JsonWriter.WriteObject> writerFactory = new DslJson.ConverterFactory<JsonWriter.WriteObject>() {
         @Nullable
@@ -41,7 +46,7 @@ class ExternalConverterAnalyzer {
         if (converterClassNames == null) {
             return;
         }
-        for (ClassLoader cl : dslJson.classLoaders) {
+        for (ClassLoader cl : classLoaders) {
             for (String ccn : converterClassNames) {
                 try {
                     Class<?> converterClass = cl.loadClass(ccn);
