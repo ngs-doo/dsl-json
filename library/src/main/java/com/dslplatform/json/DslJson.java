@@ -2697,7 +2697,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			final Iterator iterator = items.iterator();
 			final boolean isList = items instanceof List;
 			final List<Object> values = isList ? (List) items : new ArrayList<Object>();
-			final ArrayList<JsonWriter.WriteObject> writers = new ArrayList<JsonWriter.WriteObject>();
+			final ArrayList<JsonWriter.WriteObject> itemWriters = new ArrayList<JsonWriter.WriteObject>();
 			Class<?> lastElementType = null;
 			JsonWriter.WriteObject lastWriter = null;
 			boolean hasUnknownWriter = false;
@@ -2718,10 +2718,10 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 						lastElementType = elementType;
 						lastWriter = tryFindWriter(elementType);
 					}
-					writers.add(lastWriter);
+					itemWriters.add(lastWriter);
 					hasUnknownWriter = hasUnknownWriter || lastWriter == null;
 				} else {
-					writers.add(NULL_WRITER);
+					itemWriters.add(NULL_WRITER);
 				}
 			} while (iterator.hasNext());
 			if (baseType != null && JsonObject.class.isAssignableFrom(baseType)) {
@@ -2743,10 +2743,10 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				writer.writeByte(JsonWriter.ARRAY_START);
 				final Iterator iter = values.iterator();
 				int cur = 1;
-				writers.get(0).write(writer, iter.next());
+				itemWriters.get(0).write(writer, iter.next());
 				while (iter.hasNext()) {
 					writer.writeByte(JsonWriter.COMMA);
-					writers.get(cur++).write(writer, iter.next());
+					itemWriters.get(cur++).write(writer, iter.next());
 				}
 				writer.writeByte(JsonWriter.ARRAY_END);
 				return true;
