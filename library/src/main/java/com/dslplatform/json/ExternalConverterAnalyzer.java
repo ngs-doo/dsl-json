@@ -1,7 +1,5 @@
 package com.dslplatform.json;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.*;
 
 class ExternalConverterAnalyzer {
@@ -12,17 +10,9 @@ class ExternalConverterAnalyzer {
 		this.classLoaders = classLoaders.toArray(new ClassLoader[0]);
 	}
 
-	synchronized void tryFindConverter(Type manifest, DslJson<?> dslJson) {
-		if (manifest instanceof Class<?>) {
-			tryFindConverter(((Class<?>) manifest).getName(), dslJson);
-		} else if (manifest instanceof ParameterizedType) {
-			ParameterizedType pt = (ParameterizedType) manifest;
-			tryFindConverter(((Class<?>) pt.getRawType()).getName(), dslJson);
-		}
-	}
-
-	private void tryFindConverter(String className, DslJson<?> dslJson) {
-		if (!lookedUpClasses.add(className)) return;
+	synchronized boolean tryFindConverter(Class<?> manifest, DslJson<?> dslJson) {
+		final String className = manifest.getName();
+		if (!lookedUpClasses.add(className)) return false;
 		String[] converterClassNames = resolveExternalConverterClassNames(className);
 		for (ClassLoader cl : classLoaders) {
 			for (String ccn : converterClassNames) {
@@ -31,13 +21,14 @@ class ExternalConverterAnalyzer {
 					if (!Configuration.class.isAssignableFrom(converterClass)) continue;
 					Configuration converter = (Configuration) converterClass.newInstance();
 					converter.configure(dslJson);
-					return;
+					return true;
 				} catch (ClassNotFoundException ignored) {
 				} catch (IllegalAccessException ignored) {
 				} catch (InstantiationException ignored) {
 				}
 			}
 		}
+		return false;
 	}
 
 	private String[] resolveExternalConverterClassNames(final String fullClassName) {

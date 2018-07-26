@@ -830,9 +830,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	private final ConcurrentMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>> objectReaders =
 			new ConcurrentHashMap<Class<?>, JsonReader.ReadJsonObject<JsonObject>>();
 
-	private final ConcurrentMap<Type, JsonReader.ReadObject<?>> readers = new ConcurrentHashMap<Type, JsonReader.ReadObject<?>>();
-	private final ConcurrentMap<Type, JsonReader.BindObject<?>> binders = new ConcurrentHashMap<Type, JsonReader.BindObject<?>>();
-	private final ConcurrentMap<Type, JsonWriter.WriteObject<?>> writers = new ConcurrentHashMap<Type, JsonWriter.WriteObject<?>>();
+	private final ConcurrentMap<Type, JsonReader.ReadObject> readers = new ConcurrentHashMap<Type, JsonReader.ReadObject>();
+	private final ConcurrentMap<Type, JsonReader.BindObject> binders = new ConcurrentHashMap<Type, JsonReader.BindObject>();
+	private final ConcurrentMap<Type, JsonWriter.WriteObject> writers = new ConcurrentHashMap<Type, JsonWriter.WriteObject>();
 
 
 	public final Set<Type> getRegisteredDecoders() {
@@ -990,7 +990,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		JsonWriter.WriteObject writer = writers.get(manifest);
 		if (writer != null) return writer;
 
-		writer = lookupWritersFromFactories(manifest);
+		writer = lookupFromFactories(manifest, writerFactories, writers);
 		if (writer != null) return writer;
 
 		if (!(manifest instanceof Class<?>)) {
@@ -1006,7 +1006,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		for (final Class<?> sig : signatures) {
 			writer = writers.get(sig);
 			if (writer == null) {
-				writer = lookupWritersFromFactories(sig);
+				writer = lookupFromFactories(sig, writerFactories, writers);
 			}
 			if (writer != null) {
 				writerMap.putIfAbsent(container, sig);
@@ -1017,16 +1017,34 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	@Nullable
-	private JsonWriter.WriteObject<?> lookupWritersFromFactories(Type manifest) {
-		externalConverterAnalyzer.tryFindConverter(manifest, this);
-		JsonWriter.WriteObject found = writers.get(manifest);
-		if (found != null) return found;
+	private <T> T lookupFromFactories(
+			final Type manifest,
+			final List<ConverterFactory<T>> factories,
+			final ConcurrentMap<Type, T> cache) {
+		if (manifest instanceof Class<?>) {
+			externalConverterAnalyzer.tryFindConverter((Class<?>) manifest, this);
+			T found = cache.get(manifest);
+			if (found != null) return found;
+		}
 
-		for (ConverterFactory<JsonWriter.WriteObject> wrt : writerFactories) {
-			JsonWriter.WriteObject writer = wrt.tryCreate(manifest, this);
-			if (writer != null) {
-				writers.putIfAbsent(manifest, writer);
-				return writer;
+		for (ConverterFactory<T> wrt : factories) {
+			final T converter = wrt.tryCreate(manifest, this);
+			if (converter != null) {
+				cache.putIfAbsent(manifest, converter);
+				return converter;
+			}
+		}
+
+		if (manifest instanceof ParameterizedType) {
+			final ParameterizedType pt = (ParameterizedType) manifest;
+			if (pt.getRawType() instanceof Class<?> && externalConverterAnalyzer.tryFindConverter((Class<?>) pt.getRawType(), this)) {
+				for (ConverterFactory<T> wrt : factories) {
+					final T converter = wrt.tryCreate(manifest, this);
+					if (converter != null) {
+						cache.putIfAbsent(manifest, converter);
+						return converter;
+					}
+				}
 			}
 		}
 		return null;
@@ -1050,19 +1068,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
 		if (found != null) return found;
-
-		externalConverterAnalyzer.tryFindConverter(manifest, this);
-		found = readers.get(manifest);
-		if (found != null) return found;
-
-		for (ConverterFactory<JsonReader.ReadObject> rdr : readerFactories) {
-			found = rdr.tryCreate(manifest, this);
-			if (found != null) {
-				readers.putIfAbsent(manifest, found);
-				return found;
-			}
-		}
-		return null;
+		return lookupFromFactories(manifest, readerFactories, readers);
 	}
 
 	/**
@@ -1083,19 +1089,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.BindObject<?> tryFindBinder(final Type manifest) {
 		JsonReader.BindObject found = binders.get(manifest);
 		if (found != null) return found;
-
-		externalConverterAnalyzer.tryFindConverter(manifest, this);
-		found = binders.get(manifest);
-		if (found != null) return found;
-
-		for (ConverterFactory<JsonReader.BindObject> bnd : binderFactories) {
-			found = bnd.tryCreate(manifest, this);
-			if (found != null) {
-				binders.putIfAbsent(manifest, found);
-				return found;
-			}
-		}
-		return null;
+		return lookupFromFactories(manifest, binderFactories, binders);
 	}
 
 	/**

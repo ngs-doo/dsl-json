@@ -8,6 +8,8 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -28,11 +30,11 @@ public class OptionalTest {
 	private final DslJson<Object> jsonFull = new DslJson<Object>(Settings.withRuntime());
 	private final DslJson<Object> jsonMinimal = new DslJson<Object>(Settings.withRuntime().skipDefaultValues(true));
 	private final DslJson<Object> jsonLazy = new DslJson<Object>(Settings.basicSetup());
-	private final DslJson<Object>[] dslJsons = new DslJson[] { jsonFull, jsonMinimal, jsonLazy };
+	private final DslJson<Object>[] dslJsons = new DslJson[]{jsonFull, jsonMinimal, jsonLazy};
 
 	@Test
 	public void testRecursive() throws IOException {
-		for(DslJson<Object> json : dslJsons) {
+		for (DslJson<Object> json : dslJsons) {
 			WithOptional wo = new WithOptional();
 			wo.optOptInt = Optional.of(Optional.of(12));
 			wo.optOptUnknown = Optional.of(Optional.of("abc"));
@@ -49,7 +51,7 @@ public class OptionalTest {
 
 	@Test
 	public void testPrimitives() throws IOException {
-		for(DslJson<Object> json : dslJsons) {
+		for (DslJson<Object> json : dslJsons) {
 			PrimitiveOptionals wo = new PrimitiveOptionals();
 			wo.optLong = OptionalLong.of(-5L);
 			wo.optOptInt = Optional.of(OptionalInt.of(2));
@@ -84,8 +86,8 @@ public class OptionalTest {
 	@Test
 	public void lazyOptionalResolution() throws IOException {
 		DslJson<Object> lazy = new DslJson<Object>(Settings.basicSetup());
-		JsonReader.ReadObject decoder = lazy.tryFindReader(new TypeDefinition<Optional<LocalDate>>(){}.type);
-		JsonWriter.WriteObject encoder = lazy.tryFindWriter(new TypeDefinition<Optional<LocalDate>>(){}.type);
+		JsonReader.ReadObject decoder = lazy.tryFindReader(new TypeDefinition<Optional<LocalDate>>() {}.type);
+		JsonWriter.WriteObject encoder = lazy.tryFindWriter(new TypeDefinition<Optional<LocalDate>>() {}.type);
 		Assert.assertNotNull(decoder);
 		Assert.assertNotNull(encoder);
 		JsonWriter writer = lazy.newWriter();
@@ -94,7 +96,64 @@ public class OptionalTest {
 		Assert.assertEquals("\"2018-07-26\"", writer.toString());
 		JsonReader<Object> reader = lazy.newReader(writer.toByteArray());
 		reader.read();
-		Optional<LocalDate> result = (Optional<LocalDate>)decoder.read(reader);
+		Optional<LocalDate> result = (Optional<LocalDate>) decoder.read(reader);
 		Assert.assertEquals(date, result.get());
+	}
+
+	public static final DslJson.ConverterFactory<JsonReader.ReadObject> CUSTOM_READER = new DslJson.ConverterFactory<JsonReader.ReadObject>() {
+		private final JsonReader.ReadObject FakeReader = reader -> { throw new RuntimeException("Fake reader"); };
+
+		@Nullable
+		@Override
+		public JsonReader.ReadObject tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && Optional.class.equals(pt.getRawType())) {
+					return FakeReader;
+				}
+			} else if (manifest == Optional.class) {
+				return FakeReader;
+			}
+			return null;
+		}
+	};
+
+	public static final DslJson.ConverterFactory<JsonWriter.WriteObject> CUSTOM_WRITER = new DslJson.ConverterFactory<JsonWriter.WriteObject>() {
+		private final JsonWriter.WriteObject FakeWriter = (writer, value) -> { throw new RuntimeException("Fake writer"); };
+
+		@Nullable
+		@Override
+		public JsonWriter.WriteObject tryCreate(Type manifest, DslJson dslJson) {
+			if (manifest instanceof ParameterizedType) {
+				final ParameterizedType pt = (ParameterizedType) manifest;
+				if (pt.getActualTypeArguments().length == 1 && Optional.class.equals(pt.getRawType())) {
+					return FakeWriter;
+				}
+			} else if (manifest == Optional.class) {
+				return FakeWriter;
+			}
+			return null;
+		}
+	};
+
+	@Test
+	public void dontIgnoreRegisteredFactory() throws IOException {
+		DslJson<Object> lazy = new DslJson<>(Settings.basicSetup().resolveReader(CUSTOM_READER).resolveWriter(CUSTOM_WRITER));
+		JsonReader.ReadObject decoder = lazy.tryFindReader(new TypeDefinition<Optional<LocalDate>>() {}.type);
+		JsonWriter.WriteObject encoder = lazy.tryFindWriter(new TypeDefinition<Optional<LocalDate>>() {}.type);
+		Assert.assertNotNull(decoder);
+		Assert.assertNotNull(encoder);
+		try {
+			encoder.write(lazy.newWriter(), Optional.empty());
+			Assert.fail("Exception expected");
+		} catch (RuntimeException ex) {
+			Assert.assertEquals("Fake writer", ex.getMessage());
+		}
+		try {
+			decoder.read(lazy.newReader());
+			Assert.fail("Exception expected");
+		} catch (RuntimeException ex) {
+			Assert.assertEquals("Fake reader", ex.getMessage());
+		}
 	}
 }
