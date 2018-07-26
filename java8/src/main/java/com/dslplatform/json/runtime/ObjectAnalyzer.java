@@ -98,9 +98,7 @@ public abstract class ObjectAnalyzer {
 			}
 			if (manifest instanceof ParameterizedType) {
 				final ParameterizedType pt = (ParameterizedType) manifest;
-				if (pt.getRawType() instanceof Class<?>) {
-					return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
-				}
+				return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
 			}
 			return null;
 		}

@@ -40,17 +40,15 @@ public abstract class Generics {
 		}
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getRawType() instanceof Class<?>) {
-				final Type[] generics = pt.getActualTypeArguments();
-				boolean changed = false;
-				for (int i = 0;i < generics.length;i++) {
-					final Type newType = makeConcrete(generics[i], mappings);
-					changed = changed || newType != generics[i];
-					generics[i] = newType;
-				}
-				if (changed) {
-					return makeGenericType((Class<?>)pt.getRawType(), generics);
-				}
+			final Type[] generics = pt.getActualTypeArguments();
+			boolean changed = false;
+			for (int i = 0;i < generics.length;i++) {
+				final Type newType = makeConcrete(generics[i], mappings);
+				changed = changed || newType != generics[i];
+				generics[i] = newType;
+			}
+			if (changed) {
+				return makeGenericType((Class<?>)pt.getRawType(), generics);
 			}
 		}
 		return manifest;
