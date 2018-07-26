@@ -25,7 +25,8 @@ public class OptionalTest {
 
 	private final DslJson<Object> jsonFull = new DslJson<Object>(Settings.withRuntime());
 	private final DslJson<Object> jsonMinimal = new DslJson<Object>(Settings.withRuntime().skipDefaultValues(true));
-	private final DslJson<Object>[] dslJsons = new DslJson[] { jsonFull, jsonMinimal };
+	private final DslJson<Object> jsonLazy = new DslJson<Object>(Settings.basicSetup());
+	private final DslJson<Object>[] dslJsons = new DslJson[] { jsonFull, jsonMinimal, jsonLazy };
 
 	@Test
 	public void testRecursive() throws IOException {

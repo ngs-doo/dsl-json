@@ -282,8 +282,8 @@ Also, since v1.5 binding API is available which can reuse instances for deserial
 
 Library has various limits built-in to protect against malicious input:
 
- * [default of 512 digits](library/src/main/java/com/dslplatform/json/DslJson.java#L354)
- * [default of 128MB strings](library/src/main/java/com/dslplatform/json/DslJson.java#L367)
+ * [default of 512 digits](library/src/main/java/com/dslplatform/json/DslJson.java#L368)
+ * [default of 128MB strings](library/src/main/java/com/dslplatform/json/DslJson.java#L381)
 
 ### Scala support
 

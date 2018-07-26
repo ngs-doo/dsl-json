@@ -243,6 +243,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		public Settings<TContext> resolveWriter(ConverterFactory<JsonWriter.WriteObject> writer) {
 			if (writer == null) throw new IllegalArgumentException("writer can't be null");
+			if (writerFactories.contains(writer)) {
+				throw new IllegalArgumentException("writer already registered");
+			}
 			writerFactories.add(writer);
 			return this;
 		}
@@ -256,6 +259,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		public Settings<TContext> resolveReader(ConverterFactory<JsonReader.ReadObject> reader) {
 			if (reader == null) throw new IllegalArgumentException("reader can't be null");
+			if (readerFactories.contains(reader)) {
+				throw new IllegalArgumentException("reader already registered");
+			}
 			readerFactories.add(reader);
 			return this;
 		}
@@ -269,6 +275,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		public Settings<TContext> resolveBinder(ConverterFactory<JsonReader.BindObject> binder) {
 			if (binder == null) throw new IllegalArgumentException("binder can't be null");
+			if (binderFactories.contains(binder)) {
+				throw new IllegalArgumentException("binder already registered");
+			}
 			binderFactories.add(binder);
 			return this;
 		}
@@ -778,17 +787,23 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public <T> void registerDefault(Class<T> manifest, T instance) {
 		defaults.put(manifest, instance);
 	}
-	public void registerWriterFactory(ConverterFactory<JsonWriter.WriteObject> factory) {
+	public boolean registerWriterFactory(ConverterFactory<JsonWriter.WriteObject> factory) {
 		if (factory == null) throw new IllegalArgumentException("factory can't be null");
+		if (writerFactories.contains(factory)) return false;
 		writerFactories.add(0, factory);
+		return true;
 	}
-	public void registerReaderFactory(ConverterFactory<JsonReader.ReadObject> factory) {
+	public boolean registerReaderFactory(ConverterFactory<JsonReader.ReadObject> factory) {
 		if (factory == null) throw new IllegalArgumentException("factory can't be null");
+		if (readerFactories.contains(factory)) return false;
 		readerFactories.add(0, factory);
+		return true;
 	}
-	public void registerBinderFactory(ConverterFactory<JsonReader.BindObject> factory) {
+	public boolean registerBinderFactory(ConverterFactory<JsonReader.BindObject> factory) {
 		if (factory == null) throw new IllegalArgumentException("factory can't be null");
+		if (binderFactories.contains(factory)) return false;
 		binderFactories.add(0, factory);
+		return true;
 	}
 
 	@Nullable
