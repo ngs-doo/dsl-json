@@ -1,12 +1,14 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.*;
 
 public class OptionalTest {
@@ -77,5 +79,22 @@ public class OptionalTest {
 		baos.reset();
 		jsonMinimal.serialize(owu, baos);
 		Assert.assertEquals("{\"something\":0}", baos.toString());
+	}
+
+	@Test
+	public void lazyOptionalResolution() throws IOException {
+		DslJson<Object> lazy = new DslJson<Object>(Settings.basicSetup());
+		JsonReader.ReadObject decoder = lazy.tryFindReader(new TypeDefinition<Optional<LocalDate>>(){}.type);
+		JsonWriter.WriteObject encoder = lazy.tryFindWriter(new TypeDefinition<Optional<LocalDate>>(){}.type);
+		Assert.assertNotNull(decoder);
+		Assert.assertNotNull(encoder);
+		JsonWriter writer = lazy.newWriter();
+		LocalDate date = LocalDate.of(2018, 7, 26);
+		encoder.write(writer, Optional.of(date));
+		Assert.assertEquals("\"2018-07-26\"", writer.toString());
+		JsonReader<Object> reader = lazy.newReader(writer.toByteArray());
+		reader.read();
+		Optional<LocalDate> result = (Optional<LocalDate>)decoder.read(reader);
+		Assert.assertEquals(date, result.get());
 	}
 }
