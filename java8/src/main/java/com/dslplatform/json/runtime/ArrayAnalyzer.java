@@ -55,11 +55,7 @@ public abstract class ArrayAnalyzer {
 			raw = (Class<?>)element;
 		} else if (element instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) element;
-			if (pt.getRawType() instanceof Class<?>) {
-				raw = (Class<?>) pt.getRawType();
-			} else {
-				return null;
-			}
+			raw = (Class<?>) pt.getRawType();
 		} else {
 			return null;
 		}

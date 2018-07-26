@@ -817,9 +817,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			rawType = (Class<?>) manifest;
 		} else if (manifest instanceof ParameterizedType) {
 			ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getRawType() instanceof Class<?>) {
-				rawType = (Class<?>)pt.getRawType();
-			} else return null;
+			rawType = (Class<?>) pt.getRawType();
 		} else return null;
 		if (rawType.isPrimitive()) {
 			return Array.get(Array.newInstance(rawType, 1), 0);
@@ -1037,7 +1035,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getRawType() instanceof Class<?> && externalConverterAnalyzer.tryFindConverter((Class<?>) pt.getRawType(), this)) {
+			if (externalConverterAnalyzer.tryFindConverter((Class<?>) pt.getRawType(), this)) {
 				for (ConverterFactory<T> wrt : factories) {
 					final T converter = wrt.tryCreate(manifest, this);
 					if (converter != null) {
@@ -1324,7 +1322,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+			if (pt.getActualTypeArguments().length == 1) {
 				final Class<?> container = (Class<?>) pt.getRawType();
 				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
 					final Type content = pt.getActualTypeArguments()[0];
@@ -1370,7 +1368,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+			if (pt.getActualTypeArguments().length == 1) {
 				final Class<?> container = (Class<?>) pt.getRawType();
 				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
 					final Type content = pt.getActualTypeArguments()[0];
@@ -1541,7 +1539,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (manifest instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+			if (pt.getActualTypeArguments().length == 1) {
 				final Type content = pt.getActualTypeArguments()[0];
 				final Class<?> container = (Class<?>) pt.getRawType();
 				if (container.isArray() || Collection.class.isAssignableFrom(container)) {
@@ -1612,9 +1610,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (content instanceof ParameterizedType) {
 			final ParameterizedType cpt = (ParameterizedType) content;
-			if (cpt.getRawType() instanceof Class<?>) {
-				return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), 0));
-			}
+			return result.toArray((Object[]) Array.newInstance((Class<?>) cpt.getRawType(), 0));
 		}
 		return result.toArray();
 	}
@@ -1625,9 +1621,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (content instanceof ParameterizedType) {
 			final ParameterizedType pt = (ParameterizedType) content;
-			if (pt.getRawType() instanceof Class<?>) {
-				return Array.newInstance((Class<?>) pt.getRawType(), 0);
-			}
+			return Array.newInstance((Class<?>) pt.getRawType(), 0);
 		}
 		return new Object[0];
 	}

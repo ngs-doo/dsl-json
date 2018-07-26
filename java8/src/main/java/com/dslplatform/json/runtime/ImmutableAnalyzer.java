@@ -113,7 +113,7 @@ public abstract class ImmutableAnalyzer {
 			}
 			if (manifest instanceof ParameterizedType) {
 				final ParameterizedType pt = (ParameterizedType) manifest;
-				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+				if (pt.getActualTypeArguments().length == 1) {
 					return analyze(manifest, (Class<?>) pt.getRawType(), dslJson);
 				}
 			}

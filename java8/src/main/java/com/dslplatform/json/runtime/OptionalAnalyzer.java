@@ -16,7 +16,7 @@ public abstract class OptionalAnalyzer {
 		public OptionalDecoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof ParameterizedType) {
 				final ParameterizedType pt = (ParameterizedType) manifest;
-				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+				if (pt.getActualTypeArguments().length == 1) {
 					return analyzeDecoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
 				}
 			}
@@ -33,7 +33,7 @@ public abstract class OptionalAnalyzer {
 		public OptionalEncoder tryCreate(Type manifest, DslJson dslJson) {
 			if (manifest instanceof ParameterizedType) {
 				final ParameterizedType pt = (ParameterizedType) manifest;
-				if (pt.getActualTypeArguments().length == 1 && pt.getRawType() instanceof Class<?>) {
+				if (pt.getActualTypeArguments().length == 1) {
 					return analyzeEncoding(manifest, pt.getActualTypeArguments()[0], (Class<?>) pt.getRawType(), dslJson);
 				}
 			}

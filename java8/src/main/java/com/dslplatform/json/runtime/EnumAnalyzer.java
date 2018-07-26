@@ -20,7 +20,6 @@ public abstract class EnumAnalyzer {
 			if (manifest instanceof ParameterizedType) {
 				final ParameterizedType pt = (ParameterizedType) manifest;
 				if (pt.getActualTypeArguments().length == 1
-						&& pt.getRawType() instanceof Class<?>
 						&& ((Class<?>) pt.getRawType()).isEnum()) {
 					return analyze(manifest, (Class<Enum>) pt.getRawType(), dslJson);
 				}

@@ -30,7 +30,7 @@ public abstract class MapAnalyzer {
 			}
 			if (manifest instanceof ParameterizedType) {
 				final ParameterizedType pt = (ParameterizedType) manifest;
-				if (pt.getActualTypeArguments().length == 2 && pt.getRawType() instanceof Class<?>) {
+				if (pt.getActualTypeArguments().length == 2) {
 					return analyzeDecoder(manifest, pt.getActualTypeArguments()[0], pt.getActualTypeArguments()[1], (Class<?>) pt.getRawType(), dslJson);
 				}
 			}
@@ -47,7 +47,7 @@ public abstract class MapAnalyzer {
 			}
 			if (manifest instanceof ParameterizedType) {
 				final ParameterizedType pt = (ParameterizedType) manifest;
-				if (pt.getActualTypeArguments().length == 2 && pt.getRawType() instanceof Class<?>) {
+				if (pt.getActualTypeArguments().length == 2) {
 					return analyzeEncoder(manifest, pt.getActualTypeArguments()[0], pt.getActualTypeArguments()[1], (Class<?>) pt.getRawType(), dslJson);
 				}
 			}
