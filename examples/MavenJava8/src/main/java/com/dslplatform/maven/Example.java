@@ -175,7 +175,7 @@ public class Example {
 		//ServiceLoader.load will load Model since it will be registered into META-INF/services during annotation processing
 		//withRuntime is enabled to support runtime analysis for stuff which is not registered by default
 		//Annotation processor will run by default and generate descriptions for JSON encoding/decoding
-		DslJson<Object> dslJson = new DslJson<>();//Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
+		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 		//writer should be reused. For per thread reuse use ThreadLocal pattern
 		JsonWriter writer = dslJson.newWriter();
 

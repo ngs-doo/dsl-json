@@ -35,7 +35,7 @@ class ConverterTemplate {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs)) {
+			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs) && !attr.isJsonObject) {
 				String content = attr.collectionContent(context.knownTypes);
 				if (content != null) {
 					code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(content).append("> reader_").append(attr.name).append(";\n");
@@ -66,7 +66,7 @@ class ConverterTemplate {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
 			String content = attr.collectionContent(context.knownTypes);
-			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs) && content != null) {
+			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs) && !attr.isJsonObject && content != null) {
 				String type = typeOrClass(nonGenericObject(content), content);
 				code.append("\t\t\tthis.reader_").append(attr.name).append(" = json.tryFindReader(").append(type).append(");\n");
 				code.append("\t\t\tthis.writer_").append(attr.name).append(" = json.tryFindWriter(").append(type).append(");\n");
@@ -406,6 +406,8 @@ class ConverterTemplate {
 		if (checkedDefault) code.append("\t");
 		if (attr.converter != null) {
 			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(".write(writer, ").append(readValue).append(")");
+		} else if (attr.isJsonObject) {
+			code.append(readValue).append(".serialize(writer, !alwaysSerialize)");
 		} else {
 			if (converter != null) {
 				code.append(converter.nonNullableEncoder("writer", readValue));
@@ -464,14 +466,28 @@ class ConverterTemplate {
 		}
 		String typeName = attr.type.toString();
 		OptimizedConverter converter = context.inlinedConverters.get(typeName);
-		if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
+		String assignmentEnding = attr.field == null ? ");\n" : ";\n";
+		if (attr.isJsonObject && attr.converter == null) {
+			if (!attr.notNull) {
+				code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
+				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
+				else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
+			}
+			code.append(alignment).append("\t\telse if (reader.last() == '{') {\n");
+			code.append(alignment).append("\t\t\treader.getNextToken();\n");
+			code.append(alignment).append("\t\t\tinstance.");
+			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
+			else code.append(attr.writeMethod.getSimpleName()).append("(");
+			code.append(attr.typeName).append(".JSON_READER.deserialize(reader)").append(assignmentEnding);
+			code.append(alignment).append("\t\t} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
+		} else if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
 			else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
 			code.append(alignment).append("\t\telse instance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 			else code.append(attr.writeMethod.getSimpleName()).append("(");
-			code.append(converter.nonNullableDecoder()).append("(reader)");
+			code.append(converter.nonNullableDecoder()).append("(reader)").append(assignmentEnding);
 		} else {
 			code.append(alignment).append("\t\tinstance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
@@ -497,9 +513,8 @@ class ConverterTemplate {
 			} else {
 				code.append("reader_").append(attr.name).append("().read(reader)");
 			}
+			code.append(assignmentEnding);
 		}
-		if (attr.field == null) code.append(")");
-		code.append(";\n");
 	}
 
 	private void readPropertyValue(AttributeInfo attr, String alignment) throws IOException {
@@ -509,10 +524,17 @@ class ConverterTemplate {
 		}
 		String typeName = attr.type.toString();
 		OptimizedConverter converter = context.inlinedConverters.get(typeName);
-		if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
+		if (attr.isJsonObject && attr.converter == null) {
+			if (!attr.notNull) {
+				code.append(alignment).append("\t\tif (reader.wasNull()) _").append(attr.name).append("_ = null;\n");
+			}
+			code.append(alignment).append("\t\telse if (reader.last() == '{') {\n");
+			code.append(alignment).append("\t\t\treader.getNextToken();\n");
+			code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName).append(".JSON_READER.deserialize(reader));\n");
+			code.append(alignment).append("} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription()) : ");
+		} else if (attr.converter == null && (attr.isJsonObject || converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod())) {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = reader.wasNull() ? null : ");
-			code.append(converter.nonNullableDecoder());
-			code.append("(reader);\n");
+			code.append(converter.nonNullableDecoder()).append("(reader);\n");
 		} else {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
 			if (attr.converter != null) {

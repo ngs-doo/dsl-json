@@ -987,13 +987,16 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		JsonWriter.WriteObject writer = writers.get(manifest);
 		if (writer != null) return writer;
-
+		if (manifest instanceof Class<?>) {
+			final Class<?> signature = (Class<?>) manifest;
+			if (JsonObject.class.isAssignableFrom(signature)) {
+				writers.putIfAbsent(manifest, OBJECT_WRITER);
+				return OBJECT_WRITER;
+			}
+		}
 		writer = lookupFromFactories(manifest, writerFactories, writers);
 		if (writer != null) return writer;
-
-		if (!(manifest instanceof Class<?>)) {
-			return null;
-		}
+		if (!(manifest instanceof Class<?>)) return null;
 		Class<?> found = writerMap.get(manifest);
 		if (found != null) {
 			return writers.get(found);
@@ -1066,6 +1069,17 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
 		if (found != null) return found;
+		if (manifest instanceof Class<?>) {
+			final Class<?> signature = (Class<?>) manifest;
+			if (JsonObject.class.isAssignableFrom(signature)) {
+				final JsonReader.ReadJsonObject<?> decoder = getObjectReader(signature);
+				if (decoder != null) {
+					found = convertToReader(decoder);
+					readers.putIfAbsent(manifest, found);
+					return found;
+				}
+			}
+		}
 		return lookupFromFactories(manifest, readerFactories, readers);
 	}
 
@@ -1357,9 +1371,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (manifest instanceof Class<?>) {
 			final Class<?> objectType = (Class<?>) manifest;
-			if (JsonObject.class.isAssignableFrom(objectType)) {
-				return getObjectReader(objectType) != null;
-			}
 			if (objectType.isArray()) {
 				return !objectType.getComponentType().isArray()
 						&& !Collection.class.isAssignableFrom(objectType.getComponentType())
@@ -1374,20 +1385,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 					final Type content = pt.getActualTypeArguments()[0];
 					if (tryFindReader(content) != null) {
 						return true;
-					} else if (content instanceof Class<?>) {
-						final Class<?> objectType = (Class<?>) content;
-						return JsonObject.class.isAssignableFrom(objectType) && getObjectReader(objectType) != null;
 					}
 				}
 			}
 		} else if (manifest instanceof GenericArrayType) {
 			final Type content = ((GenericArrayType) manifest).getGenericComponentType();
-			if (tryFindReader(content) != null) {
-				return true;
-			} else if (content instanceof Class<?>) {
-				final Class<?> objectType = (Class<?>) content;
-				return JsonObject.class.isAssignableFrom(objectType) && getObjectReader(objectType) != null;
-			}
+			return tryFindReader(content) != null;
 		}
 		return false;
 	}
@@ -1450,17 +1453,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		final JsonReader json = localReader.get().process(body, size);
 		try {
 			json.getNextToken();
-			if (JsonObject.class.isAssignableFrom(manifest)) {
-				final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
-				if (objectReader != null) {
-					if (json.wasNull()) {
-						return null;
-					} else if (json.last() == '{') {
-						json.getNextToken();
-						return (TResult) objectReader.deserialize(json);
-					} else throw json.expecting("{");
-				}
-			}
 			final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 			if (simpleReader != null) {
 				return (TResult) simpleReader.read(json);
@@ -1561,18 +1553,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 							return returnAsArray(content, result);
 						}
 						return result;
-					} else if (content instanceof Class<?>) {
-						final Class<?> contentType = (Class<?>) content;
-						if (JsonObject.class.isAssignableFrom(contentType)) {
-							final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
-							if (objectReader != null) {
-								final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
-								if (container.isArray()) {
-									return result.toArray((Object[]) Array.newInstance(contentType, 0));
-								}
-								return result;
-							}
-						}
 					}
 				}
 			}
@@ -1590,15 +1570,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (contentReader != null) {
 				final ArrayList<?> result = json.deserializeNullableCollection(contentReader);
 				return returnAsArray(content, result);
-			} else if (content instanceof Class<?>) {
-				final Class<?> contentType = (Class<?>) content;
-				if (JsonObject.class.isAssignableFrom(contentType)) {
-					final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(contentType);
-					if (objectReader != null) {
-						final ArrayList<JsonObject> result = json.deserializeNullableCollection(objectReader);
-						return result.toArray((Object[]) Array.newInstance(contentType, 0));
-					}
-				}
 			}
 		}
 		return unknownValue;
@@ -1687,6 +1658,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (json.getNextToken() == ']') {
 				return new ArrayList<TResult>(0);
 			}
+			//leave for now in to avoid overhead of going through redirection via generic tryFindReader
 			if (JsonObject.class.isAssignableFrom(manifest)) {
 				final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
 				if (reader != null) {
@@ -1811,6 +1783,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (json.getNextToken() == ']') {
 			return new ArrayList<TResult>(0);
 		}
+		//leave for now in to avoid overhead of going through redirection via generic tryFindReader
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
 			if (reader != null) {
@@ -1921,17 +1894,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			final JsonReader json,
 			final InputStream stream) throws IOException {
 		json.getNextToken();
-		if (JsonObject.class.isAssignableFrom(manifest)) {
-			final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(manifest);
-			if (objectReader != null) {
-				if (json.wasNull()) {
-					return null;
-				} else if (json.last() == '{') {
-					json.getNextToken();
-					return (TResult) objectReader.deserialize(json);
-				} else throw json.expecting("{");
-			}
-		}
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
 			return (TResult) simpleReader.read(json);
@@ -1946,6 +1908,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (json.getNextToken() == ']') {
 				return (TResult) Array.newInstance(elementManifest, 0);
 			}
+			//leave for now in to avoid overhead of going through redirection via generic tryFindReader
 			if (JsonObject.class.isAssignableFrom(elementManifest)) {
 				final JsonReader.ReadJsonObject<JsonObject> objectReader = getObjectReader(elementManifest);
 				if (objectReader != null) {
@@ -2204,6 +2167,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (json.getNextToken() == ']') {
 			return EMPTY_ITERATOR;
 		}
+		//leave for now in to avoid overhead of going through redirection via generic tryFindReader
 		if (JsonObject.class.isAssignableFrom(manifest)) {
 			final JsonReader.ReadJsonObject<JsonObject> reader = getObjectReader(manifest);
 			if (reader != null) {
@@ -2229,12 +2193,24 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		throw createErrorMessage(manifest);
 	}
 
-	private final JsonWriter.WriteObject OBJECT_WRITER = new JsonWriter.WriteObject() {
+	private final JsonWriter.WriteObject<JsonObject> OBJECT_WRITER = new JsonWriter.WriteObject<JsonObject>() {
 		@Override
-		public void write(JsonWriter writer, @Nullable Object value) {
-			((JsonObject) value).serialize(writer, omitDefaults);
+		public void write(JsonWriter writer, @Nullable JsonObject value) {
+			if (value == null) writer.writeNull();
+			else value.serialize(writer, omitDefaults);
 		}
 	};
+	private final <T extends JsonObject> JsonReader.ReadObject<T> convertToReader(final JsonReader.ReadJsonObject<T> decoder) {
+		return new JsonReader.ReadObject<T>() {
+			@Override
+			public T read(JsonReader reader) throws IOException {
+				if (reader.wasNull()) return null;
+				else if (reader.last() != '{') throw reader.expecting("{");
+				reader.getNextToken();
+				return decoder.deserialize(reader);
+			}
+		};
+	}
 
 	private final JsonWriter.WriteObject OBJECT_ARRAY_WRITER = new JsonWriter.WriteObject() {
 		@Override
