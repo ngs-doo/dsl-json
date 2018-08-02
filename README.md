@@ -13,16 +13,17 @@ Java JSON library designed for performance. Built for invasive software composit
  * works on existing POJO classes via annotation processor
  * performance - faster than any other Java JSON library. On pair with fastest binary JVM codecs
  * works on byte level - deserialization can work on byte[] or InputStream. It doesn't need intermediate char representation
- * extensibility - custom types can be registered for serialization/deserialization
+ * extensibility - support for custom types, custom analyzers, annotation processor extensions...
  * streaming support - large JSON lists support streaming with minimal memory usage
  * zero-copy operations - converters avoid producing garbage
  * minimal size - runtime dependency weights around 200KB
  * no unsafe code - library doesn't rely on Java UNSAFE/internal methods
+ * POJO <-> object and/or array format - array format avoids serializing names, while object format can be used in minimal serialization mode
  * legacy name mapping - multiple versions of JSON property names can be mapped into a single POJO using alternativeNames annotation
  * binding to an existing instance - during deserialization an existing instance can be provided to reduce GC
  * advanced annotation processor support - support for Java-only compilation or DSL Platform integration via conversion of Java code to DSL schema
  * customizable runtime overheads - works in reflection mode, in Java8 annotation processor mode or DSL Platform mode. Schema and annotation based POJOs are prepared at compile time
- * support for other library annotations - Jackson annotations will be used and compile time analysis can be extended in various ways
+ * support for other library annotations - Jackson and JsonB annotations will be used and compile time analysis can be extended in various ways
  * Scala types support - Scala collections, primitives and boxed primitives work without any extra annotations or configuration
  * Kotlin support - annotation processor can be used from Kotlin. NonNull annotation is supported
  * JsonB support - high level support for JsonB String and Stream API. Only minimal support for configuration
@@ -40,6 +41,7 @@ Processor outputs encoding/decoding code/descriptions at compile time.
 This avoids the need for reflection, provides compile time safety and allows for some advanced configurations.
 Processor will register optimized converters into `META-INF/services`.
 This will be loaded during `DslJson` initialization with `ServiceLoader`.
+Since v1.8.0 naming conventions will be used for Java8 converters (`package._NAME_DslJsonConverter`) which works even without loading services upfront.
 Converters will be created even for dependent objects which don't have `@CompiledJson` annotation.
 This can be used to create serializers for pre-existing classes without annotating them.
 
@@ -48,21 +50,35 @@ This can be used to create serializers for pre-existing classes without annotati
 Since v1.7.0 DSL-JSON supports compile time databinding without Mono/.NET dependency.
 It provides most features and flexibility, due to integration with runtime analysis and combining of various generic analysis.
 Bean properties, public fields and classes without empty constructor are supported.
+Package private classes and factory methods can be used.
+Array format can be used for efficient payload transfer.
 
 To use Java8 annotation processor its sufficient to just reference Java8 version of the library:
 
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-java8</artifactId>
-      <version>1.7.5</version>
+      <version>1.8.0</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
-    dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.7.5'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.7.5'
+    android {
+      compileOptions {
+        sourceCompatibility 1.8
+        targetCompatibility 1.8
+      }
     }
+    dependencies {
+      compile 'com.dslplatform:dsl-json-java8:1.8.0'
+      annotationProcessor 'com.dslplatform:dsl-json-java8:1.8.0'
+      provided 'javax.json.bind:javax.json.bind-api:1.0'
+    }
+
+To use DSL-JSON on older Android versions setup should be done without initializing Java8 specific types:
+
+    private final DslJson<Object> dslJson = new DslJson<Object>(runtime.Settings.basicSetup());
+
 
 ### DSL Platform annotation processor
 
@@ -70,21 +86,22 @@ DSL Platform annotation processor requires .NET/Mono to create databindings.
 It works by translating Java code into equivalent DSL schema and running DSL Platform compiler on it.
 Since v1.7.2 Java8 version has similar performance, so the main benefit is ability to target Java6.
 Bean properties, public non-final fields and only classes with empty constructor are supported.
+Only object format is supported.
 
 Annotation processor can be added as Maven dependency with:
 
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.7.5</version>
+      <version>1.8.0</version>
       <scope>provided</scope>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.7.5'
-      annotationProcessor 'com.dslplatform:dsl-json-processor:1.7.5'
+      compile 'com.dslplatform:dsl-json:1.8.0'
+      annotationProcessor 'com.dslplatform:dsl-json-processor:1.8.0'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -201,6 +218,7 @@ Library has several serialization modes:
  * array format - object will be serialized as array without property names
 
 Best serialization performance can be obtained with combination of minimal serialization and minified property names/aliases or array format.
+Object and array formats can be combined. POJO can support both formats at once.
 
 ## Benchmarks
 
@@ -217,14 +235,15 @@ Reference benchmark (built by library authors):
 ## Dependencies
 
 Core library (with analysis processor) and DSL Platform annotation processor targets Java6.
-Java8 library includes runtime analysis, reflection support, annotation processor and Java8 specific types. When Java8 annotation processor is used Mono/.NET doesn't need to be present on the system.  
+Java8 library includes runtime analysis, reflection support, annotation processor and Java8 specific types. When Java8 annotation processor is used Mono/.NET doesn't need to be present on the system.
+Android can use Java8 version of the library even on older versions due to lazy loading of types which avoids loading types Android does not support. 
 
 Library can be added as Maven dependency with:
 
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.7.5</version>
+      <version>1.8.0</version>
     </dependency>
 
 ## Runtime analysis
@@ -282,8 +301,8 @@ Also, since v1.5 binding API is available which can reuse instances for deserial
 
 Library has various limits built-in to protect against malicious input:
 
- * [default of 512 digits](library/src/main/java/com/dslplatform/json/DslJson.java#L368)
- * [default of 128MB strings](library/src/main/java/com/dslplatform/json/DslJson.java#L381)
+ * default of 512 digits
+ * default of 128MB strings
 
 ### Scala support
 
@@ -305,7 +324,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.7.5"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.8.0"
 
 ### Kotlin support
 
@@ -314,8 +333,8 @@ When used with Gradle, configuration can be done via:
 
     apply plugin: 'kotlin-kapt'
     dependencies {
-      compile "com.dslplatform:dsl-json-java8:1.7.5"
-      kapt "com.dslplatform:dsl-json-java8:1.7.5"
+      compile "com.dslplatform:dsl-json-java8:1.8.0"
+      kapt "com.dslplatform:dsl-json-java8:1.8.0"
     }
 
 ## FAQ
@@ -327,7 +346,7 @@ When used with Gradle, configuration can be done via:
  ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching. Reflection version is comparable with Jackson performance. Extra difference comes from compile-time databinding.
  
  ***Q***: DslJson is failing with unable to resolve reader/writer. What does it mean?  
- ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json_Annotation_Processor_External_Serialization` or `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. Make sure you've referenced processor library (which is responsible for setting up readers/writers during compilation) and double check if annotation processor is running. Refer to [example projects](examples) for how to set up environment.
+ ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json_Annotation_Processor_External_Serialization` or `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. Make sure you've referenced processor library (which is responsible for setting up readers/writers during compilation) and double check if annotation processor is running. Refer to [example projects](examples) for how to set up environment. As of v1.8.0 Java8 version of the library avoids this issue since services are not used by default anymore in favor of named based convention.
  
  ***Q***: Maven/Gradle are failing during compilation with `@CompiledJson` when I'm using DSL Platform annotation processor. What can I do about it?  
  ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/MavenJava6/pom.xml#L35)

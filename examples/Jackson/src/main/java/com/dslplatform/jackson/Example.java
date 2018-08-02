@@ -14,10 +14,11 @@ import java.util.*;
 
 public class Example {
 
-	public static class Model {
+	//package private visibility is supported
+	static class Model {
 		//Compile time databinding will use Jackson annotations for analysis (when enabled)
 		@JsonCreator
-		public Model() {}
+		Model() {}
 
 		public String string;
 		public List<Integer> integers;
@@ -36,6 +37,7 @@ public class Example {
 		public ArrayList<Integer> intList; //most collections are supported through runtime converters
 		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw SerializationException
 		public ImmutablePerson person; //immutable objects are supported via builder pattern
+		public List<ViaFactory> factories; //objects without accessible constructor can be created through factory methods
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -69,6 +71,19 @@ public class Example {
 			public int x() { return x; }
 			public void setY(int v) { y = v; }
 			public int getY() { return y; }
+		}
+
+		public static class ViaFactory {
+			public final String name;
+			public final int num;
+			private ViaFactory(String name, int num) {
+				this.name = name;
+				this.num = num;
+			}
+			@JsonCreator
+			public static ViaFactory create(String name, int num) {
+				return new ViaFactory(name, num);
+			}
 		}
 
 		public static class BaseClass {
@@ -128,7 +143,11 @@ public class Example {
 
 	public static void main(String[] args) throws IOException {
 
-		//ServiceLoader.load will load Model since it will be registered into META-INF/services during annotation processing
+		//Model converters will be loaded based on naming convention.
+		//Previously it would be loaded through ServiceLoader.load,
+		//which is still an option if dsljson.configuration name is specified.
+		//DSL-JSON loads all services registered into META-INF/services
+		//and falls back to naming based convention of package._NAME_DslJsonConfiguration if not found
 		//withRuntime is enabled to support runtime analysis for stuff which is not registered by default
 		//Annotation processor will run by default and generate descriptions for JSON encoding/decoding
 		//To include Jackson annotations dsljson.jackson=true must be passed to annotation processor
@@ -152,6 +171,7 @@ public class Example {
 		instance.map = new HashMap<>();
 		instance.map.put("abc", 678);
 		instance.map.put("array", new int[] { 2, 4, 8});
+		instance.factories = Arrays.asList(null, Model.ViaFactory.create("me", 2), Model.ViaFactory.create("you", 3), null);
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(instance, os);

@@ -11,10 +11,11 @@ import java.util.*;
 
 public class Example {
 
-	public static class Model {
+	//package private visibility is supported
+	static class Model {
 		//when @CompiledJson is not used, @JsonbCreator can be used to tag which class will get compile-time databinding
 		@JsonbCreator
-		public Model() {}
+		Model() {}
 		@JsonbProperty(nillable = false) //indicate that field can't be null
 		public String string;
 		public List<Integer> integers;
@@ -32,6 +33,7 @@ public class Example {
 		public ArrayList<Integer> intList; //most collections are supported through runtime converters
 		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw SerializationException
 		public ImmutablePerson person; //immutable objects are supported via builder pattern
+		public List<ViaFactory> factories; //objects without accessible constructor can be created through factory methods
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -64,6 +66,20 @@ public class Example {
 			public int x() { return x; }
 			public void setY(int v) { y = v; }
 			public int getY() { return y; }
+		}
+
+		public static class ViaFactory {
+			public final String name;
+			public final int num;
+			private ViaFactory(String name, int num) {
+				this.name = name;
+				this.num = num;
+			}
+			//compiled json can also be used on factory methods when ctor is not available
+			@JsonbCreator
+			public static ViaFactory create(String name, int num) {
+				return new ViaFactory(name, num);
+			}
 		}
 
 		public static class BaseClass {
@@ -109,6 +125,7 @@ public class Example {
 		instance.map = new HashMap<>();
 		instance.map.put("abc", 678);
 		instance.map.put("array", new int[] { 2, 4, 8});
+		instance.factories = Arrays.asList(null, Model.ViaFactory.create("me", 2), Model.ViaFactory.create("you", 3), null);
 
 		//TODO while string API is supported, it should be avoided in favor of stream API
 		String result = jsonb.toJson(instance);

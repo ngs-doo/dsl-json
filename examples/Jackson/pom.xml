@@ -6,12 +6,12 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>jackson-example</artifactId>
-	<version>1.7.5</version>
+	<version>1.8.0</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-java8</artifactId>
-			<version>1.7.5</version>
+			<version>1.8.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -34,7 +34,6 @@
 						<!--Adsljson.loglevel>DEBUG</Adsljson.loglevel-->
 						<!--Adsljson.annotation>EXPLICIT</Adsljson.annotation-->
 						<!--Adsljson.unknown>ALLOW</Adsljson.unknown-->
-						<!--Adsljson.inline>true</Adsljson.inline-->
 						<Adsljson.jackson>true</Adsljson.jackson>
 					</compilerArguments>
 					<compilerVersion>1.8</compilerVersion>

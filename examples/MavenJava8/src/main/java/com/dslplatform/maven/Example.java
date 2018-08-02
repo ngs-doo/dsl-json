@@ -11,7 +11,7 @@ import java.util.*;
 public class Example {
 
 	@CompiledJson(onUnknown = CompiledJson.Behavior.IGNORE) //ignore unknown properties (default for objects). to disallow unknown properties in JSON set it to FAIL which will result in exception instead
-	public static class Model {
+	static class Model { //package private visibility is supported in Java8 version
 		@JsonAttribute(nullable = false) //indicate that field can't be null
 		public String string;
 		public List<Integer> integers;
@@ -41,6 +41,7 @@ public class Example {
 		public ArrayList<Integer> intList; //most collections are supported through runtime converters
 		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw SerializationException
 		public ImmutablePerson person; //immutable objects are supported via builder pattern
+		public List<ViaFactory> factories; //objects without accessible constructor can be created through factory methods
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -88,6 +89,20 @@ public class Example {
 			public int getY() { return y; }
 		}
 
+		public static class ViaFactory {
+			public final String name;
+			public final int num;
+			private ViaFactory(String name, int num) {
+				this.name = name;
+				this.num = num;
+			}
+			//compiled json can also be used on factory methods when ctor is not available
+			@CompiledJson
+			public static ViaFactory create(String name, int num) {
+				return new ViaFactory(name, num);
+			}
+		}
+
 		public static class BaseClass {
 			public int a;
 		}
@@ -113,7 +128,7 @@ public class Example {
 			public final int x;
 			public final String s;
 
-			public JsonObjectReference(int x, String s) {
+			JsonObjectReference(int x, String s) {
 				this.x = x;
 				this.s = s;
 			}
@@ -141,20 +156,6 @@ public class Example {
 				}
 			};
 		}
-		@JsonConverter(target = LocalTime.class)
-		public static abstract class LocalTimeConverter {
-			public static final JsonReader.ReadObject<LocalTime> JSON_READER = reader -> {
-				if (reader.wasNull()) return null;
-				return LocalTime.parse(reader.readSimpleString());
-			};
-			public static final JsonWriter.WriteObject<LocalTime> JSON_WRITER = (writer, value) -> {
-				if (value == null) {
-					writer.writeNull();
-				} else {
-					writer.writeString(value.toString());
-				}
-			};
-		}
 		public static abstract class FormatDecimal2 {
 			public static final JsonReader.ReadObject<BigDecimal> JSON_READER = reader -> {
 				if (reader.wasNull()) return null;
@@ -170,9 +171,29 @@ public class Example {
 		}
 	}
 
+	//moved outside of private package class since it reference object in java namespace
+	@JsonConverter(target = LocalTime.class)
+	public static abstract class LocalTimeConverter {
+		public static final JsonReader.ReadObject<LocalTime> JSON_READER = reader -> {
+			if (reader.wasNull()) return null;
+			return LocalTime.parse(reader.readSimpleString());
+		};
+		public static final JsonWriter.WriteObject<LocalTime> JSON_WRITER = (writer, value) -> {
+			if (value == null) {
+				writer.writeNull();
+			} else {
+				writer.writeString(value.toString());
+			}
+		};
+	}
+
 	public static void main(String[] args) throws IOException {
 
-		//ServiceLoader.load will load Model since it will be registered into META-INF/services during annotation processing
+		//Model converters will be loaded based on naming convention.
+		//Previously it would be loaded through ServiceLoader.load,
+		//which is still an option if dsljson.configuration name is specified.
+		//DSL-JSON loads all services registered into META-INF/services
+		//and falls back to naming based convention of package._NAME_DslJsonConfiguration if not found
 		//withRuntime is enabled to support runtime analysis for stuff which is not registered by default
 		//Annotation processor will run by default and generate descriptions for JSON encoding/decoding
 		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
@@ -207,6 +228,7 @@ public class Example {
 		instance.map = new HashMap<>();
 		instance.map.put("abc", 678);
 		instance.map.put("array", new int[] { 2, 4, 8});
+		instance.factories = Arrays.asList(null, Model.ViaFactory.create("me", 2), Model.ViaFactory.create("you", 3), null);
 
 		dslJson.serialize(writer, instance);
 

@@ -2,6 +2,7 @@ package json
 
 import com.dslplatform.json.CompiledJson
 import com.dslplatform.json.DslJson
+import com.dslplatform.json.JsonAttribute
 import com.dslplatform.json.runtime.Settings
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -10,7 +11,11 @@ import java.io.ByteArrayOutputStream
 //if annotation is missing and it's not accessed through some other object with annotation
 //class will be analyzed at runtime
 @CompiledJson
-data class DataClass(val language: String, val versions: List<Int>, val library: String)
+data class DataClass(
+        @JsonAttribute(name = "lang") val language: String,
+        val versions: List<Int>,
+        val library: String
+)
 
 fun main(args: Array<String>) {
     //include service loader will load up classes created via annotation processor
