@@ -976,6 +976,12 @@ public class Analysis {
 	}
 
 	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts) {
+		String typeName = target.toString();
+		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) {
+			parts.put(typeName, PartKind.OTHER);
+			return;
+		}
+
 		switch (target.getKind()) {
 			case ARRAY:
 				ArrayType at = (ArrayType) target;
@@ -986,19 +992,14 @@ public class Analysis {
 				DeclaredType declaredType = (DeclaredType) target;
 				List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
 				if (typeArguments.isEmpty()) {
-					String typeName = target.toString();
-					if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) {
-						parts.put(typeName, PartKind.OTHER);
-					} else {
-						parts.put(typeName, PartKind.UNKNOWN);
-					}
+					parts.put(typeName, PartKind.UNKNOWN);
 				} else {
-					String typeName = declaredType.asElement().toString();
-					if (structs.containsKey(typeName) || supportedTypes.contains(typeName)
-							||containerSupport.isSupported(typeName)) {
-						parts.put(typeName, PartKind.OTHER);
+					String rawTypeName = declaredType.asElement().toString();
+					if (structs.containsKey(rawTypeName) || supportedTypes.contains(rawTypeName)
+							||containerSupport.isSupported(rawTypeName)) {
+						parts.put(rawTypeName, PartKind.OTHER);
 					} else {
-						parts.put(typeName, PartKind.UNKNOWN);
+						parts.put(rawTypeName, PartKind.UNKNOWN);
 					}
 
 					for (TypeMirror typeArgument : typeArguments) {
@@ -1008,11 +1009,11 @@ public class Analysis {
 				break;
 
 			case TYPEVAR:
-				parts.put(target.toString(), PartKind.TYPE_VARIABLE);
+				parts.put(typeName, PartKind.TYPE_VARIABLE);
 				break;
 
 			default:
-				parts.put(target.toString(), PartKind.UNKNOWN);
+				parts.put(typeName, PartKind.UNKNOWN);
 				break;
 		}
 	}
