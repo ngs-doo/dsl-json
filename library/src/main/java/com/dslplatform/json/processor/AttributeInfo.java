@@ -33,6 +33,9 @@ public class AttributeInfo {
 	public final String typeName;
 	public final boolean isArray;
 	public final boolean isList;
+	public final boolean isGeneric;
+	public final Map<String, Integer> typeVariablesIndex;
+	public final boolean containsStructOwnerType;
 
 	public AttributeInfo(
 			String name,
@@ -48,7 +51,9 @@ public class AttributeInfo {
 			boolean fullMatch,
 			@Nullable CompiledJson.TypeSignature typeSignature,
 			@Nullable ConverterInfo converter,
-			boolean isJsonObject) {
+			boolean isJsonObject,
+			Map<String, Integer> typeVariablesIndex,
+			boolean containsStructOwnerType) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
 		this.readMethod = readMethod;
@@ -69,6 +74,9 @@ public class AttributeInfo {
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 		this.isArray = type.getKind() == TypeKind.ARRAY;
 		this.isList = typeName.startsWith("java.util.List<") || typeName.startsWith("java.util.ArrayList<");
+		this.typeVariablesIndex = typeVariablesIndex;
+		this.isGeneric = !typeVariablesIndex.isEmpty();
+		this.containsStructOwnerType = containsStructOwnerType;
 	}
 
 	public boolean isEnum(Map<String, StructInfo> structs) {

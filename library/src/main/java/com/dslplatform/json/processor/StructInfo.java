@@ -3,10 +3,7 @@ package com.dslplatform.json.processor;
 import com.dslplatform.json.CompiledJson;
 import com.dslplatform.json.Nullable;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import java.util.*;
@@ -31,13 +28,15 @@ public class StructInfo {
 	public final TypeElement deserializeAs;
 	public final String deserializeName;
 	public final boolean isMinified;
-	public final LinkedHashSet<CompiledJson.Format> formats;
+	public final EnumSet<CompiledJson.Format> formats;
 	public final boolean isObjectFormatFirst;
 	public final LinkedHashMap<String, AttributeInfo> attributes = new LinkedHashMap<String, AttributeInfo>();
 	public final Set<Element> properties = new HashSet<Element>();
 	public final List<String> constants = new ArrayList<String>();
 	public final Stack<String> path = new Stack<String>();
 	public final Map<String, TypeMirror> unknowns = new LinkedHashMap<String, TypeMirror>();
+	public final boolean isParameterized;
+	public final List<String> typeParametersNames;
 
 	public StructInfo(
 			TypeElement element,
@@ -72,7 +71,7 @@ public class StructInfo {
 		this.deserializeAs = deserializeAs;
 		this.deserializeName = deserializeName != null ? deserializeName : "";
 		this.isMinified = isMinified;
-		this.formats = new LinkedHashSet<CompiledJson.Format>(formats == null ? Collections.singletonList(CompiledJson.Format.OBJECT) : Arrays.asList(formats));
+		this.formats = formats == null ? EnumSet.of(CompiledJson.Format.OBJECT) : EnumSet.copyOf(Arrays.asList(formats));
 		this.isObjectFormatFirst = formats == null || formats.length == 0 || formats[0] == CompiledJson.Format.OBJECT;
 		if (annotatedConstructor != null) this.constructor = annotatedConstructor;
 		else if (matchingConstructors == null) this.constructor = null;
@@ -87,6 +86,8 @@ public class StructInfo {
 			}
 			this.constructor = emptyCtor;
 		}
+		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
+		this.isParameterized = !typeParametersNames.isEmpty();
 	}
 
 	public StructInfo(TypeElement converter, DeclaredType discoveredBy, TypeElement target, String name, String binaryName, String reader, String writer) {
@@ -107,8 +108,19 @@ public class StructInfo {
 		this.deserializeAs = null;
 		this.deserializeName = "";
 		this.isMinified = false;
-		this.formats = new LinkedHashSet<CompiledJson.Format>(Collections.singletonList(CompiledJson.Format.OBJECT));
+		this.formats = EnumSet.of(CompiledJson.Format.OBJECT);
 		this.isObjectFormatFirst = true;
+		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
+		this.isParameterized = !typeParametersNames.isEmpty();
+	}
+
+	private List<String> extractParametersNames(final List<? extends TypeParameterElement> typeParameters) {
+		if (typeParameters.isEmpty()) return Collections.emptyList();
+		List<String> names = new ArrayList<String>(typeParameters.size());
+		for (TypeParameterElement typeParameter : typeParameters) {
+			names.add(typeParameter.getSimpleName().toString());
+		}
+		return names;
 	}
 
 	public boolean hasEmptyCtor() {

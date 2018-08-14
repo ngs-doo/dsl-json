@@ -355,7 +355,14 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
 
-		if (si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null) && !si.attributes.isEmpty()) {
+		if (si.type == ObjectType.CLASS && si.isParameterized) {
+			code.append("\t\tConverterFactory factory = new ConverterFactory();\n");
+			code.append("\t\tjson.registerReaderFactory(factory);\n");
+			code.append("\t\tjson.registerWriterFactory(factory);\n");
+			if (si.canCreateEmptyInstance()) {
+				code.append("\t\tjson.registerBinderFactory(factory);\n");
+			}
+		} else if (si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null) && !si.attributes.isEmpty()) {
 			String objectFormatConverterName = "converter";
 			if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(json);\n");
@@ -414,19 +421,26 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t}\n");
 
 		if (si.type == ObjectType.CLASS && !si.attributes.isEmpty()) {
+			final String typeName;
+			if (si.isParameterized) {
+				converterTemplate.factoryForGenericConverter(si);
+				typeName = className + "<" + String.join(", ", si.typeParametersNames) + ">";
+			} else {
+				typeName = className;
+			}
 			if (si.canCreateEmptyInstance()) {
 				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-					converterTemplate.emptyObject(si, className);
+					converterTemplate.emptyObject(si, typeName);
 				}
 				if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-					converterTemplate.emptyArray(si, className);
+					converterTemplate.emptyArray(si, typeName);
 				}
 			} else if (si.constructor != null || si.factory != null) {
 				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-					converterTemplate.fromObject(si, className);
+					converterTemplate.fromObject(si, typeName);
 				}
 				if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-					converterTemplate.fromArray(si, className);
+					converterTemplate.fromArray(si, typeName);
 				}
 			}
 		} else if (si.type == ObjectType.ENUM) {
