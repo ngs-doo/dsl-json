@@ -1,11 +1,14 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.runtime.Settings;
 import com.dslplatform.json.runtime.TypeDefinition;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -64,6 +67,19 @@ public class GenericTest {
 		JsonReader<Object> reader = dslJson.newReader(os.toByteArray(), os.size());
 		reader.getNextToken();
 		bindObject.bind(reader, result);
+
+		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
+	}
+
+	@Ignore
+	@Test
+	public void testRawSignature() throws IOException {
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		GenericModel model = generateModel();
+		dslJson.serialize(model, os);
+
+		Type type = new TypeDefinition<GenericModel<String, Double>>() {}.type;
+		GenericModel<String, Double> result = (GenericModel<String, Double>) dslJson.deserialize(type, os.toByteArray(), os.size());
 
 		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
 	}
