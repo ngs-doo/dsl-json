@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public abstract class Generics {
 
-	private static final ConcurrentMap<String, GenericType> typeCache = new ConcurrentHashMap<>();
+	private static final ConcurrentMap<String, Type> typeCache = new ConcurrentHashMap<>();
 
 	public static HashMap<Type, Type> analyze(final Type manifest, final Class<?> raw) {
 		final HashMap<Type, Type> genericMappings = new HashMap<>();
@@ -48,7 +48,7 @@ public abstract class Generics {
 				generics[i] = newType;
 			}
 			if (changed) {
-				return makeGenericType((Class<?>)pt.getRawType(), generics);
+				return makeParameterizedType((Class<?>)pt.getRawType(), generics);
 			}
 		}
 		return manifest;
@@ -102,9 +102,37 @@ public abstract class Generics {
 		}
 	}
 
-	private static ParameterizedType makeGenericType(final Class<?> container, final Type[] arguments) {
+	private static final class GenericArrayTypeImpl implements GenericArrayType {
+		private final String name;
+		private final Type componentType;
+
+		private GenericArrayTypeImpl(String name, Type componentType) {
+			this.name = name;
+			this.componentType = componentType;
+		}
+
+		@Override
+		public Type getGenericComponentType() {
+			return componentType;
+		}
+
+		@Override
+		public String getTypeName() {
+			return name;
+		}
+
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+
+	public static ParameterizedType makeParameterizedType(final Class<?> container, final Type... arguments) {
 		if (container == null) throw new IllegalArgumentException("container can't be null");
-		if (arguments == null || arguments.length < 1) throw new IllegalArgumentException("arguments must have at least one element");
+		int containerParameterCount = container.getTypeParameters().length;
+		if (containerParameterCount == 0) throw new IllegalArgumentException("container must be parameterized type");
+		if (arguments == null || arguments.length != containerParameterCount)
+			throw new IllegalArgumentException("arguments must have " + containerParameterCount + " elements");
 		final StringBuilder sb = new StringBuilder();
 		sb.append(container.getTypeName());
 		sb.append("<");
@@ -115,9 +143,20 @@ public abstract class Generics {
 		}
 		sb.append(">");
 		final String name = sb.toString();
-		GenericType found = typeCache.get(name);
+		GenericType found = (GenericType) typeCache.get(name);
 		if (found == null) {
 			found = new GenericType(name, container, arguments);
+			typeCache.put(name, found);
+		}
+		return found;
+	}
+
+	public static GenericArrayType makeGenericArrayType(final Type componentType) {
+		if (componentType == null) throw new IllegalArgumentException("componentType can't be null");
+		final String name = componentType.getTypeName() + "[]";
+		GenericArrayType found = (GenericArrayType) typeCache.get(name);
+		if (found == null) {
+			found = new GenericArrayTypeImpl(name, componentType);
 			typeCache.put(name, found);
 		}
 		return found;

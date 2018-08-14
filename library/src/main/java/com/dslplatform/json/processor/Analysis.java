@@ -171,9 +171,9 @@ public class Analysis {
 				for (Map.Entry<String, TypeMirror> kv : info.unknowns.entrySet()) {
 					AttributeInfo attr = info.attributes.get(kv.getKey());
 					if (attr != null && (attr.converter != null || attr.isJsonObject)) continue;
-					Map<String, Boolean> references = analyzeParts(kv.getValue());
-					for (Map.Entry<String, Boolean> pair : references.entrySet()) {
-						if (!pair.getValue()) {
+					Map<String, PartKind> references = analyzeParts(kv.getValue());
+					for (Map.Entry<String, PartKind> pair : references.entrySet()) {
+						if (pair.getValue() == PartKind.UNKNOWN) {
 							hasError = hasError || unknownTypes == UnknownTypes.ERROR;
 							Diagnostic.Kind kind = unknownTypes == UnknownTypes.ERROR ? Diagnostic.Kind.ERROR : Diagnostic.Kind.WARNING;
 							if (kind == Diagnostic.Kind.ERROR || logLevel.isVisible(LogLevel.INFO)) {
@@ -200,7 +200,7 @@ public class Analysis {
 			if (unknownTypes != UnknownTypes.ALLOW) {
 				for (AttributeInfo attr : info.attributes.values()) {
 					if (attr.converter != null || attr.isJsonObject) continue;
-					Map<String, Boolean> references = analyzeParts(attr.type);
+					Map<String, PartKind> references = analyzeParts(attr.type);
 					for (String r : references.keySet()) {
 						StructInfo target = structs.get(r);
 						if (target != null && target.type == ObjectType.MIXIN && target.implementations.size() == 0) {
@@ -589,14 +589,26 @@ public class Analysis {
 			boolean isJsonObject = isJsonObject(referenceElement);
 			boolean typeResolved = converter != null || isJsonObject || supportedTypes.contains(referenceName) || structs.containsKey(referenceName);
 			boolean hasUnknown = false;
-			if (!typeResolved) {
-				Map<String, Boolean> references = analyzeParts(referenceType);
-				for (Map.Entry<String, Boolean> kv : references.entrySet()) {
-					if (!kv.getValue()) {
+			boolean hasOwnerStructType = false;
+			Map<String, Integer> typeVariablesIndex = new HashMap<String, Integer>();
+			if (!typeResolved || info.isParameterized) {
+				Map<String, PartKind> references = analyzeParts(referenceType);
+				for (Map.Entry<String, PartKind> kv : references.entrySet()) {
+					String partTypeName = kv.getKey();
+					PartKind partKind = kv.getValue();
+
+					if (partKind == PartKind.UNKNOWN) {
 						hasUnknown = true;
+					}
+					if (partKind == PartKind.TYPE_VARIABLE) {
+						typeVariablesIndex.put(partTypeName, info.typeParametersNames.indexOf(partTypeName));
+					}
+					if (partTypeName.equals(info.element.toString())) {
+						hasOwnerStructType = true;
 					}
 				}
 			}
+
 			AnnotationMirror annotation = access.annotation;
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
 			AttributeInfo attr =
@@ -614,7 +626,9 @@ public class Analysis {
 							isFullMatch(element, annotation),
 							typeSignature,
 							converter,
-							isJsonObject);
+							isJsonObject,
+							typeVariablesIndex,
+							hasOwnerStructType);
 			String[] alternativeNames = getAlternativeNames(attr.element);
 			if (alternativeNames != null) {
 				attr.alternativeNames.addAll(Arrays.asList(alternativeNames));
@@ -697,7 +711,7 @@ public class Analysis {
 
 	private void findStructs(Element el, DeclaredType discoveredBy, String errorMessge, Stack<String> path) {
 		if (!(el instanceof TypeElement)) return;
-		String typeName = el.asType().toString();
+		String typeName = el.toString();
 		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) return;
 		final TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
@@ -951,51 +965,57 @@ public class Analysis {
 		return null;
 	}
 
-	private Map<String, Boolean> analyzeParts(TypeMirror target) {
+	private enum PartKind {
+		UNKNOWN, TYPE_VARIABLE, OTHER
+	}
+
+	private Map<String, PartKind> analyzeParts(TypeMirror target) {
+		Map<String, PartKind> parts = new HashMap<String, PartKind>();
+		analyzePartsRecursively(target, parts);
+		return parts;
+	}
+
+	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts) {
 		String typeName = target.toString();
-		if (structs.containsKey(typeName)) {
-			return Collections.singletonMap(typeName, true);
-		} else if (supportedTypes.contains(typeName)) {
-			return Collections.singletonMap(typeName, true);
+		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) {
+			parts.put(typeName, PartKind.OTHER);
+			return;
 		}
-		if (target instanceof ArrayType) {
-			ArrayType at = (ArrayType) target;
-			return analyzeParts(at.getComponentType());
-		}
-		int genInd = typeName.indexOf('<');
-		if (genInd == -1) return Collections.singletonMap(typeName, false);
-		Map<String, Boolean> found = new LinkedHashMap<String, Boolean>();
-		String rawClass = typeName.substring(0, genInd);
-		TypeElement raw = elements.getTypeElement(rawClass);
-		if (raw != null) {
-			if (supportedTypes.contains(rawClass)) {
-				found.put(rawClass, true);
-			} else {
-				found.put(rawClass, containerSupport.isSupported(rawClass));
-			}
-		}
-		String subtype = typeName.substring(genInd + 1, typeName.lastIndexOf('>'));
-		if (structs.containsKey(subtype) || supportedTypes.contains(subtype)) {
-			found.put(subtype, true);
-			return found;
-		}
-		Set<String> parts = new LinkedHashSet<String>();
-		extractTypes(subtype, parts);
-		for (String st : parts) {
-			if (structs.containsKey(st) || supportedTypes.contains(st)) {
-				found.put(st, true);
-			} else {
-				TypeElement el = elements.getTypeElement(st);
-				if (el == null || !el.getTypeParameters().isEmpty()) {
-					found.put(st, containerSupport.isSupported(st));
-				} else if (isJsonObject(el)) {
-					found.put(st, true);
+
+		switch (target.getKind()) {
+			case ARRAY:
+				ArrayType at = (ArrayType) target;
+				analyzePartsRecursively(at.getComponentType(), parts);
+				break;
+
+			case DECLARED:
+				DeclaredType declaredType = (DeclaredType) target;
+				List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
+				if (typeArguments.isEmpty()) {
+					parts.put(typeName, PartKind.UNKNOWN);
 				} else {
-					found.putAll(analyzeParts(el.asType()));
+					String rawTypeName = declaredType.asElement().toString();
+					if (structs.containsKey(rawTypeName) || supportedTypes.contains(rawTypeName)
+							||containerSupport.isSupported(rawTypeName)) {
+						parts.put(rawTypeName, PartKind.OTHER);
+					} else {
+						parts.put(rawTypeName, PartKind.UNKNOWN);
+					}
+
+					for (TypeMirror typeArgument : typeArguments) {
+						analyzePartsRecursively(typeArgument, parts);
+					}
 				}
-			}
+				break;
+
+			case TYPEVAR:
+				parts.put(typeName, PartKind.TYPE_VARIABLE);
+				break;
+
+			default:
+				parts.put(typeName, PartKind.UNKNOWN);
+				break;
 		}
-		return found;
 	}
 
 	private void extractTypes(String signature, Set<String> parts) {
