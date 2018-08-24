@@ -101,6 +101,62 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testEnumWithJsonValueAnnotationPlacedOnStringField() {
+		checkValidCompilation(EnumWithCustomConstantName1.class);
+	}
+
+	@Test
+	public void testEnumWithJsonValueAnnotationPlacedOnStringGetter() {
+		checkValidCompilation(EnumWithCustomConstantName2.class);
+	}
+
+	@Test
+	public void testEnumWithJsonValueAnnotationPlacedOnIntField() {
+		checkValidCompilation(EnumWithCustomConstantName3.class);
+	}
+
+	@Test
+	public void testEnumWithJsonValueAnnotationPlacedOnIntGetter() {
+		checkValidCompilation(EnumWithCustomConstantName4.class);
+	}
+
+	@Test
+	public void testEnumWithJsonValueAnnotationPlacedOnNonPublicFieldOrGetter() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				18,
+				compileTestCase(EnumWithInvalidCustomConstantName1.class),
+				"Method 'getStr()' annotated with @JsonValue must be public.");
+	}
+
+	@Test
+	public void testEnumWithJsonValueAnnotationPlacedOnUnsupportedFieldType() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				12,
+				compileTestCase(EnumWithInvalidCustomConstantName2.class),
+				"Field 'str' annotated with @JsonValue must be of 'String' or 'int' type.");
+	}
+
+	@Test
+	public void testEnumWithDuplicatedJsonValueAnnotations() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				19,
+				compileTestCase(EnumWithInvalidCustomConstantName3.class),
+				"Duplicate @JsonValue annotation found. Only one enum field or getter can be annotated.");
+	}
+
+	@Test
+	public void testEnumWithJsonValueAnnotationPlacedOnEnumConstant() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				8,
+				compileTestCase(EnumWithInvalidCustomConstantName4.class),
+				"Unexpected @JsonValue annotation found. It must be placed on enum field or getter.");
+	}
+
+	@Test
 	public void testNestedNonStaticClass() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,

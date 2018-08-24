@@ -21,6 +21,7 @@ package com.dslplatform.json;
  * ====================================================================
  */
 
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 
 import static org.junit.Assert.assertFalse;
@@ -277,7 +278,7 @@ public abstract class AbstractAnnotationProcessorTest {
 		}
 		assertTrue("Expected a result of kind " + expectedDiagnosticKind
 				+ " at line " + expectedLineNumber, expectedDiagnosticFound);
-		assertTrue(detected.getMessage(Locale.ENGLISH).contains(contains));
+		Assertions.assertThat(detected.getMessage(Locale.ENGLISH)).contains(contains);
 		return detected;
 	}
 

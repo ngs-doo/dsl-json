@@ -33,6 +33,7 @@ public class StructInfo {
 	public final LinkedHashMap<String, AttributeInfo> attributes = new LinkedHashMap<String, AttributeInfo>();
 	public final Set<Element> properties = new HashSet<Element>();
 	public final List<String> constants = new ArrayList<String>();
+	public final Element enumConstantNameSource;
 	public final Stack<String> path = new Stack<String>();
 	public final Map<String, TypeMirror> unknowns = new LinkedHashMap<String, TypeMirror>();
 	public final boolean isParameterized;
@@ -53,6 +54,7 @@ public class StructInfo {
 			@Nullable CompiledJson.TypeSignature typeSignature,
 			@Nullable TypeElement deserializeAs,
 			@Nullable String deserializeName,
+			@Nullable Element enumConstantNameSource,
 			boolean isMinified,
 			@Nullable CompiledJson.Format[] formats) {
 		this.element = element;
@@ -70,6 +72,7 @@ public class StructInfo {
 		this.typeSignature = typeSignature;
 		this.deserializeAs = deserializeAs;
 		this.deserializeName = deserializeName != null ? deserializeName : "";
+		this.enumConstantNameSource = enumConstantNameSource;
 		this.isMinified = isMinified;
 		this.formats = formats == null ? EnumSet.of(CompiledJson.Format.OBJECT) : EnumSet.copyOf(Arrays.asList(formats));
 		this.isObjectFormatFirst = formats == null || formats.length == 0 || formats[0] == CompiledJson.Format.OBJECT;
@@ -107,6 +110,7 @@ public class StructInfo {
 		this.typeSignature = null;
 		this.deserializeAs = null;
 		this.deserializeName = "";
+		this.enumConstantNameSource = null;
 		this.isMinified = false;
 		this.formats = EnumSet.of(CompiledJson.Format.OBJECT);
 		this.isObjectFormatFirst = true;

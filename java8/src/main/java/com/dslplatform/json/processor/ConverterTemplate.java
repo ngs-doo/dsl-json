@@ -563,27 +563,27 @@ class ConverterTemplate {
 		}
 		if (checkedDefault) code.append("\t");
 		if (attr.converter != null) {
-			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(".write(writer, ").append(readValue).append(")");
+			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
 		} else if (attr.isJsonObject) {
-			code.append(readValue).append(".serialize(writer, !alwaysSerialize)");
+			code.append(readValue).append(".serialize(writer, !alwaysSerialize);\n");
 		} else {
 			if (converter != null) {
-				code.append(converter.nonNullableEncoder("writer", readValue));
+				code.append(converter.nonNullableEncoder("writer", readValue)).append(";\n");
 			} else if (attr.isEnum(context.structs)) {
-				EnumTemplate.writeName(context, attr, readValue);
+				StructInfo target = context.structs.get(attr.typeName);
+				EnumTemplate.writeName(code, target, readValue);
 			} else if (attr.collectionContent(context.knownTypes) != null) {
-				code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(")");
+				code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(");\n");
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 				if (attr.isArray) {
-					code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(")");
+					code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(");\n");
 				} else {
-					code.append("writer_").append(attr.name).append(".write(writer, ").append(readValue).append(")");
+					code.append("writer_").append(attr.name).append(".write(writer, ").append(readValue).append(");\n");
 				}
 			} else {
-				code.append("writer_").append(attr.name).append("().write(writer, ").append(readValue).append(")");
+				code.append("writer_").append(attr.name).append("().write(writer, ").append(readValue).append(");\n");
 			}
 		}
-		code.append(";\n");
 	}
 
 	private void handleSwitch(StructInfo si, String alignment, boolean localNames) throws IOException {

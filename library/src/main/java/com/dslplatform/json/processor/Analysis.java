@@ -830,6 +830,7 @@ public class Analysis {
 							typeSignature,
 							deserializeAs,
 							deserializeName(annotation),
+							type == ObjectType.ENUM ? findEnumConstantNameSource(element) : null,
 							isMinified(annotation),
 							formats);
 			info.path.addAll(path);
@@ -1041,16 +1042,66 @@ public class Analysis {
 		}
 	}
 
-	public static List<String> getEnumConstants(TypeElement element) {
+	private static List<String> getEnumConstants(TypeElement element) {
 		List<String> result = new ArrayList<String>();
-		for (VariableElement field : ElementFilter.fieldsIn(element.getEnclosedElements())) {
-			//Use to string comparison since compiler can create two separate instances which differ
-			if (field.asType().toString().equals(element.asType().toString())) {
-				result.add(field.getSimpleName().toString());
+		for (Element enclosedElement : element.getEnclosedElements()) {
+			if (enclosedElement.getKind() == ElementKind.ENUM_CONSTANT) {
+				result.add(enclosedElement.getSimpleName().toString());
 			}
 		}
 		return result;
 	}
+
+	@Nullable
+	private Element findEnumConstantNameSource(TypeElement element) {
+		Element nameSource = null;
+		for (Element enclosedElement : element.getEnclosedElements()) {
+			if (enclosedElement.getAnnotation(JsonValue.class) != null) {
+				switch (enclosedElement.getKind()) {
+					case FIELD:
+					case METHOD:
+						if (nameSource == null) {
+							if (!enclosedElement.getModifiers().contains(Modifier.PUBLIC)) {
+								printError((enclosedElement.getKind().isField() ? "Field '" : "Method '") + enclosedElement.toString() +
+												"' annotated with @JsonValue must be public.", enclosedElement);
+							} else if (!isSupportedEnumNameType(enclosedElement)) {
+								printError((enclosedElement.getKind().isField() ? "Field '" : "Method '") + enclosedElement.toString() +
+												"' annotated with @JsonValue must be of 'String' or 'int' type.", enclosedElement);
+							} else {
+								nameSource = enclosedElement;
+							}
+						} else {
+							printError("Duplicate @JsonValue annotation found. Only one enum field or getter can be annotated.", enclosedElement);
+						}
+						break;
+
+					default:
+						printError("Unexpected @JsonValue annotation found. It must be placed on enum field or getter.", enclosedElement);
+				}
+			}
+		}
+		return nameSource;
+	}
+
+	private boolean isSupportedEnumNameType(Element element) {
+		String enumNameType = extractReturnType(element);
+		return "java.lang.String".equals(enumNameType) || "int".equals(enumNameType);
+	}
+
+	@Nullable
+	private String extractReturnType(Element element) {
+		switch (element.getKind()) {
+			case FIELD: return element.asType().toString();
+			case METHOD: return ((ExecutableElement) element).getReturnType().toString();
+			default: return null;
+		}
+	}
+
+	private void printError(String message, Element element) {
+		hasError = true;
+		messager.printMessage(Diagnostic.Kind.ERROR, message, element);
+	}
+
 
 	public boolean isJsonObject(Element el) {
 		if (!(el instanceof TypeElement)) return false;
