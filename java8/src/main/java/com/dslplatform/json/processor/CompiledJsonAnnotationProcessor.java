@@ -22,7 +22,14 @@ import java.util.*;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.typeOrClass;
 
-@SupportedAnnotationTypes({"com.dslplatform.json.CompiledJson", "com.dslplatform.json.JsonAttribute", "com.dslplatform.json.JsonConverter", "com.fasterxml.jackson.annotation.JsonCreator", "javax.json.bind.annotation.JsonbCreator"})
+@SupportedAnnotationTypes({
+		"com.dslplatform.json.CompiledJson",
+		"com.dslplatform.json.JsonAttribute",
+		"com.dslplatform.json.JsonConverter",
+		"com.dslplatform.json.JsonValue",
+		"com.fasterxml.jackson.annotation.JsonCreator",
+		"javax.json.bind.annotation.JsonbCreator"
+})
 public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static final Set<String> JsonIgnore;
