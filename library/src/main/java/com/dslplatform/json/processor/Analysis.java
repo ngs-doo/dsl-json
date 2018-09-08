@@ -1085,7 +1085,16 @@ public class Analysis {
 
 	private boolean isSupportedEnumNameType(Element element) {
 		String enumNameType = extractReturnType(element);
-		return "java.lang.String".equals(enumNameType) || "int".equals(enumNameType);
+		if (supportedTypes.contains(enumNameType) || unknownTypes == UnknownTypes.ALLOW) return true;
+		if (unknownTypes == UnknownTypes.WARNING) {
+			messager.printMessage(
+					Diagnostic.Kind.WARNING,
+					(element.getKind().isField() ? "Field '" : "Method '") + element.toString() +
+							"' annotated with @JsonValue is of unknown type.",
+					element);
+			return true;
+		}
+		return false;
 	}
 
 	@Nullable
@@ -1101,7 +1110,6 @@ public class Analysis {
 		hasError = true;
 		messager.printMessage(Diagnostic.Kind.ERROR, message, element);
 	}
-
 
 	public boolean isJsonObject(Element el) {
 		if (!(el instanceof TypeElement)) return false;

@@ -13,9 +13,11 @@ import java.util.Set;
 class EnumTemplate {
 
 	private final Writer code;
+	private final Context context;
 
 	EnumTemplate(Context context) {
 		this.code = context.code;
+		this.context = context;
 	}
 
 	private static boolean isAllSimple(StructInfo si) {
@@ -25,15 +27,18 @@ class EnumTemplate {
 		return true;
 	}
 
-	static void writeName(final Writer code, final StructInfo target, final String readValue) throws IOException {
+	void writeName(Writer code, StructInfo target, String readValue, String writerName) throws IOException {
+		writeName(code, target, readValue, writerName, true);
+	}
+	private void writeName(Writer code, StructInfo target, String readValue, String writerName, boolean external) throws IOException {
 		if (target.enumConstantNameSource != null) {
-			String enumConstantNameType = extractReturnType(target.enumConstantNameSource);
-			if ("int".equals(enumConstantNameType)) {
-				code.append("com.dslplatform.json.NumberConverter.serialize(");
-				code.append(readValue).append(".").append(target.enumConstantNameSource.toString());
-				code.append(", writer);\n");
+			String constantNameType = extractReturnType(target.enumConstantNameSource);
+			OptimizedConverter converter = context.inlinedConverters.get(constantNameType);
+			String value = readValue + "." + target.enumConstantNameSource;
+			if (converter != null) {
+				code.append(converter.nonNullableEncoder("writer", value)).append(";\n");
 			} else {
-				code.append("writer.writeString(").append(readValue).append(".").append(target.enumConstantNameSource.toString()).append(");\n");
+				code.append(writerName).append(".write(writer, ").append(external ? readValue : value).append(");\n");
 			}
 		} else if (isAllSimple(target)) {
 			code.append("writer.writeByte((byte)'\"'); writer.writeAscii(").append(readValue).append(".name()); writer.writeByte((byte)'\"');\n");
@@ -42,49 +47,67 @@ class EnumTemplate {
 		}
 	}
 
+	boolean isStatic(final StructInfo si) {
+		if (si.enumConstantNameSource == null) return true;
+		String constantNameType = extractReturnType(si.enumConstantNameSource);
+		if (constantNameType == null) return true;
+		return context.inlinedConverters.get(constantNameType) != null;
+	}
+
 	void create(final StructInfo si, final String className) throws IOException {
 		code.append("\tpublic final static class EnumConverter implements com.dslplatform.json.JsonWriter.WriteObject<");
 		code.append(className);
 		code.append(">, com.dslplatform.json.JsonReader.ReadObject<").append(className).append("> {\n");
-		if (si.enumConstantNameSource != null) {
-			String enumConstantNameType = extractReturnType(si.enumConstantNameSource);
-			if ("int".equals(enumConstantNameType)) {
-			 	enumConstantNameType = "java.lang.Integer";
-			}
-			code.append("\t\tprivate static final java.util.Map<").append(enumConstantNameType).append(", ").append(className).append("> values;\n");
+		String constantNameType = extractReturnType(si.enumConstantNameSource);
+		OptimizedConverter converter = constantNameType != null ? context.inlinedConverters.get(constantNameType) : null;
+		if (constantNameType != null) {
+			code.append("\t\tprivate static final java.util.Map<").append(constantNameType).append(", ").append(className).append("> values;\n");
 			code.append("\t\tstatic {\n");
-			code.append("\t\t\tvalues = new java.util.HashMap<").append(enumConstantNameType).append(", ").append(className).append(">();\n");
+			code.append("\t\t\tvalues = new java.util.HashMap<").append(constantNameType).append(", ").append(className).append(">();\n");
 			code.append("\t\t\tfor(").append(className).append(" value : ").append(className).append(".values()) {\n");
 			code.append("\t\t\t\tvalues.put(value.").append(si.enumConstantNameSource.toString()).append(", value);\n");
 			code.append("\t\t\t}\n");
 			code.append("\t\t}\n");
+			if (converter == null) {
+				code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(constantNameType).append("> valueWriter;\n");
+				code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(constantNameType).append("> valueReader;\n");
+				code.append("\t\tpublic EnumConverter(com.dslplatform.json.DslJson<Object> json) {\n");
+				code.append("\t\t\tthis.valueWriter = json.tryFindWriter(").append(Context.typeOrClass(constantNameType, constantNameType)).append(");\n");
+				code.append("\t\t\tif (this.valueWriter == null) throw new com.dslplatform.json.SerializationException(\"Unable to find writer for ").append(constantNameType).append("\");\n");
+				code.append("\t\t\tthis.valueReader = json.tryFindReader(").append(Context.typeOrClass(constantNameType, constantNameType)).append(");\n");
+				code.append("\t\t\tif (this.valueReader == null) throw new com.dslplatform.json.SerializationException(\"Unable to find reader for ").append(constantNameType).append("\");\n");
+				code.append("\t\t}\n");
+			}
 		}
 		code.append("\t\tpublic void write(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" value) {\n");
 		code.append("\t\t\tif (value == null) writer.writeNull();\n");
 		code.append("\t\t\telse {\n");
 		code.append("\t\t\t\t");
-		writeName(code, si, "value");
+		writeName(code, si, "value", "valueWriter", false);
 		code.append("\t\t\t}\n");
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
-		code.append("\t\t\treturn reader.wasNull() ? null : readStatic(reader);\n");
-		code.append("\t\t}\n");
-		code.append("\t\tpublic static ").append(className).append(" readStatic(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
-		if (si.enumConstantNameSource != null) {
-			String enumConstantNameType = extractReturnType(si.enumConstantNameSource);
-			if ("int".equals(enumConstantNameType)) {
-				code.append("\t\t\tint valueName = com.dslplatform.json.NumberConverter.deserializeInt(reader);\n");
+		code.append("\t\t\tif (reader.wasNull()) return null;\n");
+		if (isStatic(si)) {
+			code.append("\t\t\treturn readStatic(reader);\n");
+			code.append("\t\t}\n");
+			code.append("\t\tpublic static ").append(className).append(" readStatic(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
+		}
+		if (constantNameType != null) {
+			if (converter != null) {
+				code.append("\t\t\tfinal ").append(constantNameType).append(" input = ").append(converter.nonNullableDecoder()).append("(reader);\n");
+				code.append("\t\t\t").append(className).append(" value = ").append("values.get(input);\n");
 			} else {
-				code.append("\t\t\tjava.lang.String valueName = reader.readString();\n");
+				code.append("\t\t\tfinal ").append(constantNameType).append(" input = valueReader.read(reader);\n");
+				code.append("\t\t\t").append(className).append(" value = input == null ? null : ").append("values.get(input);\n");
 			}
-			code.append("\t\t\t").append(className).append(" value = ").append("values.get(valueName);\n");
 			code.append("\t\t\tif (value == null) {\n");
 			if (si.onUnknown == CompiledJson.Behavior.IGNORE) {
 				code.append("\t\t\t\tvalue = ").append(className).append(".").append(si.constants.get(0)).append(";\n");
 			} else {
 				code.append("\t\t\t\tthrow new java.lang.IllegalArgumentException(\"No enum constant ");
-				code.append(className).append(" associated with value '\" + valueName + \"'\");\n");
+				code.append(className).append(" associated with value '\" + input + \"'\");\n");
 			}
 			code.append("\t\t\t}\n");
 			code.append("\t\t\treturn value;\n");
@@ -115,10 +138,11 @@ class EnumTemplate {
 	}
 
 	@Nullable
-	private static String extractReturnType(Element element) {
+	private static String extractReturnType(@Nullable Element element) {
+		if (element == null) return null;
 		switch (element.getKind()) {
-			case FIELD: return element.asType().toString();
-			case METHOD: return ((ExecutableElement) element).getReturnType().toString();
+			case FIELD: return Analysis.objectName(element.asType().toString());
+			case METHOD: return Analysis.objectName(((ExecutableElement) element).getReturnType().toString());
 			default: return null;
 		}
 	}

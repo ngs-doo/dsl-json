@@ -347,8 +347,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			final Map<String, StructInfo> structs,
 			final Set<String> knownTypes) throws IOException {
 		final Context context = new Context(code, InlinedConverters, Defaults, structs, knownTypes);
-		final ConverterTemplate converterTemplate = new ConverterTemplate(context);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
+		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate);
 
 		final String generateFullClassName = findConverterName(si);
 		final int dotIndex = generateFullClassName.lastIndexOf('.');
@@ -406,7 +406,11 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			code.append("\t\tjson.registerWriter(").append(type).append(", ").append(si.converter).append(".").append(si.converterWriter).append(");\n");
 			code.append("\t\tjson.registerReader(").append(type).append(", ").append(si.converter).append(".").append(si.converterReader).append(");\n");
 		} else if (si.type == ObjectType.ENUM) {
-			code.append("\t\tEnumConverter enumConverter = new EnumConverter();\n");
+			if (enumTemplate.isStatic(si)) {
+				code.append("\t\tEnumConverter enumConverter = new EnumConverter();\n");
+			} else {
+				code.append("\t\tEnumConverter enumConverter = new EnumConverter(json);\n");
+			}
 			code.append("\t\tjson.registerWriter(").append(className).append(".class, enumConverter);\n");
 			code.append("\t\tjson.registerReader(").append(className).append(".class, enumConverter);\n");
 		}

@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -123,14 +124,34 @@ public class EnumTest {
 		}
 	}
 
+	public enum EnumWithCustomNamesDecimal {
+		ONE(BigDecimal.ONE),
+		PI(BigDecimal.valueOf(3.14159)),
+		E(BigDecimal.valueOf(2.71828)),
+		ZERO(BigDecimal.ZERO);
+
+		private final BigDecimal value;
+
+		EnumWithCustomNamesDecimal(BigDecimal value) {
+			this.value = value;
+		}
+
+		@JsonValue
+		public BigDecimal getValue() {
+			return value;
+		}
+	}
+
 	@CompiledJson
 	public static class EnumHolder {
 		public EnumWithCustomNames1 enum1;
 		public EnumWithCustomNames2 enum2;
 		public EnumWithCustomNames3 enum3;
+		public EnumWithCustomNamesDecimal enum4;
 		public List<EnumWithCustomNames1> enumList1;
 		public List<EnumWithCustomNames2> enumList2;
 		public List<EnumWithCustomNames3> enumList3;
+		public List<EnumWithCustomNamesDecimal> enumList4;
 	}
 
 	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
@@ -200,16 +221,19 @@ public class EnumTest {
 		model.enum1 = EnumWithCustomNames1.TEST_A1;
 		model.enum2 = EnumWithCustomNames2.TEST_B2;
 		model.enum3 = EnumWithCustomNames3.TEST_C3;
+		model.enum4 = EnumWithCustomNamesDecimal.E;
 		model.enumList1 = Arrays.asList(EnumWithCustomNames1.values());
 		model.enumList2 = Arrays.asList(EnumWithCustomNames2.values());
 		model.enumList3 = Arrays.asList(EnumWithCustomNames3.values());
+		model.enumList4 = Arrays.asList(EnumWithCustomNamesDecimal.values());
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(model, os);
 		byte[] json = os.toByteArray();
 
 		Assertions.assertThat(new String(json))
-				.isEqualTo("{\"enumList3\":[10,20,30],\"enumList2\":[\"b1\",\"b2\",\"b3\"],\"enumList1\":[\"a1\",\"a2\",\"a3\"],\"enum1\":\"a1\",\"enum2\":\"b2\",\"enum3\":30}");
+				.isEqualTo("{\"enumList4\":[1,3.14159,2.71828,0],\"enumList3\":[10,20,30],\"enumList2\":[\"b1\",\"b2\",\"b3\"],\"enumList1\":[\"a1\",\"a2\",\"a3\"]," +
+						"\"enum1\":\"a1\",\"enum2\":\"b2\",\"enum3\":30,\"enum4\":2.71828}");
 
 		EnumHolder result = dslJson.deserialize(EnumHolder.class, json, json.length);
 		Assertions.assertThat(result).isEqualToComparingFieldByFieldRecursively(model);

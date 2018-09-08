@@ -23,10 +23,18 @@ class ConverterTemplate {
 
 	private final Writer code;
 	private final Context context;
+	private final EnumTemplate enumTemplate;
 
-	ConverterTemplate(Context context) {
+	ConverterTemplate(Context context, EnumTemplate enumTemplate) {
 		this.code = context.code;
 		this.context = context;
+		this.enumTemplate = enumTemplate;
+	}
+
+	private boolean isStaticEnum(AttributeInfo attr) {
+		if (!attr.isEnum(context.structs)) return false;
+		StructInfo target = context.structs.get(attr.typeName);
+		return target != null && enumTemplate.isStatic(target);
 	}
 
 	void factoryForGenericConverter(final StructInfo si) throws IOException {
@@ -95,9 +103,12 @@ class ConverterTemplate {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs) && !attr.isJsonObject) {
+			if (attr.converter == null && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
 				String content = attr.collectionContent(context.knownTypes);
-				if (content != null || (attr.isGeneric && !attr.containsStructOwnerType)) {
+				if (attr.isEnum(context.structs)) {
+					StructInfo target = context.structs.get(attr.typeName);
+					code.append("\t\tprivate final ").append(findConverterName(target)).append(".EnumConverter converter_").append(attr.name).append(";\n");
+				} else if (content != null || (attr.isGeneric && !attr.containsStructOwnerType)) {
 					if (attr.isGeneric) {
 						if (attr.isArray) {
 							content = ((ArrayType) attr.type).getComponentType().toString();
@@ -160,8 +171,11 @@ class ConverterTemplate {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
 			String content = attr.collectionContent(context.knownTypes);
-			if (attr.converter == null && !hasConverter && !attr.isEnum(context.structs) && !attr.isJsonObject) {
-				if (content != null) {
+			if (attr.converter == null && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
+				if (attr.isEnum(context.structs)) {
+					StructInfo target = context.structs.get(attr.typeName);
+					code.append("\t\t\tthis.converter_").append(attr.name).append(" = new ").append(findConverterName(target)).append(".EnumConverter(json);\n");
+				} else if (content != null) {
 					String type = typeOrClass(nonGenericObject(content), content);
 					code.append("\t\t\tthis.reader_").append(attr.name).append(" = json.tryFindReader(").append(type).append(");\n");
 					code.append("\t\t\tthis.writer_").append(attr.name).append(" = json.tryFindWriter(").append(type).append(");\n");
@@ -571,7 +585,7 @@ class ConverterTemplate {
 				code.append(converter.nonNullableEncoder("writer", readValue)).append(";\n");
 			} else if (attr.isEnum(context.structs)) {
 				StructInfo target = context.structs.get(attr.typeName);
-				EnumTemplate.writeName(code, target, readValue);
+				enumTemplate.writeName(code, target, readValue, "converter_" + attr.name);
 			} else if (attr.collectionContent(context.knownTypes) != null) {
 				code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(");\n");
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
@@ -663,7 +677,11 @@ class ConverterTemplate {
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
 				StructInfo target = context.structs.get(attr.typeName);
-				code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader)");
+				if (enumTemplate.isStatic(target)) {
+					code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader)");
+				} else {
+					code.append("converter_").append(attr.name).append(".read(reader)");
+				}
 			} else if (attr.collectionContent(context.knownTypes) != null) {
 				if (attr.isArray) {
 					String content = extractRawType(((ArrayType) attr.type).getComponentType());
@@ -714,7 +732,11 @@ class ConverterTemplate {
 			} else if (attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
 				StructInfo target = context.structs.get(attr.typeName);
-				code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader);\n");
+				if (enumTemplate.isStatic(target)) {
+					code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader);\n");
+				} else {
+					code.append("converter_").append(attr.name).append(".read(reader)");
+				}
 			} else if (attr.collectionContent(context.knownTypes) != null) {
 				if (attr.isArray) {
 					String content = extractRawType(((ArrayType) attr.type).getComponentType());
