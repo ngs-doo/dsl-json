@@ -135,7 +135,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				Diagnostic.Kind.ERROR,
 				12,
 				compileTestCase(EnumWithInvalidCustomConstantName2.class),
-				"Field 'str' annotated with @JsonValue must be of 'String' or 'int' type.");
+				"Field 'str' annotated with @JsonValue must be of a supported type. Unknown types");
 	}
 
 	@Test

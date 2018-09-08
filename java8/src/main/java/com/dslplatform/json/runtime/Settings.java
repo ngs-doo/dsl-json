@@ -7,16 +7,43 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
 public abstract class Settings {
-	private static final DslJson.ConverterFactory<JsonReader.ReadObject> UNKNOWN_READER = new DslJson.ConverterFactory<JsonReader.ReadObject>() {
+	public static final DslJson.ConverterFactory<JsonReader.ReadObject> UNKNOWN_READER = new DslJson.ConverterFactory<JsonReader.ReadObject>() {
+		private final JsonReader.ReadObject READER = new JsonReader.ReadObject() {
+			@Override
+			public Object read(JsonReader reader) throws IOException {
+				return ObjectConverter.deserializeObject(reader);
+			}
+		};
 		@Nullable
 		@Override
 		public JsonReader.ReadObject tryCreate(Type manifest, DslJson dslJson) {
-			return Object.class == manifest ? new JsonReader.ReadObject() {
-				@Override
-				public Object read(JsonReader reader) throws IOException {
-					return ObjectConverter.deserializeObject(reader);
+			return Object.class == manifest ? READER : null;
+		}
+	};
+	public static final DslJson.ConverterFactory<JsonWriter.WriteObject> UNKNOWN_WRITER = new DslJson.ConverterFactory<JsonWriter.WriteObject>() {
+		class ObjectWriter implements JsonWriter.WriteObject {
+			private final DslJson dslJson;
+			public ObjectWriter(DslJson dslJson) {
+				this.dslJson = dslJson;
+			}
+
+			@Override
+			public void write(JsonWriter writer, Object value) {
+				if (value == null) writer.writeNull();
+				else {
+					Class<?> signature = value.getClass();
+					JsonWriter.WriteObject instanceWriter = dslJson.tryFindWriter(signature);
+					if (instanceWriter instanceof ObjectWriter || instanceWriter == null) {
+						throw new SerializationException("Unable to serialize provided instance");
+					}
+					instanceWriter.write(writer, value);
 				}
-			} : null;
+			}
+		}
+		@Nullable
+		@Override
+		public JsonWriter.WriteObject tryCreate(Type manifest, final DslJson dslJson) {
+			return Object.class == manifest ? new ObjectWriter(dslJson) : null;
 		}
 	};
 
@@ -157,9 +184,12 @@ public abstract class Settings {
 	}
 
 	public static <T> DslJson.Settings<T> withAnalyzers() {
-		return new DslJson.Settings()
-				.resolveReader(UNKNOWN_READER)
-				.resolveReader(CollectionAnalyzer.READER)
+		return withAnalyzers(true, false);
+	}
+	public static <T> DslJson.Settings<T> withAnalyzers(boolean unknownReader, boolean unknownWriter) {
+		DslJson.Settings settings = new DslJson.Settings();
+		if (unknownReader) settings.resolveReader(UNKNOWN_READER);
+		settings.resolveReader(CollectionAnalyzer.READER)
 				.resolveWriter(CollectionAnalyzer.WRITER)
 				.resolveReader(ArrayAnalyzer.READER)
 				.resolveWriter(ArrayAnalyzer.WRITER)
@@ -173,5 +203,7 @@ public abstract class Settings {
 				.resolveWriter(ImmutableAnalyzer.CONVERTER)
 				.resolveReader(ImmutableAnalyzer.CONVERTER)
 				.resolveWriter(MixinAnalyzer.WRITER);
+		if (unknownWriter) settings.resolveWriter(UNKNOWN_WRITER);
+		return settings;
 	}
 }

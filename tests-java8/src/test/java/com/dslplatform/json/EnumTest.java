@@ -1,5 +1,7 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.runtime.EnumAnalyzer;
+import com.dslplatform.json.runtime.EnumDescription;
 import com.dslplatform.json.runtime.Settings;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
@@ -107,8 +109,7 @@ public class EnumTest {
 		}
 	}
 
-	// Test @JsonValue annotation with 'int' type
-	public enum EnumWithCustomNames3 {
+	public enum EnumWithCustomNamesPrimitive {
 		TEST_C1,
 		TEST_C2,
 		TEST_C3;
@@ -142,16 +143,41 @@ public class EnumTest {
 		}
 	}
 
+	public enum EnumWithCustomNamesObject {
+		STRING(""),
+		LONG(0L),
+		DOUBLE(0.0);
+
+		private final Object value;
+
+		EnumWithCustomNamesObject(Object value) {
+			this.value = value;
+		}
+
+		@JsonValue
+		public Object getValue() {
+			return value;
+		}
+	}
+
 	@CompiledJson
 	public static class EnumHolder {
 		public EnumWithCustomNames1 enum1;
 		public EnumWithCustomNames2 enum2;
-		public EnumWithCustomNames3 enum3;
+		public EnumWithCustomNamesPrimitive enum3;
 		public EnumWithCustomNamesDecimal enum4;
 		public List<EnumWithCustomNames1> enumList1;
 		public List<EnumWithCustomNames2> enumList2;
-		public List<EnumWithCustomNames3> enumList3;
+		public List<EnumWithCustomNamesPrimitive> enumList3;
 		public List<EnumWithCustomNamesDecimal> enumList4;
+	}
+
+	@CompiledJson
+	public static class EnumHolderUnknown {
+		public EnumWithCustomNames1 enum1;
+		public EnumWithCustomNamesObject enum2;
+		public List<EnumWithCustomNames1> enumList1;
+		public List<EnumWithCustomNamesObject> enumList2;
 	}
 
 	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
@@ -220,11 +246,11 @@ public class EnumTest {
 		EnumHolder model = new EnumHolder();
 		model.enum1 = EnumWithCustomNames1.TEST_A1;
 		model.enum2 = EnumWithCustomNames2.TEST_B2;
-		model.enum3 = EnumWithCustomNames3.TEST_C3;
+		model.enum3 = EnumWithCustomNamesPrimitive.TEST_C3;
 		model.enum4 = EnumWithCustomNamesDecimal.E;
 		model.enumList1 = Arrays.asList(EnumWithCustomNames1.values());
 		model.enumList2 = Arrays.asList(EnumWithCustomNames2.values());
-		model.enumList3 = Arrays.asList(EnumWithCustomNames3.values());
+		model.enumList3 = Arrays.asList(EnumWithCustomNamesPrimitive.values());
 		model.enumList4 = Arrays.asList(EnumWithCustomNamesDecimal.values());
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -236,6 +262,30 @@ public class EnumTest {
 						"\"enum1\":\"a1\",\"enum2\":\"b2\",\"enum3\":30,\"enum4\":2.71828}");
 
 		EnumHolder result = dslJson.deserialize(EnumHolder.class, json, json.length);
+		Assertions.assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
+	}
+
+	@Test
+	public void testCustomNamesWithUnknown() throws IOException {
+		DslJson<Object> dslJsonUnknown = new DslJson<>(
+				Settings.withAnalyzers(true, true)
+						.includeServiceLoader()
+						.unknownNumbers(JsonReader.UnknownNumberParsing.LONG_AND_DOUBLE));
+		EnumHolderUnknown model = new EnumHolderUnknown();
+		model.enum1 = EnumWithCustomNames1.TEST_A1;
+		model.enum2 = EnumWithCustomNamesObject.DOUBLE;
+		model.enumList1 = Arrays.asList(EnumWithCustomNames1.values());
+		model.enumList2 = Arrays.asList(EnumWithCustomNamesObject.values());
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonUnknown.serialize(model, os);
+		byte[] json = os.toByteArray();
+
+		Assertions.assertThat(new String(json))
+				.isEqualTo("{\"enumList2\":[\"\",0,0.0],\"enumList1\":[\"a1\",\"a2\",\"a3\"]," +
+						"\"enum1\":\"a1\",\"enum2\":0.0}");
+
+		EnumHolderUnknown result = dslJsonUnknown.deserialize(EnumHolderUnknown.class, json, json.length);
 		Assertions.assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
 	}
 
@@ -253,5 +303,41 @@ public class EnumTest {
 		Assertions.assertThatThrownBy(() ->
 				dslJson.deserializeList(EnumWithCustomNames2.class, json, json.length)
 		).hasMessage("No enum constant com.dslplatform.json.EnumTest.EnumWithCustomNames2 associated with value 'Z'");
+	}
+
+	@CompiledJson
+	public static class EnumWithCustomConverter {
+		@JsonAttribute(converter = MyEnum1Converter.class)
+		public MyEnum1 enum1 = MyEnum1.GHI;
+	}
+
+	public static class MyEnum1Converter {
+		public static JsonReader.ReadObject<MyEnum1> JSON_READER = r -> {
+			throw new IllegalArgumentException("Custom reader exception");
+		};
+		public static JsonWriter.WriteObject<MyEnum1> JSON_WRITER = (w, v) -> {
+			throw new IllegalArgumentException("Custom writer exception");
+		};
+	}
+
+	@Test
+	public void cantChangeReferencedConverter() throws IOException {
+		DslJson<Object> customJson = new DslJson<>();
+		EnumDescription description = EnumAnalyzer.CONVERTER.tryCreate(MyEnum1.class, customJson);
+		Assert.assertEquals(description, customJson.tryFindWriter(MyEnum1.class));
+		Assert.assertEquals(description, customJson.tryFindReader(MyEnum1.class));
+		try {
+			customJson.serialize(new EnumWithCustomConverter(), new ByteArrayOutputStream());
+			Assert.fail("Expecting exception");
+		} catch (IllegalArgumentException e) {
+			Assert.assertTrue(e.getMessage().contains("Custom writer exception"));
+		}
+		try {
+			byte[] bytes = "{\"enum1\":\"\"}".getBytes(StandardCharsets.UTF_8);
+			customJson.deserialize(EnumWithCustomConverter.class, bytes, bytes.length);
+			Assert.fail("Expecting exception");
+		} catch (IllegalArgumentException e) {
+			Assert.assertTrue(e.getMessage().contains("Custom reader exception"));
+		}
 	}
 }

@@ -1066,7 +1066,7 @@ public class Analysis {
 												"' annotated with @JsonValue must be public.", enclosedElement);
 							} else if (!isSupportedEnumNameType(enclosedElement)) {
 								printError((enclosedElement.getKind().isField() ? "Field '" : "Method '") + enclosedElement.toString() +
-												"' annotated with @JsonValue must be of 'String' or 'int' type.", enclosedElement);
+												"' annotated with @JsonValue must be of a supported type. Unknown types can be supported by enabling unknown types configuration option", enclosedElement);
 							} else {
 								nameSource = enclosedElement;
 							}

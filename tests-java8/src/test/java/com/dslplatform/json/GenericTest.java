@@ -2,13 +2,12 @@ package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
 import com.dslplatform.json.runtime.TypeDefinition;
-import org.junit.Ignore;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -71,15 +70,27 @@ public class GenericTest {
 		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
 	}
 
-	@Ignore
 	@Test
 	public void testRawSignature() throws IOException {
+		DslJson.Settings<Object> settings = new DslJson.Settings<>()
+				.resolveReader(Settings.UNKNOWN_READER)
+				.resolveWriter(Settings.UNKNOWN_WRITER)
+				.allowArrayFormat(true)
+				.includeServiceLoader();
+		DslJson<Object> dslJsonUnknown = new DslJson<>(settings);
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		GenericModel model = generateModel();
-		dslJson.serialize(model, os);
+		try {
+			dslJson.serialize(model, os);
+			Assert.fail("Expecting exception");
+		} catch (IOException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Unable to serialize provided object. Failed to find serializer"));
+		}
+		os.reset();
+		dslJsonUnknown.serialize(model, os);
 
 		Type type = new TypeDefinition<GenericModel<String, Double>>() {}.type;
-		GenericModel<String, Double> result = (GenericModel<String, Double>) dslJson.deserialize(type, os.toByteArray(), os.size());
+		GenericModel<String, Double> result = (GenericModel<String, Double>) dslJsonUnknown.deserialize(type, os.toByteArray(), os.size());
 
 		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
 	}

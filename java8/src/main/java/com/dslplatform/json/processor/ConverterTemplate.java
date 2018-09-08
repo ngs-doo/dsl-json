@@ -59,29 +59,38 @@ class ConverterTemplate {
 		code.append("\t\t\t\tjava.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) manifest;\n");
 		code.append("\t\t\t\tjava.lang.Class<?> rawClass = (java.lang.Class<?>) pt.getRawType();\n");
 		code.append("\t\t\t\tif (rawClass.isAssignableFrom(").append(typeName).append(".class)) {\n");
-
-		if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-			if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-				code.append("\t\t\t\t\treturn new com.dslplatform.json.runtime.FormatDescription(\n");
-				code.append("\t\t\t\t\t\t\t").append(typeName).append(".class,\n");
-				code.append("\t\t\t\t\t\t\tnew ObjectFormatConverter(dslJson, pt.getActualTypeArguments()),\n");
-				code.append("\t\t\t\t\t\t\tnew ArrayFormatConverter(dslJson, pt.getActualTypeArguments()),\n");
-				code.append("\t\t\t\t\t\t\t").append(String.valueOf(si.isObjectFormatFirst)).append(",\n");
-				String typeAlias = si.deserializeName.isEmpty() ? typeName : si.deserializeName;
-				code.append("\t\t\t\t\t\t\t\"").append(typeAlias).append("\",\n");
-				code.append("\t\t\t\t\t\t\tdslJson);\n");
-			} else {
-				code.append("\t\t\t\t\treturn new ObjectFormatConverter(dslJson, pt.getActualTypeArguments());\n");
-			}
-		} else {
-			code.append("\t\t\t\t\treturn new ArrayFormatConverter(dslJson, pt.getActualTypeArguments());\n");
-		}
-
+		createConverter(si, typeName, "pt.getActualTypeArguments()");
+		code.append("\t\t\t\t}\n");
+		code.append("\t\t\t} else if (com.dslplatform.json.GenericTest.GenericModel.class.equals(manifest)) {\n");
+		code.append("\t\t\t\tjava.lang.reflect.Type[] unknownArgs = new java.lang.reflect.Type[");
+		code.append(Integer.toString(si.typeParametersNames.size())).append("];\n");
+		code.append("\t\t\t\tjava.util.Arrays.fill(unknownArgs, Object.class);\n");
+		code.append("\t\t\t\tif (dslJson.tryFindReader(Object.class) != null && dslJson.tryFindWriter(Object.class) != null) {\n");
+		createConverter(si, typeName, "unknownArgs");
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
 		code.append("\t\t\treturn null;\n");
 		code.append("\t\t}\n");
 		code.append("\t}\n");
+	}
+
+	private void createConverter(StructInfo si, String typeName, String typeArguments) throws IOException {
+		if (si.formats.contains(CompiledJson.Format.OBJECT)) {
+			if (si.formats.contains(CompiledJson.Format.ARRAY)) {
+				code.append("\t\t\t\t\treturn new com.dslplatform.json.runtime.FormatDescription(\n");
+				code.append("\t\t\t\t\t\t\t").append(typeName).append(".class,\n");
+				code.append("\t\t\t\t\t\t\tnew ObjectFormatConverter(dslJson, ").append(typeArguments).append("),\n");
+				code.append("\t\t\t\t\t\t\tnew ArrayFormatConverter(dslJson, ").append(typeArguments).append("),\n");
+				code.append("\t\t\t\t\t\t\t").append(String.valueOf(si.isObjectFormatFirst)).append(",\n");
+				String typeAlias = si.deserializeName.isEmpty() ? typeName : si.deserializeName;
+				code.append("\t\t\t\t\t\t\t\"").append(typeAlias).append("\",\n");
+				code.append("\t\t\t\t\t\t\tdslJson);\n");
+			} else {
+				code.append("\t\t\t\t\treturn new ObjectFormatConverter(dslJson, ").append(typeArguments).append(");\n");
+			}
+		} else {
+			code.append("\t\t\t\t\treturn new ArrayFormatConverter(dslJson, ").append(typeArguments).append(");\n");
+		}
 	}
 
 	private void asFormatConverter(final StructInfo si, final String name, final String className, final boolean binding) throws IOException {

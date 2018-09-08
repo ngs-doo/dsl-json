@@ -11,13 +11,15 @@ final class Context {
 	final Map<String, String> defaults;
 	final Map<String, StructInfo> structs;
 	final Set<String> knownTypes;
+	final boolean allowUnknown;
 
-	Context(Writer code, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, Set<String> knownTypes) {
+	Context(Writer code, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, Set<String> knownTypes, boolean allowUnknown) {
 		this.code = code;
 		this.inlinedConverters = inlinedConverters;
 		this.defaults = defaults;
 		this.structs = structs;
 		this.knownTypes = knownTypes;
+		this.allowUnknown = allowUnknown;
 	}
 
 	String getDefault(String type) {

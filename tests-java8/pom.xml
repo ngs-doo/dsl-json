@@ -70,6 +70,9 @@
 					<source>1.8</source>
 					<target>1.8</target>
 					<useIncrementalCompilation>false</useIncrementalCompilation>
+					<compilerArguments>
+						<Adsljson.unknown>WARNING</Adsljson.unknown>
+					</compilerArguments>
 				</configuration>
 			</plugin>
 		</plugins>
