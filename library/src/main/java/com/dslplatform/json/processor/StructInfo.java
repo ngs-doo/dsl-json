@@ -17,6 +17,7 @@ public class StructInfo {
 	public final String converter;
 	public final String converterReader;
 	public final String converterWriter;
+	public final String jsonObjectReaderPath;
 	public final List<ExecutableElement> matchingConstructors;
 	public final ExecutableElement constructor;
 	public final ExecutableElement factory;
@@ -45,7 +46,7 @@ public class StructInfo {
 			String name,
 			String binaryName,
 			ObjectType type,
-			boolean isJsonObject,
+			String jsonObjectReaderPath,
 			@Nullable List<ExecutableElement> matchingConstructors,
 			@Nullable ExecutableElement annotatedConstructor,
 			@Nullable ExecutableElement annotatedFactory,
@@ -62,7 +63,8 @@ public class StructInfo {
 		this.name = name;
 		this.binaryName = binaryName;
 		this.type = type;
-		this.converter = isJsonObject ? "" : null;
+		this.jsonObjectReaderPath = jsonObjectReaderPath;
+		this.converter = jsonObjectReaderPath != null ? "" : null;
 		this.converterReader = null;
 		this.converterWriter = null;
 		this.matchingConstructors = matchingConstructors;
@@ -99,6 +101,7 @@ public class StructInfo {
 		this.name = name;
 		this.binaryName = binaryName;
 		this.type = ObjectType.CONVERTER;
+		this.jsonObjectReaderPath = null;
 		this.converter = converter.getQualifiedName().toString();
 		this.converterReader = reader;
 		this.converterWriter = writer;

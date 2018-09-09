@@ -19,6 +19,17 @@ public class JsonObjectTest {
 	}
 
 	@CompiledJson
+	public static class ImmutableObjectModel {
+		public final JsonObjectReference jsonObject;
+		@JsonAttribute(nullable = false)
+		public final JsonObjectReference jsonObjectNonNull;
+		public ImmutableObjectModel(JsonObjectReference jsonObject, JsonObjectReference jsonObjectNonNull) {
+			this.jsonObject = jsonObject;
+			this.jsonObjectNonNull = jsonObjectNonNull;
+		}
+	}
+
+	@CompiledJson
 	public static class ListModel {
 		public List<JsonObjectReference> jsonObjects;
 	}
@@ -55,6 +66,44 @@ public class JsonObjectTest {
 		}
 	}
 
+	@CompiledJson
+	public static class KotlinObjectModel {
+		public JsonObjectReferenceKotlin jsonObject;
+		public KotlinObjectModel(JsonObjectReferenceKotlin jsonObject) {
+			this.jsonObject = jsonObject;
+		}
+	}
+
+	public static class JsonObjectReferenceKotlin implements JsonObject {
+		private final String x;
+		public JsonObjectReferenceKotlin(String x) {
+			this.x = x;
+		}
+		public void serialize(JsonWriter writer, boolean minimal) {
+			writer.writeAscii("{\"x\":");
+			writer.writeString(x);
+			writer.writeAscii("}");
+		}
+
+		public static final Companion Companion = new Companion();
+		public static class Companion {
+			public static JsonReader.ReadJsonObject<JsonObjectReferenceKotlin> getJSON_READER() {
+				return reader -> {
+					reader.fillName();
+					reader.getNextToken();
+					String x1 = reader.readString();
+					reader.getNextToken();
+					return new JsonObjectReferenceKotlin(x1);
+				};
+			}
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			return ((JsonObjectReferenceKotlin)obj).x.equals(this.x);
+		}
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>(Settings.basicSetup());
 
 	@Test
@@ -66,6 +115,19 @@ public class JsonObjectTest {
 		Assert.assertEquals("{\"jsonObject\":{\"x\":\"test\"}}", os.toString());
 		ObjectModel res = dslJson.deserialize(ObjectModel.class, os.toByteArray(), os.size());
 		Assert.assertEquals(m.jsonObject, res.jsonObject);
+	}
+
+	@Test
+	public void immutableTest() throws IOException {
+		ImmutableObjectModel m = new ImmutableObjectModel(
+				null,
+				new JsonObjectReference("test2"));
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(m, os);
+		Assert.assertEquals("{\"jsonObject\":null,\"jsonObjectNonNull\":{\"x\":\"test2\"}}", os.toString());
+		ImmutableObjectModel res = dslJson.deserialize(ImmutableObjectModel.class, os.toByteArray(), os.size());
+		Assert.assertNull(res.jsonObject);
+		Assert.assertEquals(m.jsonObjectNonNull, res.jsonObjectNonNull);
 	}
 
 	@Test
@@ -91,5 +153,15 @@ public class JsonObjectTest {
 		Assert.assertEquals(m.jsonObject, res.jsonObject);
 		Assert.assertEquals(m.jsonObjects, res.jsonObjects);
 		Assert.assertEquals(m.mapObjects, res.mapObjects);
+	}
+
+	@Test
+	public void kotlinTest() throws IOException {
+		KotlinObjectModel m = new KotlinObjectModel(new JsonObjectReferenceKotlin("test"));
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(m, os);
+		Assert.assertEquals("{\"jsonObject\":{\"x\":\"test\"}}", os.toString());
+		KotlinObjectModel res = dslJson.deserialize(KotlinObjectModel.class, os.toByteArray(), os.size());
+		Assert.assertEquals(m.jsonObject, res.jsonObject);
 	}
 }

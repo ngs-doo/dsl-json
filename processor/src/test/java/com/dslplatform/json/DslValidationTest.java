@@ -393,14 +393,14 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field.")
 		);
 		Assert.assertTrue(
-				error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
-						|| error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
-						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static.")
+				error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not public and static.")
+						|| error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not public and static.")
+						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not public and static.")
 		);
 		Assert.assertTrue(
-				error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
-						|| error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
-						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type.")
+				error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not of correct type.")
+						|| error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not of correct type.")
+						|| error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not of correct type.")
 		);
 	}
 

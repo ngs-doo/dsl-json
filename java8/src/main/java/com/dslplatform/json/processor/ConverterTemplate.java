@@ -665,7 +665,8 @@ class ConverterTemplate {
 			code.append(alignment).append("\t\t\tinstance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 			else code.append(attr.writeMethod.getSimpleName()).append("(");
-			code.append(attr.typeName).append(".JSON_READER.deserialize(reader)").append(assignmentEnding);
+			StructInfo target = context.structs.get(attr.typeName);
+			code.append(attr.typeName).append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader)").append(assignmentEnding);
 			code.append(alignment).append("\t\t} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
 		} else if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
@@ -727,9 +728,11 @@ class ConverterTemplate {
 			}
 			code.append(alignment).append("\t\telse if (reader.last() == '{') {\n");
 			code.append(alignment).append("\t\t\treader.getNextToken();\n");
-			code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName).append(".JSON_READER.deserialize(reader));\n");
-			code.append(alignment).append("} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription()) : ");
-		} else if (attr.converter == null && (attr.isJsonObject || converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod())) {
+			StructInfo target = context.structs.get(attr.typeName);
+			code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName);
+			code.append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader);\n");
+			code.append(alignment).append("\t\t} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
+		} else if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = reader.wasNull() ? null : ");
 			code.append(converter.nonNullableDecoder()).append("(reader);\n");
 		} else {

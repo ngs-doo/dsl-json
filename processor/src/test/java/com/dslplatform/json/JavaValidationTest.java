@@ -360,9 +360,9 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		String error1 = diagnostics.get(0).getMessage(Locale.ENGLISH);
 		String error2 = diagnostics.get(1).getMessage(Locale.ENGLISH);
 		String error3 = diagnostics.get(2).getMessage(Locale.ENGLISH);
-		Assert.assertTrue(error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not of correct type. It can't be used for serialization/deserialization this way. You probably want to change JSON_READER field to: 'com.dslplatform.json.JsonReader.ReadJsonObject<com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3>'"));
-		Assert.assertTrue(error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but it's JSON_READER field is not public and static. It can't be used for serialization/deserialization this way. You probably want to change JSON_READER field so it's public and static."));
-		Assert.assertTrue(error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field. It can't be used for serialization/deserialization this way. You probably want to add public static JSON_READER field."));
+		Assert.assertTrue(error1.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not of correct type. It can't be used for serialization/deserialization this way. You probably want to change JSON_READER field to: 'com.dslplatform.json.JsonReader.ReadJsonObject<com.dslplatform.json.models.ReferenceJsonObject.ImplFailed3>'"));
+		Assert.assertTrue(error2.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed2' is 'com.dslplatform.json.JsonObject', but its JSON_READER field is not public and static. It can't be used for serialization/deserialization this way. You probably want to change JSON_READER field so it's public and static."));
+		Assert.assertTrue(error3.contains("'com.dslplatform.json.models.ReferenceJsonObject.ImplFailed1' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field/method. It can't be used for serialization/deserialization this way. You probably want to add public static JSON_READER field/method."));
 	}
 
 	@Test
