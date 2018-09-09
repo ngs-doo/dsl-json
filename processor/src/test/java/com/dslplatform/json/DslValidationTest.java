@@ -276,7 +276,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 				Diagnostic.Kind.ERROR,
 				19,
 				compileTestCase(OnStaticMethod.class),
-				"Factory methods are not available with curent setup");
+				"Factory methods are not available with current analysis setup");
 	}
 
 	@Test

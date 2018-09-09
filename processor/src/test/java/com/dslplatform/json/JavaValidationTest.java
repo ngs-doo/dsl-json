@@ -67,12 +67,8 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void wrongTypeOnStaticMethod() {
-		assertCompilationReturned(
-				Diagnostic.Kind.ERROR,
-				19,
-				compileTestCase(StaticMethodWrongType.class),
-				"Wrong factory result type: 'com.dslplatform.json.models.InterfaceType'. Result must be assignable to 'com.dslplatform.json.models.StaticMethodWrongType'");
+	public void testNestedFactory() {
+		checkValidCompilation(NestedFactoryType.class, NestedFactoryType.Factory.class);
 	}
 
 	@Test

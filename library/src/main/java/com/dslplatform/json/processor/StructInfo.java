@@ -46,7 +46,7 @@ public class StructInfo {
 			String name,
 			String binaryName,
 			ObjectType type,
-			String jsonObjectReaderPath,
+			@Nullable String jsonObjectReaderPath,
 			@Nullable List<ExecutableElement> matchingConstructors,
 			@Nullable ExecutableElement annotatedConstructor,
 			@Nullable ExecutableElement annotatedFactory,

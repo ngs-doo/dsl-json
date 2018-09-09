@@ -138,9 +138,16 @@ public class Analysis {
 		Stack<String> path = new Stack<String>();
 		for (Element el : targets) {
 			Element classElement;
-			if (el instanceof TypeElement) classElement = el;
-			else classElement = el.getEnclosingElement();
-			findStructs(classElement, currentAnnotationType, currentAnnotationType + " requires accessible public constructor", path);
+			ExecutableElement factory = null;
+			if (el instanceof TypeElement) {
+				classElement = el;
+			} else if (el instanceof ExecutableElement && el.getKind() == ElementKind.METHOD) {
+				factory = (ExecutableElement)el;
+				classElement = types.asElement(factory.getReturnType());
+			} else {
+				classElement = el.getEnclosingElement();
+			}
+			findStructs(classElement, currentAnnotationType, currentAnnotationType + " requires accessible public constructor", path, factory);
 		}
 		findRelatedReferences();
 		findImplementations(structs.values());
@@ -237,7 +244,7 @@ public class Analysis {
 					hasError = true;
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
-							"Factory methods are not available with curent setup",
+							"Factory methods are not available with current analysis setup",
 							info.factory,
 							info.annotation);
 				} else if (!types.isAssignable(info.factory.getReturnType(), info.element.asType())) {
@@ -669,14 +676,14 @@ public class Analysis {
 		if (supportedTypes.contains(typeName)) return;
 		TypeElement el = elements.getTypeElement(typeName);
 		if (el != null) {
-			findStructs(el, discoveredBy, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+			findStructs(el, discoveredBy, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
 			return;
 		}
 		if (returnType instanceof ArrayType) {
 			ArrayType at = (ArrayType) returnType;
 			el = elements.getTypeElement(at.getComponentType().toString());
 			if (el != null) {
-				findStructs(el, discoveredBy,el + " is referenced as array " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+				findStructs(el, discoveredBy,el + " is referenced as array " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
 				return;
 			}
 		}
@@ -693,7 +700,7 @@ public class Analysis {
 					if (!el.getTypeParameters().isEmpty()) {
 						if (containerSupport.isSupported(st)) continue;
 					}
-					findStructs(el, discoveredBy, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path);
+					findStructs(el, discoveredBy, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
 				}
 			}
 		}
@@ -709,7 +716,7 @@ public class Analysis {
 		return packageClass != null && packageClass.isSealed();
 	}
 
-	private void findStructs(Element el, DeclaredType discoveredBy, String errorMessge, Stack<String> path) {
+	private void findStructs(Element el, DeclaredType discoveredBy, String errorMessge, Stack<String> path, @Nullable ExecutableElement factory) {
 		if (!(el instanceof TypeElement)) return;
 		String typeName = el.toString();
 		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) return;
@@ -718,7 +725,7 @@ public class Analysis {
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
 		String jsonObjectReaderPath = jsonObjectReaderPath(element);
 		boolean isJsonObject = jsonObjectReaderPath != null;
-		final AnnotationMirror annotation = scanClassForAnnotation(element, discoveredBy);
+		final AnnotationMirror annotation = scanClassForAnnotation(element, discoveredBy, factory);
 		if (element.getModifiers().contains(Modifier.PRIVATE)) {
 			hasError = true;
 			messager.printMessage(
@@ -781,7 +788,7 @@ public class Analysis {
 							if (deserializeAs.asType().toString().equals(element.asType().toString())) {
 								deserializeAs = null;
 							} else {
-								findStructs(deserializeAs, discoveredBy, errorMessge, path);
+								findStructs(deserializeAs, discoveredBy, errorMessge, path, null);
 							}
 						}
 					}
@@ -825,7 +832,7 @@ public class Analysis {
 							jsonObjectReaderPath,
 							findMatchingConstructors(element),
 							findAnnotatedConstructor(element, discoveredBy),
-							findAnnotatedFactory(element, discoveredBy),
+							findAnnotatedFactory(element, discoveredBy, factory),
 							annotation,
 							onUnknown,
 							typeSignature,
@@ -928,43 +935,45 @@ public class Analysis {
 	}
 
 	@Nullable
-	public ExecutableElement findAnnotatedFactory(Element element, DeclaredType discoveredBy) {
+	private ExecutableElement findAnnotatedFactory(Element element, DeclaredType discoveredBy, @Nullable ExecutableElement factory) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM) {
 			return null;
 		}
-		for (ExecutableElement method : ElementFilter.methodsIn(element.getEnclosedElements())) {
-			AnnotationMirror discAnn = getAnnotation(method, discoveredBy);
-			if (discAnn != null) {
-				if (method.getModifiers().contains(Modifier.PRIVATE)
-						|| !method.getModifiers().contains(Modifier.STATIC)
-						|| requiresPublic(element) && !method.getModifiers().contains(Modifier.PUBLIC)) {
-					hasError = true;
-					messager.printMessage(
-							Diagnostic.Kind.ERROR,
-							"Factory method in '" + element.asType() + "' is annotated with " + discoveredBy + ", but it's not accessible.",
-							method,
-							discAnn);
+		AnnotationMirror annotation = null;
+		if (factory == null) {
+			for (ExecutableElement method : ElementFilter.methodsIn(element.getEnclosedElements())) {
+				AnnotationMirror discAnn = getAnnotation(method, discoveredBy);
+				if (discAnn != null) {
+					factory = method;
+					annotation = discAnn;
+					break;
 				}
-				return method;
-			}
-			for (AnnotationMirror ann : method.getAnnotationMirrors()) {
-				if (alternativeFactories.contains(ann.getAnnotationType().toString())) {
-					if (method.getModifiers().contains(Modifier.PRIVATE)
-							|| !method.getModifiers().contains(Modifier.STATIC)
-							|| requiresPublic(element) && !method.getModifiers().contains(Modifier.PUBLIC)) {
-						hasError = true;
-						messager.printMessage(
-								Diagnostic.Kind.ERROR,
-								"Factory method in '" + element.asType() + "' is annotated with " + ann.getAnnotationType() + ", but it's not accessible.",
-								method,
-								ann);
+				for (AnnotationMirror ann : method.getAnnotationMirrors()) {
+					if (alternativeFactories.contains(ann.getAnnotationType().toString())) {
+						if (method.getModifiers().contains(Modifier.PRIVATE)
+								|| !method.getModifiers().contains(Modifier.STATIC)
+								|| requiresPublic(element) && !method.getModifiers().contains(Modifier.PUBLIC)) {
+							factory = method;
+							annotation = ann;
+							break;
+						}
 					}
-					return method;
 				}
 			}
 		}
-		return null;
+		if (factory == null) return null;
+		if (factory.getModifiers().contains(Modifier.PRIVATE)
+				|| !factory.getModifiers().contains(Modifier.STATIC)
+				|| requiresPublic(factory.getEnclosingElement()) && !factory.getModifiers().contains(Modifier.PUBLIC)) {
+			hasError = true;
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Factory method in '" + factory.getEnclosingElement().asType() + "' is annotated with " + discoveredBy + ", but it's not accessible.",
+					factory,
+					annotation != null ? annotation : getAnnotation(factory, discoveredBy));
+		}
+		return factory;
 	}
 
 	private enum PartKind {
@@ -1227,9 +1236,12 @@ public class Analysis {
 		public final VariableElement arg;
 		public final AnnotationMirror annotation;
 
-		private AccessElements(@Nullable ExecutableElement read, @Nullable ExecutableElement write,
-                               @Nullable VariableElement arg, @Nullable VariableElement field,
-                               @Nullable AnnotationMirror annotation) {
+		private AccessElements(
+				@Nullable ExecutableElement read,
+				@Nullable ExecutableElement write,
+				@Nullable VariableElement arg,
+				@Nullable VariableElement field,
+				@Nullable AnnotationMirror annotation) {
 			this.read = read;
 			this.write = write;
 			this.field = field;
@@ -1492,8 +1504,10 @@ public class Analysis {
 	}
 
 	@Nullable
-	public AnnotationMirror scanClassForAnnotation(TypeElement element, DeclaredType annotationType) {
-		AnnotationMirror target = getAnnotation(element, annotationType);
+	private AnnotationMirror scanClassForAnnotation(TypeElement element, DeclaredType annotationType, @Nullable ExecutableElement factory) {
+		AnnotationMirror target = factory != null ? getAnnotation(factory, annotationType) : null;
+		if (target != null) return target;
+		target = getAnnotation(element, annotationType);
 		if (target != null) return target;
 		for (ExecutableElement method : ElementFilter.methodsIn(element.getEnclosedElements())) {
 			AnnotationMirror discAnn = getAnnotation(method, annotationType);

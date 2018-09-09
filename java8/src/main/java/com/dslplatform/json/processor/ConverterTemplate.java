@@ -1,6 +1,7 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
@@ -227,7 +228,7 @@ class ConverterTemplate {
 			code.append("\t\t\tif (reader.wasNull()) return null;\n");
 			code.append("\t\t\treturn bind(reader, ");
 			if (si.factory != null) {
-				code.append(className).append(".").append(si.factory.getSimpleName()).append("());\n");
+				code.append(si.factory.getEnclosingElement().toString()).append(".").append(si.factory.getSimpleName()).append("());\n");
 			} else {
 				code.append("new ").append(className).append("());\n");
 			}
@@ -279,7 +280,7 @@ class ConverterTemplate {
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\t").append(className).append(" instance = ");
 		if (si.factory != null) {
-			code.append(className).append(".").append(si.factory.getSimpleName()).append("();\n ");
+			code.append(si.factory.getEnclosingElement().toString()).append(".").append(si.factory.getSimpleName()).append("();\n ");
 		} else {
 			code.append("new ").append(className).append("();\n ");
 		}
@@ -470,7 +471,7 @@ class ConverterTemplate {
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\t").append(className).append(" instance = ");
 		if (si.factory != null) {
-			code.append(className).append(".").append(si.factory.getSimpleName()).append("();\n ");
+			code.append(si.factory.getEnclosingElement().toString()).append(".").append(si.factory.getSimpleName()).append("();\n ");
 		} else {
 			code.append("new ").append(className).append("();\n ");
 		}
@@ -519,11 +520,11 @@ class ConverterTemplate {
 		code.append("\t}\n");
 	}
 
-	private void returnInstance(final String alignment, final ExecutableElement constructor, final ExecutableElement factory, final String className) throws IOException {
+	private void returnInstance(final String alignment, ExecutableElement constructor, @Nullable ExecutableElement factory, final String className) throws IOException {
 		code.append(alignment).append("return ");
 		final List<? extends VariableElement> params;
 		if (factory != null) {
-			code.append(className).append(".").append(factory.getSimpleName()).append("(");
+			code.append(factory.getEnclosingElement().toString()).append(".").append(factory.getSimpleName()).append("(");
 			params = factory.getParameters();
 		} else {
 			code.append("new ").append(className).append("(");

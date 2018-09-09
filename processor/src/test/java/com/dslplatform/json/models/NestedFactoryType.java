@@ -2,11 +2,11 @@ package com.dslplatform.json.models;
 
 import com.dslplatform.json.CompiledJson;
 
-public class StaticMethodWrongType implements InterfaceType {
+public class NestedFactoryType implements InterfaceType {
 	private int x;
 	private String y;
 
-	private StaticMethodWrongType(int x, String y) {
+	private NestedFactoryType(int x, String y) {
 		this.x = x;
 		this.y = y;
 	}
@@ -16,8 +16,10 @@ public class StaticMethodWrongType implements InterfaceType {
 	public String getY() { return y; }
 	public void setY(String v) { y = v; }
 
-	@CompiledJson
-	public static InterfaceType create(String y, int x) {
-		return new StaticMethodWrongType(x, y);
+	public static class Factory {
+		@CompiledJson
+		public static NestedFactoryType create(String y, int x) {
+			return new NestedFactoryType(x, y);
+		}
 	}
 }
