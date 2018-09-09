@@ -978,8 +978,17 @@ public class Analysis {
 
 	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts) {
 		String typeName = target.toString();
-		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) {
+		if (supportedTypes.contains(typeName)) {
 			parts.put(typeName, PartKind.OTHER);
+			return;
+		}
+		StructInfo struct = structs.get(typeName);
+		if (struct != null) {
+			PartKind kind = struct.type == ObjectType.CLASS && !struct.hasAnnotation() && struct.attributes.isEmpty()
+					&& struct.implementations.isEmpty() && struct.converter == null
+					? PartKind.UNKNOWN
+					: PartKind.OTHER;
+			parts.put(typeName, kind);
 			return;
 		}
 

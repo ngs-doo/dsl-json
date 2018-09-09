@@ -557,4 +557,13 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void kotlinInstancePattern() {
 		checkValidCompilation(KotlinInstancePattern.class);
 	}
+
+	@Test
+	public void objectTypeRequireUnknownSettings() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				7,
+				compileTestCase(InvalidObjectProperty.class),
+				"Property o is referencing unknown type: 'java.lang.Object'. Register");
+	}
 }
