@@ -87,7 +87,7 @@ public class JsonObjectTest {
 
 		public static final Companion Companion = new Companion();
 		public static class Companion {
-			public static JsonReader.ReadJsonObject<JsonObjectReferenceKotlin> getJSON_READER() {
+			public JsonReader.ReadJsonObject<JsonObjectReferenceKotlin> getJSON_READER() {
 				return reader -> {
 					reader.fillName();
 					reader.getNextToken();

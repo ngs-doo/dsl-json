@@ -55,18 +55,18 @@ class ConverterTemplate {
 		code.append(producedType);
 		code.append("> {\n");
 		code.append("\t\t@Override\n");
-		code.append("\t\tpublic ").append(producedType).append(" tryCreate(java.lang.reflect.Type manifest, com.dslplatform.json.DslJson dslJson) {\n");
+		code.append("\t\tpublic ").append(producedType).append(" tryCreate(java.lang.reflect.Type manifest, com.dslplatform.json.DslJson __dsljson) {\n");
 		code.append("\t\t\tif (manifest instanceof java.lang.reflect.ParameterizedType) {\n");
 		code.append("\t\t\t\tjava.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) manifest;\n");
 		code.append("\t\t\t\tjava.lang.Class<?> rawClass = (java.lang.Class<?>) pt.getRawType();\n");
 		code.append("\t\t\t\tif (rawClass.isAssignableFrom(").append(typeName).append(".class)) {\n");
 		createConverter(si, typeName, "pt.getActualTypeArguments()");
 		code.append("\t\t\t\t}\n");
-		code.append("\t\t\t} else if (com.dslplatform.json.GenericTest.GenericModel.class.equals(manifest)) {\n");
+		code.append("\t\t\t} else if (").append(typeName).append(".class.equals(manifest)) {\n");
 		code.append("\t\t\t\tjava.lang.reflect.Type[] unknownArgs = new java.lang.reflect.Type[");
 		code.append(Integer.toString(si.typeParametersNames.size())).append("];\n");
 		code.append("\t\t\t\tjava.util.Arrays.fill(unknownArgs, Object.class);\n");
-		code.append("\t\t\t\tif (dslJson.tryFindReader(Object.class) != null && dslJson.tryFindWriter(Object.class) != null) {\n");
+		code.append("\t\t\t\tif (__dsljson.tryFindReader(Object.class) != null && __dsljson.tryFindWriter(Object.class) != null) {\n");
 		createConverter(si, typeName, "unknownArgs");
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
@@ -80,17 +80,17 @@ class ConverterTemplate {
 			if (si.formats.contains(CompiledJson.Format.ARRAY)) {
 				code.append("\t\t\t\t\treturn new com.dslplatform.json.runtime.FormatDescription(\n");
 				code.append("\t\t\t\t\t\t\t").append(typeName).append(".class,\n");
-				code.append("\t\t\t\t\t\t\tnew ObjectFormatConverter(dslJson, ").append(typeArguments).append("),\n");
-				code.append("\t\t\t\t\t\t\tnew ArrayFormatConverter(dslJson, ").append(typeArguments).append("),\n");
+				code.append("\t\t\t\t\t\t\tnew ObjectFormatConverter(__dsljson, ").append(typeArguments).append("),\n");
+				code.append("\t\t\t\t\t\t\tnew ArrayFormatConverter(__dsljson, ").append(typeArguments).append("),\n");
 				code.append("\t\t\t\t\t\t\t").append(String.valueOf(si.isObjectFormatFirst)).append(",\n");
 				String typeAlias = si.deserializeName.isEmpty() ? typeName : si.deserializeName;
 				code.append("\t\t\t\t\t\t\t\"").append(typeAlias).append("\",\n");
-				code.append("\t\t\t\t\t\t\tdslJson);\n");
+				code.append("\t\t\t\t\t\t\t__dsljson);\n");
 			} else {
-				code.append("\t\t\t\t\treturn new ObjectFormatConverter(dslJson, ").append(typeArguments).append(");\n");
+				code.append("\t\t\t\t\treturn new ObjectFormatConverter(__dsljson, ").append(typeArguments).append(");\n");
 			}
 		} else {
-			code.append("\t\t\t\t\treturn new ArrayFormatConverter(dslJson, ").append(typeArguments).append(");\n");
+			code.append("\t\t\t\t\treturn new ArrayFormatConverter(__dsljson, ").append(typeArguments).append(");\n");
 		}
 	}
 
@@ -105,7 +105,7 @@ class ConverterTemplate {
 		}
 		code.append(className).append("> {\n");
 		code.append("\t\tprivate final boolean alwaysSerialize;\n");
-		code.append("\t\tprivate final com.dslplatform.json.DslJson json;\n");
+		code.append("\t\tprivate final com.dslplatform.json.DslJson __dsljson;\n");
 		if (si.isParameterized) {
 			code.append("\t\tprivate final java.lang.reflect.Type[] actualTypes;\n");
 		}
@@ -140,7 +140,7 @@ class ConverterTemplate {
 					code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> reader_").append(attr.name).append("() {\n");
 					code.append("\t\t\tif (reader_").append(attr.name).append(" == null) {\n");
 					code.append("\t\t\t\tjava.lang.reflect.Type manifest = ").append(type).append(";\n");
-					code.append("\t\t\t\treader_").append(attr.name).append(" = json.tryFindReader(manifest);\n");
+					code.append("\t\t\t\treader_").append(attr.name).append(" = __dsljson.tryFindReader(manifest);\n");
 					code.append("\t\t\t\tif (reader_").append(attr.name).append(" == null) {\n");
 					code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest);\n");
 					code.append("\t\t\t\t}\n");
@@ -152,7 +152,7 @@ class ConverterTemplate {
 					code.append("\t\tprivate com.dslplatform.json.JsonWriter.WriteObject<").append(typeName).append("> writer_").append(attr.name).append("() {\n");
 					code.append("\t\t\tif (writer_").append(attr.name).append(" == null) {\n");
 					code.append("\t\t\t\tjava.lang.reflect.Type manifest = ").append(type).append(";\n");
-					code.append("\t\t\t\twriter_").append(attr.name).append(" = json.tryFindWriter(manifest);\n");
+					code.append("\t\t\t\twriter_").append(attr.name).append(" = __dsljson.tryFindWriter(manifest);\n");
 					code.append("\t\t\t\tif (writer_").append(attr.name).append(" == null) {\n");
 					code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest);\n");
 					code.append("\t\t\t\t}\n");
@@ -166,13 +166,13 @@ class ConverterTemplate {
 				}
 			}
 		}
-		code.append("\t\t").append(name).append("(com.dslplatform.json.DslJson json");
+		code.append("\t\t").append(name).append("(com.dslplatform.json.DslJson __dsljson");
 		if (si.isParameterized) {
 			code.append(", java.lang.reflect.Type[] actualTypes");
 		}
 		code.append(") {\n");
-		code.append("\t\t\tthis.alwaysSerialize = !json.omitDefaults;\n");
-		code.append("\t\t\tthis.json = json;\n");
+		code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults;\n");
+		code.append("\t\t\tthis.__dsljson = __dsljson;\n");
 		if (si.isParameterized) {
 			code.append("\t\t\tthis.actualTypes = actualTypes;\n");
 		}
@@ -184,11 +184,11 @@ class ConverterTemplate {
 			if (attr.converter == null && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
 				if (attr.isEnum(context.structs)) {
 					StructInfo target = context.structs.get(attr.typeName);
-					code.append("\t\t\tthis.converter_").append(attr.name).append(" = new ").append(findConverterName(target)).append(".EnumConverter(json);\n");
+					code.append("\t\t\tthis.converter_").append(attr.name).append(" = new ").append(findConverterName(target)).append(".EnumConverter(__dsljson);\n");
 				} else if (content != null) {
 					String type = typeOrClass(nonGenericObject(content), content);
-					code.append("\t\t\tthis.reader_").append(attr.name).append(" = json.tryFindReader(").append(type).append(");\n");
-					code.append("\t\t\tthis.writer_").append(attr.name).append(" = json.tryFindWriter(").append(type).append(");\n");
+					code.append("\t\t\tthis.reader_").append(attr.name).append(" = __dsljson.tryFindReader(").append(type).append(");\n");
+					code.append("\t\t\tthis.writer_").append(attr.name).append(" = __dsljson.tryFindWriter(").append(type).append(");\n");
 				} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 					String type;
 					if (attr.isArray) {
@@ -198,12 +198,12 @@ class ConverterTemplate {
 					}
 
 					code.append("\t\t\tjava.lang.reflect.Type manifest_").append(attr.name).append(" = ").append(type).append(";\n");
-					code.append("\t\t\tthis.reader_").append(attr.name).append(" = json.tryFindReader(manifest_").append(attr.name).append(");\n");
+					code.append("\t\t\tthis.reader_").append(attr.name).append(" = __dsljson.tryFindReader(manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\tif (reader_").append(attr.name).append(" == null) {\n");
 					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\t}\n");
 
-					code.append("\t\t\tthis.writer_").append(attr.name).append(" = json.tryFindWriter(manifest_").append(attr.name).append(");\n");
+					code.append("\t\t\tthis.writer_").append(attr.name).append(" = __dsljson.tryFindWriter(manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\tif (writer_").append(attr.name).append(" == null) {\n");
 					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\t}\n");

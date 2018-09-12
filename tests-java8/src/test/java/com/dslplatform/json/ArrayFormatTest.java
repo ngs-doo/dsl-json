@@ -216,6 +216,26 @@ public class ArrayFormatTest {
 		}
 	}
 
+	public static class CompanionPersonFactory {
+		public final String firstName;
+		public final String lastName;
+		public final int age;
+
+		private CompanionPersonFactory(String firstName, String lastName, int age) {
+			this.firstName = firstName;
+			this.lastName = lastName;
+			this.age = age;
+		}
+		public static final Companion Companion = new Companion();
+
+		public static class Companion {
+			@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
+			public CompanionPersonFactory create(String firstName, String lastName, int age) {
+				return new CompanionPersonFactory(firstName, lastName, age);
+			}
+		}
+	}
+
 	@Test
 	public void factoryInNestedClass() throws IOException {
 		NestedPersonFactory c = NestedPersonFactory.Factory.create("first", "last", 42);
@@ -223,6 +243,18 @@ public class ArrayFormatTest {
 		dslJsonArray.serialize(c, os);
 		Assert.assertEquals("[\"first\",\"last\",42]", os.toString());
 		NestedPersonFactory res = dslJsonArray.deserialize(NestedPersonFactory.class, os.toByteArray(), os.size());
+		Assert.assertEquals(c.firstName, res.firstName);
+		Assert.assertEquals(c.lastName, res.lastName);
+		Assert.assertEquals(c.age, res.age);
+	}
+
+	@Test
+	public void factoryInCompanionClass() throws IOException {
+		CompanionPersonFactory c = CompanionPersonFactory.Companion.create("first", "last", 42);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonArray.serialize(c, os);
+		Assert.assertEquals("[\"first\",\"last\",42]", os.toString());
+		CompanionPersonFactory res = dslJsonArray.deserialize(CompanionPersonFactory.class, os.toByteArray(), os.size());
 		Assert.assertEquals(c.firstName, res.firstName);
 		Assert.assertEquals(c.lastName, res.lastName);
 		Assert.assertEquals(c.age, res.age);

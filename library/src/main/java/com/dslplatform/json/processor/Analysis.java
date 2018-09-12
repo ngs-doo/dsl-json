@@ -957,7 +957,6 @@ public class Analysis {
 				for (AnnotationMirror ann : method.getAnnotationMirrors()) {
 					if (alternativeFactories.contains(ann.getAnnotationType().toString())) {
 						if (method.getModifiers().contains(Modifier.PRIVATE)
-								|| !method.getModifiers().contains(Modifier.STATIC)
 								|| requiresPublic(element) && !method.getModifiers().contains(Modifier.PUBLIC)) {
 							factory = method;
 							annotation = ann;
@@ -968,8 +967,24 @@ public class Analysis {
 			}
 		}
 		if (factory == null) return null;
+		boolean isStaticMethod = factory.getModifiers().contains(Modifier.STATIC);
+		boolean isSingletonInstanceMethod = false;
+		TypeElement parent = (TypeElement)factory.getEnclosingElement();
+		if (!isStaticMethod && parent.getEnclosingElement() instanceof TypeElement
+				&& parent.getModifiers().contains(Modifier.STATIC)) {
+			TypeElement grandparent = (TypeElement)parent.getEnclosingElement();
+			for(VariableElement field : ElementFilter.fieldsIn(grandparent.getEnclosedElements())) {
+				if (field.getSimpleName().equals(parent.getSimpleName())
+					&& field.getModifiers().contains(Modifier.PUBLIC)
+						&& field.getModifiers().contains(Modifier.STATIC)
+						&& field.getModifiers().contains(Modifier.FINAL)) {
+					isSingletonInstanceMethod = true;
+					break;
+				}
+			}
+		}
 		if (factory.getModifiers().contains(Modifier.PRIVATE)
-				|| !factory.getModifiers().contains(Modifier.STATIC)
+				|| !isStaticMethod && !isSingletonInstanceMethod
 				|| requiresPublic(factory.getEnclosingElement()) && !factory.getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
@@ -1166,7 +1181,7 @@ public class Analysis {
 			}
 		}
 		String signatureType = "com.dslplatform.json.JsonReader.ReadJsonObject<" + element.getQualifiedName() + ">";
-		if (!onlyBasicFeatures && companion != null) {
+		if (!onlyBasicFeatures && companion != null && companion.getModifiers().contains(Modifier.STATIC)) {
 			for (ExecutableElement method : ElementFilter.methodsIn(companion.getEnclosedElements())) {
 				if ("JSON_READER".equals(method.getSimpleName().toString()) || "getJSON_READER".equals(method.getSimpleName().toString())) {
 					jsonReaderMethod = method;
@@ -1212,7 +1227,7 @@ public class Analysis {
 					element,
 					getAnnotation(element, converterType));
 		} else if (jsonReaderMethod == null && (!jsonReaderField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
-				|| jsonReaderMethod != null && (!jsonReaderMethod.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderMethod.getModifiers().contains(Modifier.STATIC))) {
+				|| jsonReaderMethod != null && (!jsonReaderMethod.getModifiers().contains(Modifier.PUBLIC) || jsonReaderMethod.getModifiers().contains(Modifier.STATIC))) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,

@@ -72,6 +72,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testCompanionFactory() {
+		checkValidCompilation(CompanionFactory.class, CompanionFactory.Companion.class);
+	}
+
+	@Test
 	public void testValidPropertyType() {
 		checkValidCompilation(ValidType.class);
 	}

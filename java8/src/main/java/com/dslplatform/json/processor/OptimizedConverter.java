@@ -21,26 +21,9 @@ final class OptimizedConverter {
 		this.defaultValue = defaultValue;
 	}
 
-	String encoder(String name, boolean nonNull) {
-		if (nonNull && defaultValue == null) {
-			if (nonNullableEncoderMethod != null) {
-				return "(wrt, v) -> { if (v == null) throw new com.dslplatform.json.SerializationException(\"Property '" + name + "' is not allowed to be null\"); return " + nonNullableEncoderMethod + "(v, wrt); }";
-			}
-			return "(wrt, v) -> { if (v == null) throw new com.dslplatform.json.SerializationException(\"Property '" + name + "' is not allowed to be null\"); return " + encoderField + "(wrt, v); }";
-		}
-		return encoderField;
-	}
-
 	String nonNullableEncoder(String writer, String value) {
 		if (nonNullableEncoderMethod != null) return nonNullableEncoderMethod + "(" + value + ", " + writer + ")";
 		return encoderField + ".write(" + writer + ", " + value + ")";
-	}
-
-	String decoder(String name, boolean nonNull) {
-		if (nonNull && defaultValue == null) {
-			return "rdr -> { if (rdr.wasNull()) throw new java.io.IOException(\"Property '" + name + "' is not allowed to be null\"); return " + nonNullableDecoderMethod + "(rdr); }";
-		}
-		return decoderField;
 	}
 
 	boolean hasNonNullableMethod() {

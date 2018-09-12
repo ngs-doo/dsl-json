@@ -374,23 +374,23 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
 		code.append("\tprivate static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName(\"UTF-8\");\n");
 		code.append("\t@Override\n");
-		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
+		code.append("\tpublic void configure(com.dslplatform.json.DslJson __dsljson) {\n");
 
 		if (si.type == ObjectType.CLASS && si.isParameterized) {
 			code.append("\t\tConverterFactory factory = new ConverterFactory();\n");
-			code.append("\t\tjson.registerReaderFactory(factory);\n");
-			code.append("\t\tjson.registerWriterFactory(factory);\n");
+			code.append("\t\t__dsljson.registerReaderFactory(factory);\n");
+			code.append("\t\t__dsljson.registerWriterFactory(factory);\n");
 			if (si.canCreateEmptyInstance()) {
-				code.append("\t\tjson.registerBinderFactory(factory);\n");
+				code.append("\t\t__dsljson.registerBinderFactory(factory);\n");
 			}
 		} else if (si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null) && !si.attributes.isEmpty()) {
 			String objectFormatConverterName = "converter";
 			if (si.formats.contains(CompiledJson.Format.OBJECT)) {
-				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(json);\n");
+				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(__dsljson);\n");
 				objectFormatConverterName = "objectConverter";
 			}
 			if (si.formats.contains(CompiledJson.Format.ARRAY)) {
-				code.append("\t\tArrayFormatConverter arrayConverter = new ArrayFormatConverter(json);\n");
+				code.append("\t\tArrayFormatConverter arrayConverter = new ArrayFormatConverter(__dsljson);\n");
 				objectFormatConverterName = "arrayConverter";
 			}
 			if (si.formats.contains(CompiledJson.Format.OBJECT) && si.formats.contains(CompiledJson.Format.ARRAY)) {
@@ -402,31 +402,31 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				else code.append("\t\t\tfalse,\n");
 				String typeAlias = si.deserializeName.isEmpty() ? className : si.deserializeName;
 				code.append("\t\t\t\"").append(typeAlias).append("\",\n");
-				code.append("\t\t\tjson);\n");
+				code.append("\t\t\t__dsljson);\n");
 				if (si.canCreateEmptyInstance()) {
-					code.append("\t\tjson.registerBinder(").append(className).append(".class, description);\n");
+					code.append("\t\t__dsljson.registerBinder(").append(className).append(".class, description);\n");
 				}
-				code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
-				code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
+				code.append("\t\t__dsljson.registerReader(").append(className).append(".class, description);\n");
+				code.append("\t\t__dsljson.registerWriter(").append(className).append(".class, description);\n");
 			} else {
 				if (si.canCreateEmptyInstance()) {
-					code.append("\t\tjson.registerBinder(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
+					code.append("\t\t__dsljson.registerBinder(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
 				}
-				code.append("\t\tjson.registerReader(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
-				code.append("\t\tjson.registerWriter(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
+				code.append("\t\t__dsljson.registerReader(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
+				code.append("\t\t__dsljson.registerWriter(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
 			}
 		} else if (si.type == ObjectType.CONVERTER) {
 			String type = typeOrClass(nonGenericObject(className), className);
-			code.append("\t\tjson.registerWriter(").append(type).append(", ").append(si.converter).append(".").append(si.converterWriter).append(");\n");
-			code.append("\t\tjson.registerReader(").append(type).append(", ").append(si.converter).append(".").append(si.converterReader).append(");\n");
+			code.append("\t\t__dsljson.registerWriter(").append(type).append(", ").append(si.converter).append(".").append(si.converterWriter).append(");\n");
+			code.append("\t\t__dsljson.registerReader(").append(type).append(", ").append(si.converter).append(".").append(si.converterReader).append(");\n");
 		} else if (si.type == ObjectType.ENUM) {
 			if (enumTemplate.isStatic(si)) {
 				code.append("\t\tEnumConverter enumConverter = new EnumConverter();\n");
 			} else {
-				code.append("\t\tEnumConverter enumConverter = new EnumConverter(json);\n");
+				code.append("\t\tEnumConverter enumConverter = new EnumConverter(__dsljson);\n");
 			}
-			code.append("\t\tjson.registerWriter(").append(className).append(".class, enumConverter);\n");
-			code.append("\t\tjson.registerReader(").append(className).append(".class, enumConverter);\n");
+			code.append("\t\t__dsljson.registerWriter(").append(className).append(".class, enumConverter);\n");
+			code.append("\t\t__dsljson.registerReader(").append(className).append(".class, enumConverter);\n");
 		}
 
 		if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
@@ -435,11 +435,11 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		if (si.type == ObjectType.MIXIN && si.deserializeAs != null) {
 			String typeMixin = typeOrClass(nonGenericObject(className), className);
 			StructInfo target = si.getDeserializeTarget();
-			code.append("\t\tjson.registerReader(").append(typeMixin).append(", ");
+			code.append("\t\t__dsljson.registerReader(").append(typeMixin).append(", ");
 			if (!target.formats.contains(CompiledJson.Format.OBJECT)) {
-				code.append("new ").append(findConverterName(target)).append(".ArrayFormatConverter(json));\n");
+				code.append("new ").append(findConverterName(target)).append(".ArrayFormatConverter(__dsljson));\n");
 			} else if (!target.formats.contains(CompiledJson.Format.ARRAY)) {
-				code.append("new ").append(findConverterName(target)).append(".ObjectFormatConverter(json));\n");
+				code.append("new ").append(findConverterName(target)).append(".ObjectFormatConverter(__dsljson));\n");
 			}
 		}
 
@@ -480,7 +480,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 		code.append("\t\tcom.dslplatform.json.runtime.").append(mixinType).append("<").append(className).append("> description = new com.dslplatform.json.runtime.").append(mixinType).append("<>(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
-		code.append("\t\t\tjson,\n");
+		code.append("\t\t\t__dsljson,\n");
 		code.append("\t\t\tnew com.dslplatform.json.runtime.FormatDescription[] {\n");
 		int i = si.implementations.size();
 		for (StructInfo im : si.implementations) {
@@ -490,12 +490,12 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				code.append("\t\t\t\tnew com.dslplatform.json.runtime.FormatDescription(");
 				code.append(im.element.getQualifiedName()).append(".class, ");
 				if (im.formats.contains(CompiledJson.Format.OBJECT)) {
-					code.append("new ").append(findConverterName(im)).append(".ObjectFormatConverter(json), ");
+					code.append("new ").append(findConverterName(im)).append(".ObjectFormatConverter(__dsljson), ");
 				} else {
 					code.append("null, ");
 				}
 				if (im.formats.contains(CompiledJson.Format.ARRAY)) {
-					code.append("new ").append(findConverterName(im)).append(".ArrayFormatConverter(json), ");
+					code.append("new ").append(findConverterName(im)).append(".ArrayFormatConverter(__dsljson), ");
 				} else {
 					code.append("null, ");
 				}
@@ -504,7 +504,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				String typeAlias = im.deserializeName.isEmpty()
 						? im.element.getQualifiedName().toString()
 						: im.deserializeName;
-				code.append("\"").append(typeAlias).append("\", json)");
+				code.append("\"").append(typeAlias).append("\", __dsljson)");
 			}
 			i--;
 			if (i > 0) code.append(",\n");
@@ -512,9 +512,9 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\n\t\t\t}\n");
 		code.append("\t\t);\n");
 		if (!writeOnly) {
-			code.append("\t\tjson.registerReader(").append(className).append(".class, description);\n");
+			code.append("\t\t__dsljson.registerReader(").append(className).append(".class, description);\n");
 		}
-		code.append("\t\tjson.registerWriter(").append(className).append(".class, description);\n");
+		code.append("\t\t__dsljson.registerWriter(").append(className).append(".class, description);\n");
 	}
 
 	private static boolean buildRootConfiguration(
@@ -530,7 +530,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
 		code.append("\t@Override\n");
-		code.append("\tpublic void configure(com.dslplatform.json.DslJson json) {\n");
+		code.append("\tpublic void configure(com.dslplatform.json.DslJson __dsljson) {\n");
 		boolean allValid = true;
 		for (Map.Entry<String, StructInfo> kv : configurations.entrySet()) {
 			if (hasNamespace && kv.getKey().indexOf('.') == -1) {
@@ -542,7 +542,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 						kv.getValue().annotation);
 				allValid = false;
 			}
-			code.append("\t\tnew ").append(kv.getKey()).append("().configure(json);\n");
+			code.append("\t\tnew ").append(kv.getKey()).append("().configure(__dsljson);\n");
 		}
 		code.append("\t}\n");
 		code.append("}");

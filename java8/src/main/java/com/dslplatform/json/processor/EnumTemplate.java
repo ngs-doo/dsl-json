@@ -71,10 +71,10 @@ class EnumTemplate {
 			if (converter == null) {
 				code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(constantNameType).append("> valueWriter;\n");
 				code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(constantNameType).append("> valueReader;\n");
-				code.append("\t\tpublic EnumConverter(com.dslplatform.json.DslJson<Object> json) {\n");
-				code.append("\t\t\tthis.valueWriter = json.tryFindWriter(").append(Context.typeOrClass(constantNameType, constantNameType)).append(");\n");
+				code.append("\t\tpublic EnumConverter(com.dslplatform.json.DslJson<Object> __dsljson) {\n");
+				code.append("\t\t\tthis.valueWriter = __dsljson.tryFindWriter(").append(Context.typeOrClass(constantNameType, constantNameType)).append(");\n");
 				code.append("\t\t\tif (this.valueWriter == null) throw new com.dslplatform.json.SerializationException(\"Unable to find writer for ").append(constantNameType).append("\");\n");
-				code.append("\t\t\tthis.valueReader = json.tryFindReader(").append(Context.typeOrClass(constantNameType, constantNameType)).append(");\n");
+				code.append("\t\t\tthis.valueReader = __dsljson.tryFindReader(").append(Context.typeOrClass(constantNameType, constantNameType)).append(");\n");
 				code.append("\t\t\tif (this.valueReader == null) throw new com.dslplatform.json.SerializationException(\"Unable to find reader for ").append(constantNameType).append("\");\n");
 				code.append("\t\t}\n");
 			}
