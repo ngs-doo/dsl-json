@@ -689,6 +689,11 @@ public class Analysis {
 		}
 		int genInd = typeName.indexOf('<');
 		if (genInd == -1) return;
+		String containerType = typeName.substring(0, genInd);
+		if (!onlyBasicFeatures && !structs.containsKey(containerType) && !containerSupport.isSupported(containerType)) {
+			TypeElement generics = elements.getTypeElement(containerType);
+			findStructs(generics, discoveredBy, generics + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
+		}
 		String subtype = typeName.substring(genInd + 1, typeName.lastIndexOf('>'));
 		if (supportedTypes.contains(subtype)) return;
 		Set<String> parts = new LinkedHashSet<String>();
@@ -700,7 +705,7 @@ public class Analysis {
 					if (!el.getTypeParameters().isEmpty()) {
 						if (containerSupport.isSupported(st)) continue;
 					}
-					findStructs(el, discoveredBy, el + " is referenced as collection " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
+					findStructs(el, discoveredBy, el + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
 				}
 			}
 		}
@@ -1016,7 +1021,7 @@ public class Analysis {
 				} else {
 					String rawTypeName = declaredType.asElement().toString();
 					if (structs.containsKey(rawTypeName) || supportedTypes.contains(rawTypeName)
-							||containerSupport.isSupported(rawTypeName)) {
+							|| containerSupport.isSupported(rawTypeName)) {
 						parts.put(rawTypeName, PartKind.OTHER);
 					} else {
 						parts.put(rawTypeName, PartKind.UNKNOWN);
@@ -1050,7 +1055,7 @@ public class Analysis {
 			parts.add(signature);
 		} else if (nextComma != -1 && (nextGen == -1 || nextGen > nextComma)) {
 			String first = signature.substring(0, nextComma);
-			String second = signature.substring(nextComma + 1, signature.length());
+			String second = signature.substring(nextComma + 1);
 			parts.add(first);
 			extractTypes(second, parts);
 		} else {
@@ -1085,7 +1090,7 @@ public class Analysis {
 												"' annotated with @JsonValue must be public.", enclosedElement);
 							} else if (!isSupportedEnumNameType(enclosedElement)) {
 								printError((enclosedElement.getKind().isField() ? "Field '" : "Method '") + enclosedElement.toString() +
-												"' annotated with @JsonValue must be of a supported type. Unknown types can be supported by enabling unknown types configuration option", enclosedElement);
+												"' annotated with @JsonValue must be of a supported type. Unknown types can be supported by enabling unknown types configuration option or whitelisting that specific unknown type", enclosedElement);
 							} else {
 								nameSource = enclosedElement;
 							}
@@ -1105,6 +1110,8 @@ public class Analysis {
 	private boolean isSupportedEnumNameType(Element element) {
 		String enumNameType = extractReturnType(element);
 		if (supportedTypes.contains(enumNameType) || unknownTypes == UnknownTypes.ALLOW) return true;
+		StructInfo target = structs.get(enumNameType);
+		if (target != null && target.converter != null) return true;
 		if (unknownTypes == UnknownTypes.WARNING) {
 			messager.printMessage(
 					Diagnostic.Kind.WARNING,

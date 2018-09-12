@@ -1,16 +1,42 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
+import com.dslplatform.json.*;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 public abstract class ArrayAnalyzer {
+
+	public static class Runtime {
+		public static final JsonReader.ReadObject<Object[]> JSON_READER = new JsonReader.ReadObject<Object[]>() {
+			@Override
+			public Object[] read(JsonReader r) throws IOException {
+				if (r.wasNull()) return null;
+				return ObjectConverter.deserializeList(r).toArray();
+			}
+		};
+		public static final JsonWriter.WriteObject<Object[]> JSON_WRITER = new JsonWriter.WriteObject<Object[]>() {
+			@Override
+			public void write(JsonWriter writer, @Nullable Object[] value) {
+				if (value == null) {
+					writer.writeNull();
+				} else if (value.length == 0) {
+					writer.writeAscii("[]");
+				} else {
+					writer.writeByte(JsonWriter.ARRAY_START);
+					writer.serializeObject(value[0]);
+					for(int i = 1; i < value.length; i++) {
+						writer.writeByte(JsonWriter.COMMA);
+						writer.serializeObject(value[i]);
+					}
+					writer.writeByte(JsonWriter.ARRAY_END);
+				}
+			}
+		};
+	}
 
 	public static final DslJson.ConverterFactory<ArrayDecoder> READER = new DslJson.ConverterFactory<ArrayDecoder>() {
 		@Nullable

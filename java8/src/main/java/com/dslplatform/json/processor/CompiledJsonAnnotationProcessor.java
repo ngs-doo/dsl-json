@@ -183,6 +183,19 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		return options;
 	}
 
+	private static boolean isAssignableFrom(Set<Type> known, Type test) {
+		if (test instanceof Class<?>) {
+			Class<?> tc = (Class<?>) test;
+			for (Type k : known) {
+				if (k instanceof Class<?>) {
+					Class<?> kc = (Class<?>) k;
+					if (kc.isAssignableFrom(tc)) return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	@Override
 	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 		if (roundEnv.processingOver() || annotations.isEmpty()) {
@@ -192,8 +205,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
 		Set<Type> knownDecoders = dslJson.getRegisteredDecoders();
 		Set<String> allTypes = new HashSet<>();
-		for (Type t : knownEncoders) {
-			if (knownDecoders.contains(t)) {
+		for (Type t : knownDecoders) {
+			if (knownEncoders.contains(t) || isAssignableFrom(knownEncoders, t)) {
 				allTypes.add(t.getTypeName());
 			}
 		}

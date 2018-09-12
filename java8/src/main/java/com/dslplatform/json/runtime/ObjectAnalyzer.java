@@ -11,6 +11,23 @@ import java.util.Set;
 
 public abstract class ObjectAnalyzer {
 
+	public static class Runtime {
+		public static final JsonReader.ReadObject<Object> JSON_READER = new JsonReader.ReadObject<Object>() {
+			@Override
+			public Object read(JsonReader r) throws IOException {
+				if (r.wasNull()) return null;
+				return ObjectConverter.deserializeObject(r);
+			}
+		};
+		public static final JsonWriter.WriteObject<Object> JSON_WRITER = new JsonWriter.WriteObject<Object>() {
+			@Override
+			public void write(JsonWriter writer, @Nullable Object value) {
+				if (value != null) writer.serializeObject(value);
+				else writer.writeNull();
+			}
+		};
+	}
+
 	private static class LazyObjectDescription implements JsonWriter.WriteObject, JsonReader.ReadObject, JsonReader.BindObject {
 
 		private final DslJson json;

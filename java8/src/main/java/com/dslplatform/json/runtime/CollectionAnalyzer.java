@@ -1,16 +1,51 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
+import com.dslplatform.json.*;
 
+import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.Callable;
 
 public abstract class CollectionAnalyzer {
+
+	public static class Runtime {
+		public static final JsonReader.ReadObject<List<Object>> JSON_READER = new JsonReader.ReadObject<List<Object>>() {
+			@Override
+			public List<Object> read(JsonReader r) throws IOException {
+				if (r.wasNull()) return null;
+				return ObjectConverter.deserializeList(r);
+			}
+		};
+		public static final JsonWriter.WriteObject<List<Object>> JSON_WRITER = new JsonWriter.WriteObject<List<Object>>() {
+			@Override
+			public void write(JsonWriter writer, @Nullable List<Object> value) {
+				if (value == null) {
+					writer.writeNull();
+				} else if (value.isEmpty()) {
+					writer.writeAscii("[]");
+				} else if (value instanceof RandomAccess) {
+					writer.writeByte(JsonWriter.ARRAY_START);
+					writer.serializeObject(value.get(0));
+					for(int i = 1; i < value.size(); i++) {
+						writer.writeByte(JsonWriter.COMMA);
+						writer.serializeObject(value.get(i));
+					}
+					writer.writeByte(JsonWriter.ARRAY_END);
+				} else {
+					writer.writeByte(JsonWriter.ARRAY_START);
+					Iterator<Object> iter = value.iterator();
+					writer.serializeObject(iter.next());
+					while (iter.hasNext()) {
+						writer.writeByte(JsonWriter.COMMA);
+						writer.serializeObject(iter.next());
+					}
+					writer.writeByte(JsonWriter.ARRAY_END);
+				}
+			}
+		};
+	}
 
 	public static final DslJson.ConverterFactory<CollectionDecoder> READER = new DslJson.ConverterFactory<CollectionDecoder>() {
 		@Nullable

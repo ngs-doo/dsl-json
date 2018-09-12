@@ -117,6 +117,20 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testEnumWithJsonValueObjectAndConverter() {
+		checkValidCompilation(EnumWithObjectAndConverter.class);
+	}
+
+	@Test
+	public void testEnumWithJsonValueObjectAndNoConverter() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				18,
+				compileTestCase(EnumWithObjectNoConverter.class),
+				"Method 'getValue()' annotated with @JsonValue must be of a supported type.");
+	}
+
+	@Test
 	public void testEnumWithJsonValueAnnotationPlacedOnNonPublicFieldOrGetter() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
@@ -561,5 +575,15 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				7,
 				compileTestCase(InvalidObjectProperty.class),
 				"Property o is referencing unknown type: 'java.lang.Object'. Register");
+	}
+
+	@Test
+	public void stringVariants() {
+		checkValidCompilation(BuildersAndBuffers.class);
+	}
+
+	@Test
+	public void whitelistingObject() {
+		checkValidCompilation(UnknownTypeWithConverter.class, UnknownTypeWithConverter.Generic.class);
 	}
 }

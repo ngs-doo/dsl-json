@@ -55,7 +55,7 @@ class ConverterTemplate {
 		code.append(producedType);
 		code.append("> {\n");
 		code.append("\t\t@Override\n");
-		code.append("\t\tpublic ").append(producedType).append(" tryCreate(java.lang.reflect.Type manifest, DslJson dslJson) {\n");
+		code.append("\t\tpublic ").append(producedType).append(" tryCreate(java.lang.reflect.Type manifest, com.dslplatform.json.DslJson dslJson) {\n");
 		code.append("\t\t\tif (manifest instanceof java.lang.reflect.ParameterizedType) {\n");
 		code.append("\t\t\t\tjava.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) manifest;\n");
 		code.append("\t\t\t\tjava.lang.Class<?> rawClass = (java.lang.Class<?>) pt.getRawType();\n");
