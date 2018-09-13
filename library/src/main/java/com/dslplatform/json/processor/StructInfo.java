@@ -14,9 +14,7 @@ public class StructInfo {
 	public final String name;
 	public final String binaryName;
 	public final ObjectType type;
-	public final String converter;
-	public final String converterReader;
-	public final String converterWriter;
+	public final ConverterInfo converter;
 	public final String jsonObjectReaderPath;
 	public final List<ExecutableElement> matchingConstructors;
 	public final ExecutableElement constructor;
@@ -64,9 +62,7 @@ public class StructInfo {
 		this.binaryName = binaryName;
 		this.type = type;
 		this.jsonObjectReaderPath = jsonObjectReaderPath;
-		this.converter = jsonObjectReaderPath != null ? "" : null;
-		this.converterReader = null;
-		this.converterWriter = null;
+		this.converter = null;
 		this.matchingConstructors = matchingConstructors;
 		this.factory = annotatedFactory;
 		this.annotation = annotation;
@@ -95,16 +91,14 @@ public class StructInfo {
 		this.isParameterized = !typeParametersNames.isEmpty();
 	}
 
-	public StructInfo(TypeElement converter, DeclaredType discoveredBy, TypeElement target, String name, String binaryName, String reader, String writer) {
+	public StructInfo(ConverterInfo converter, DeclaredType discoveredBy, TypeElement target, String name, String binaryName) {
 		this.element = target;
 		this.discoveredBy = discoveredBy;
 		this.name = name;
 		this.binaryName = binaryName;
 		this.type = ObjectType.CONVERTER;
 		this.jsonObjectReaderPath = null;
-		this.converter = converter.getQualifiedName().toString();
-		this.converterReader = reader;
-		this.converterWriter = writer;
+		this.converter = converter;
 		this.matchingConstructors = null;
 		this.constructor = null;
 		this.factory = null;
@@ -128,6 +122,10 @@ public class StructInfo {
 			names.add(typeParameter.getSimpleName().toString());
 		}
 		return names;
+	}
+
+	public boolean hasKnownConversion() {
+		return jsonObjectReaderPath != null || converter != null;
 	}
 
 	public boolean hasEmptyCtor() {

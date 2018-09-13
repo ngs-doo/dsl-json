@@ -158,7 +158,7 @@ public class Analysis {
 			final StructInfo info = it.getValue();
 			final String className = it.getKey();
 			if (info.type == ObjectType.CLASS && info.constructor == null && info.factory == null
-					&& info.converter == null && info.matchingConstructors != null) {
+					&& !info.hasKnownConversion() && info.matchingConstructors != null) {
 				hasError = true;
 				if (info.matchingConstructors.size() == 0) {
 					messager.printMessage(
@@ -239,7 +239,7 @@ public class Analysis {
 							info.annotation);
 				}
 			}
-			if (info.type == ObjectType.CLASS && info.converter == null && info.factory != null) {
+			if (info.type == ObjectType.CLASS && !info.hasKnownConversion() && info.factory != null) {
 				if (onlyBasicFeatures) {
 					hasError = true;
 					messager.printMessage(
@@ -275,7 +275,7 @@ public class Analysis {
 					}
 				}
 			}
-			if (info.type == ObjectType.CLASS && info.converter == null && !info.hasEmptyCtor() && info.constructor != null && info.factory == null) {
+			if (info.type == ObjectType.CLASS && !info.hasKnownConversion() && !info.hasEmptyCtor() && info.constructor != null && info.factory == null) {
 				for (VariableElement p : info.constructor.getParameters()) {
 					boolean found = false;
 					String argName = p.getSimpleName().toString();
@@ -336,14 +336,14 @@ public class Analysis {
 					}
 				}
 			}
-			if (info.type == ObjectType.CLASS && onlyBasicFeatures && info.converter == null && !info.hasEmptyCtor()) {
+			if (info.type == ObjectType.CLASS && onlyBasicFeatures && !info.hasKnownConversion() && !info.hasEmptyCtor()) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
 						"'" + className + "' requires public no argument constructor" + info.pathDescription(),
 						info.element,
 						info.annotation);
-			} else if (info.type == ObjectType.CLASS && !onlyBasicFeatures && !info.hasEmptyCtor() && info.converter == null
+			} else if (info.type == ObjectType.CLASS && !onlyBasicFeatures && !info.hasEmptyCtor() && !info.hasKnownConversion()
 					&& info.factory == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
 				hasError = true;
 				messager.printMessage(
@@ -401,7 +401,7 @@ public class Analysis {
 			String name = "struct" + structs.size();
 			TypeElement element = (TypeElement) target.asElement();
 			String binaryName = elements.getBinaryName(element).toString();
-			StructInfo info = new StructInfo(converter, converterType, element, name, binaryName, signature.reader, signature.writer);
+			StructInfo info = new StructInfo(signature, converterType, element, name, binaryName);
 			structs.put(target.toString(), info);
 		}
 	}
@@ -537,7 +537,7 @@ public class Analysis {
 			List<StructInfo> items = new ArrayList<StructInfo>(structs.values());
 			Stack<String> path = new Stack<String>();
 			for (StructInfo info : items) {
-				if (info.converter != null) continue;
+				if (info.hasKnownConversion()) continue;
 				path.push(info.element.getSimpleName().toString());
 				if (includeBeanMethods) {
 					for (Map.Entry<String, AccessElements> p : getBeanProperties(info.element, info.constructor, info.factory).entrySet()) {
@@ -1015,7 +1015,7 @@ public class Analysis {
 		StructInfo struct = structs.get(typeName);
 		if (struct != null) {
 			PartKind kind = struct.type == ObjectType.CLASS && !struct.hasAnnotation() && struct.attributes.isEmpty()
-					&& struct.implementations.isEmpty() && struct.converter == null
+					&& struct.implementations.isEmpty() && !struct.hasKnownConversion()
 					? PartKind.UNKNOWN
 					: PartKind.OTHER;
 			parts.put(typeName, kind);
@@ -1126,7 +1126,7 @@ public class Analysis {
 		String enumNameType = extractReturnType(element);
 		if (supportedTypes.contains(enumNameType) || unknownTypes == UnknownTypes.ALLOW) return true;
 		StructInfo target = structs.get(enumNameType);
-		if (target != null && target.converter != null) return true;
+		if (target != null && target.hasKnownConversion()) return true;
 		if (unknownTypes == UnknownTypes.WARNING) {
 			messager.printMessage(
 					Diagnostic.Kind.WARNING,

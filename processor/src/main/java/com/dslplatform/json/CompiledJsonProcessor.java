@@ -309,15 +309,15 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 					dsl.append(impl.name);
 					dsl.append(";\n");
 				}
-				if (info.converter == null) {
+				if (info.jsonObjectReaderPath != null) {
+					dsl.append("    external Java JSON converter;\n");
+				} else if (info.converter != null) {
+					dsl.append("    external Java JSON converter '").append(info.converter.fullName).append("';\n");
+				} else {
 					for (AttributeInfo attr : info.attributes.values()) {
 						String dslType = getDslType(attr, structs);
 						processProperty(dsl, options, checks, info, attr, dslType, structs);
 					}
-				} else if (info.converter.length() == 0) {
-					dsl.append("    external Java JSON converter;\n");
-				} else {
-					dsl.append("    external Java JSON converter '").append(info.converter).append("';\n");
 				}
 			}
 			requiresExtraSetup = requiresExtraSetup || info.onUnknown != null || info.deserializeAs != null;

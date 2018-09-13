@@ -113,10 +113,10 @@ class ConverterTemplate {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			if (attr.converter == null && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
+			StructInfo target = context.structs.get(attr.typeName);
+			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
 				String content = attr.collectionContent(context.knownTypes);
-				if (attr.isEnum(context.structs)) {
-					StructInfo target = context.structs.get(attr.typeName);
+				if (target != null && attr.isEnum(context.structs)) {
 					code.append("\t\tprivate final ").append(findConverterName(target)).append(".EnumConverter converter_").append(attr.name).append(";\n");
 				} else if (content != null || (attr.isGeneric && !attr.containsStructOwnerType)) {
 					if (attr.isGeneric) {
@@ -181,9 +181,9 @@ class ConverterTemplate {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
 			String content = attr.collectionContent(context.knownTypes);
-			if (attr.converter == null && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
-				if (attr.isEnum(context.structs)) {
-					StructInfo target = context.structs.get(attr.typeName);
+			StructInfo target = context.structs.get(attr.typeName);
+			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
+				if (target != null && attr.isEnum(context.structs)) {
 					code.append("\t\t\tthis.converter_").append(attr.name).append(" = new ").append(findConverterName(target)).append(".EnumConverter(__dsljson);\n");
 				} else if (content != null) {
 					String type = typeOrClass(nonGenericObject(content), content);
@@ -486,8 +486,9 @@ class ConverterTemplate {
 			code.append("\t\t\treader.getNextToken();\n");
 			setPropertyValue(attr, "\t");
 			i--;
-			if (i > 0)
+			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+			}
 		}
 		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		code.append("\t\t\treturn instance;\n");
@@ -511,8 +512,9 @@ class ConverterTemplate {
 			code.append("\t\t\treader.getNextToken();\n");
 			readPropertyValue(attr, "\t");
 			i--;
-			if (i > 0)
+			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+			}
 		}
 		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		returnInstance("\t\t\t", si.constructor, si.factory, className);
@@ -573,8 +575,9 @@ class ConverterTemplate {
 	private void writeProperty(AttributeInfo attr, boolean checkedDefault) throws IOException {
 		String typeName = attr.type.toString();
 		String readValue = "instance." + attr.readProperty;
-		OptimizedConverter converter = context.inlinedConverters.get(typeName);
-		boolean canBeNull = !checkedDefault && (converter == null || converter.defaultValue == null);
+		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
+		StructInfo target = context.structs.get(attr.typeName);
+		boolean canBeNull = !checkedDefault && (optimizedConverter == null || optimizedConverter.defaultValue == null);
 		if (attr.notNull && canBeNull) {
 			code.append("\t\t\tif (").append(readValue);
 			code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Property '").append(attr.name).append("' is not allowed to be null\");\n");
@@ -590,11 +593,12 @@ class ConverterTemplate {
 			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
 		} else if (attr.isJsonObject) {
 			code.append(readValue).append(".serialize(writer, !alwaysSerialize);\n");
+		} else if (target != null && target.converter != null) {
+				code.append(target.converter.fullName).append(".").append(target.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
 		} else {
-			if (converter != null) {
-				code.append(converter.nonNullableEncoder("writer", readValue)).append(";\n");
-			} else if (attr.isEnum(context.structs)) {
-				StructInfo target = context.structs.get(attr.typeName);
+			if (optimizedConverter != null) {
+				code.append(optimizedConverter.nonNullableEncoder("writer", readValue)).append(";\n");
+			} else if (target != null && attr.isEnum(context.structs)) {
 				enumTemplate.writeName(code, target, readValue, "converter_" + attr.name);
 			} else if (attr.collectionContent(context.knownTypes) != null) {
 				code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(");\n");
@@ -653,9 +657,10 @@ class ConverterTemplate {
 			code.append(" Null value found \" + reader.positionDescription());\n");
 		}
 		String typeName = attr.type.toString();
-		OptimizedConverter converter = context.inlinedConverters.get(typeName);
+		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
 		String assignmentEnding = attr.field == null ? ");\n" : ";\n";
-		if (attr.isJsonObject && attr.converter == null) {
+		StructInfo target = context.structs.get(attr.typeName);
+		if (attr.isJsonObject && attr.converter == null && target != null) {
 			if (!attr.notNull) {
 				code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
 				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
@@ -666,28 +671,28 @@ class ConverterTemplate {
 			code.append(alignment).append("\t\t\tinstance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 			else code.append(attr.writeMethod.getSimpleName()).append("(");
-			StructInfo target = context.structs.get(attr.typeName);
 			code.append(attr.typeName).append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader)").append(assignmentEnding);
 			code.append(alignment).append("\t\t} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
-		} else if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
+		} else if ((target == null || target.converter == null) && attr.converter == null && optimizedConverter != null && optimizedConverter.defaultValue == null && !attr.notNull && optimizedConverter.hasNonNullableMethod()) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
 			else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
 			code.append(alignment).append("\t\telse instance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 			else code.append(attr.writeMethod.getSimpleName()).append("(");
-			code.append(converter.nonNullableDecoder()).append("(reader)").append(assignmentEnding);
+			code.append(optimizedConverter.nonNullableDecoder()).append("(reader)").append(assignmentEnding);
 		} else {
 			code.append(alignment).append("\t\tinstance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 			else code.append(attr.writeMethod.getSimpleName()).append("(");
 			if (attr.converter != null) {
 				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader)");
-			} else if (converter != null) {
-				code.append(converter.nonNullableDecoder()).append("(reader)");
-			} else if (attr.isEnum(context.structs)) {
+			} else if (target != null && target.converter != null) {
+				code.append(target.converter.fullName).append(".").append(target.converter.reader).append(".read(reader)");
+			} else if (optimizedConverter != null) {
+				code.append(optimizedConverter.nonNullableDecoder()).append("(reader)");
+			} else if (target != null && attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
-				StructInfo target = context.structs.get(attr.typeName);
 				if (enumTemplate.isStatic(target)) {
 					code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader)");
 				} else {
@@ -722,29 +727,30 @@ class ConverterTemplate {
 			code.append(" Null value found \" + reader.positionDescription());\n");
 		}
 		String typeName = attr.type.toString();
-		OptimizedConverter converter = context.inlinedConverters.get(typeName);
-		if (attr.isJsonObject && attr.converter == null) {
+		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
+		StructInfo target = context.structs.get(attr.typeName);
+		if (attr.isJsonObject && attr.converter == null && target != null) {
 			if (!attr.notNull) {
 				code.append(alignment).append("\t\tif (reader.wasNull()) _").append(attr.name).append("_ = null;\n");
 			}
 			code.append(alignment).append("\t\telse if (reader.last() == '{') {\n");
 			code.append(alignment).append("\t\t\treader.getNextToken();\n");
-			StructInfo target = context.structs.get(attr.typeName);
 			code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName);
 			code.append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader);\n");
 			code.append(alignment).append("\t\t} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
-		} else if (attr.converter == null && converter != null && converter.defaultValue == null && !attr.notNull && converter.hasNonNullableMethod()) {
+		} else if ((target == null || target.converter == null) && attr.converter == null && optimizedConverter != null && optimizedConverter.defaultValue == null && !attr.notNull && optimizedConverter.hasNonNullableMethod()) {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = reader.wasNull() ? null : ");
-			code.append(converter.nonNullableDecoder()).append("(reader);\n");
+			code.append(optimizedConverter.nonNullableDecoder()).append("(reader);\n");
 		} else {
 			code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
 			if (attr.converter != null) {
 				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader);\n");
-			} else if (converter != null) {
-				code.append(converter.nonNullableDecoder()).append("(reader);\n");
-			} else if (attr.isEnum(context.structs)) {
+			} else if (target != null && target.converter != null) {
+				code.append(target.converter.fullName).append(".").append(target.converter.reader).append(".read(reader);\n");
+			} else if (optimizedConverter != null) {
+				code.append(optimizedConverter.nonNullableDecoder()).append("(reader);\n");
+			} else if (target != null && attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
-				StructInfo target = context.structs.get(attr.typeName);
 				if (enumTemplate.isStatic(target)) {
 					code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader);\n");
 				} else {

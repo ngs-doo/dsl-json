@@ -1,11 +1,11 @@
 package com.dslplatform.json;
 
-import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -109,7 +109,7 @@ public class ConverterTest {
 		}
 	}
 
-	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
+	private final DslJson<Object> dslJson = new DslJson<>(new DslJson.Settings<>().allowArrayFormat(true).includeServiceLoader());
 
 	@Test
 	public void firstArrayThenObjectForEmptyCtor() throws IOException {
@@ -187,5 +187,52 @@ public class ConverterTest {
 		Assert.assertEquals(c.d, res2.d);
 		Assert.assertEquals(c.s, res2.s);
 		Assert.assertEquals(c.x, res2.x);
+	}
+
+	@Test
+	public void cantChangeJsonConverter() throws IOException {
+		DslJson<Object> changedDslJson = new DslJson<>(new DslJson.Settings<>().allowArrayFormat(true).includeServiceLoader());
+		changedDslJson.registerWriter(ClosedClass.class, (w, v) -> w.writeNull());
+		Composite2 c = new Composite2();
+		c.d = ClosedClass.create("123.456");
+		c.s = Arrays.asList("abc", "def", null, "ghi");
+		c.x = -1;
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		changedDslJson.serialize(c, os);
+		Assert.assertEquals("{\"x\":-1,\"s\":[\"abc\",\"def\",null,\"ghi\"],\"d\":\"123.456\"}", os.toString());
+		Composite2 res2 = changedDslJson.deserialize(Composite2.class, os.toByteArray(), os.size());
+		Assert.assertEquals(c.d, res2.d);
+		Assert.assertEquals(c.s, res2.s);
+		Assert.assertEquals(c.x, res2.x);
+	}
+
+	@CompiledJson
+	public static class NullChecks{
+		@JsonAttribute(converter = CustomIntConverter.class, nullable = false)
+		public Integer x;
+	}
+
+	public static class CustomIntConverter {
+		public static final JsonReader.ReadObject<Integer> JSON_READER = null;
+		public static final JsonWriter.WriteObject<Integer> JSON_WRITER = null;
+	}
+
+	@Test
+	public void nullChecksOnConverter() throws IOException {
+		NullChecks nc = new NullChecks();
+		nc.x = null;
+		try {
+			dslJson.serialize(nc, new ByteArrayOutputStream());
+			Assert.fail("Expecting exception");
+		} catch (SerializationException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 'x' is not allowed to be null"));
+		}
+		try {
+			byte[] bytes = "{\"x\":null}".getBytes(StandardCharsets.UTF_8);
+			dslJson.deserialize(NullChecks.class, bytes, bytes.length);
+			Assert.fail("Expecting exception");
+		} catch (IOException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 'x' is not allowed to be null"));
+		}
 	}
 }

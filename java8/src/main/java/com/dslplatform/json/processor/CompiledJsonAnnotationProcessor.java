@@ -417,8 +417,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			}
 		} else if (si.type == ObjectType.CONVERTER) {
 			String type = typeOrClass(nonGenericObject(className), className);
-			code.append("\t\t__dsljson.registerWriter(").append(type).append(", ").append(si.converter).append(".").append(si.converterWriter).append(");\n");
-			code.append("\t\t__dsljson.registerReader(").append(type).append(", ").append(si.converter).append(".").append(si.converterReader).append(");\n");
+			code.append("\t\t__dsljson.registerWriter(").append(type).append(", ").append(si.converter.fullName).append(".").append(si.converter.writer).append(");\n");
+			code.append("\t\t__dsljson.registerReader(").append(type).append(", ").append(si.converter.fullName).append(".").append(si.converter.reader).append(");\n");
 		} else if (si.type == ObjectType.ENUM) {
 			if (enumTemplate.isStatic(si)) {
 				code.append("\t\tEnumConverter enumConverter = new EnumConverter();\n");
