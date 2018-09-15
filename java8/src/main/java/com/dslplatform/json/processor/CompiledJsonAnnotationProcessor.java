@@ -228,7 +228,6 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				PropertyAlias,
 				JsonRequired,
 				Creators,
-				Creators,
 				Indexes,
 				unknownTypes,
 				false,
@@ -383,7 +382,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			if (si.canCreateEmptyInstance()) {
 				code.append("\t\t__dsljson.registerBinderFactory(factory);\n");
 			}
-		} else if (si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null) && !si.attributes.isEmpty()) {
+		} else if ((si.builder != null || si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null)) && !si.attributes.isEmpty()) {
 			String objectFormatConverterName = "converter";
 			if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(__dsljson);\n");
@@ -445,7 +444,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 		code.append("\t}\n");
 
-		if (si.type == ObjectType.CLASS && !si.attributes.isEmpty()) {
+		if ((si.type == ObjectType.CLASS || si.builder != null) && !si.attributes.isEmpty()) {
 			final String typeName;
 			if (si.isParameterized) {
 				converterTemplate.factoryForGenericConverter(si);
@@ -460,7 +459,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				if (si.formats.contains(CompiledJson.Format.ARRAY)) {
 					converterTemplate.emptyArray(si, typeName);
 				}
-			} else if (si.constructor != null || si.factory != null) {
+			} else if (si.constructor != null || si.factory != null || si.builder != null) {
 				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 					converterTemplate.fromObject(si, typeName);
 				}

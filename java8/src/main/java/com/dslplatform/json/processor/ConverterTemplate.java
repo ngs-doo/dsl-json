@@ -372,7 +372,7 @@ class ConverterTemplate {
 		}
 		code.append("\t\t\tif (reader.last() == '}') {\n");
 		checkMandatory(sortedAttributes);
-		returnInstance("\t\t\t\t", si.constructor, si.factory, className);
+		returnInstance("\t\t\t\t", si, className);
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tswitch(reader.fillName()) {\n");
 		handleSwitch(si, "\t\t\t", true);
@@ -385,7 +385,7 @@ class ConverterTemplate {
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		checkMandatory(sortedAttributes);
-		returnInstance("\t\t\t", si.constructor, si.factory, className);
+		returnInstance("\t\t\t", si, className);
 		code.append("\t\t}\n");
 		code.append("\t}\n");
 	}
@@ -517,20 +517,34 @@ class ConverterTemplate {
 			}
 		}
 		code.append("\t\t\tif (reader.getNextToken() != ']') throw new java.io.IOException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
-		returnInstance("\t\t\t", si.constructor, si.factory, className);
+		returnInstance("\t\t\t", si, className);
 		code.append("\t\t}\n");
 		code.append("\t}\n");
 	}
 
-	private void returnInstance(final String alignment, ExecutableElement constructor, @Nullable ExecutableElement factory, final String className) throws IOException {
+	private void returnInstance(final String alignment, StructInfo info, final String className) throws IOException {
 		code.append(alignment).append("return ");
+		//builder can be invalid, so execute it only when other methods are not available
+		if (info.factory == null && info.constructor == null && info.builder != null) {
+			ExecutableElement factory = info.builder.factory;
+			if (factory != null) {
+				code.append(factory.getEnclosingElement().toString()).append(".").append(factory.getSimpleName()).append("()");
+			} else {
+				code.append("new ").append(info.builder.type.toString()).append("()");
+			}
+			for(AttributeInfo att : info.attributes.values()) {
+				code.append(".").append(att.writeMethod.getSimpleName()).append("(_").append(att.id).append("_)");
+			}
+			code.append(".").append(info.builder.build.getSimpleName()).append("();\n");
+			return;
+		}
 		final List<? extends VariableElement> params;
-		if (factory != null) {
-			code.append(factory.getEnclosingElement().toString()).append(".").append(factory.getSimpleName()).append("(");
-			params = factory.getParameters();
+		if (info.factory != null) {
+			code.append(info.factory.getEnclosingElement().toString()).append(".").append(info.factory.getSimpleName()).append("(");
+			params = info.factory.getParameters();
 		} else {
 			code.append("new ").append(className).append("(");
-			params = constructor.getParameters();
+			params = info.constructor.getParameters();
 		}
 		int i = params.size();
 		for (VariableElement p : params) {

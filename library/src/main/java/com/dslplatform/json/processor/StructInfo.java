@@ -19,6 +19,7 @@ public class StructInfo {
 	public final List<ExecutableElement> matchingConstructors;
 	public final ExecutableElement constructor;
 	public final ExecutableElement factory;
+	public final BuilderInfo builder;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
 	public final Map<String, String> minifiedNames = new HashMap<String, String>();
 	public final AnnotationMirror annotation;
@@ -48,6 +49,7 @@ public class StructInfo {
 			@Nullable List<ExecutableElement> matchingConstructors,
 			@Nullable ExecutableElement annotatedConstructor,
 			@Nullable ExecutableElement annotatedFactory,
+			@Nullable BuilderInfo builder,
 			@Nullable AnnotationMirror annotation,
 			@Nullable CompiledJson.Behavior onUnknown,
 			@Nullable CompiledJson.TypeSignature typeSignature,
@@ -65,6 +67,7 @@ public class StructInfo {
 		this.converter = null;
 		this.matchingConstructors = matchingConstructors;
 		this.factory = annotatedFactory;
+		this.builder = builder;
 		this.annotation = annotation;
 		this.onUnknown = onUnknown;
 		this.typeSignature = typeSignature;
@@ -102,6 +105,7 @@ public class StructInfo {
 		this.matchingConstructors = null;
 		this.constructor = null;
 		this.factory = null;
+		this.builder = null;
 		this.annotation = null;
 		this.onUnknown = null;
 		this.typeSignature = null;

@@ -41,8 +41,7 @@ public class Analysis {
 	private final Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable;
 	private final Map<String, String> alternativeAlias;
 	private final Map<String, List<AnnotationMapping<Boolean>>> alternativeMandatory;
-	private final Set<String> alternativeCtors;
-	private final Set<String> alternativeFactories;
+	private final Set<String> alternativeCreators;
 	private final Map<String, String> alternativeIndex;
 
 	public static class AnnotationMapping<T> {
@@ -63,7 +62,7 @@ public class Analysis {
 	}
 
 	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, Set<String> supportedTypes, ContainerSupport containerSupport) {
-		this(processingEnv, annotationUsage, logLevel, supportedTypes, containerSupport, null, null, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
+		this(processingEnv, annotationUsage, logLevel, supportedTypes, containerSupport, null, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
 	}
 
 	public Analysis(
@@ -76,8 +75,7 @@ public class Analysis {
 			@Nullable Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable,
 			@Nullable Map<String, String> alternativeAlias,
 			@Nullable Map<String, List<AnnotationMapping<Boolean>>> alternativeMandatory,
-			@Nullable Set<String> alternativeCtors,
-			@Nullable Set<String> alternativeFactories,
+			@Nullable Set<String> alternativeCreators,
 			@Nullable Map<String, String> alternativeIndex,
 			@Nullable UnknownTypes unknownTypes,
 			boolean onlyBasicFeatures,
@@ -101,8 +99,7 @@ public class Analysis {
 		this.alternativeNonNullable = alternativeNonNullable == null ? new HashMap<String, List<AnnotationMapping<Boolean>>>() : alternativeNonNullable;
 		this.alternativeAlias = alternativeAlias == null ? new HashMap<String, String>() : alternativeAlias;
 		this.alternativeMandatory = alternativeMandatory == null ? new HashMap<String, List<AnnotationMapping<Boolean>>>() : alternativeMandatory;
-		this.alternativeCtors = alternativeCtors == null ? new HashSet<String>() : alternativeCtors;
-		this.alternativeFactories = alternativeFactories == null ? new HashSet<String>() : alternativeFactories;
+		this.alternativeCreators = alternativeCreators == null ? new HashSet<String>() : alternativeCreators;
 		this.alternativeIndex = alternativeIndex == null ? new HashMap<String, String>() : alternativeIndex;
 		this.unknownTypes = unknownTypes == null ? UnknownTypes.ERROR : unknownTypes;
 		this.onlyBasicFeatures = onlyBasicFeatures;
@@ -139,15 +136,24 @@ public class Analysis {
 		for (Element el : targets) {
 			Element classElement;
 			ExecutableElement factory = null;
+			ExecutableElement builder = null;
 			if (el instanceof TypeElement) {
 				classElement = el;
 			} else if (el instanceof ExecutableElement && el.getKind() == ElementKind.METHOD) {
-				factory = (ExecutableElement)el;
-				classElement = types.asElement(factory.getReturnType());
+				ExecutableElement ee = (ExecutableElement)el;
+				Element returnClass = types.asElement(ee.getReturnType());
+				Element enclosing = ee.getEnclosingElement();
+				if (!el.getModifiers().contains(Modifier.STATIC)
+						&& !types.isSameType(ee.getReturnType(), enclosing.asType())
+						&& returnClass.toString().equals(enclosing.getEnclosingElement().toString())) {
+					builder = ee;
+				}
+				factory = ee;
+				classElement = returnClass;
 			} else {
 				classElement = el.getEnclosingElement();
 			}
-			findStructs(classElement, currentAnnotationType, currentAnnotationType + " requires accessible public constructor", path, factory);
+			findStructs(classElement, currentAnnotationType, currentAnnotationType + " requires accessible public constructor", path, factory, builder);
 		}
 		findRelatedReferences();
 		findImplementations(structs.values());
@@ -158,7 +164,7 @@ public class Analysis {
 			final StructInfo info = it.getValue();
 			final String className = it.getKey();
 			if (info.type == ObjectType.CLASS && info.constructor == null && info.factory == null
-					&& !info.hasKnownConversion() && info.matchingConstructors != null) {
+					&& info.builder == null && !info.hasKnownConversion() && info.matchingConstructors != null) {
 				hasError = true;
 				if (info.matchingConstructors.size() == 0) {
 					messager.printMessage(
@@ -224,7 +230,7 @@ public class Analysis {
 					}
 				}
 			}
-			if (unknownTypes != UnknownTypes.ALLOW && info.type == ObjectType.MIXIN && info.implementations.isEmpty()) {
+			if (info.builder == null && unknownTypes != UnknownTypes.ALLOW && info.type == ObjectType.MIXIN && info.implementations.isEmpty()) {
 				String what = info.element.getKind() == ElementKind.INTERFACE ? "Interface" : "Abstract class";
 				String one = info.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
 				hasError = hasError || unknownTypes == UnknownTypes.ERROR;
@@ -295,6 +301,44 @@ public class Analysis {
 					}
 				}
 			}
+			if (info.type == ObjectType.CLASS && !info.hasKnownConversion() && info.factory == null && info.constructor == null && info.builder != null) {
+				if (onlyBasicFeatures) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Builder pattern is not available with current analysis setup",
+							info.builder.type,
+							info.builder.annotation);
+				} else if (requiresPublic(info.builder.type) && !info.builder.type.getModifiers().contains(Modifier.PUBLIC)) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Builder type: '" + info.builder.type + "' is not accessible",
+							info.builder.build,
+							info.builder.annotation);
+				} else if (!types.isAssignable(info.builder.build.getReturnType(), info.element.asType())) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Wrong builder result type: '" + info.builder.build.getReturnType() + "'. Result must be assignable to '" + info.element.asType() + "'",
+							info.builder.build,
+							info.builder.annotation);
+				} else if (!info.builder.build.getParameters().isEmpty()) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Builder method: '" + info.builder.build.getSimpleName() + "' can't have parameters",
+							info.builder.build,
+							info.builder.annotation);
+				} else if (info.builder.factory != null && !types.isSameType(info.builder.factory.getReturnType(), info.builder.type.asType())) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Wrong builder factory result type: '" + info.builder.build.getReturnType() + "'. Expecting: '" + info.builder.type + "'",
+							info.builder.factory,
+							info.builder.annotation);
+				}
+			}
 			if (info.checkHashCollision()) {
 				hasError = true;
 				messager.printMessage(
@@ -344,7 +388,7 @@ public class Analysis {
 						info.element,
 						info.annotation);
 			} else if (info.type == ObjectType.CLASS && !onlyBasicFeatures && !info.hasEmptyCtor() && !info.hasKnownConversion()
-					&& info.factory == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
+					&& info.factory == null && info.builder == null && (info.constructor == null || info.constructor.getParameters().size() != info.attributes.size())) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
@@ -539,22 +583,29 @@ public class Analysis {
 			for (StructInfo info : items) {
 				if (info.hasKnownConversion()) continue;
 				path.push(info.element.getSimpleName().toString());
-				if (includeBeanMethods) {
-					for (Map.Entry<String, AccessElements> p : getBeanProperties(info.element, info.constructor, info.factory).entrySet()) {
-						analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "bean property", path);
+				if (!onlyBasicFeatures && info.builder != null && info.constructor == null && info.factory == null) {
+					for (Map.Entry<String, AccessElements> p : getBuilderProperties(info.element, info.builder, includeBeanMethods, includeExactMethods, includeFields).entrySet()) {
+						AccessElements ae = p.getValue();
+						analyzeAttribute(info, ae.field != null ? ae.field.asType() : ae.read.getReturnType(), p.getKey(), ae, "builder property", path);
 					}
-				}
-				if (includeExactMethods) {
-					for (Map.Entry<String, AccessElements> p : getExactProperties(info.element, info.constructor, info.factory).entrySet()) {
-						if (!info.attributes.containsKey(p.getKey()) || info.annotation != null) {
-							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path);
+				} else {
+					if (includeBeanMethods) {
+						for (Map.Entry<String, AccessElements> p : getBeanProperties(info.element, info.constructor, info.factory).entrySet()) {
+							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "bean property", path);
 						}
 					}
-				}
-				if (includeFields) {
-					for (Map.Entry<String, AccessElements> f : getPublicFields(info.element, onlyBasicFeatures, info.constructor, info.factory).entrySet()) {
-						if (!info.attributes.containsKey(f.getKey()) || info.annotation != null) {
-							analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path);
+					if (includeExactMethods) {
+						for (Map.Entry<String, AccessElements> p : getExactProperties(info.element, info.constructor, info.factory).entrySet()) {
+							if (!info.attributes.containsKey(p.getKey()) || info.annotation != null) {
+								analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path);
+							}
+						}
+					}
+					if (includeFields) {
+						for (Map.Entry<String, AccessElements> f : getPublicFields(info.element, onlyBasicFeatures, info.constructor, info.factory).entrySet()) {
+							if (!info.attributes.containsKey(f.getKey()) || info.annotation != null) {
+								analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path);
+							}
 						}
 					}
 				}
@@ -676,14 +727,14 @@ public class Analysis {
 		if (supportedTypes.contains(typeName)) return;
 		TypeElement el = elements.getTypeElement(typeName);
 		if (el != null) {
-			findStructs(el, discoveredBy, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
+			findStructs(el, discoveredBy, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null, null);
 			return;
 		}
 		if (returnType instanceof ArrayType) {
 			ArrayType at = (ArrayType) returnType;
 			el = elements.getTypeElement(at.getComponentType().toString());
 			if (el != null) {
-				findStructs(el, discoveredBy,el + " is referenced as array " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
+				findStructs(el, discoveredBy,el + " is referenced as array " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null, null);
 				return;
 			}
 		}
@@ -692,7 +743,7 @@ public class Analysis {
 		String containerType = typeName.substring(0, genInd);
 		if (!onlyBasicFeatures && !structs.containsKey(containerType) && !containerSupport.isSupported(containerType)) {
 			TypeElement generics = elements.getTypeElement(containerType);
-			findStructs(generics, discoveredBy, generics + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
+			findStructs(generics, discoveredBy, generics + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null, null);
 		}
 		String subtype = typeName.substring(genInd + 1, typeName.lastIndexOf('>'));
 		if (supportedTypes.contains(subtype)) return;
@@ -705,7 +756,7 @@ public class Analysis {
 					if (!el.getTypeParameters().isEmpty()) {
 						if (containerSupport.isSupported(st)) continue;
 					}
-					findStructs(el, discoveredBy, el + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null);
+					findStructs(el, discoveredBy, el + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null, null);
 				}
 			}
 		}
@@ -721,7 +772,13 @@ public class Analysis {
 		return packageClass != null && packageClass.isSealed();
 	}
 
-	private void findStructs(Element el, DeclaredType discoveredBy, String errorMessge, Stack<String> path, @Nullable ExecutableElement factory) {
+	private void findStructs(
+			Element el,
+			DeclaredType discoveredBy,
+			String errorMessge,
+			Stack<String> path,
+			@Nullable ExecutableElement factory,
+			@Nullable ExecutableElement builder) {
 		if (!(el instanceof TypeElement)) return;
 		String typeName = el.toString();
 		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) return;
@@ -793,7 +850,7 @@ public class Analysis {
 							if (deserializeAs.asType().toString().equals(element.asType().toString())) {
 								deserializeAs = null;
 							} else {
-								findStructs(deserializeAs, discoveredBy, errorMessge, path, null);
+								findStructs(deserializeAs, discoveredBy, errorMessge, path, null, null);
 							}
 						}
 					}
@@ -827,6 +884,8 @@ public class Analysis {
 			}
 			String name = "struct" + structs.size();
 			String binaryName = elements.getBinaryName(element).toString();
+			BuilderInfo builderInfo = findBuilder(element, discoveredBy, builder);
+			ExecutableElement factoryAnn = findAnnotatedFactory(element, discoveredBy, factory, builderInfo);
 			StructInfo info =
 					new StructInfo(
 							element,
@@ -837,7 +896,8 @@ public class Analysis {
 							jsonObjectReaderPath,
 							findMatchingConstructors(element),
 							findAnnotatedConstructor(element, discoveredBy),
-							findAnnotatedFactory(element, discoveredBy, factory),
+							factoryAnn,
+							builderInfo,
 							annotation,
 							onUnknown,
 							typeSignature,
@@ -921,7 +981,7 @@ public class Analysis {
 				return constructor;
 			}
 			for (AnnotationMirror ann : constructor.getAnnotationMirrors()) {
-				if (alternativeCtors.contains(ann.getAnnotationType().toString())) {
+				if (alternativeCreators.contains(ann.getAnnotationType().toString())) {
 					if (constructor.getModifiers().contains(Modifier.PRIVATE)
 							|| constructor.getModifiers().contains(Modifier.PROTECTED)
 							|| requiresPublic(element) && !constructor.getModifiers().contains(Modifier.PUBLIC)) {
@@ -940,7 +1000,11 @@ public class Analysis {
 	}
 
 	@Nullable
-	private ExecutableElement findAnnotatedFactory(Element element, DeclaredType discoveredBy, @Nullable ExecutableElement factory) {
+	private ExecutableElement findAnnotatedFactory(
+			Element element,
+			DeclaredType discoveredBy,
+			@Nullable ExecutableElement factory,
+			@Nullable BuilderInfo builder) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM) {
 			return null;
@@ -955,7 +1019,7 @@ public class Analysis {
 					break;
 				}
 				for (AnnotationMirror ann : method.getAnnotationMirrors()) {
-					if (alternativeFactories.contains(ann.getAnnotationType().toString())) {
+					if (alternativeCreators.contains(ann.getAnnotationType().toString())) {
 						if (method.getModifiers().contains(Modifier.PRIVATE)
 								|| requiresPublic(element) && !method.getModifiers().contains(Modifier.PUBLIC)) {
 							factory = method;
@@ -986,6 +1050,7 @@ public class Analysis {
 		if (factory.getModifiers().contains(Modifier.PRIVATE)
 				|| !isStaticMethod && !isSingletonInstanceMethod
 				|| requiresPublic(factory.getEnclosingElement()) && !factory.getModifiers().contains(Modifier.PUBLIC)) {
+			if (builder != null) return null;
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
@@ -994,6 +1059,49 @@ public class Analysis {
 					annotation != null ? annotation : getAnnotation(factory, discoveredBy));
 		}
 		return factory;
+	}
+
+	@Nullable
+	private BuilderInfo findBuilder(Element element, DeclaredType discoveredBy, @Nullable ExecutableElement builder) {
+		if (element.getKind() == ElementKind.ENUM) {
+			return null;
+		}
+		ExecutableElement factory = null;
+		ExecutableElement build = builder;
+		TypeElement builderType = null;
+		if (builder != null) {
+			Element ee = builder.getEnclosingElement();
+			if (ee instanceof TypeElement) {
+				builderType = (TypeElement) ee;
+			}
+		}
+		for (ExecutableElement method : ElementFilter.methodsIn(element.getEnclosedElements())) {
+			if (method.getModifiers().contains(Modifier.STATIC) && method.getModifiers().contains(Modifier.PUBLIC)) {
+				Element nested = types.asElement(method.getReturnType());
+				if (nested instanceof TypeElement && element.getEnclosedElements().contains(nested)
+						&& method.getParameters().isEmpty()) {
+					if (builderType != null && !builderType.toString().equals(nested.toString())) continue;
+					factory = method;
+					builderType = (TypeElement) nested;
+					break;
+				}
+			}
+		}
+		if (builderType == null) return null;
+		if (build == null) {
+			for (ExecutableElement method : ElementFilter.methodsIn(builderType.getEnclosedElements())) {
+				if (method.getParameters().isEmpty() && !method.getModifiers().contains(Modifier.STATIC)
+						&& types.isSameType(method.getReturnType(), element.asType())) {
+					build = method;
+					break;
+				}
+			}
+			if (build == null) return null;
+		}
+		AnnotationMirror annotation = getAnnotation(build, discoveredBy);
+		List<ExecutableElement> ctors = findMatchingConstructors(builderType);
+		ExecutableElement ctor = ctors != null && ctors.size() == 1 ? ctors.get(0) : null;
+		return new BuilderInfo(factory, ctor, builderType, build, annotation);
 	}
 
 	private enum PartKind {
@@ -1282,6 +1390,14 @@ public class Analysis {
 		public static AccessElements readOnly(ExecutableElement read, VariableElement arg, @Nullable AnnotationMirror annotation) {
 			return new AccessElements(read, null, arg, null, annotation);
 		}
+
+		public static AccessElements readOnly(VariableElement field, VariableElement arg, @Nullable AnnotationMirror annotation) {
+			return new AccessElements(null, null, arg, field, annotation);
+		}
+
+		public static AccessElements readOnly(VariableElement field, ExecutableElement write, @Nullable AnnotationMirror annotation) {
+			return new AccessElements(null, write, null, field, annotation);
+		}
 	}
 
 	private Map<String, VariableElement> getArguments(@Nullable ExecutableElement element) {
@@ -1424,6 +1540,108 @@ public class Analysis {
 		return result;
 	}
 
+	public Map<String, AccessElements> getBuilderProperties(
+			TypeElement element,
+			BuilderInfo builder,
+			boolean withBeans,
+			boolean withExact,
+			boolean withFields) {
+		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
+		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
+		Map<String, VariableElement> fields = new HashMap<String, VariableElement>();
+		Map<String, VariableElement> arguments = getArguments(builder.ctor);
+		TypeMirror builderType = builder.type.asType();
+		for (TypeElement inheritance : getTypeHierarchy(element)) {
+			boolean isPublicInterface = inheritance.getKind() == ElementKind.INTERFACE
+					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
+			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
+				String name = method.getSimpleName().toString();
+				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
+						|| method.getModifiers().contains(Modifier.PUBLIC)
+						&& !method.getModifiers().contains(Modifier.STATIC)
+						&& !method.getModifiers().contains(Modifier.NATIVE)
+						&& !method.getModifiers().contains(Modifier.TRANSIENT);
+				if (!isAccessible) {
+					continue;
+				}
+				String property = name.length() < 4 || !name.startsWith("get")
+						? name
+						: name.length() > 4 && name.substring(3).toUpperCase().equals(name.substring(3))
+						? name.substring(3)
+						: name.substring(3, 4).toLowerCase() + name.substring(4);
+				if (method.getParameters().size() == 0 && method.getReturnType() != null) {
+					boolean canAdd = withExact || withBeans && name.startsWith("get") && name.length() > 4;
+					if (canAdd && !getters.containsKey(property)) {
+						getters.put(property, method);
+					}
+				}
+			}
+			if (withFields) {
+				for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
+					String name = field.getSimpleName().toString();
+					boolean isFinal = field.getModifiers().contains(Modifier.FINAL);
+					boolean isAccessible = field.getModifiers().contains(Modifier.PUBLIC)
+							&& !field.getModifiers().contains(Modifier.NATIVE)
+							&& !field.getModifiers().contains(Modifier.TRANSIENT)
+							&& !field.getModifiers().contains(Modifier.STATIC);
+					if (!isAccessible || !isFinal) {
+						continue;
+					}
+					fields.put(name, field);
+				}
+			}
+		}
+		for (ExecutableElement method : ElementFilter.methodsIn(builder.type.getEnclosedElements())) {
+			String name = method.getSimpleName().toString();
+			boolean isAccessible = !method.getModifiers().contains(Modifier.PRIVATE)
+					|| method.getModifiers().contains(Modifier.PUBLIC)
+					&& !method.getModifiers().contains(Modifier.STATIC)
+					&& !method.getModifiers().contains(Modifier.NATIVE)
+					&& !method.getModifiers().contains(Modifier.TRANSIENT);
+			if (!isAccessible) {
+				continue;
+			}
+			String property = name.length() < 4 || !name.startsWith("set")
+					? name
+					: name.length() > 4 && name.substring(3).toUpperCase().equals(name.substring(3))
+					? name.substring(3)
+					: name.substring(3, 4).toLowerCase() + name.substring(4);
+			if (method.getParameters().size() == 1 && types.isSameType(method.getReturnType(), builderType)) {
+				boolean canAdd = withExact || withBeans && name.startsWith("set") && name.length() > 4;
+				if (canAdd && !setters.containsKey(property)) {
+					setters.put(property, method);
+				}
+			}
+		}
+		Map<String, AccessElements> result = new HashMap<String, AccessElements>();
+		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
+			ExecutableElement setter = setters.get(kv.getKey());
+			VariableElement setArg = setter == null ? null : setter.getParameters().get(0);
+			VariableElement arg = arguments.get(kv.getKey());
+			String returnType = kv.getValue().getReturnType().toString();
+			AnnotationMirror annotation = annotation(kv.getValue(), setter, null, arg);
+			if (setArg != null && (setArg.asType().toString().equals(returnType) || (setArg.asType() + "<").startsWith(returnType))) {
+				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
+			} else if (!onlyBasicFeatures && arg != null && isCompatibileType(arg.asType(), kv.getValue().getReturnType())) {
+				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
+			}
+		}
+		for (Map.Entry<String, VariableElement> kv : fields.entrySet()) {
+			if (result.containsKey(kv.getKey())) continue;
+			ExecutableElement setter = setters.get(kv.getKey());
+			VariableElement setArg = setter == null ? null : setter.getParameters().get(0);
+			VariableElement arg = arguments.get(kv.getKey());
+			String returnType = kv.getValue().asType().toString();
+			AnnotationMirror annotation = annotation(null, setter, kv.getValue(), arg);
+			if (setArg != null && (setArg.asType().toString().equals(returnType) || (setArg.asType() + "<").startsWith(returnType))) {
+				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), setter, annotation));
+			} else if (arg != null && isCompatibileType(arg.asType(), kv.getValue().asType())) {
+				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
+			}
+		}
+		return result;
+	}
+
 	public void findImplementations(Collection<StructInfo> structs) {
 		for (StructInfo current : structs) {
 			if (current.type == ObjectType.MIXIN) {
@@ -1501,8 +1719,11 @@ public class Analysis {
 	}
 
 	@Nullable
-	private AnnotationMirror annotation(@Nullable ExecutableElement read, @Nullable ExecutableElement write,
-                                        @Nullable VariableElement field, @Nullable VariableElement arg) {
+	private AnnotationMirror annotation(
+			@Nullable ExecutableElement read,
+			@Nullable ExecutableElement write,
+            @Nullable VariableElement field,
+			@Nullable VariableElement arg) {
 		AnnotationMirror dslAnn = read == null ? null : getAnnotation(read, attributeType);
 		if (dslAnn != null) return dslAnn;
 		dslAnn = write == null ? null : getAnnotation(write, attributeType);
@@ -1526,8 +1747,8 @@ public class Analysis {
 	}
 
 	@Nullable
-	private AnnotationMirror scanClassForAnnotation(TypeElement element, DeclaredType annotationType, @Nullable ExecutableElement factory) {
-		AnnotationMirror target = factory != null ? getAnnotation(factory, annotationType) : null;
+	private AnnotationMirror scanClassForAnnotation(TypeElement element, DeclaredType annotationType, @Nullable ExecutableElement custom) {
+		AnnotationMirror target = custom != null ? getAnnotation(custom, annotationType) : null;
 		if (target != null) return target;
 		target = getAnnotation(element, annotationType);
 		if (target != null) return target;

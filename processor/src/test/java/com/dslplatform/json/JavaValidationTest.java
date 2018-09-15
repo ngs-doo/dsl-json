@@ -591,4 +591,28 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void whitelistingObject() {
 		checkValidCompilation(UnknownTypeWithConverter.class, UnknownTypeWithConverter.Generic.class);
 	}
+
+	@Test
+	public void builderWithoutCtor() {
+		checkValidCompilation(ValidBuilderWithoutCtor.class);
+	}
+
+	@Test
+	public void builderWithClassAnnotation() {
+		checkValidCompilation(ValidBuilderAnnotationOnClass.class);
+	}
+
+	@Test
+	public void invalidBuildWithArg() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				27,
+				compileTestCase(InvalidBuilderWithArgument.class, InvalidBuilderWithArgument.Builder.class),
+				"Builder method: 'build' can't have parameters");
+	}
+
+	@Test
+	public void builderWithAbstract() {
+		checkValidCompilation(ValidAbstractBuilder.class);
+	}
 }
