@@ -6,10 +6,7 @@ import com.dslplatform.json.Nullable;
 import javax.lang.model.element.*;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AttributeInfo {
 	public final String id;
@@ -33,6 +30,8 @@ public class AttributeInfo {
 	public final String typeName;
 	public final boolean isArray;
 	public final boolean isList;
+	public final boolean isSet;
+	public final boolean isMap;
 	public final boolean isGeneric;
 	public final Map<String, Integer> typeVariablesIndex;
 	public final boolean containsStructOwnerType;
@@ -74,6 +73,10 @@ public class AttributeInfo {
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 		this.isArray = type.getKind() == TypeKind.ARRAY;
 		this.isList = typeName.startsWith("java.util.List<") || typeName.startsWith("java.util.ArrayList<");
+		this.isSet = typeName.startsWith("java.util.Set<") || typeName.startsWith("java.util.HashSet<")
+				|| typeName.startsWith("java.util.LinkedHashSet<");
+		this.isMap = typeName.startsWith("java.util.Map<") || typeName.startsWith("java.util.HashMap<")
+				|| typeName.startsWith("java.util.LinkedHashMap<");
 		this.typeVariablesIndex = typeVariablesIndex;
 		this.isGeneric = !typeVariablesIndex.isEmpty();
 		this.containsStructOwnerType = containsStructOwnerType;
@@ -85,14 +88,22 @@ public class AttributeInfo {
 	}
 
 	@Nullable
-	public String collectionContent(Set<String> knownTypes) {
+	public List<String> collectionContent(Set<String> knownTypes) {
 		if (isArray) {
 			String content = typeName.substring(0, typeName.length() - 2);
-			return knownTypes.contains(content) ? content : null;
-		} else if (isList) {
+			return knownTypes.contains(content) ? Collections.singletonList(content) : null;
+		} else if (isList || isSet) {
 			int ind = typeName.indexOf('<');
 			String content = typeName.substring(ind + 1, typeName.length() - 1);
-			return knownTypes.contains(content) ? content : null;
+			return knownTypes.contains(content) ? Collections.singletonList(content) : null;
+		} else if (isMap) {
+			int indGen = typeName.indexOf('<');
+			int indComma = typeName.indexOf(',', indGen + 1);
+			String content1 = typeName.substring(indGen + 1, indComma);
+			String content2 = typeName.substring(indComma + 1, typeName.length() - 1);
+			return knownTypes.contains(content1) && knownTypes.contains(content2)
+					? Arrays.asList(content1, content2)
+					: null;
 		}
 		return null;
 	}

@@ -2,6 +2,11 @@ package com.dslplatform.json.processor;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
 
@@ -79,5 +84,29 @@ final class Context {
 			}
 		}
 		return result;
+	}
+
+	static String extractRawType(TypeMirror type) {
+		if (type.getKind() == TypeKind.DECLARED) {
+			return ((DeclaredType) type).asElement().toString();
+		} else {
+			return type.toString();
+		}
+	}
+
+	void serializeKnownCollection(AttributeInfo attr) throws IOException {
+		if (attr.isArray) {
+			String content = extractRawType(((ArrayType) attr.type).getComponentType());
+			code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
+			code.append(", emptyArray_").append(attr.name).append(")");
+		} else if (attr.isList) {
+			code.append("reader.readCollection(reader_").append(attr.name).append(")");
+		} else if (attr.isSet) {
+			code.append("reader.readSet(reader_").append(attr.name).append(")");
+		} else if (attr.isMap) {
+			code.append("reader.readMap(key_reader_").append(attr.name).append(", value_reader_").append(attr.name).append(")");
+		} else {
+			throw new IllegalArgumentException("Unknown attribute collection " + attr.name);
+		}
 	}
 }

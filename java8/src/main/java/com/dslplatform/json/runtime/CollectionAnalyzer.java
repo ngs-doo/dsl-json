@@ -13,9 +13,9 @@ public abstract class CollectionAnalyzer {
 	public static class Runtime {
 		public static final JsonReader.ReadObject<List<Object>> JSON_READER = new JsonReader.ReadObject<List<Object>>() {
 			@Override
-			public List<Object> read(JsonReader r) throws IOException {
-				if (r.wasNull()) return null;
-				return ObjectConverter.deserializeList(r);
+			public List<Object> read(JsonReader reader) throws IOException {
+				if (reader.wasNull()) return null;
+				return ObjectConverter.deserializeList(reader);
 			}
 		};
 		public static final JsonWriter.WriteObject<List<Object>> JSON_WRITER = new JsonWriter.WriteObject<List<Object>>() {

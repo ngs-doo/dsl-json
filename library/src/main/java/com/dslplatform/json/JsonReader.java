@@ -1426,6 +1426,54 @@ public final class JsonReader<TContext> {
 	}
 
 	@Nullable
+	public final <T> LinkedHashSet<T> readSet(final ReadObject<T> readObject) throws IOException {
+		if (wasNull()) return null;
+		if (last != '[') throw new IOException("Expecting '[' " + positionDescription() + ". Found " + (char) last);
+		if (getNextToken() == ']') return new LinkedHashSet<T>(0);
+		final LinkedHashSet<T> res = new LinkedHashSet<T>(4);
+		res.add(readObject.read(this));
+		while (getNextToken() == ',') {
+			getNextToken();
+			res.add(readObject.read(this));
+		}
+		checkArrayEnd();
+		return res;
+	}
+
+	@Nullable
+	public final <K, V> LinkedHashMap<K, V> readMap(final ReadObject<K> readKey, final ReadObject<V> readValue) throws IOException {
+		if (wasNull()) return null;
+		if (last != '{') throw new IOException("Expecting '{' " + positionDescription() + ". Found " + (char) last);
+		if (getNextToken() == ']') return new LinkedHashMap<K, V>(0);
+		final LinkedHashMap<K, V> res = new LinkedHashMap<K, V>(4);
+		K key = readKey.read(this);
+		if (key == null) {
+			throw new IOException("Null detected as key " + positionDescription());
+		}
+		if (getNextToken() != ':') {
+			throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) last);
+		}
+		getNextToken();
+		V value = readValue.read(this);
+		res.put(key, value);
+		while (getNextToken() == ',') {
+			getNextToken();
+			key = readKey.read(this);
+			if (key == null) {
+				throw new IOException("Null detected as key " + positionDescription());
+			}
+			if (getNextToken() != ':') {
+				throw new IOException("Expecting ':' " + positionDescription() + ". Found " + (char) last);
+			}
+			getNextToken();
+			value = readValue.read(this);
+			res.put(key, value);
+		}
+		checkObjectEnd();
+		return res;
+	}
+
+	@Nullable
 	public final <T> T[] readArray(final ReadObject<T> readObject, final T[] emptyArray) throws IOException {
 		if (wasNull()) return null;
 		if (last != '[') throw new IOException("Expecting '[' " + positionDescription() + ". Found " + (char) last);

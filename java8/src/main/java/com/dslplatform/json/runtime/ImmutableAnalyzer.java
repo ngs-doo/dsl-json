@@ -232,11 +232,14 @@ public abstract class ImmutableAnalyzer {
 		final ImmutableDescription<T> converter = new ImmutableDescription<>(
 				manifest,
 				defArgs,
-				args -> {
-					try {
-						return raw.cast(ctor.newInstance(args));
-					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-						throw new RuntimeException(e);
+				new Settings.Function<Object[], T>() {
+					@Override
+					public T apply(@Nullable Object[] args) {
+						try {
+							return raw.cast(ctor.newInstance(args));
+						} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+							throw new RuntimeException(e);
+						}
 					}
 				},
 				writeProps,

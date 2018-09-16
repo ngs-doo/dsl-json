@@ -13,9 +13,9 @@ public abstract class ArrayAnalyzer {
 	public static class Runtime {
 		public static final JsonReader.ReadObject<Object[]> JSON_READER = new JsonReader.ReadObject<Object[]>() {
 			@Override
-			public Object[] read(JsonReader r) throws IOException {
-				if (r.wasNull()) return null;
-				return ObjectConverter.deserializeList(r).toArray();
+			public Object[] read(JsonReader reader) throws IOException {
+				if (reader.wasNull()) return null;
+				return ObjectConverter.deserializeList(reader).toArray();
 			}
 		};
 		public static final JsonWriter.WriteObject<Object[]> JSON_WRITER = new JsonWriter.WriteObject<Object[]>() {

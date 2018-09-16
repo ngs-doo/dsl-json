@@ -624,4 +624,10 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(InvalidBuilderWithCtorArgs.class, InvalidBuilderWithCtorArgs.Builder.class),
 				"Builder constructor for: 'com.dslplatform.json.models.InvalidBuilderWithCtorArgs.Builder' can't have parameters");
 	}
+
+	@Test
+	public void genericWithTypes() {
+		checkValidCompilation(GenericWithVariousTypes.class);
+	}
+
 }

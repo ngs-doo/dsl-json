@@ -1,7 +1,6 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
-import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
@@ -115,19 +114,27 @@ class ConverterTemplate {
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
 			StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
-				String content = attr.collectionContent(context.knownTypes);
+				List<String> types = attr.collectionContent(context.knownTypes);
 				if (target != null && attr.isEnum(context.structs)) {
 					code.append("\t\tprivate final ").append(findConverterName(target)).append(".EnumConverter converter_").append(attr.name).append(";\n");
-				} else if (content != null || (attr.isGeneric && !attr.containsStructOwnerType)) {
+				} else if (types != null && types.size() == 1 || (attr.isGeneric && !attr.containsStructOwnerType)) {
+					String content;
 					if (attr.isGeneric) {
 						if (attr.isArray) {
 							content = ((ArrayType) attr.type).getComponentType().toString();
 						} else {
 							content = attr.typeName;
 						}
+					} else {
+						content = types.get(0);
 					}
 					code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(content).append("> reader_").append(attr.name).append(";\n");
 					code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(content).append("> writer_").append(attr.name).append(";\n");
+				} else if (types != null && types.size() == 2) {
+					code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(types.get(0)).append("> key_reader_").append(attr.name).append(";\n");
+					code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(types.get(1)).append("> value_reader_").append(attr.name).append(";\n");
+					code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(types.get(0)).append("> key_writer_").append(attr.name).append(";\n");
+					code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(types.get(1)).append("> value_writer_").append(attr.name).append(";\n");
 				} else {
 					String type;
 					if (attr.isGeneric) {
@@ -142,7 +149,7 @@ class ConverterTemplate {
 					code.append("\t\t\t\tjava.lang.reflect.Type manifest = ").append(type).append(";\n");
 					code.append("\t\t\t\treader_").append(attr.name).append(" = __dsljson.tryFindReader(manifest);\n");
 					code.append("\t\t\t\tif (reader_").append(attr.name).append(" == null) {\n");
-					code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest);\n");
+					code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.basicSetup())\");\n");
 					code.append("\t\t\t\t}\n");
 					code.append("\t\t\t}\n");
 					code.append("\t\t\treturn reader_").append(attr.name).append(";\n");
@@ -154,14 +161,14 @@ class ConverterTemplate {
 					code.append("\t\t\t\tjava.lang.reflect.Type manifest = ").append(type).append(";\n");
 					code.append("\t\t\t\twriter_").append(attr.name).append(" = __dsljson.tryFindWriter(manifest);\n");
 					code.append("\t\t\t\tif (writer_").append(attr.name).append(" == null) {\n");
-					code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest);\n");
+					code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.basicSetup())\");\n");
 					code.append("\t\t\t\t}\n");
 					code.append("\t\t\t}\n");
 					code.append("\t\t\treturn writer_").append(attr.name).append(";\n");
 					code.append("\t\t}\n");
 				}
 				if (attr.isArray) {
-					content = extractRawType(((ArrayType) attr.type).getComponentType());
+					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType());
 					code.append("\t\tprivate final ").append(content).append("[] emptyArray_").append(attr.name).append(";\n");
 				}
 			}
@@ -180,15 +187,41 @@ class ConverterTemplate {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			String content = attr.collectionContent(context.knownTypes);
+			List<String> types = attr.collectionContent(context.knownTypes);
 			StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
 				if (target != null && attr.isEnum(context.structs)) {
 					code.append("\t\t\tthis.converter_").append(attr.name).append(" = new ").append(findConverterName(target)).append(".EnumConverter(__dsljson);\n");
-				} else if (content != null) {
-					String type = typeOrClass(nonGenericObject(content), content);
-					code.append("\t\t\tthis.reader_").append(attr.name).append(" = __dsljson.tryFindReader(").append(type).append(");\n");
-					code.append("\t\t\tthis.writer_").append(attr.name).append(" = __dsljson.tryFindWriter(").append(type).append(");\n");
+				} else if (types != null && types.size() == 1) {
+					String content = types.get(0);
+					OptimizedConverter converter = context.inlinedConverters.get(content);
+					if (converter != null) {
+						code.append("\t\t\tthis.reader_").append(attr.name).append(" = ").append(converter.decoderField).append(";\n");
+						code.append("\t\t\tthis.writer_").append(attr.name).append(" = ").append(converter.encoderField).append(";\n");
+					} else {
+						String type = typeOrClass(nonGenericObject(content), content);
+						code.append("\t\t\tthis.reader_").append(attr.name).append(" = __dsljson.tryFindReader(").append(type).append(");\n");
+						code.append("\t\t\tthis.writer_").append(attr.name).append(" = __dsljson.tryFindWriter(").append(type).append(");\n");
+					}
+				} else if (types != null && types.size() == 2) {
+					OptimizedConverter converterKey = context.inlinedConverters.get(types.get(0));
+					if (converterKey != null) {
+						code.append("\t\t\tthis.key_reader_").append(attr.name).append(" = ").append(converterKey.decoderField).append(";\n");
+						code.append("\t\t\tthis.key_writer_").append(attr.name).append(" = ").append(converterKey.encoderField).append(";\n");
+					} else {
+						String typeKey = typeOrClass(nonGenericObject(types.get(0)), types.get(0));
+						code.append("\t\t\tthis.key_reader_").append(attr.name).append(" = __dsljson.tryFindReader(").append(typeKey).append(");\n");
+						code.append("\t\t\tthis.key_writer_").append(attr.name).append(" = __dsljson.tryFindWriter(").append(typeKey).append(");\n");
+					}
+					OptimizedConverter converterValue = context.inlinedConverters.get(types.get(1));
+					if (converterValue != null) {
+						code.append("\t\t\tthis.value_reader_").append(attr.name).append(" = ").append(converterValue.decoderField).append(";\n");
+						code.append("\t\t\tthis.value_writer_").append(attr.name).append(" = ").append(converterValue.encoderField).append(";\n");
+					} else {
+						String typeValue = typeOrClass(nonGenericObject(types.get(1)), types.get(1));
+						code.append("\t\t\tthis.value_reader_").append(attr.name).append(" = __dsljson.tryFindReader(").append(typeValue).append(");\n");
+						code.append("\t\t\tthis.value_writer_").append(attr.name).append(" = __dsljson.tryFindWriter(").append(typeValue).append(");\n");
+					}
 				} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 					String type;
 					if (attr.isArray) {
@@ -200,23 +233,25 @@ class ConverterTemplate {
 					code.append("\t\t\tjava.lang.reflect.Type manifest_").append(attr.name).append(" = ").append(type).append(";\n");
 					code.append("\t\t\tthis.reader_").append(attr.name).append(" = __dsljson.tryFindReader(manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\tif (reader_").append(attr.name).append(" == null) {\n");
-					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest_").append(attr.name).append(");\n");
+					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest_").append(attr.name);
+					code.append(" + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.withRuntime().includeServiceLoader())\");\n");
 					code.append("\t\t\t}\n");
 
 					code.append("\t\t\tthis.writer_").append(attr.name).append(" = __dsljson.tryFindWriter(manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\tif (writer_").append(attr.name).append(" == null) {\n");
-					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest_").append(attr.name).append(");\n");
+					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest_").append(attr.name);
+					code.append(" + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.withRuntime().includeServiceLoader())\");\n");
 					code.append("\t\t\t}\n");
 				}
 				if (attr.isArray) {
 					TypeMirror arrayComponentType = ((ArrayType) attr.type).getComponentType();
 					if (arrayComponentType.getKind() == TypeKind.TYPEVAR) {
 						code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = ");
-						content = arrayComponentType.toString();
+						String content = arrayComponentType.toString();
 						code.append("(").append(content).append("[]) java.lang.reflect.Array.newInstance((Class<?>) actualTypes[");
 						code.append(attr.typeVariablesIndex.get(content).toString()).append("], 0);\n");
 					} else {
-						content = extractRawType(arrayComponentType);
+						String content = Context.extractRawType(arrayComponentType);
 						code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = new ").append(content).append("[0];\n");
 					}
 				}
@@ -615,7 +650,12 @@ class ConverterTemplate {
 			} else if (target != null && attr.isEnum(context.structs)) {
 				enumTemplate.writeName(code, target, readValue, "converter_" + attr.name);
 			} else if (attr.collectionContent(context.knownTypes) != null) {
-				code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(");\n");
+				code.append("writer.serialize(").append(readValue);
+				if (attr.isMap) {
+					code.append(", key_writer_").append(attr.name).append(", value_writer_").append(attr.name).append(");\n");
+				} else {
+					code.append(", writer_").append(attr.name).append(");\n");
+				}
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 				if (attr.isArray) {
 					code.append("writer.serialize(").append(readValue).append(", writer_").append(attr.name).append(");\n");
@@ -713,16 +753,10 @@ class ConverterTemplate {
 					code.append("converter_").append(attr.name).append(".read(reader)");
 				}
 			} else if (attr.collectionContent(context.knownTypes) != null) {
-				if (attr.isArray) {
-					String content = extractRawType(((ArrayType) attr.type).getComponentType());
-					code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
-					code.append(", emptyArray_").append(attr.name).append(")");
-				} else {
-					code.append("reader.readCollection(reader_").append(attr.name).append(")");
-				}
+				context.serializeKnownCollection(attr);
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 				if (attr.isArray) {
-					String content = extractRawType(((ArrayType) attr.type).getComponentType());
+					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType());
 					code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
 					code.append(", emptyArray_").append(attr.name).append(")");
 				} else {
@@ -771,13 +805,8 @@ class ConverterTemplate {
 					code.append("converter_").append(attr.name).append(".read(reader)");
 				}
 			} else if (attr.collectionContent(context.knownTypes) != null) {
-				if (attr.isArray) {
-					String content = extractRawType(((ArrayType) attr.type).getComponentType());
-					code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
-					code.append(", emptyArray_").append(attr.name).append(");\n");
-				} else {
-					code.append("reader.readCollection(reader_").append(attr.name).append(");\n");
-				}
+				context.serializeKnownCollection(attr);
+				code.append(";\n");
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 				code.append("reader_").append(attr.name).append(".read(reader);\n");
 			} else {
@@ -792,13 +821,5 @@ class ConverterTemplate {
 			hash += (byte) name.charAt(i);
 		}
 		return hash;
-	}
-
-	private static String extractRawType(TypeMirror type) {
-		if (type.getKind() == TypeKind.DECLARED) {
-			return ((DeclaredType) type).asElement().toString();
-		} else {
-			return type.toString();
-		}
 	}
 }

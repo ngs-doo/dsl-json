@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
+import com.dslplatform.json.*;
 
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
@@ -12,6 +9,22 @@ import java.util.*;
 import java.util.concurrent.Callable;
 
 public abstract class MapAnalyzer {
+
+	public static class Runtime {
+		public static final JsonReader.ReadObject<Map<String, Object>> JSON_READER = new JsonReader.ReadObject<Map<String, Object>>() {
+			@Override
+			public Map<String, Object> read(JsonReader reader) throws IOException {
+				if (reader.wasNull()) return null;
+				return ObjectConverter.deserializeMap(reader);
+			}
+		};
+		public static final JsonWriter.WriteObject<Map<String, Object>> JSON_WRITER = new JsonWriter.WriteObject<Map<String, Object>>() {
+			@Override
+			public void write(JsonWriter writer, @Nullable Map<String, Object> value) {
+				ObjectConverter.serializeNullableMap(value, writer);
+			}
+		};
+	}
 
 	private static final JsonReader.ReadObject<String> stringReader = new JsonReader.ReadObject<String>() {
 		@Nullable

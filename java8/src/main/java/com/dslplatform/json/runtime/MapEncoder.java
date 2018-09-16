@@ -39,7 +39,7 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 					pastFirst = true;
 				}
 				if (checkForConversionToString) {
-					writeQuoted(writer, keyEncoder, e.getKey());
+					writer.writeQuoted(keyEncoder, e.getKey());
 				} else keyEncoder.write(writer, e.getKey());
 				writer.writeByte(JsonWriter.SEMI);
 				valueEncoder.write(writer, e.getValue());
@@ -59,14 +59,14 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 					pastFirst = true;
 				}
 				final Class<?> currentKeyClass = e.getKey().getClass();
-				if (keyEncoder == null && currentKeyClass != lastKeyClass) {
+				if (lastKeyEncoder == null || currentKeyClass != lastKeyClass) {
 					lastKeyClass = currentKeyClass;
 					lastKeyEncoder = json.tryFindWriter(lastKeyClass);
 					if (lastKeyEncoder == null) {
 						throw new SerializationException("Unable to find writer for " + lastKeyClass);
 					}
 				}
-				writeQuoted(writer, lastKeyEncoder, e.getKey());
+				writer.writeQuoted(lastKeyEncoder, e.getKey());
 				writer.writeByte(JsonWriter.SEMI);
 				if (valueEncoder != null) {
 					valueEncoder.write(writer, e.getValue());
@@ -86,36 +86,6 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 				}
 			}
 			writer.writeByte(JsonWriter.OBJECT_END);
-		}
-	}
-
-	private void writeQuoted(final JsonWriter writer, final JsonWriter.WriteObject<K> keyWriter, final K key) {
-		if (key instanceof Double) {
-			final double value = (Double) key;
-			if (value == Double.NaN) writer.writeAscii("NaN");
-			else if (value == Double.POSITIVE_INFINITY) writer.writeAscii("Infinity");
-			else if (value == Double.NEGATIVE_INFINITY) writer.writeAscii("-Infinity");
-			else {
-				writer.writeByte(JsonWriter.QUOTE);
-				NumberConverter.serialize(value, writer);
-				writer.writeByte(JsonWriter.QUOTE);
-			}
-		} else if (key instanceof Float) {
-			final float value = (Float) key;
-			if (value == Float.NaN) writer.writeAscii("NaN");
-			else if (value == Float.POSITIVE_INFINITY) writer.writeAscii("Infinity");
-			else if (value == Float.NEGATIVE_INFINITY) writer.writeAscii("-Infinity");
-			else {
-				writer.writeByte(JsonWriter.QUOTE);
-				NumberConverter.serialize(value, writer);
-				writer.writeByte(JsonWriter.QUOTE);
-			}
-		} else if (key instanceof Number) {
-			writer.writeByte(JsonWriter.QUOTE);
-			keyWriter.write(writer, key);
-			writer.writeByte(JsonWriter.QUOTE);
-		} else {
-			keyWriter.write(writer, key);
 		}
 	}
 }

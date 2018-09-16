@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,6 +23,22 @@ public class GenericTest {
 		public V[] value2;
 		public Entry<T, V>[] value3;
 		public GenericModel<Entry<T, Integer>, V> nested;
+		//TODO: support this without runtime
+		/*public Map<T, V> map1;
+		public Map<Integer, T> map2;
+		public Set<V> set;
+		public List<T> list;
+		public GenericModel<V, T> self;
+		public List<GenericModel<V, V>> selfList;*/
+	}
+
+	@CompiledJson
+	static class GenericCollections {
+		public Map<String, Double> map1;
+		public Map<Integer, String> map2;
+		public Map<Double, String> map3;
+		public Set<Double> set;
+		public List<String> list;
 	}
 
 	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
@@ -95,6 +112,32 @@ public class GenericTest {
 		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
 	}
 
+	@Test
+	public void rountripWithoutRuntime() throws IOException {
+		GenericCollections model = new GenericCollections();
+		model.map1 = new HashMap<>();
+		model.map1.put("abc", Double.NEGATIVE_INFINITY);
+		model.map1.put("x", 2.2);
+		model.map2 = new HashMap<>();
+		model.map2.put(2, "abc");
+		model.map2.put(-3, "def");
+		model.map3 = new HashMap<>();
+		model.map3.put(Double.NaN, "A");
+		model.map3.put(1.0, "B");
+		model.map3.put(Double.POSITIVE_INFINITY, "");
+		model.set = new HashSet<>();
+		model.set.add(Double.POSITIVE_INFINITY);
+		model.set.add(2.2);
+		model.list = Arrays.asList("xXx", null, "xyz");
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(model, os);
+
+		GenericCollections result = dslJson.deserialize(GenericCollections.class, os.toByteArray(), os.size());
+
+		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
+	}
+
 	private GenericModel<String, Double> generateModel() {
 		GenericModel<String, Double> model = new GenericModel<>();
 		model.value1 = "a";
@@ -104,6 +147,16 @@ public class GenericTest {
 		nestedModel.value1 = createEntry("b", 2);
 		nestedModel.value2 = new Double[]{2.0, 2.1};
 		model.nested = nestedModel;
+		/*model.map1 = new HashMap<>();
+		model.map1.put("abc", Double.NEGATIVE_INFINITY);
+		model.map1.put("x", 2.2);
+		model.map2 = new HashMap<>();
+		model.map2.put(2, "abc");
+		model.map2.put(-3, "def");
+		model.set = new HashSet<>();
+		model.set.add(Double.POSITIVE_INFINITY);
+		model.set.add(2.2);
+		model.list = Arrays.asList("xXx", null, "xyz");*/
 		return model;
 	}
 

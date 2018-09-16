@@ -725,19 +725,38 @@ public final class JsonWriter {
 		}
 		writeByte(ARRAY_START);
 		if (!list.isEmpty()) {
-			T item = list.get(0);
-			if (item != null) {
-				encoder.write(this, item);
-			} else {
-				writeNull();
-			}
-			for (int i = 1; i < list.size(); i++) {
-				writeByte(COMMA);
-				item = list.get(i);
+			if (list instanceof RandomAccess) {
+				T item = list.get(0);
 				if (item != null) {
 					encoder.write(this, item);
 				} else {
 					writeNull();
+				}
+				for (int i = 1; i < list.size(); i++) {
+					writeByte(COMMA);
+					item = list.get(i);
+					if (item != null) {
+						encoder.write(this, item);
+					} else {
+						writeNull();
+					}
+				}
+			} else {
+				Iterator<T> iter = list.iterator();
+				T item = iter.next();
+				if (item != null) {
+					encoder.write(this, item);
+				} else {
+					writeNull();
+				}
+				while (iter.hasNext()) {
+					writeByte(COMMA);
+					item = iter.next();
+					if (item != null) {
+						encoder.write(this, item);
+					} else {
+						writeNull();
+					}
 				}
 			}
 		}
@@ -778,6 +797,60 @@ public final class JsonWriter {
 			}
 		}
 		writeByte(ARRAY_END);
+	}
+
+	public <K, V> void serialize(@Nullable final Map<K, V> map, final WriteObject<K> keyEncoder, final WriteObject<V> valueEncoder) {
+		if (map == null) {
+			writeNull();
+			return;
+		}
+		writeByte(OBJECT_START);
+		final int size = map.size();
+		if (size > 0) {
+			final Iterator<Map.Entry<K, V>> iterator = map.entrySet().iterator();
+			Map.Entry<K, V> kv = iterator.next();
+			writeQuoted(keyEncoder, kv.getKey());
+			writeByte(SEMI);
+			valueEncoder.write(this, kv.getValue());
+			for (int i = 1; i < size; i++) {
+				writeByte(COMMA);
+				kv = iterator.next();
+				writeQuoted(keyEncoder, kv.getKey());
+				writeByte(SEMI);
+				valueEncoder.write(this, kv.getValue());
+			}
+		}
+		writeByte(OBJECT_END);
+	}
+
+	public <T> void writeQuoted(final JsonWriter.WriteObject<T> keyWriter, final T key) {
+		if (key instanceof Double) {
+			final double value = (Double) key;
+			if (Double.isNaN(value)) writeAscii("\"NaN\"");
+			else if (value == Double.POSITIVE_INFINITY) writeAscii("\"Infinity\"");
+			else if (value == Double.NEGATIVE_INFINITY) writeAscii("\"-Infinity\"");
+			else {
+				writeByte(QUOTE);
+				NumberConverter.serialize(value, this);
+				writeByte(QUOTE);
+			}
+		} else if (key instanceof Float) {
+			final float value = (Float) key;
+			if (Float.isNaN(value)) writeAscii("\"NaN\"");
+			else if (value == Float.POSITIVE_INFINITY) writeAscii("\"Infinity\"");
+			else if (value == Float.NEGATIVE_INFINITY) writeAscii("\"-Infinity\"");
+			else {
+				writeByte(QUOTE);
+				NumberConverter.serialize(value, this);
+				writeByte(QUOTE);
+			}
+		} else if (key instanceof Number) {
+			writeByte(QUOTE);
+			keyWriter.write(this, key);
+			writeByte(QUOTE);
+		} else {
+			keyWriter.write(this, key);
+		}
 	}
 
 	/**

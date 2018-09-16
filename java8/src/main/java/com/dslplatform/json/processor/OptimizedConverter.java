@@ -3,9 +3,9 @@ package com.dslplatform.json.processor;
 import com.dslplatform.json.Nullable;
 
 final class OptimizedConverter {
-	private final String encoderField;
+	public final String encoderField;
 	private final String nonNullableEncoderMethod;
-	private final String decoderField;
+	public final String decoderField;
 	private final String nonNullableDecoderMethod;
 	final String defaultValue;
 

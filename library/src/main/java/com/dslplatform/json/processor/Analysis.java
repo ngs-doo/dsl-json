@@ -250,7 +250,7 @@ public class Analysis {
 					hasError = true;
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
-							"Factory methods are not available with current analysis setup",
+							"Factory methods are not available with current analysis setup. Use annotation processor which supports such feature",
 							info.factory,
 							info.annotation);
 				} else if (!types.isAssignable(info.factory.getReturnType(), info.element.asType())) {
@@ -306,7 +306,7 @@ public class Analysis {
 					hasError = true;
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
-							"Builder pattern is not available with current analysis setup",
+							"Builder pattern is not available with current analysis setup. Use annotation processor which supports such feature",
 							info.builder.type,
 							info.builder.annotation);
 				} else if (requiresPublic(info.builder.type) && !info.builder.type.getModifiers().contains(Modifier.PUBLIC)) {

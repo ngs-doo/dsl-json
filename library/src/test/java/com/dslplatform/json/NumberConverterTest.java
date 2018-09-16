@@ -215,7 +215,7 @@ public class NumberConverterTest {
 	}
 
 	@Test
-	public void testCollectionSerialization() throws IOException {
+	public void testCollectionSerialization() {
 		final Random rnd = new Random(1337);
 		final List<Long> collection = new ArrayList<Long>();
 		for (long i = 1L; i <= 1000000000000000000L; i *= 10) {
@@ -256,6 +256,37 @@ public class NumberConverterTest {
 
 		sw.reset();
 		sw.serialize(boxes, NumberConverter.LONG_WRITER);
+		Assert.assertEquals(expected, sw.toString());
+	}
+
+	@Test
+	public void testNonRandomAccessCollectionSerialization() {
+		final Random rnd = new Random(1337);
+		final List<Long> collection = new LinkedList<Long>();
+		for (long i = 1L; i <= 1000000000000000000L; i *= 10) {
+			collection.add(i);                                    //  1000000
+			collection.add(-i);                                   // -1000000
+			for (int r = 0; r < 100; r++) {
+				collection.add(Math.abs(rnd.nextLong()) % i);     //   234992
+				collection.add(-(Math.abs(rnd.nextLong()) % i)); //  -712919
+			}
+		}
+		collection.add(Long.MIN_VALUE);
+		collection.add(Long.MAX_VALUE);
+
+		final String expected;
+		{
+			final StringBuilder tmp = new StringBuilder("[");
+			for (long value : collection) {
+				tmp.append(value).append(',');
+			}
+			tmp.setLength(tmp.length() - 1);
+			tmp.append(']');
+			expected = tmp.toString();
+		}
+
+		final JsonWriter sw = new JsonWriter(null);
+		sw.serialize(collection, NumberConverter.LONG_WRITER);
 		Assert.assertEquals(expected, sw.toString());
 	}
 
