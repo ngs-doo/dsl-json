@@ -603,7 +603,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void invalidBuildWithArg() {
+	public void invalidBuildWithBuildArg() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
 				27,
@@ -614,5 +614,14 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	@Test
 	public void builderWithAbstract() {
 		checkValidCompilation(ValidAbstractBuilder.class);
+	}
+
+	@Test
+	public void invalidBuildWithCtorArgs() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				15,
+				compileTestCase(InvalidBuilderWithCtorArgs.class, InvalidBuilderWithCtorArgs.Builder.class),
+				"Builder constructor for: 'com.dslplatform.json.models.InvalidBuilderWithCtorArgs.Builder' can't have parameters");
 	}
 }

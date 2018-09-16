@@ -533,7 +533,7 @@ class ConverterTemplate {
 				code.append("new ").append(info.builder.type.toString()).append("()");
 			}
 			for(AttributeInfo att : info.attributes.values()) {
-				code.append(".").append(att.writeMethod.getSimpleName()).append("(_").append(att.id).append("_)");
+				code.append(".").append(att.writeMethod.getSimpleName()).append("(_").append(att.name).append("_)");
 			}
 			code.append(".").append(info.builder.build.getSimpleName()).append("();\n");
 			return;

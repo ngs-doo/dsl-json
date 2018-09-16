@@ -301,7 +301,7 @@ public class Analysis {
 					}
 				}
 			}
-			if (info.type == ObjectType.CLASS && !info.hasKnownConversion() && info.factory == null && info.constructor == null && info.builder != null) {
+			if (!info.hasKnownConversion() && info.factory == null && info.constructor == null && info.builder != null) {
 				if (onlyBasicFeatures) {
 					hasError = true;
 					messager.printMessage(
@@ -329,6 +329,13 @@ public class Analysis {
 							Diagnostic.Kind.ERROR,
 							"Builder method: '" + info.builder.build.getSimpleName() + "' can't have parameters",
 							info.builder.build,
+							info.builder.annotation);
+				} else if (info.builder.ctor != null && info.builder.factory == null && !info.builder.ctor.getParameters().isEmpty()) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Builder constructor for: '" + info.builder.type + "' can't have parameters",
+							info.builder.ctor,
 							info.builder.annotation);
 				} else if (info.builder.factory != null && !types.isSameType(info.builder.factory.getReturnType(), info.builder.type.asType())) {
 					hasError = true;
@@ -1391,10 +1398,6 @@ public class Analysis {
 			return new AccessElements(read, null, arg, null, annotation);
 		}
 
-		public static AccessElements readOnly(VariableElement field, VariableElement arg, @Nullable AnnotationMirror annotation) {
-			return new AccessElements(null, null, arg, field, annotation);
-		}
-
 		public static AccessElements readOnly(VariableElement field, ExecutableElement write, @Nullable AnnotationMirror annotation) {
 			return new AccessElements(null, write, null, field, annotation);
 		}
@@ -1549,7 +1552,6 @@ public class Analysis {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		Map<String, VariableElement> fields = new HashMap<String, VariableElement>();
-		Map<String, VariableElement> arguments = getArguments(builder.ctor);
 		TypeMirror builderType = builder.type.asType();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			boolean isPublicInterface = inheritance.getKind() == ElementKind.INTERFACE
@@ -1617,26 +1619,20 @@ public class Analysis {
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setArg = setter == null ? null : setter.getParameters().get(0);
-			VariableElement arg = arguments.get(kv.getKey());
 			String returnType = kv.getValue().getReturnType().toString();
-			AnnotationMirror annotation = annotation(kv.getValue(), setter, null, arg);
+			AnnotationMirror annotation = annotation(kv.getValue(), setter, null, null);
 			if (setArg != null && (setArg.asType().toString().equals(returnType) || (setArg.asType() + "<").startsWith(returnType))) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (!onlyBasicFeatures && arg != null && isCompatibileType(arg.asType(), kv.getValue().getReturnType())) {
-				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
 			}
 		}
 		for (Map.Entry<String, VariableElement> kv : fields.entrySet()) {
 			if (result.containsKey(kv.getKey())) continue;
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setArg = setter == null ? null : setter.getParameters().get(0);
-			VariableElement arg = arguments.get(kv.getKey());
 			String returnType = kv.getValue().asType().toString();
-			AnnotationMirror annotation = annotation(null, setter, kv.getValue(), arg);
+			AnnotationMirror annotation = annotation(null, setter, kv.getValue(), null);
 			if (setArg != null && (setArg.asType().toString().equals(returnType) || (setArg.asType() + "<").startsWith(returnType))) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), setter, annotation));
-			} else if (arg != null && isCompatibileType(arg.asType(), kv.getValue().asType())) {
-				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
 			}
 		}
 		return result;

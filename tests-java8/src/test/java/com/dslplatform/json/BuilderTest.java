@@ -13,7 +13,7 @@ public class BuilderTest {
 	public static class Composite1 {
 		@JsonAttribute(index = 1)
 		public final int i;
-		@JsonAttribute(index = 2)
+		@JsonAttribute(index = 2, name = "ss")
 		public final String s;
 
 		private Composite1(int i, String s) {
@@ -104,7 +104,7 @@ public class BuilderTest {
 	}
 
 	public static abstract class CompositeAbstract {
-		@JsonAttribute(index = 1)
+		@JsonAttribute(index = 1, name = "_i")
 		public abstract int getI();
 		@JsonAttribute(index = 2)
 		public abstract String getS();
@@ -164,7 +164,7 @@ public class BuilderTest {
 		Assert.assertEquals(c.s, res.s);
 		os.reset();
 		dslJsonObject.serialize(c, os);
-		Assert.assertEquals("{\"i\":5,\"s\":\"abc\"}", os.toString());
+		Assert.assertEquals("{\"i\":5,\"ss\":\"abc\"}", os.toString());
 		res = dslJsonObject.deserialize(Composite1.class, os.toByteArray(), os.size());
 		Assert.assertEquals(c.i, res.i);
 		Assert.assertEquals(c.s, res.s);
@@ -218,7 +218,7 @@ public class BuilderTest {
 		Assert.assertEquals(c.getS(), res.getS());
 		os.reset();
 		dslJsonObject.serialize(c, os);
-		Assert.assertEquals("{\"i\":5,\"s\":\"abc\"}", os.toString());
+		Assert.assertEquals("{\"_i\":5,\"s\":\"abc\"}", os.toString());
 		res = dslJsonObject.deserialize(CompositeAbstract.class, os.toByteArray(), os.size());
 		Assert.assertEquals(c.getI(), res.getI());
 		Assert.assertEquals(c.getS(), res.getS());
