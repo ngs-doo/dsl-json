@@ -617,6 +617,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void builderWithNested() {
+		checkValidCompilation(FreeBuilder.class);
+	}
+
+	@Test
 	public void invalidBuildWithCtorArgs() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,

@@ -86,6 +86,22 @@ public class MapTest {
 		Assert.assertEquals(wo.mapMapKV, wo2.mapMapKV);
 	}
 
+	@Test
+	public void keysMustBeQuotedEvenWhenSpecial() throws IOException {
+		Generic<Double, Long> wo = new Generic<>();
+		wo.mapKV = new HashMap<>();
+		wo.mapKV.put(2.0, 1L);
+		wo.mapKV.put(Double.NaN, null);
+		wo.mapKV.put(Double.POSITIVE_INFINITY, -22L);
+		wo.mapMapKV = new HashMap<>();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(wo, baos);
+		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		Generic<Double, Long> wo2 = (Generic<Double, Long>) json.deserialize(new TypeDefinition<Generic<Double, Long>>() {}.type, bais);
+		Assert.assertEquals(wo.mapKV, wo2.mapKV);
+		Assert.assertEquals(wo.mapMapKV, wo2.mapMapKV);
+	}
+
 	public static class GenericMap<T> {
 		public Map<String, T> map = new LinkedHashMap<>();
 	}

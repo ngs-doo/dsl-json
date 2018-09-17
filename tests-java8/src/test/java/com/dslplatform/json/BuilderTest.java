@@ -6,7 +6,6 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.*;
 
 public class BuilderTest {
 
@@ -150,6 +149,61 @@ public class BuilderTest {
 		}
 	}
 
+	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
+	public static abstract class FreeBuilder {
+		@JsonAttribute(index = 1, name = "name")
+		public abstract String name();
+		@JsonAttribute(index = 2, name = "id")
+		public abstract int id();
+		public static Builder builder() {
+			return new Builder();
+		}
+		public static class Builder extends Employee_Builder {
+		}
+		static abstract class Employee_Builder {
+			private String name;
+			private int id;
+
+			public Builder name(String name) {
+				this.name = name;
+				return (Builder) this;
+			}
+			public String name() {
+				return name;
+			}
+			public Builder id(int id) {
+				this.id = id;
+				return (Builder) this;
+			}
+			public int id() {
+				return id;
+			}
+			public FreeBuilder build() {
+				return new Employee_Builder.Value(this);
+			}
+
+			private static final class Value extends FreeBuilder {
+				private final String name;
+				private final int id;
+
+				private Value(Employee_Builder builder) {
+					this.name = builder.name;
+					this.id = builder.id;
+				}
+
+				@Override
+				public String name() {
+					return name;
+				}
+
+				@Override
+				public int id() {
+					return id;
+				}
+			}
+		}
+	}
+
 	private final DslJson<Object> dslJsonArray = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 	private final DslJson<Object> dslJsonObject = new DslJson<>(Settings.withRuntime().allowArrayFormat(false).includeServiceLoader());
 
@@ -222,6 +276,24 @@ public class BuilderTest {
 		res = dslJsonObject.deserialize(CompositeAbstract.class, os.toByteArray(), os.size());
 		Assert.assertEquals(c.getI(), res.getI());
 		Assert.assertEquals(c.getS(), res.getS());
+		os.reset();
+	}
+
+	@Test
+	public void roundtripNested() throws IOException {
+		FreeBuilder c = FreeBuilder.builder().id(5).name("abc").build();
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonArray.serialize(c, os);
+		Assert.assertEquals("[\"abc\",5]", os.toString());
+		FreeBuilder res = dslJsonArray.deserialize(FreeBuilder.class, os.toByteArray(), os.size());
+		Assert.assertEquals(c.id(), res.id());
+		Assert.assertEquals(c.name(), res.name());
+		os.reset();
+		dslJsonObject.serialize(c, os);
+		Assert.assertEquals("{\"name\":\"abc\",\"id\":5}", os.toString());
+		res = dslJsonObject.deserialize(FreeBuilder.class, os.toByteArray(), os.size());
+		Assert.assertEquals(c.id(), res.id());
+		Assert.assertEquals(c.name(), res.name());
 		os.reset();
 	}
 }

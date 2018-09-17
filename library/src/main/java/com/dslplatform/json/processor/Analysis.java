@@ -1096,11 +1096,13 @@ public class Analysis {
 		}
 		if (builderType == null) return null;
 		if (build == null) {
-			for (ExecutableElement method : ElementFilter.methodsIn(builderType.getEnclosedElements())) {
-				if (method.getParameters().isEmpty() && !method.getModifiers().contains(Modifier.STATIC)
-						&& types.isSameType(method.getReturnType(), element.asType())) {
-					build = method;
-					break;
+			for (TypeElement inheritance : getTypeHierarchy(builderType)) {
+				for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
+					if (method.getParameters().isEmpty() && !method.getModifiers().contains(Modifier.STATIC)
+							&& types.isSameType(method.getReturnType(), element.asType())) {
+						build = method;
+						break;
+					}
 				}
 			}
 			if (build == null) return null;
@@ -1593,25 +1595,27 @@ public class Analysis {
 				}
 			}
 		}
-		for (ExecutableElement method : ElementFilter.methodsIn(builder.type.getEnclosedElements())) {
-			String name = method.getSimpleName().toString();
-			boolean isAccessible = !method.getModifiers().contains(Modifier.PRIVATE)
-					|| method.getModifiers().contains(Modifier.PUBLIC)
-					&& !method.getModifiers().contains(Modifier.STATIC)
-					&& !method.getModifiers().contains(Modifier.NATIVE)
-					&& !method.getModifiers().contains(Modifier.TRANSIENT);
-			if (!isAccessible) {
-				continue;
-			}
-			String property = name.length() < 4 || !name.startsWith("set")
-					? name
-					: name.length() > 4 && name.substring(3).toUpperCase().equals(name.substring(3))
-					? name.substring(3)
-					: name.substring(3, 4).toLowerCase() + name.substring(4);
-			if (method.getParameters().size() == 1 && types.isSameType(method.getReturnType(), builderType)) {
-				boolean canAdd = withExact || withBeans && name.startsWith("set") && name.length() > 4;
-				if (canAdd && !setters.containsKey(property)) {
-					setters.put(property, method);
+		for (TypeElement inheritance : getTypeHierarchy(builder.type)) {
+			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
+				String name = method.getSimpleName().toString();
+				boolean isAccessible = !method.getModifiers().contains(Modifier.PRIVATE)
+						|| method.getModifiers().contains(Modifier.PUBLIC)
+						&& !method.getModifiers().contains(Modifier.STATIC)
+						&& !method.getModifiers().contains(Modifier.NATIVE)
+						&& !method.getModifiers().contains(Modifier.TRANSIENT);
+				if (!isAccessible) {
+					continue;
+				}
+				String property = name.length() < 4 || !name.startsWith("set")
+						? name
+						: name.length() > 4 && name.substring(3).toUpperCase().equals(name.substring(3))
+						? name.substring(3)
+						: name.substring(3, 4).toLowerCase() + name.substring(4);
+				if (method.getParameters().size() == 1 && types.isSameType(method.getReturnType(), builderType)) {
+					boolean canAdd = withExact || withBeans && name.startsWith("set") && name.length() > 4;
+					if (canAdd && !setters.containsKey(property)) {
+						setters.put(property, method);
+					}
 				}
 			}
 		}
