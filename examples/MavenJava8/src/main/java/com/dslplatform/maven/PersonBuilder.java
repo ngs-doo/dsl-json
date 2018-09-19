@@ -1,12 +1,12 @@
-package com.dslplatform.jackson;
+package com.dslplatform.maven;
 
-import com.fasterxml.jackson.annotation.*;
+import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.JsonAttribute;
 
-//builder pattern would be detected even if @JsonCreator was placed here on class
 public class PersonBuilder {
 
 	public final String firstName, lastName;
-	@JsonProperty(value = "years")
+	@JsonAttribute(name = "years")
 	public final int age;
 
 	private PersonBuilder(String firstName, String lastName, int age) {
@@ -41,7 +41,7 @@ public class PersonBuilder {
 			return this;
 		}
 
-		@JsonCreator
+		@CompiledJson
 		public PersonBuilder build() {
 			return new PersonBuilder(firstName, lastName, age);
 		}

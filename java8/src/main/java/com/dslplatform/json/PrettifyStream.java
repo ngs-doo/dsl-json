@@ -2,7 +2,6 @@ package com.dslplatform.json;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.Stack;
 
 public class PrettifyStream {
 
@@ -29,7 +28,11 @@ public class PrettifyStream {
 	public void process(InputStream source, OutputStream target) throws IOException {
 		InputStreamReader reader = new InputStreamReader(new BufferedInputStream(source), StandardCharsets.UTF_8);
 		OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(target), StandardCharsets.UTF_8);
-		Stack<Character> nesting = new Stack<>();
+		process(reader, writer);
+	}
+
+	public void process(Reader reader, Writer writer) throws IOException {
+		int level = 0;
 		boolean inString = false;
 		boolean inEscape = false;
 		int last;
@@ -42,51 +45,28 @@ public class PrettifyStream {
 				}
 				inEscape = !inEscape && last == '\\';
 			} else if (last == '[' || last == '{') {
-				if (!hasElements && !nesting.isEmpty()) {
-					writeNewRow(writer, nesting);
+				if (!hasElements && level != 0) {
+					writeNewRow(writer, level);
 				}
-				nesting.push((char)last);
+				level++;
 				writer.write(last);
 				hasElements = false;
-			} else if (last == 't') {
-				if (reader.read() != 'r'
-						|| reader.read() != 'u'
-						|| reader.read() != 'e') {
-					throw new IOException("Invalid JSON provided. Expecting true");
-				}
-				if (!hasElements && !nesting.isEmpty()) {
-					writeNewRow(writer, nesting);
-				}
-				writer.write("true");
-				hasElements = true;
-			} else if (last == 'f') {
-				if (reader.read() != 'a'
-						|| reader.read() != 'l'
-						|| reader.read() != 's'
-						|| reader.read() != 'e') {
-					throw new IOException("Invalid JSON provided. Expecting false");
-				}
-				if (!hasElements && !nesting.isEmpty()) {
-					writeNewRow(writer, nesting);
-				}
-				writer.write("false");
-				hasElements = true;
 			} else if (last == ',') {
 				writer.write(",");
-				writeNewRow(writer, nesting);
+				writeNewRow(writer, level);
 				hasElements = true;
 			} else if (last == '\"') {
-				if (!hasElements && !nesting.isEmpty()) {
-					writeNewRow(writer, nesting);
+				if (!hasElements && level != 0) {
+					writeNewRow(writer, level);
 				}
 				writer.write("\"");
 				inString = true;
 				inEscape = false;
 				hasElements = true;
 			} else if (last == '}' || last == ']') {
-				nesting.pop();
+				level--;
 				if (hasElements) {
-					writeNewRow(writer, nesting);
+					writeNewRow(writer, level);
 				}
 				writer.write(last);
 				hasElements = true;
@@ -94,21 +74,19 @@ public class PrettifyStream {
 				writer.write(": ");
 				hasElements = true;
 			} else if (!Character.isWhitespace(last)) {
-				if (!hasElements && !nesting.isEmpty()) {
-					writeNewRow(writer, nesting);
+				if (!hasElements && level != 0) {
+					writeNewRow(writer, level);
 				}
 				writer.write(last);
 				hasElements = true;
 			}
 		}
-		reader.close();
 		writer.flush();
-		writer.close();
 	}
 
-	private void writeNewRow(OutputStreamWriter writer, Stack<Character> nesting) throws IOException {
+	private void writeNewRow(Writer writer, int level) throws IOException {
 		writer.write(nl);
-		for (int i = 0; i < nesting.size(); i++) {
+		for (int i = 0; i < level; i++) {
 			writer.write(ident);
 		}
 	}

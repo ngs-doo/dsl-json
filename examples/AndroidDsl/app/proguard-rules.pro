@@ -18,4 +18,6 @@
 
 # DSL-JSON
 -keep class dsl_json.json.** { *; }
+-dontwarn com.dslplatform.json.**
 -keep @com.dslplatform.json.CompiledJson class *
+-keep @com.dslplatform.json.JsonConverter class *

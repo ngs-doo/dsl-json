@@ -24,15 +24,15 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:27.1.1'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:27.1.1'
 
     //java8 version can work via desugar
-    compile 'com.dslplatform:dsl-json-java8:1.8.0'
+    implementation 'com.dslplatform:dsl-json-java8:1.8.1'
     //using alternative to java8 time api
-    compile 'com.dslplatform:dsl-json-threetenbp:1.8.0'
+    implementation 'com.dslplatform:dsl-json-threetenbp:1.8.1'
     //invoke the compile time databinding
-    annotationProcessor 'com.dslplatform:dsl-json-java8:1.8.0'
+    annotationProcessor 'com.dslplatform:dsl-json-java8:1.8.1'
     //just satisfy Jsonb provided dependency
-    provided 'javax.json.bind:javax.json.bind-api:1.0'
+    api 'javax.json.bind:javax.json.bind-api:1.0'
 }

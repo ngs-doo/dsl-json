@@ -4,6 +4,7 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.TextView
 import com.dslplatform.json.*
+import com.dslplatform.json.runtime.MapAnalyzer
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -33,14 +34,18 @@ class MainActivity : AppCompatActivity() {
         val inheritance: ParentClass?,
         @JsonAttribute(mandatory = true)// mandatory adds check if property exist in JSON and will serialize it even in omit-defaults mode
         val states: List<State>?,
-        //val jsonObject: JsonObjectReference?, //object implementing JsonObject manage their own conversion. They must start with '{'
-        //val jsonObjects: List<JsonObjectReference>?,
+        val jsonObject: JsonObjectReference?, //object implementing JsonObject manage their own conversion. They must start with '{'
+        val jsonObjects: List<JsonObjectReference>?,
         val time: LocalTime?, //LocalTime is not supported, but with the use of converter it will work
         val times: List<LocalTime?>?, //even containers with unsupported type will be resolved
         @JsonAttribute(converter = FormatDecimal2::class)
         val decimal2: BigDecimal, //custom formatting can be implemented with per property converters
         val intList: ArrayList<Int>, //most collections are supported through runtime converters
-        val map: Map<String, Any>, //even unknown stuff can be used. If it fails it will throw SerializationException
+        //since this signature has an unknown part (Object), it must be whitelisted
+        //This can be done via appropriate converter, by registering @JsonConverter for the specified type
+        //or by enabling support for unknown types in the annotation processor
+        @JsonAttribute(converter = MapAnalyzer.Runtime::class)
+        val map: Map<String, Any>,
         val person: Person? //immutable objects are supported via builder pattern
     )
 
@@ -107,7 +112,7 @@ class MainActivity : AppCompatActivity() {
         HI(2)
     }
 
-    /*data class JsonObjectReference(val x: Int, val s: String) : JsonObject {
+    data class JsonObjectReference(val x: Int, val s: String) : JsonObject {
 
         override fun serialize(writer: JsonWriter, minimal: Boolean) {
             writer.writeAscii("{\"x\":")
@@ -134,7 +139,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }*/
+    }
 
     @JsonConverter(target = LocalTime::class)
     object LocalTimeConverter {
@@ -193,8 +198,8 @@ class MainActivity : AppCompatActivity() {
             iface = WithCustomCtor(5, 6),
             person = Person("first name", "last name", 35),
             states = Arrays.asList(State.HI, State.LOW),
-            //jsonObject = JsonObjectReference(43, "abcd"),
-            //jsonObjects = Collections.singletonList(JsonObjectReference(34, "dcba")),
+            jsonObject = JsonObjectReference(43, "abcd"),
+            jsonObjects = Collections.singletonList(JsonObjectReference(34, "dcba")),
             time = LocalTime.of(12, 15),
             times = listOf(null, LocalTime.of(8, 16)),
             abs = concrete,

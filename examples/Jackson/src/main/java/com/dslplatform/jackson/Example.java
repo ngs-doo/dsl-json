@@ -1,6 +1,7 @@
 package com.dslplatform.jackson;
 
 import com.dslplatform.json.*;
+import com.dslplatform.json.runtime.MapAnalyzer;
 import com.dslplatform.json.runtime.Settings;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -35,9 +36,14 @@ public class Example {
 		@JsonIgnore
 		public GregorianCalendar ignored;
 		public ArrayList<Integer> intList; //most collections are supported through runtime converters
-		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw SerializationException
-		public ImmutablePerson person; //immutable objects are supported via builder pattern
+		//since this signature has an unknown part (Object), it must be whitelisted
+		//This can be done via appropriate converter, by registering @JsonConverter for the specified type
+		//or by enabling support for unknown types in the annotation processor
+		//@JsonAttribute(converter = MapAnalyzer.Runtime.class)
+		public Map<String, Object> map;
+		public ImmutablePerson person; //immutable objects are supported via several patterns (in this case ctor with arguments)
 		public List<ViaFactory> factories; //objects without accessible constructor can be created through factory methods
+		public PersonBuilder builder; //builder pattern is supported
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -148,10 +154,11 @@ public class Example {
 		//which is still an option if dsljson.configuration name is specified.
 		//DSL-JSON loads all services registered into META-INF/services
 		//and falls back to naming based convention of package._NAME_DslJsonConfiguration if not found
-		//withRuntime is enabled to support runtime analysis for stuff which is not registered by default
 		//Annotation processor will run by default and generate descriptions for JSON encoding/decoding
 		//To include Jackson annotations dsljson.jackson=true must be passed to annotation processor
-		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
+		//When conversion is not fully supported by compiler Settings.basicSetup() can be enabled to support runtime analysis
+		//for features not registered by annotation processor. Currently it is enabled due to use of Set and Vector
+		DslJson<Object> dslJson = new DslJson<>(Settings.basicSetup());
 
 		Model instance = new Model();
 		instance.string = "Hello World!";
@@ -172,6 +179,7 @@ public class Example {
 		instance.map.put("abc", 678);
 		instance.map.put("array", new int[] { 2, 4, 8});
 		instance.factories = Arrays.asList(null, Model.ViaFactory.create("me", 2), Model.ViaFactory.create("you", 3), null);
+		instance.builder = PersonBuilder.builder().firstName("first").lastName("last").age(42).build();
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(instance, os);

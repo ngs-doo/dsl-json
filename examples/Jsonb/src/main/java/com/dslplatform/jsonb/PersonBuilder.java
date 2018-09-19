@@ -1,12 +1,12 @@
-package com.dslplatform.jackson;
+package com.dslplatform.jsonb;
 
-import com.fasterxml.jackson.annotation.*;
+import javax.json.bind.annotation.JsonbProperty;
 
-//builder pattern would be detected even if @JsonCreator was placed here on class
+//builder pattern is detected even without @JsonbCreator in this class since it's referenced from other class with JsonbCreator
 public class PersonBuilder {
 
 	public final String firstName, lastName;
-	@JsonProperty(value = "years")
+	@JsonbProperty(value = "years")
 	public final int age;
 
 	private PersonBuilder(String firstName, String lastName, int age) {
@@ -41,7 +41,6 @@ public class PersonBuilder {
 			return this;
 		}
 
-		@JsonCreator
 		public PersonBuilder build() {
 			return new PersonBuilder(firstName, lastName, age);
 		}

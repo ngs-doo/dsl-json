@@ -3,7 +3,10 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class PrettifyTest {
 
@@ -28,19 +31,7 @@ public class PrettifyTest {
 	}
 
 	@Test
-	public void nullConstant() throws IOException {
-		String output = ps.process("null");
-		Assert.assertEquals("null", output);
-	}
-
-	@Test
-	public void trueConstant() throws IOException {
-		String output = ps.process("true");
-		Assert.assertEquals("true", output);
-	}
-
-	@Test
-	public void falseConstant() throws IOException {
+	public void constant() throws IOException {
 		String output = ps.process("false");
 		Assert.assertEquals("false", output);
 	}
@@ -67,5 +58,26 @@ public class PrettifyTest {
 	public void emptyObjectInArray() throws IOException {
 		String output = ps.process("[{}]");
 		Assert.assertEquals("[\n  {}\n]", output);
+	}
+
+	@Test
+	public void willNotCloseStream() throws IOException {
+		final boolean[] closed = new boolean[2];
+		ByteArrayInputStream is = new ByteArrayInputStream("[]".getBytes(StandardCharsets.UTF_8)) {
+			@Override
+			public void close() {
+				closed[0] = true;
+			}
+		};
+		ByteArrayOutputStream os = new ByteArrayOutputStream() {
+			@Override
+			public void close() {
+				closed[1] = true;
+			}
+		};
+		ps.process(is, os);
+		Assert.assertFalse(closed[0]);
+		Assert.assertFalse(closed[1]);
+		Assert.assertEquals("[]", os.toString("UTF-8"));
 	}
 }

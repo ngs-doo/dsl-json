@@ -21,6 +21,8 @@ Java JSON library designed for performance. Built for invasive software composit
  * POJO <-> object and/or array format - array format avoids serializing names, while object format can be used in minimal serialization mode
  * legacy name mapping - multiple versions of JSON property names can be mapped into a single POJO using alternativeNames annotation
  * binding to an existing instance - during deserialization an existing instance can be provided to reduce GC
+ * generics, builder pattern, factory pattern and ctor with arguments - Java8 version supports all relevant initialization methods
+ * compile time detection of unsafe conversion - Java8 version can throw compile time error for conversion which can fail at runtime
  * advanced annotation processor support - support for Java-only compilation or DSL Platform integration via conversion of Java code to DSL schema
  * customizable runtime overheads - works in reflection mode, in Java8 annotation processor mode or DSL Platform mode. Schema and annotation based POJOs are prepared at compile time
  * support for other library annotations - Jackson and JsonB annotations will be used and compile time analysis can be extended in various ways
@@ -49,7 +51,7 @@ This can be used to create serializers for pre-existing classes without annotati
 
 Since v1.7.0 DSL-JSON supports compile time databinding without Mono/.NET dependency.
 It provides most features and flexibility, due to integration with runtime analysis and combining of various generic analysis.
-Bean properties, public fields and classes without empty constructor are supported.
+Bean properties, public fields, classes without empty constructor, factories and builder patterns are supported.
 Package private classes and factory methods can be used.
 Array format can be used for efficient payload transfer.
 
@@ -58,7 +60,7 @@ To use Java8 annotation processor its sufficient to just reference Java8 version
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-java8</artifactId>
-      <version>1.8.0</version>
+      <version>1.8.1</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -70,8 +72,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.8.0'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.8.0'
+      compile 'com.dslplatform:dsl-json-java8:1.8.1'
+      annotationProcessor 'com.dslplatform:dsl-json-java8:1.8.1'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -88,20 +90,21 @@ Since v1.7.2 Java8 version has similar performance, so the main benefit is abili
 Bean properties, public non-final fields and only classes with empty constructor are supported.
 Only object format is supported.
 
-Annotation processor can be added as Maven dependency with:
+**If you are not sure which annotation processor to use, you should probably use the Java8 version instead of the DSL Platform one**.
+DSL Platform annotation processor can be added as Maven dependency with:
 
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.8.0</version>
+      <version>1.8.1</version>
       <scope>provided</scope>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.8.0'
-      annotationProcessor 'com.dslplatform:dsl-json-processor:1.8.0'
+      compile 'com.dslplatform:dsl-json:1.8.1'
+      annotationProcessor 'com.dslplatform:dsl-json-processor:1.8.1'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -177,6 +180,16 @@ DSL-JSON property annotation supports several customizations/features:
  * converter - custom conversion per property. Can be used for formatting or any other custom handling of JSON processing for specific property
  * typeSignature - disable inclusion of $type during abstract type serialization. By default abstract type will include additional information which is required for correct deserialization. Abstract types can be deserialized into a concreted type by defining `deserializeAs` on `@CompiledJson` which allows the removal of $type during both serialization and deserialization
 
+### @JsonValue enum feature
+
+Java8 version supports converting enum as custom value.
+To use such feature @JsonValue annotation must be placed on method or field.
+
+### JSON pretty print
+
+Library was designed for speed and does not support human formatted output such as alignment and newlines.
+But when such output is required, there is `PrettifyStream` for converting JSON input into formatted JSON output.
+
 ### External annotations
 
 For existing classes which can't be modified with `@JsonAttribute` alternative external annotations are supported:
@@ -243,7 +256,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.8.0</version>
+      <version>1.8.1</version>
     </dependency>
 
 ## Runtime analysis
@@ -299,7 +312,7 @@ Also, since v1.5 binding API is available which can reuse instances for deserial
 
 ### Limits
 
-Library has various limits built-in to protect against malicious input:
+Library has various configurable limits built-in to protect against malicious input:
 
  * default of 512 digits
  * default of 128MB strings
@@ -324,7 +337,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.8.0"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.8.1"
 
 ### Kotlin support
 
@@ -333,8 +346,8 @@ When used with Gradle, configuration can be done via:
 
     apply plugin: 'kotlin-kapt'
     dependencies {
-      compile "com.dslplatform:dsl-json-java8:1.8.0"
-      kapt "com.dslplatform:dsl-json-java8:1.8.0"
+      compile "com.dslplatform:dsl-json-java8:1.8.1"
+      kapt "com.dslplatform:dsl-json-java8:1.8.1"
     }
 
 ## FAQ

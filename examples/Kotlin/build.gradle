@@ -1,8 +1,8 @@
 group 'kotlin-dsl-json'
-version '1.8.0'
+version '1.8.1'
 
 buildscript {
-  ext.kotlin_version = '1.2.31'
+  ext.kotlin_version = '1.2.61'
   repositories {
     mavenCentral()
   }
@@ -26,8 +26,8 @@ repositories {
 dependencies {
   compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
-  compile "com.dslplatform:dsl-json-java8:1.8.0"
-  kapt "com.dslplatform:dsl-json-java8:1.8.0"
+  compile "com.dslplatform:dsl-json-java8:1.8.1"
+  kapt "com.dslplatform:dsl-json-java8:1.8.1"
   //if neither annotation processor is used nor -parameters flag is sent to javac
   // paranamer needs to be used to extract actual property names from debug symbols (or an alternative method)
   //compile "com.thoughtworks.paranamer:paranamer:2.8"

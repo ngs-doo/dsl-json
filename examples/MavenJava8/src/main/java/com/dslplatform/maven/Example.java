@@ -1,6 +1,7 @@
 package com.dslplatform.maven;
 
 import com.dslplatform.json.*;
+import com.dslplatform.json.runtime.MapAnalyzer;
 import com.dslplatform.json.runtime.Settings;
 
 import java.io.IOException;
@@ -39,9 +40,15 @@ public class Example {
 		@JsonAttribute(converter = FormatDecimal2.class)
 		public BigDecimal decimal2; //custom formatting can be implemented with per property converters
 		public ArrayList<Integer> intList; //most collections are supported through runtime converters
-		public Map<String, Object> map; //even unknown stuff can be used. If it fails it will throw SerializationException
-		public ImmutablePerson person; //immutable objects are supported via builder pattern
+		//since this signature has an unknown part (Object), it must be whitelisted
+		//This can be done via appropriate converter, by registering @JsonConverter for the specified type
+		//or by enabling support for unknown types in the annotation processor
+		@JsonAttribute(converter = MapAnalyzer.Runtime.class)
+		public Map<String, Object> map;
+		public ImmutablePerson person; //immutable objects are supported via several patterns (in this case ctor with arguments)
 		public List<ViaFactory> factories; //objects without accessible constructor can be created through factory methods
+		public PersonBuilder builder; //builder pattern is supported
+		public List<SpecialNumber> numbers;//enum with specific values
 
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
@@ -229,6 +236,8 @@ public class Example {
 		instance.map.put("abc", 678);
 		instance.map.put("array", new int[] { 2, 4, 8});
 		instance.factories = Arrays.asList(null, Model.ViaFactory.create("me", 2), Model.ViaFactory.create("you", 3), null);
+		instance.builder = PersonBuilder.builder().firstName("first").lastName("last").age(42).build();
+		instance.numbers = Arrays.asList(SpecialNumber.E, SpecialNumber.PI, SpecialNumber.ZERO);
 
 		dslJson.serialize(writer, instance);
 
