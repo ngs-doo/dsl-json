@@ -1,10 +1,8 @@
 package com.dslplatform.json.generated.types;
 
 import com.dslplatform.json.DslJson;
-import com.dslplatform.json.PrettifyStream;
-import org.junit.Assert;
+import com.dslplatform.json.PrettifyOutputStream;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -22,7 +20,6 @@ public class StaticJsonJava {
 
 	public static class JsonSerialization extends DslJson<Object> {
 
-		private final PrettifyStream ps = new PrettifyStream();
 		private final ByteArrayOutputStream psOut = new ByteArrayOutputStream();
 
 		public JsonSerialization() {
@@ -45,7 +42,8 @@ public class StaticJsonJava {
 				final int size) throws IOException {
 			TResult res1 = super.deserialize(manifest, body, size);
 			psOut.reset();
-			ps.process(new ByteArrayInputStream(body), psOut);
+			PrettifyOutputStream prettifyStream = new PrettifyOutputStream(psOut);
+			prettifyStream.write(body, 0, size);
 			super.deserialize(manifest, psOut.toByteArray(), psOut.size());
 			return res1;
 		}
