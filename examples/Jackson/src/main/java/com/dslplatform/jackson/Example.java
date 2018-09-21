@@ -1,7 +1,6 @@
 package com.dslplatform.jackson;
 
 import com.dslplatform.json.*;
-import com.dslplatform.json.runtime.MapAnalyzer;
 import com.dslplatform.json.runtime.Settings;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;

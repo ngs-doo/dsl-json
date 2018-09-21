@@ -1,5 +1,6 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.runtime.MapAnalyzer;
 import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
@@ -7,7 +8,9 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class CtorWithGetterTest {
 
@@ -46,6 +49,18 @@ public class CtorWithGetterTest {
 		}
 	}
 
+	@CompiledJson
+	public static class MapRuntimeCtor {
+		private final Map<String, Object> map;
+		public final Map<String, Object> getMap() { return map; }
+
+		public MapRuntimeCtor(
+				@JsonAttribute(converter = MapAnalyzer.Runtime.class)
+				Map<String, Object> map) {
+			this.map = map;
+		}
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 
 	@Test
@@ -76,5 +91,15 @@ public class CtorWithGetterTest {
 		Assert.assertEquals("{\"QueryResult\":\"505\"}", os.toString("UTF-8"));
 		Response res = dslJson.deserialize(Response.class, os.toByteArray(), os.size());
 		Assert.assertEquals(r.getQueryResult(), res.getQueryResult());
+	}
+
+	@Test
+	public void jsonAttributeOnCtor() throws IOException {
+		MapRuntimeCtor r = new MapRuntimeCtor(Collections.singletonMap("abc", "dfg"));
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(r, os);
+		Assert.assertEquals("{\"map\":{\"abc\":\"dfg\"}}", os.toString("UTF-8"));
+		MapRuntimeCtor res = dslJson.deserialize(MapRuntimeCtor.class, os.toByteArray(), os.size());
+		Assert.assertEquals(r.getMap(), res.getMap());
 	}
 }

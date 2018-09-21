@@ -639,7 +639,8 @@ public class Analysis {
 		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element)) {
 			TypeMirror referenceType = access.field != null ? access.field.asType() : access.read.getReturnType();
 			Element referenceElement = types.asElement(referenceType);
-			TypeMirror converterMirror = findConverter(element);
+			AnnotationMirror annotation = access.annotation;
+			TypeMirror converterMirror = findConverter(annotation);
 			final ConverterInfo converter;
 			if (converterMirror != null) {
 				TypeElement typeConverter = elements.getTypeElement(converterMirror.toString());
@@ -674,7 +675,6 @@ public class Analysis {
 				}
 			}
 
-			AnnotationMirror annotation = access.annotation;
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
 			AttributeInfo attr =
 					new AttributeInfo(
@@ -1896,7 +1896,11 @@ public class Analysis {
 
 	@Nullable
 	public TypeMirror findConverter(Element property) {
-		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+		return findConverter(getAnnotation(property, attributeType));
+	}
+
+	@Nullable
+	private TypeMirror findConverter(@Nullable AnnotationMirror dslAnn) {
 		if (dslAnn == null) return null;
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {

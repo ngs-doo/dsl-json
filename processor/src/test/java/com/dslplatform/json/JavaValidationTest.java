@@ -635,4 +635,9 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		checkValidCompilation(GenericWithVariousTypes.class);
 	}
 
+	@Test
+	public void annotationInCtor() {
+		checkValidCompilation(MapRuntimeCtor.class);
+	}
+
 }
