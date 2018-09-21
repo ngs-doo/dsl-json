@@ -23,7 +23,7 @@ public final class PrettifyOutputStream extends OutputStream {
 
 	private int currentIndent = 0;
 	private boolean inString = false;
-	private int lastByteInString = 0;
+	private boolean inEscape = false;
 	private boolean beginObjectOrList = false;
 
 	public enum IndentType {
@@ -61,10 +61,10 @@ public final class PrettifyOutputStream extends OutputStream {
 			int b = bytes[i];
 
 			if (inString) {
-				if (b == '"' && lastByteInString != '\\') {
+				if (b == '"' && !inEscape) {
 					inString = false;
 				} else {
-					lastByteInString = b;
+					inEscape = !inEscape && b == '\\';
 				}
 			} else if (b == '"') {
 				inString = true;
@@ -116,10 +116,10 @@ public final class PrettifyOutputStream extends OutputStream {
 	@Override
 	public final void write(final int b) throws IOException {
 		if (inString) {
-			if (b == '"' && lastByteInString != '\\') {
+			if (b == '"' && !inEscape) {
 				inString = false;
 			} else {
-				lastByteInString = b;
+				inEscape = !inEscape && b == '\\';
 			}
 			out.write(b);
 		} else if (b == '"') {
