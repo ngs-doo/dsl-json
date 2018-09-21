@@ -114,7 +114,7 @@ class ConverterTemplate {
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
 			StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
-				List<String> types = attr.collectionContent(context.knownTypes);
+				List<String> types = attr.collectionContent(context.knownTypes, context.structs);
 				if (target != null && attr.isEnum(context.structs)) {
 					code.append("\t\tprivate final ").append(findConverterName(target)).append(".EnumConverter converter_").append(attr.name).append(";\n");
 				} else if (types != null && types.size() == 1 || (attr.isGeneric && !attr.containsStructOwnerType)) {
@@ -187,7 +187,7 @@ class ConverterTemplate {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			List<String> types = attr.collectionContent(context.knownTypes);
+			List<String> types = attr.collectionContent(context.knownTypes, context.structs);
 			StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
 				if (target != null && attr.isEnum(context.structs)) {
@@ -649,7 +649,7 @@ class ConverterTemplate {
 				code.append(optimizedConverter.nonNullableEncoder("writer", readValue)).append(";\n");
 			} else if (target != null && attr.isEnum(context.structs)) {
 				enumTemplate.writeName(code, target, readValue, "converter_" + attr.name);
-			} else if (attr.collectionContent(context.knownTypes) != null) {
+			} else if (attr.collectionContent(context.knownTypes, context.structs) != null) {
 				code.append("writer.serialize(").append(readValue);
 				if (attr.isMap) {
 					code.append(", key_writer_").append(attr.name).append(", value_writer_").append(attr.name).append(");\n");
@@ -752,7 +752,7 @@ class ConverterTemplate {
 				} else {
 					code.append("converter_").append(attr.name).append(".read(reader)");
 				}
-			} else if (attr.collectionContent(context.knownTypes) != null) {
+			} else if (attr.collectionContent(context.knownTypes, context.structs) != null) {
 				context.serializeKnownCollection(attr);
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 				if (attr.isArray) {
@@ -804,7 +804,7 @@ class ConverterTemplate {
 				} else {
 					code.append("converter_").append(attr.name).append(".read(reader)");
 				}
-			} else if (attr.collectionContent(context.knownTypes) != null) {
+			} else if (attr.collectionContent(context.knownTypes, context.structs) != null) {
 				context.serializeKnownCollection(attr);
 				code.append(";\n");
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {

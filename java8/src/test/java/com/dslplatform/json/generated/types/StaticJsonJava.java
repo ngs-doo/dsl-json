@@ -21,11 +21,13 @@ public class StaticJsonJava {
 	public static class JsonSerialization extends DslJson<Object> {
 
 		private final ByteArrayOutputStream psOut = new ByteArrayOutputStream();
+		private final PrettifyOutputStream prettyOut = new PrettifyOutputStream(psOut);
 
 		public JsonSerialization() {
 			super(new Settings<>().includeServiceLoader());
 		}
 		private ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		private final PrettifyOutputStream prettyStream = new PrettifyOutputStream(psOut);
 
 		public Bytes serialize(Object instance) throws IOException {
 			stream.reset();
@@ -33,6 +35,8 @@ public class StaticJsonJava {
 			Bytes b = new Bytes();
 			b.content = stream.toByteArray();
 			b.length = b.content.length;
+			stream.reset();
+			super.serialize(instance, prettyStream);
 			return b;
 		}
 
@@ -42,8 +46,7 @@ public class StaticJsonJava {
 				final int size) throws IOException {
 			TResult res1 = super.deserialize(manifest, body, size);
 			psOut.reset();
-			PrettifyOutputStream prettifyStream = new PrettifyOutputStream(psOut);
-			prettifyStream.write(body, 0, size);
+			prettyOut.write(body, 0, size);
 			super.deserialize(manifest, psOut.toByteArray(), psOut.size());
 			return res1;
 		}

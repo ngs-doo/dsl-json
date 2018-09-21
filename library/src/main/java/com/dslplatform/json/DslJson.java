@@ -1179,24 +1179,45 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	@SuppressWarnings("unchecked")
 	@Nullable
+	private JsonReader.ReadJsonObject<JsonObject> probeForObjectReader(Class<?> manifest, Object instance) {
+		Object found;
+		try {
+			found = manifest.getField("JSON_READER").get(instance);
+		} catch (Exception ignore) {
+			try {
+				found = manifest.getMethod("JSON_READER").invoke(instance);
+			} catch (Exception ignore2) {
+				try {
+					found = manifest.getMethod("getJSON_READER").invoke(instance);
+				} catch (Exception ignore3) {
+					return null;
+				}
+			}
+		}
+		return found instanceof JsonReader.ReadJsonObject
+				? (JsonReader.ReadJsonObject<JsonObject>)found
+				: null;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
 	protected final JsonReader.ReadJsonObject<JsonObject> getObjectReader(final Class<?> manifest) {
 		try {
 			JsonReader.ReadJsonObject<JsonObject> reader = objectReaders.get(manifest);
 			if (reader == null) {
-				try {
-					reader = (JsonReader.ReadJsonObject<JsonObject>) manifest.getField("JSON_READER").get(null);
-				} catch (Exception ignore) {
+				reader = probeForObjectReader(manifest, null);
+				if (reader == null) {
+					//probe in few special places
 					try {
-						reader = (JsonReader.ReadJsonObject<JsonObject>) manifest.getMethod("JSON_READER").invoke(null);
-					} catch (Exception ignore2) {
-						try {
-							reader = (JsonReader.ReadJsonObject<JsonObject>) manifest.getMethod("getJSON_READER").invoke(null);
-						} catch (Exception ignore3) {
-							return null;
-						}
+						Object companion = manifest.getField("Companion").get(null);
+						reader = probeForObjectReader(companion.getClass(), companion);
+					} catch (Exception ignore) {
+						return null;
 					}
 				}
-				objectReaders.putIfAbsent(manifest, reader);
+				if (reader != null) {
+					objectReaders.putIfAbsent(manifest, reader);
+				}
 			}
 			return reader;
 		} catch (final Exception ignore) {
@@ -2200,7 +2221,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			else value.serialize(writer, omitDefaults);
 		}
 	};
-	private final <T extends JsonObject> JsonReader.ReadObject<T> convertToReader(final JsonReader.ReadJsonObject<T> decoder) {
+	private <T extends JsonObject> JsonReader.ReadObject<T> convertToReader(final JsonReader.ReadJsonObject<T> decoder) {
 		return new JsonReader.ReadObject<T>() {
 			@Override
 			public T read(JsonReader reader) throws IOException {

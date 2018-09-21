@@ -69,8 +69,12 @@ public class JsonObjectTest {
 	@CompiledJson
 	public static class KotlinObjectModel {
 		public JsonObjectReferenceKotlin jsonObject;
-		public KotlinObjectModel(JsonObjectReferenceKotlin jsonObject) {
+		public List<JsonObjectReferenceKotlin> jsonObjects;
+		public KotlinObjectModel(
+				JsonObjectReferenceKotlin jsonObject,
+				List<JsonObjectReferenceKotlin> jsonObjects) {
 			this.jsonObject = jsonObject;
+			this.jsonObjects = jsonObjects;
 		}
 	}
 
@@ -104,7 +108,7 @@ public class JsonObjectTest {
 		}
 	}
 
-	private final DslJson<Object> dslJson = new DslJson<>(Settings.basicSetup());
+	private final DslJson<Object> dslJson = new DslJson<>();
 
 	@Test
 	public void simpleTest() throws IOException {
@@ -157,11 +161,14 @@ public class JsonObjectTest {
 
 	@Test
 	public void kotlinTest() throws IOException {
-		KotlinObjectModel m = new KotlinObjectModel(new JsonObjectReferenceKotlin("test"));
+		KotlinObjectModel m = new KotlinObjectModel(
+				new JsonObjectReferenceKotlin("test"),
+				Arrays.asList(new JsonObjectReferenceKotlin("abc")));
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(m, os);
-		Assert.assertEquals("{\"jsonObject\":{\"x\":\"test\"}}", os.toString());
+		Assert.assertEquals("{\"jsonObject\":{\"x\":\"test\"},\"jsonObjects\":[{\"x\":\"abc\"}]}", os.toString());
 		KotlinObjectModel res = dslJson.deserialize(KotlinObjectModel.class, os.toByteArray(), os.size());
 		Assert.assertEquals(m.jsonObject, res.jsonObject);
+		Assert.assertEquals(m.jsonObjects, res.jsonObjects);
 	}
 }

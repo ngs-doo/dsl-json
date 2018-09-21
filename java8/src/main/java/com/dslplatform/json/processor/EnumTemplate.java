@@ -33,9 +33,12 @@ class EnumTemplate {
 	private void writeName(Writer code, StructInfo target, String readValue, String writerName, boolean external) throws IOException {
 		if (target.enumConstantNameSource != null) {
 			String constantNameType = extractReturnType(target.enumConstantNameSource);
+			StructInfo info = context.structs.get(constantNameType);
 			OptimizedConverter converter = context.inlinedConverters.get(constantNameType);
 			String value = readValue + "." + target.enumConstantNameSource;
-			if (converter != null) {
+			if (info != null && info.converter != null) {
+				code.append(info.converter.fullName).append(".").append(info.converter.writer).append(".write(writer, ").append(value).append(");\n");
+			} else if (converter != null) {
 				code.append(converter.nonNullableEncoder("writer", value)).append(";\n");
 			} else {
 				code.append(writerName).append(".write(writer, ").append(external ? readValue : value).append(");\n");
@@ -51,7 +54,9 @@ class EnumTemplate {
 		if (si.enumConstantNameSource == null) return true;
 		String constantNameType = extractReturnType(si.enumConstantNameSource);
 		if (constantNameType == null) return true;
-		return context.inlinedConverters.get(constantNameType) != null;
+		StructInfo info = context.structs.get(constantNameType);
+		return info != null && info.converter != null
+				|| context.inlinedConverters.get(constantNameType) != null;
 	}
 
 	void create(final StructInfo si, final String className) throws IOException {
@@ -59,7 +64,8 @@ class EnumTemplate {
 		code.append(className);
 		code.append(">, com.dslplatform.json.JsonReader.ReadObject<").append(className).append("> {\n");
 		String constantNameType = extractReturnType(si.enumConstantNameSource);
-		OptimizedConverter converter = constantNameType != null ? context.inlinedConverters.get(constantNameType) : null;
+		StructInfo info = constantNameType != null ? context.structs.get(constantNameType) : null;
+		OptimizedConverter optimizedConverter = constantNameType != null ? context.inlinedConverters.get(constantNameType) : null;
 		if (constantNameType != null) {
 			code.append("\t\tprivate static final java.util.Map<").append(constantNameType).append(", ").append(className).append("> values;\n");
 			code.append("\t\tstatic {\n");
@@ -68,7 +74,7 @@ class EnumTemplate {
 			code.append("\t\t\t\tvalues.put(value.").append(si.enumConstantNameSource.toString()).append(", value);\n");
 			code.append("\t\t\t}\n");
 			code.append("\t\t}\n");
-			if (converter == null) {
+			if (optimizedConverter == null && (info == null || info.converter == null)) {
 				code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(constantNameType).append("> valueWriter;\n");
 				code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(constantNameType).append("> valueReader;\n");
 				code.append("\t\tpublic EnumConverter(com.dslplatform.json.DslJson<Object> __dsljson) {\n");
@@ -95,8 +101,11 @@ class EnumTemplate {
 			code.append("\t\tpublic static ").append(className).append(" readStatic(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		}
 		if (constantNameType != null) {
-			if (converter != null) {
-				code.append("\t\t\tfinal ").append(constantNameType).append(" input = ").append(converter.nonNullableDecoder()).append("(reader);\n");
+			if (info != null && info.converter != null) {
+				code.append("\t\t\tfinal ").append(constantNameType).append(" input = ").append(info.converter.fullName).append(".").append(info.converter.reader).append(".read(reader);\n");
+				code.append("\t\t\t").append(className).append(" value = ").append("values.get(input);\n");
+			} else if (optimizedConverter != null) {
+				code.append("\t\t\tfinal ").append(constantNameType).append(" input = ").append(optimizedConverter.nonNullableDecoder()).append("(reader);\n");
 				code.append("\t\t\t").append(className).append(" value = ").append("values.get(input);\n");
 			} else {
 				code.append("\t\t\tfinal ").append(constantNameType).append(" input = valueReader.read(reader);\n");
@@ -107,7 +116,11 @@ class EnumTemplate {
 				code.append("\t\t\t\tvalue = ").append(className).append(".").append(si.constants.get(0)).append(";\n");
 			} else {
 				code.append("\t\t\t\tthrow new java.lang.IllegalArgumentException(\"No enum constant ");
-				code.append(className).append(" associated with value '\" + input + \"'\");\n");
+				code.append(className).append(" associated with value '\" + input + \"'");
+				if (info != null && info.converter != null) {
+					code.append(". When using custom objects check that custom hashCode and equals are implemented");
+				}
+				code.append("\");\n");
 			}
 			code.append("\t\t\t}\n");
 			code.append("\t\t\treturn value;\n");

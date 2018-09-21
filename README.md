@@ -187,8 +187,9 @@ To use such feature @JsonValue annotation must be placed on method or field.
 
 ### JSON pretty print
 
-Library was designed for speed and does not support human formatted output such as alignment and newlines.
-But when such output is required, there is `PrettifyStream` for converting JSON input into formatted JSON output.
+Formatted output with alignments and newlines can be created via `PrettifyOutputStream`.
+
+    dslJson.serialize(instance, new PrettifyOutputStream(outputStream));
 
 ### External annotations
 
@@ -366,6 +367,9 @@ When used with Gradle, configuration can be done via:
 
  ***Q***: DSL Platform annotation processor checks for new DSL compiler version on every compilation. How can I disable that?  
  ***A***: If you specify custom `dsljson.compiler` processor option or put `dsl-compiler.exe` in project root it will use that one and will not check online for updates
+
+ ***Q***: When using Android with desugaring I get: `Exception in thread "main" java.lang.IllegalArgumentException: Type without superclass: module-info`. How can I fix that?  
+ ***A***: It's a known Android Studio problem. It's fixed in [version 3.3](https://androidstudio.googleblog.com/2018/06/android-studio-33-canary-1-available.html)
 
  ***Q***: What is this DSL Platform?  
  ***A***: DSL Platform is a proprietary compiler written in C#. Since v1.7.0 DSL Platform is no longer required to create compile-time databinding. Compiler is free to use, but access to source code is licensed. If you need access to the compiler or need performance consulting [let us know](https://dsl-platform.com)

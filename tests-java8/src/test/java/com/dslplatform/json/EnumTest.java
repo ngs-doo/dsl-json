@@ -340,4 +340,57 @@ public class EnumTest {
 			Assert.assertTrue(e.getMessage().contains("Custom reader exception"));
 		}
 	}
+
+	@CompiledJson
+	public enum EnumWithCustomValueConverter {
+		ONE(BigDecimal.ONE),
+		PI(BigDecimal.valueOf(3.14159)),
+		E(BigDecimal.valueOf(2.71828)),
+		ZERO(BigDecimal.ZERO);
+
+		@JsonValue
+		public final NumberWrapper value;
+
+		EnumWithCustomValueConverter(BigDecimal value) {
+			this.value = new NumberWrapper(value);
+		}
+	}
+
+	public static class NumberWrapper {
+		public final BigDecimal value;
+		private NumberWrapper(BigDecimal value) {
+			this.value = value;
+		}
+
+		@Override
+		public int hashCode() { return value.hashCode(); }
+
+		@Override
+		public boolean equals(Object obj) {
+			return obj instanceof NumberWrapper && ((NumberWrapper)obj).value.equals(value);
+		}
+
+		@JsonConverter(target = NumberWrapper.class)
+		public static class NumberWrapperConverter {
+			public static final JsonReader.ReadObject<NumberWrapper> JSON_READER = r -> {
+				BigDecimal value = NumberConverter.deserializeDecimal(r);
+				return new NumberWrapper(value);
+			};
+			public static final JsonWriter.WriteObject<NumberWrapper> JSON_WRITER = (w, v) -> {
+				if (v != null) NumberConverter.serialize(v.value, w);
+				else w.writeNull();
+			};
+		}
+	}
+
+	@Test
+	public void wrapperClassWillUseSpecifiedConverter() throws IOException {
+		DslJson<Object> customJson = new DslJson<>();
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		List<EnumWithCustomValueConverter> input = Arrays.asList(EnumWithCustomValueConverter.E, EnumWithCustomValueConverter.PI);
+		customJson.serialize(input, os);
+		Assert.assertEquals("[2.71828,3.14159]", os.toString("UTF-8"));
+		List<EnumWithCustomValueConverter> output = customJson.deserializeList(EnumWithCustomValueConverter.class, os.toByteArray(), os.size());
+		Assert.assertEquals(input, output);
+	}
 }

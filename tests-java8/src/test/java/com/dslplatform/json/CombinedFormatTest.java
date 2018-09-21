@@ -129,7 +129,6 @@ public class CombinedFormatTest {
 		Assert.assertArrayEquals(c.x, res2.x);
 	}
 
-
 	@Test
 	public void firstObjectThenArrayForNonEmptyCtor() throws IOException {
 		ImmutableComposite2 c = new ImmutableComposite2(
@@ -148,5 +147,31 @@ public class CombinedFormatTest {
 		Assert.assertEquals(c.d, res2.d);
 		Assert.assertEquals(c.s, res2.s);
 		Assert.assertArrayEquals(c.x, res2.x);
+	}
+
+	@Test
+	public void withPrettyStream() throws IOException {
+		ImmutableComposite2 c = new ImmutableComposite2(
+				new int[] { 1, -1, -0 },
+				Arrays.asList("abc", "def", null, "ghi"),
+				Double.parseDouble("123.456")
+		);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(c, new PrettifyOutputStream(os));
+		Assert.assertEquals(
+				"{\n" +
+						"  \"x\": [\n" +
+						"    1,\n" +
+						"    -1,\n" +
+						"    0\n" +
+						"  ],\n" +
+						"  \"s\": [\n" +
+						"    \"abc\",\n" +
+						"    \"def\",\n" +
+						"    null,\n" +
+						"    \"ghi\"\n" +
+						"  ],\n" +
+						"  \"d\": 123.456\n" +
+						"}", os.toString());
 	}
 }

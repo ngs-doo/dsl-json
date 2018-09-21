@@ -9,6 +9,7 @@ public final class PrettifyOutputStream extends OutputStream {
 	private static final int INDENT_CACHE_SIZE = 257;
 
 	private static final boolean[] WHITESPACE = new boolean[256];
+
 	static {
 		WHITESPACE[9] = true;
 		WHITESPACE[10] = true;
@@ -97,7 +98,7 @@ public final class PrettifyOutputStream extends OutputStream {
 				}
 				out.write(b);
 				start = i + 1;
-			} else if(WHITESPACE[b]) {
+			} else if (WHITESPACE[b]) {
 				out.write(bytes, start, i - start);
 				start = i + 1;
 			} else if (beginObjectOrList) {
