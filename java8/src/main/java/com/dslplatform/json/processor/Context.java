@@ -15,15 +15,15 @@ final class Context {
 	final Map<String, OptimizedConverter> inlinedConverters;
 	final Map<String, String> defaults;
 	final Map<String, StructInfo> structs;
-	final Set<String> knownTypes;
+	final TypeSupport typeSupport;
 	final boolean allowUnknown;
 
-	Context(Writer code, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, Set<String> knownTypes, boolean allowUnknown) {
+	Context(Writer code, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, TypeSupport typeSupport, boolean allowUnknown) {
 		this.code = code;
 		this.inlinedConverters = inlinedConverters;
 		this.defaults = defaults;
 		this.structs = structs;
-		this.knownTypes = knownTypes;
+		this.typeSupport = typeSupport;
 		this.allowUnknown = allowUnknown;
 	}
 

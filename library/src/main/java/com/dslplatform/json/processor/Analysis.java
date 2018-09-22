@@ -35,8 +35,7 @@ public class Analysis {
 	public final TypeElement converterElement;
 	public final DeclaredType converterType;
 
-	private final Set<String> supportedTypes;
-	private final ContainerSupport containerSupport;
+	private final TypeSupport typeSupport;
 	private final Set<String> alternativeIgnore;
 	private final Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable;
 	private final Map<String, String> alternativeAlias;
@@ -61,16 +60,15 @@ public class Analysis {
 		return hasError;
 	}
 
-	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, Set<String> supportedTypes, ContainerSupport containerSupport) {
-		this(processingEnv, annotationUsage, logLevel, supportedTypes, containerSupport, null, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
+	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, TypeSupport typeSupport) {
+		this(processingEnv, annotationUsage, logLevel, typeSupport, null, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
 	}
 
 	public Analysis(
 			ProcessingEnvironment processingEnv,
 			AnnotationUsage annotationUsage,
 			LogLevel logLevel,
-			Set<String> supportedTypes,
-			ContainerSupport containerSupport,
+			TypeSupport typeSupport,
 			@Nullable Set<String> alternativeIgnore,
 			@Nullable Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable,
 			@Nullable Map<String, String> alternativeAlias,
@@ -93,8 +91,7 @@ public class Analysis {
 		this.attributeType = types.getDeclaredType(attributeElement);
 		this.converterElement = elements.getTypeElement(JsonConverter.class.getName());
 		this.converterType = types.getDeclaredType(converterElement);
-		this.supportedTypes = supportedTypes;
-		this.containerSupport = containerSupport;
+		this.typeSupport = typeSupport;
 		this.alternativeIgnore = alternativeIgnore == null ? new HashSet<String>() : alternativeIgnore;
 		this.alternativeNonNullable = alternativeNonNullable == null ? new HashMap<String, List<AnnotationMapping<Boolean>>>() : alternativeNonNullable;
 		this.alternativeAlias = alternativeAlias == null ? new HashMap<String, String>() : alternativeAlias;
@@ -653,7 +650,7 @@ public class Analysis {
 			} else converter = null;
 			String referenceName = referenceType.toString();
 			boolean isJsonObject = jsonObjectReaderPath(referenceElement) != null;
-			boolean typeResolved = converter != null || isJsonObject || supportedTypes.contains(referenceName) || structs.containsKey(referenceName);
+			boolean typeResolved = converter != null || isJsonObject || typeSupport.isSupported(referenceName) || structs.containsKey(referenceName);
 			boolean hasUnknown = false;
 			boolean hasOwnerStructType = false;
 			Map<String, Integer> typeVariablesIndex = new HashMap<String, Integer>();
@@ -731,7 +728,7 @@ public class Analysis {
 		TypeMirror converter = findConverter(property);
 		if (converter != null) return;
 		String typeName = returnType.toString();
-		if (supportedTypes.contains(typeName)) return;
+		if (typeSupport.isSupported(typeName)) return;
 		TypeElement el = elements.getTypeElement(typeName);
 		if (el != null) {
 			findStructs(el, discoveredBy, el + " is referenced as " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null, null);
@@ -748,21 +745,18 @@ public class Analysis {
 		int genInd = typeName.indexOf('<');
 		if (genInd == -1) return;
 		String containerType = typeName.substring(0, genInd);
-		if (!onlyBasicFeatures && !structs.containsKey(containerType) && !containerSupport.isSupported(containerType)) {
+		if (!onlyBasicFeatures && !structs.containsKey(containerType) && !typeSupport.isSupported(containerType)) {
 			TypeElement generics = elements.getTypeElement(containerType);
 			findStructs(generics, discoveredBy, generics + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null, null);
 		}
 		String subtype = typeName.substring(genInd + 1, typeName.lastIndexOf('>'));
-		if (supportedTypes.contains(subtype)) return;
+		if (typeSupport.isSupported(subtype)) return;
 		Set<String> parts = new LinkedHashSet<String>();
 		extractTypes(subtype, parts);
 		for (String st : parts) {
-			if (!structs.containsKey(st) && !supportedTypes.contains(st)) {
+			if (!structs.containsKey(st) && !typeSupport.isSupported(st)) {
 				el = elements.getTypeElement(st);
 				if (el != null) {
-					if (!el.getTypeParameters().isEmpty()) {
-						if (containerSupport.isSupported(st)) continue;
-					}
 					findStructs(el, discoveredBy, el + " is referenced as generic " + access + " from '" + inside.asType() + "' through CompiledJson annotation.", path, null, null);
 				}
 			}
@@ -788,7 +782,7 @@ public class Analysis {
 			@Nullable ExecutableElement builder) {
 		if (!(el instanceof TypeElement)) return;
 		String typeName = el.toString();
-		if (structs.containsKey(typeName) || supportedTypes.contains(typeName)) return;
+		if (structs.containsKey(typeName) || typeSupport.isSupported(typeName)) return;
 		final TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
@@ -1125,7 +1119,7 @@ public class Analysis {
 
 	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts) {
 		String typeName = target.toString();
-		if (supportedTypes.contains(typeName)) {
+		if (typeSupport.isSupported(typeName)) {
 			parts.put(typeName, PartKind.OTHER);
 			return;
 		}
@@ -1152,8 +1146,7 @@ public class Analysis {
 					parts.put(typeName, PartKind.UNKNOWN);
 				} else {
 					String rawTypeName = declaredType.asElement().toString();
-					if (structs.containsKey(rawTypeName) || supportedTypes.contains(rawTypeName)
-							|| containerSupport.isSupported(rawTypeName)) {
+					if (structs.containsKey(rawTypeName) || typeSupport.isSupported(rawTypeName)) {
 						parts.put(rawTypeName, PartKind.OTHER);
 					} else {
 						parts.put(rawTypeName, PartKind.UNKNOWN);
@@ -1177,7 +1170,7 @@ public class Analysis {
 
 	private void extractTypes(String signature, Set<String> parts) {
 		if (signature.isEmpty()) return;
-		if (supportedTypes.contains(signature) || structs.containsKey(signature)) {
+		if (typeSupport.isSupported(signature) || structs.containsKey(signature)) {
 			parts.add(signature);
 			return;
 		}
@@ -1241,7 +1234,7 @@ public class Analysis {
 
 	private boolean isSupportedEnumNameType(Element element) {
 		String enumNameType = extractReturnType(element);
-		if (supportedTypes.contains(enumNameType) || unknownTypes == UnknownTypes.ALLOW) return true;
+		if (typeSupport.isSupported(enumNameType) || unknownTypes == UnknownTypes.ALLOW) return true;
 		StructInfo target = structs.get(enumNameType);
 		if (target != null && target.hasKnownConversion()) return true;
 		if (unknownTypes == UnknownTypes.WARNING) {

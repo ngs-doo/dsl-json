@@ -4,7 +4,7 @@ import com.dslplatform.json.CompiledJson;
 import com.dslplatform.json.Configuration;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonConverter;
-import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -201,7 +201,18 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		if (roundEnv.processingOver() || annotations.isEmpty()) {
 			return false;
 		}
-		final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader(getClass().getClassLoader()));
+		final DslJson.Settings settings = new DslJson.Settings()
+				.resolveReader(Settings.UNKNOWN_READER)
+				.resolveWriter(Settings.UNKNOWN_WRITER)
+				.resolveReader(CollectionAnalyzer.READER)
+				.resolveWriter(CollectionAnalyzer.WRITER)
+				.resolveReader(ArrayAnalyzer.READER)
+				.resolveWriter(ArrayAnalyzer.WRITER)
+				.resolveReader(MapAnalyzer.READER)
+				.resolveWriter(MapAnalyzer.WRITER)
+				.includeServiceLoader(getClass().getClassLoader());
+
+		final DslJson<Object> dslJson = new DslJson<>(settings);
 		Set<Type> knownEncoders = dslJson.getRegisteredEncoders();
 		Set<Type> knownDecoders = dslJson.getRegisteredDecoders();
 		Set<String> allTypes = new HashSet<>();
@@ -210,19 +221,26 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				allTypes.add(t.getTypeName());
 			}
 		}
+
+		TypeSupport typeSupport = new CachedTypeSupport(type -> {
+			if (allTypes.contains(type)) {
+				return true;
+			} else if ("java.lang.Object".equals(type)) {
+				return false;
+			}
+			try {
+				Class<?> raw = Class.forName(type);
+				return dslJson.canSerialize(raw) && dslJson.canDeserialize(raw);
+			} catch (Exception ignore) {
+				return false;
+			}
+		});
+
 		final Analysis analysis = new Analysis(
 				processingEnv,
 				annotationUsage,
 				logLevel,
-				allTypes,
-				rawClass -> {
-					try {
-						Class<?> raw = Class.forName(rawClass);
-						return dslJson.canSerialize(raw) && dslJson.canDeserialize(raw);
-					} catch (Exception ignore) {
-						return false;
-					}
-				},
+				typeSupport,
 				JsonIgnore,
 				NonNullable,
 				PropertyAlias,
@@ -276,7 +294,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				try {
 					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
-						buildCode(writer, entry.getKey(), structInfo, structs, allTypes, unknownTypes != UnknownTypes.ERROR);
+						buildCode(writer, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR);
 						generatedFiles.put(classNamePath, structInfo);
 						originatingElements.add(structInfo.element);
 					} catch (IOException e) {
@@ -357,9 +375,9 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			final String className,
 			final StructInfo si,
 			final Map<String, StructInfo> structs,
-			final Set<String> knownTypes,
+			final TypeSupport typeSupport,
 			final boolean allowUnknown) throws IOException {
-		final Context context = new Context(code, InlinedConverters, Defaults, structs, knownTypes, allowUnknown);
+		final Context context = new Context(code, InlinedConverters, Defaults, structs, typeSupport, allowUnknown);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
 		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate);
 
