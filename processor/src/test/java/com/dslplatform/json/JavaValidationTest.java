@@ -583,6 +583,32 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void rawTypeRequireUnknownSettings() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InvalidRawTypeProperty.class);
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				10,
+				diagnostics,
+				"Property rawList is referencing raw type: 'java.util.List'. Specify type arguments, register " +
+						"custom converter, mark property as ignored or enable unknown types");
+
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				11,
+				diagnostics,
+				"Property rawGeneric is referencing raw type: 'com.dslplatform.json.models.InvalidRawTypeProperty.MyGeneric'. " +
+						"Specify type arguments, register custom converter, mark property as ignored or enable unknown types");
+
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				12,
+				diagnostics,
+				"Property mapWithRawGeneric is referencing type: 'java.util.Map<java.lang.String,com.dslplatform.json.models.InvalidRawTypeProperty.MyGeneric>' " +
+						"which has a raw type part: 'com.dslplatform.json.models.InvalidRawTypeProperty.MyGeneric'. " +
+						"Specify type arguments, register custom converter, mark property as ignored or enable unknown types");
+	}
+
+	@Test
 	public void stringVariants() {
 		checkValidCompilation(BuildersAndBuffers.class);
 	}
