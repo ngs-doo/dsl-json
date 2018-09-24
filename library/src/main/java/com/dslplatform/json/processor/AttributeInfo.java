@@ -87,28 +87,28 @@ public class AttributeInfo {
 		return struct != null && struct.type == ObjectType.ENUM;
 	}
 
-	private boolean canResolveCollection(String content, Set<String> knownTypes, Map<String, StructInfo> structs) {
-		if (knownTypes.contains(content)) return true;
+	private boolean canResolveCollection(String content, TypeSupport typeSupport, Map<String, StructInfo> structs) {
+		if (typeSupport.isSupported(content)) return true;
 		StructInfo target = structs.get(content);
 		//we could also say that we know how to resolve other objects, but his has to be done lazily
 		return target != null && target.hasKnownConversion();
 	}
 
 	@Nullable
-	public List<String> collectionContent(Set<String> knownTypes, Map<String, StructInfo> structs) {
+	public List<String> collectionContent(TypeSupport typeSupport, Map<String, StructInfo> structs) {
 		if (isArray) {
 			String content = typeName.substring(0, typeName.length() - 2);
-			return canResolveCollection(content, knownTypes, structs) ? Collections.singletonList(content) : null;
+			return canResolveCollection(content, typeSupport, structs) ? Collections.singletonList(content) : null;
 		} else if (isList || isSet) {
 			int ind = typeName.indexOf('<');
 			String content = typeName.substring(ind + 1, typeName.length() - 1);
-			return canResolveCollection(content, knownTypes, structs) ? Collections.singletonList(content) : null;
+			return canResolveCollection(content, typeSupport, structs) ? Collections.singletonList(content) : null;
 		} else if (isMap) {
 			int indGen = typeName.indexOf('<');
 			int indComma = typeName.indexOf(',', indGen + 1);
 			String content1 = typeName.substring(indGen + 1, indComma);
 			String content2 = typeName.substring(indComma + 1, typeName.length() - 1);
-			return canResolveCollection(content1, knownTypes, structs) && canResolveCollection(content2, knownTypes, structs)
+			return canResolveCollection(content1, typeSupport, structs) && canResolveCollection(content2, typeSupport, structs)
 					? Arrays.asList(content1, content2)
 					: null;
 		}

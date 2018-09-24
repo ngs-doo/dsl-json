@@ -7,6 +7,7 @@ import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.runtime.ObjectAnalyzer;
 
 import java.util.List;
+import java.util.Map;
 
 @CompiledJson
 public class UnknownTypeWithConverter {
@@ -14,6 +15,9 @@ public class UnknownTypeWithConverter {
 	public Object value = 42;
 	public List<Object> list;
 	public Generic<Object> generic;
+	public List rawList;
+	public Generic rawGeneric;
+	public Map<String, Generic> mapWithRawGeneric;
 
 	@JsonConverter(target = Object.class)
 	public static class WhitelistObjectConversion {

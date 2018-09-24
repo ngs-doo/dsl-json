@@ -20,6 +20,12 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.dslplatform</groupId>
+			<artifactId>dsl-json-integration-tests-java8-external-models</artifactId>
+			<version>1.8.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.12</version>

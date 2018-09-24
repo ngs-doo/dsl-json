@@ -24,7 +24,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> JsonRequired;
 	private static final Map<String, String> PropertyIndex;
 	private static final List<IncompatibleTypes> CheckTypes;
-	private static final ContainerSupport CheckCollection;
+	private static final TypeSupport TypeSupport;
 
 	private static final String CONFIG = "META-INF/services/com.dslplatform.json.Configuration";
 
@@ -116,10 +116,10 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		for (String c : SupportedCollections.keySet()) {
 			collections.add(c.substring(0, c.length() - 1));
 		}
-		CheckCollection = new ContainerSupport() {
+		TypeSupport = new TypeSupport() {
 			@Override
-			public boolean isSupported(String rawClass) {
-				return collections.contains(rawClass);
+			public boolean isSupported(String type) {
+				return SupportedTypes.containsKey(type) || collections.contains(type);
 			}
 		};
 	}
@@ -164,8 +164,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				processingEnv,
 				annotationUsage,
 				logLevel,
-				SupportedTypes.keySet(),
-				CheckCollection,
+				TypeSupport,
 				JsonIgnore,
 				NonNullable,
 				PropertyAlias,
