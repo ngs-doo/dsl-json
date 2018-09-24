@@ -718,7 +718,7 @@ public class Analysis {
 							isJsonObject,
 							typeVariablesIndex,
 							hasOwnerStructType);
-			String[] alternativeNames = getAlternativeNames(attr.element);
+			String[] alternativeNames = attr.annotation == null ? null : getAlternativeNames(attr.annotation);
 			if (alternativeNames != null) {
 				attr.alternativeNames.addAll(Arrays.asList(alternativeNames));
 			}
@@ -1672,9 +1672,7 @@ public class Analysis {
 	}
 
 	@Nullable
-	public String[] getAlternativeNames(Element property) {
-		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
-		if (dslAnn == null) return null;
+	private String[] getAlternativeNames(AnnotationMirror dslAnn) {
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 		for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> ee : values.entrySet()) {
 			if (ee.getKey().toString().equals("alternativeNames()")) {

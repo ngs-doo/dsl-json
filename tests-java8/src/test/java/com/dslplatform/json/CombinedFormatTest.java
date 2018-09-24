@@ -7,7 +7,9 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class CombinedFormatTest {
@@ -48,14 +50,13 @@ public class CombinedFormatTest {
 	}
 	@CompiledJson(formats = {CompiledJson.Format.OBJECT,CompiledJson.Format.ARRAY})
 	public static class ImmutableComposite2 {
-		@JsonAttribute(index = 1)
+		@JsonAttribute(index = 1, alternativeNames = {"X"})
 		public final int[] x;
-		@JsonAttribute(index = 2)
 		public final List<String> s;
 		@JsonAttribute(index = 3)
 		public final Double d;
 
-		public ImmutableComposite2(int[] x, List<String> s, Double d) {
+		public ImmutableComposite2(int[] x, @JsonAttribute(index = 2, alternativeNames = {"S"}) List<String> s, Double d) {
 			this.x = x;
 			this.s = s;
 			this.d = d;
@@ -127,6 +128,14 @@ public class CombinedFormatTest {
 		Assert.assertEquals(c.d, res2.d);
 		Assert.assertEquals(c.s, res2.s);
 		Assert.assertArrayEquals(c.x, res2.x);
+	}
+
+	@Test
+	public void alternativeNameOnImmutable() throws IOException {
+		byte[] bytes = "{\"X\":[1,-1,0],\"S\":[\"\"],\"d\":123}".getBytes(StandardCharsets.UTF_8);
+		ImmutableComposite2 res2 = dslJson.deserialize(ImmutableComposite2.class, bytes, bytes.length);
+		Assert.assertArrayEquals(new int[] { 1, -1, -0 }, res2.x);
+		Assert.assertEquals(Collections.singletonList(""), res2.s);
 	}
 
 	@Test

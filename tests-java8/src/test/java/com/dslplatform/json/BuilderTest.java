@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class BuilderTest {
 
@@ -153,7 +154,7 @@ public class BuilderTest {
 	public static abstract class FreeBuilder {
 		@JsonAttribute(index = 1, name = "name")
 		public abstract String name();
-		@JsonAttribute(index = 2, name = "id")
+		@JsonAttribute(index = 2, name = "id", alternativeNames = {"ID"})
 		public abstract int id();
 		public static Builder builder() {
 			return new Builder();
@@ -292,6 +293,10 @@ public class BuilderTest {
 		dslJsonObject.serialize(c, os);
 		Assert.assertEquals("{\"name\":\"abc\",\"id\":5}", os.toString());
 		res = dslJsonObject.deserialize(FreeBuilder.class, os.toByteArray(), os.size());
+		Assert.assertEquals(c.id(), res.id());
+		Assert.assertEquals(c.name(), res.name());
+		byte[] bytes = "{\"name\":\"abc\",\"ID\":5}".getBytes(StandardCharsets.UTF_8);
+		res = dslJsonObject.deserialize(FreeBuilder.class, bytes, os.size());
 		Assert.assertEquals(c.id(), res.id());
 		Assert.assertEquals(c.name(), res.name());
 		os.reset();

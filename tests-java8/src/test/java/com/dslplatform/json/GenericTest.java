@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import com.dslplatform.json.runtime.Settings;
 import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -136,6 +137,26 @@ public class GenericTest {
 		GenericCollections result = dslJson.deserialize(GenericCollections.class, os.toByteArray(), os.size());
 
 		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
+	}
+
+	@CompiledJson
+	public static class GenericFromAnnotation<T> {
+		@JsonAttribute(name = "VALUE")
+		public T value;
+	}
+
+	@Ignore//TODO: fix analysis order
+	@Test
+	public void willUseAnnotationProcessorVersion() throws IOException {
+
+		DslJson<Object> customJson = new DslJson<>(Settings.basicSetup());
+
+		byte[] bytes = "{\"VALUE\":\"ABC\"}".getBytes("UTF-8");
+
+		Type type = new TypeDefinition<GenericFromAnnotation<String>>() {}.type;
+		GenericFromAnnotation<String> result = (GenericFromAnnotation<String>)customJson.deserialize(type, bytes, bytes.length);
+
+		Assert.assertEquals("ABC", result.value);
 	}
 
 	private GenericModel<String, Double> generateModel() {
