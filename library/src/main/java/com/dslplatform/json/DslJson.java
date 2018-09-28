@@ -85,8 +85,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	protected final StringCache keyCache;
 	protected final StringCache valuesCache;
 	protected final List<ConverterFactory<JsonWriter.WriteObject>> writerFactories = new CopyOnWriteArrayList<ConverterFactory<JsonWriter.WriteObject>>();
+	private final int settingsWriters;
 	protected final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new CopyOnWriteArrayList<ConverterFactory<JsonReader.ReadObject>>();
+	private final int settingsReaders;
 	protected final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new CopyOnWriteArrayList<ConverterFactory<JsonReader.BindObject>>();
+	private final int settingsBinders;
 	private final JsonReader.DoublePrecision doublePrecision;
 	private final JsonReader.UnknownNumberParsing unknownNumbers;
 	private final int maxNumberDigits;
@@ -479,8 +482,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.maxNumberDigits = settings.maxNumberDigits;
 		this.maxStringSize = settings.maxStringBuffer;
 		this.writerFactories.addAll(settings.writerFactories);
+		this.settingsWriters = settings.writerFactories.size();
 		this.readerFactories.addAll(settings.readerFactories);
+		this.settingsReaders = settings.readerFactories.size();
 		this.binderFactories.addAll(settings.binderFactories);
+		this.settingsBinders = settings.binderFactories.size();
 		this.externalConverterAnalyzer = new ExternalConverterAnalyzer(settings.classLoaders);
 
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
@@ -791,19 +797,19 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public boolean registerWriterFactory(ConverterFactory<JsonWriter.WriteObject> factory) {
 		if (factory == null) throw new IllegalArgumentException("factory can't be null");
 		if (writerFactories.contains(factory)) return false;
-		writerFactories.add(0, factory);
+		writerFactories.add(writerFactories.size() - settingsWriters, factory);
 		return true;
 	}
 	public boolean registerReaderFactory(ConverterFactory<JsonReader.ReadObject> factory) {
 		if (factory == null) throw new IllegalArgumentException("factory can't be null");
 		if (readerFactories.contains(factory)) return false;
-		readerFactories.add(0, factory);
+		readerFactories.add(readerFactories.size() - settingsReaders, factory);
 		return true;
 	}
 	public boolean registerBinderFactory(ConverterFactory<JsonReader.BindObject> factory) {
 		if (factory == null) throw new IllegalArgumentException("factory can't be null");
 		if (binderFactories.contains(factory)) return false;
-		binderFactories.add(0, factory);
+		binderFactories.add(binderFactories.size() - settingsBinders, factory);
 		return true;
 	}
 
@@ -1026,6 +1032,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			externalConverterAnalyzer.tryFindConverter((Class<?>) manifest, this);
 			T found = cache.get(manifest);
 			if (found != null) return found;
+		} else if (manifest instanceof ParameterizedType) {
+			Type container = ((ParameterizedType)manifest).getRawType();
+			externalConverterAnalyzer.tryFindConverter((Class<?>) container, this);
 		}
 
 		for (ConverterFactory<T> wrt : factories) {
@@ -1033,19 +1042,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (converter != null) {
 				cache.putIfAbsent(manifest, converter);
 				return converter;
-			}
-		}
-
-		if (manifest instanceof ParameterizedType) {
-			final ParameterizedType pt = (ParameterizedType) manifest;
-			if (externalConverterAnalyzer.tryFindConverter((Class<?>) pt.getRawType(), this)) {
-				for (ConverterFactory<T> wrt : factories) {
-					final T converter = wrt.tryCreate(manifest, this);
-					if (converter != null) {
-						cache.putIfAbsent(manifest, converter);
-						return converter;
-					}
-				}
 			}
 		}
 		return null;

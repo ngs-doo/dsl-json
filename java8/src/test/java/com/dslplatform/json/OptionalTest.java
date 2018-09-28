@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -100,6 +101,15 @@ public class OptionalTest {
 		Assert.assertEquals(date, result.get());
 	}
 
+	static class CustomOptionalReader implements Configuration {
+
+		@Override
+		public void configure(DslJson json) {
+			json.registerReaderFactory(CUSTOM_READER);
+			json.registerWriterFactory(CUSTOM_WRITER);
+		}
+	}
+
 	public static final DslJson.ConverterFactory<JsonReader.ReadObject> CUSTOM_READER = new DslJson.ConverterFactory<JsonReader.ReadObject>() {
 		private final JsonReader.ReadObject FakeReader = reader -> { throw new RuntimeException("Fake reader"); };
 
@@ -136,9 +146,46 @@ public class OptionalTest {
 		}
 	};
 
+
 	@Test
 	public void dontIgnoreRegisteredFactory() throws IOException {
+		DslJson<Object> lazy = new DslJson<>(Settings.basicSetup());
+		lazy.registerReaderFactory(CUSTOM_READER);
+		lazy.registerWriterFactory(CUSTOM_WRITER);
+		JsonReader.ReadObject decoder = lazy.tryFindReader(new TypeDefinition<Optional<LocalDate>>() {}.type);
+		JsonWriter.WriteObject encoder = lazy.tryFindWriter(new TypeDefinition<Optional<LocalDate>>() {}.type);
+		Assert.assertNotNull(decoder);
+		Assert.assertNotNull(encoder);
+		try {
+			encoder.write(lazy.newWriter(), Optional.empty());
+			Assert.fail("Exception expected");
+		} catch (RuntimeException ex) {
+			Assert.assertEquals("Fake writer", ex.getMessage());
+		}
+		try {
+			decoder.read(lazy.newReader());
+			Assert.fail("Exception expected");
+		} catch (RuntimeException ex) {
+			Assert.assertEquals("Fake reader", ex.getMessage());
+		}
+	}
+
+	@Test
+	public void externalConvertersWillTakePrecedanceOverCustomFactories() throws IOException {
 		DslJson<Object> lazy = new DslJson<>(Settings.basicSetup().resolveReader(CUSTOM_READER).resolveWriter(CUSTOM_WRITER));
+		JsonReader.ReadObject decoder = lazy.tryFindReader(new TypeDefinition<Optional<LocalDate>>() {}.type);
+		JsonWriter.WriteObject encoder = lazy.tryFindWriter(new TypeDefinition<Optional<LocalDate>>() {}.type);
+		Assert.assertNotNull(decoder);
+		Assert.assertNotNull(encoder);
+		encoder.write(lazy.newWriter(), Optional.empty());
+		JsonReader rdr = lazy.newReader("null".getBytes(StandardCharsets.UTF_8));
+		rdr.read();
+		decoder.read(rdr);
+	}
+
+	@Test
+	public void customConfigurationWillTakePrecedanceOverExternalConverters() throws IOException {
+		DslJson<Object> lazy = new DslJson<>(Settings.basicSetup().with(new CustomOptionalReader()));
 		JsonReader.ReadObject decoder = lazy.tryFindReader(new TypeDefinition<Optional<LocalDate>>() {}.type);
 		JsonWriter.WriteObject encoder = lazy.tryFindWriter(new TypeDefinition<Optional<LocalDate>>() {}.type);
 		Assert.assertNotNull(decoder);
