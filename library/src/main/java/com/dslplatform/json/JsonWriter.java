@@ -417,11 +417,7 @@ public final class JsonWriter {
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
 		}
-		final int p = position;
-		final byte[] _result = buffer;
-		for (int i = 0; i < buf.length; i++) {
-			_result[p + i] = buf[i];
-		}
+		System.arraycopy(buf, 0, buffer, position, len);
 		position += len;
 	}
 
@@ -436,11 +432,7 @@ public final class JsonWriter {
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
 		}
-		final int p = position;
-		final byte[] _result = buffer;
-		for (int i = 0; i < len; i++) {
-			_result[p + i] = buf[i];
-		}
+		System.arraycopy(buf, 0, buffer, position, len);
 		position += len;
 	}
 
