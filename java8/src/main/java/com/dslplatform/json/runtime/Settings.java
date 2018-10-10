@@ -184,7 +184,7 @@ public abstract class Settings {
 	}
 
 	public static <T> DslJson.Settings<T> withAnalyzers() {
-		return withAnalyzers(true, false);
+		return withAnalyzers(true, true);
 	}
 	public static <T> DslJson.Settings<T> withAnalyzers(boolean unknownReader, boolean unknownWriter) {
 		DslJson.Settings settings = new DslJson.Settings();

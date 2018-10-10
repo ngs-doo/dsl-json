@@ -114,6 +114,26 @@ public class GenericTest {
 	}
 
 	@Test
+	public void testRawSignatureWithRuntime() throws IOException {
+		DslJson<Object> dslJsonUnknown = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		GenericModel model = generateModel();
+		try {
+			dslJson.serialize(model, os);
+			Assert.fail("Expecting exception");
+		} catch (IOException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Unable to serialize provided object. Failed to find serializer"));
+		}
+		os.reset();
+		dslJsonUnknown.serialize(model, os);
+
+		Type type = new TypeDefinition<GenericModel<String, Double>>() {}.type;
+		GenericModel<String, Double> result = (GenericModel<String, Double>) dslJsonUnknown.deserialize(type, os.toByteArray(), os.size());
+
+		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
+	}
+
+	@Test
 	public void rountripWithoutRuntime() throws IOException {
 		GenericCollections model = new GenericCollections();
 		model.map1 = new HashMap<>();
