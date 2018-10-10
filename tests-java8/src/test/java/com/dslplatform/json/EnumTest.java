@@ -393,4 +393,22 @@ public class EnumTest {
 		List<EnumWithCustomValueConverter> output = customJson.deserializeList(EnumWithCustomValueConverter.class, os.toByteArray(), os.size());
 		Assert.assertEquals(input, output);
 	}
+
+	@Test
+	public void objectRoundtripWithNullValue() throws IOException {
+		SingleNonImmutable sni = new SingleNonImmutable();
+		sni.e1 = MyEnum1.DEF;
+		sni.e3 = MyEnum1.GHI;
+		sni.map1 = new LinkedHashMap<>();
+		sni.map1.put(MyEnum1.ABC, 2);
+		sni.map1.put(MyEnum1.GHI, 5);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(sni, os);
+		SingleNonImmutable res = dslJson.deserialize(SingleNonImmutable.class, os.toByteArray(), os.size());
+		Assert.assertEquals(sni.e1, res.e1);
+		Assert.assertEquals(sni.e2, res.e2);
+		Assert.assertEquals(sni.e3, res.e3);
+		Assert.assertEquals(sni.map1, res.map1);
+		Assert.assertEquals(sni.list2, res.list2);
+	}
 }

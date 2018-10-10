@@ -22,6 +22,9 @@ public class PrettifyTest {
 	@Test
 	public void specialStrings() throws IOException {
 		testPrettify("[\"1\\2\\\"34\",\"\\\\\",\"\"]", "[\n  \"1\\2\\\"34\",\n  \"\\\\\",\n  \"\"\n]");
+		testPrettify("[\"\",\"\\\\\",\"\",\"\\\\\",\"\"]", "[\n  \"\",\n  \"\\\\\",\n  \"\",\n  \"\\\\\",\n  \"\"\n]");
+		testPrettify("[\"\\\",\\\"\"]", "[\n  \"\\\",\\\"\"\n]");
+		testPrettify("[\"\\\\\",\"\\\\\"]", "[\n  \"\\\\\",\n  \"\\\\\"\n]");
 	}
 
 	@Test
