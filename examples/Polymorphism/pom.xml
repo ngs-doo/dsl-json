@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.dslplatform</groupId>
-	<artifactId>reflection-example</artifactId>
+	<artifactId>polymorphic-example</artifactId>
 	<version>1.8.3</version>
 	<dependencies>
 		<dependency>
@@ -14,16 +14,17 @@
 			<version>1.8.3</version>
 		</dependency>
 	</dependencies>
+
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.0</version>
 				<configuration>
+					<compilerVersion>1.8</compilerVersion>
 					<source>1.8</source>
 					<target>1.8</target>
-					<!-- disabled annotation processor so only reflection is used -->
-					<compilerArgument>-proc:none</compilerArgument>
 				</configuration>
 			</plugin>
 		</plugins>

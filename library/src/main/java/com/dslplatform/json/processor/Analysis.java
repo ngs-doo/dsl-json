@@ -305,6 +305,22 @@ public class Analysis {
 					}
 				}
 			}
+			if (info.type == ObjectType.CLASS && info.hasAnnotation() && !info.hasKnownConversion() && info.attributes.isEmpty() && info.implementations.isEmpty()) {
+				boolean isUsedAsImplementation = false;
+				for (StructInfo si : structs.values()) {
+					if (si.implementations.contains(info)) {
+						isUsedAsImplementation = true;
+						break;
+					}
+				}
+				if (!isUsedAsImplementation) {
+					messager.printMessage(
+							Diagnostic.Kind.WARNING,
+							"No properties found on: '" + info.element + "'. Since it's not used as implementation for some mixin, it's most likely an invalid class configuration (name mismatch, missing setter, etc...)",
+							info.factory,
+							info.annotation);
+				}
+			}
 			if (info.type == ObjectType.CLASS && !info.hasKnownConversion() && !info.hasEmptyCtor() && info.constructor != null && info.factory == null) {
 				for (VariableElement p : info.constructor.getParameters()) {
 					boolean found = false;
@@ -392,8 +408,42 @@ public class Analysis {
 			}
 			if (info.deserializeAs == null && info.type == ObjectType.MIXIN) {
 				Set<String> names = new HashSet<String>();
-				for(StructInfo im : info.implementations) {
+				String discriminator = info.deserializeDiscriminator;
+				if (discriminator.length() > 0 && onlyBasicFeatures) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Custom $type discriminator is not supported with current analysis setup",
+							info.element,
+							info.annotation);
+				}
+				int invalidChartAt = -1;
+				for (int i = 0; i < discriminator.length(); i++) {
+					char c = discriminator.charAt(i);
+					if (c < 32 || c == '"' || c == '\\' || c > 126) {
+						invalidChartAt = i;
+						break;
+					}
+				}
+				if (invalidChartAt != -1) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Invalid discriminator value: '" + discriminator + "' for mixin: " + className +". Invalid char at: " + invalidChartAt,
+							info.element,
+							info.annotation);
+				}
+				for (StructInfo im : info.implementations) {
 					String actualName = im.deserializeName.isEmpty() ? im.element.getQualifiedName().toString() : im.deserializeName;
+					AttributeInfo attr = im.attributes.get(discriminator);
+					if (attr != null) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Conflicting discriminator name detected: '" + discriminator + "' for mixin: " + className + " with property '" + attr.name + "' in class " + im.element.toString(),
+								info.element,
+								info.annotation);
+					}
 					if (!names.add(actualName)) {
 						hasError = true;
 						messager.printMessage(
@@ -410,6 +460,13 @@ public class Analysis {
 								info.annotation);
 					}
 				}
+			}
+			if (info.type == ObjectType.MIXIN && info.deserializeDiscriminator.length() > 0 && info.implementations.isEmpty()) {
+				messager.printMessage(
+						Diagnostic.Kind.WARNING,
+						"Custom deserialization discriminator found: '" + info.deserializeDiscriminator + "', but no implementation detected for mixin: " + className,
+						info.element,
+						info.annotation);
 			}
 			if (info.type == ObjectType.CLASS && onlyBasicFeatures && !info.hasKnownConversion() && !info.hasEmptyCtor()) {
 				hasError = true;
@@ -430,11 +487,11 @@ public class Analysis {
 			if (info.formats.contains(CompiledJson.Format.ARRAY)) {
 				HashSet<Integer> ids = new HashSet<Integer>();
 				for (AttributeInfo attr : info.attributes.values()) {
-					if (attr.index == -1 && info.canCreateEmptyInstance()) {
+					if (attr.index == -1 && info.canCreateEmptyInstance() && info.attributes.size() > 1) {
 						hasError = true;
 						messager.printMessage(
 								Diagnostic.Kind.ERROR,
-								"When array format is used all properties must have index order defined. Property " + attr.name + " doesn't have index defined",
+								"When array format is used on class with multiple properties all properties must have index order defined. Property " + attr.name + " doesn't have index defined",
 								attr.element,
 								attr.annotation);
 					} else if (attr.index != -1 && !ids.add(attr.index)) {
@@ -922,6 +979,7 @@ public class Analysis {
 							onUnknown,
 							typeSignature,
 							deserializeAs,
+							deserializeDiscriminator(annotation),
 							deserializeName(annotation),
 							type == ObjectType.ENUM ? findEnumConstantNameSource(element) : null,
 							isMinified(annotation),
@@ -1244,6 +1302,7 @@ public class Analysis {
 
 	private boolean isSupportedEnumNameType(Element element) {
 		String enumNameType = extractReturnType(element);
+		if (enumNameType == null) return false;
 		if (typeSupport.isSupported(enumNameType) || unknownTypes == UnknownTypes.ALLOW) return true;
 		StructInfo target = structs.get(enumNameType);
 		if (target != null && target.hasKnownConversion()) return true;
@@ -1802,6 +1861,17 @@ public class Analysis {
 			}
 		}
 		return null;
+	}
+
+	public static String deserializeDiscriminator(@Nullable AnnotationMirror annotation) {
+		if (annotation == null) return "";
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("deserializeDiscriminator()")) {
+				return values.get(ee).getValue().toString();
+			}
+		}
+		return "";
 	}
 
 	public static String deserializeName(@Nullable AnnotationMirror annotation) {

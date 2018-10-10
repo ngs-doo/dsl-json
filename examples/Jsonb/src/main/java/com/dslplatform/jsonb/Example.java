@@ -135,6 +135,7 @@ public class Example {
 
 		//TODO while string API is supported, it should be avoided in favor of stream API
 		String result = jsonb.toJson(instance);
+		System.out.println(result);
 
 		//TODO while string API is supported, it should be avoided in favor of stream API
 		Model deser = jsonb.fromJson(result, Model.class);

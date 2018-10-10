@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.dslplatform</groupId>
+    <artifactId>json-examples</artifactId>
+    <version>1.8.3</version>
+    <packaging>pom</packaging>
+    <url>https://github.com/ngs-doo/dsl-json</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <modules>
+        <module>ArrayFormat</module>
+        <module>AutoValue</module>
+        <module>DslSchema</module>
+        <module>Jackson</module>
+        <module>Jsonb</module>
+        <module>MavenJava6</module>
+        <module>MavenJava8</module>
+        <module>Reflection</module>
+    </modules>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>array-format-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>autovalue-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>dsl-schema-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>jackson-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>jsonb-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>maven-java6-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>maven-java8-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>reflection-example</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.3</version>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

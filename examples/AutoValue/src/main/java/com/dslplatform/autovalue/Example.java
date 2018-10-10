@@ -34,6 +34,7 @@ public class Example {
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(employee, os);
+		System.out.println(os);
 
 		ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
 		Employee deser = dslJson.deserialize(Employee.class, is);

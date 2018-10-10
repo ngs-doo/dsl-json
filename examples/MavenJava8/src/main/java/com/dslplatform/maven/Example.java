@@ -245,6 +245,7 @@ public class Example {
 		byte[] buffer = writer.getByteBuffer();
 		//end of buffer
 		int size = writer.size();
+		System.out.println(writer);
 
 		//deserialization using byte[] API
 		Model deser = dslJson.deserialize(Model.class, buffer, size);

@@ -90,8 +90,7 @@ public class AttributeInfo {
 	private boolean canResolveCollection(String content, TypeSupport typeSupport, Map<String, StructInfo> structs) {
 		if (typeSupport.isSupported(content)) return true;
 		StructInfo target = structs.get(content);
-		//we could also say that we know how to resolve other objects, but his has to be done lazily
-		return target != null && target.hasKnownConversion();
+		return target != null && (target.hasKnownConversion() || !target.isParameterized && target.unknowns.isEmpty());
 	}
 
 	@Nullable

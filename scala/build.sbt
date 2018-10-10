@@ -20,7 +20,7 @@ lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
   name := baseDirectory.value.getName,
 
   scalaVersion := crossScalaVersions.value.head,
-  crossScalaVersions := Seq("2.11.12", "2.12.6"),
+  crossScalaVersions := Seq("2.11.12", "2.12.7"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",

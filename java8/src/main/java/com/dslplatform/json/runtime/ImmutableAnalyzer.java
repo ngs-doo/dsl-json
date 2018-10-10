@@ -31,7 +31,7 @@ public abstract class ImmutableAnalyzer {
 		try {
 			Class.forName(className);
 			return true;
-		} catch (ClassNotFoundException e) {
+		} catch (NoClassDefFoundError | ClassNotFoundException ignore) {
 			return false;
 		}
 	}

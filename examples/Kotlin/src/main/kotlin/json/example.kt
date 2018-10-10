@@ -10,7 +10,7 @@ import java.io.ByteArrayOutputStream
 //class will be analyzed at runtime
 @CompiledJson
 data class DataClass(
-        @JsonAttribute(name = "lang") val language: String,
+        @JsonAttribute(name = "lang", alternativeNames = ["Lang", "LANG"]) val language: String,
         val versions: List<Int>,
         val library: String,
         val custom: CustomObject,
@@ -59,6 +59,7 @@ fun main(args: Array<String>) {
 
     println(output.toString("UTF-8"))
 
+    //val input = "{\"LANG\":\"Kotlin\",\"versions\":[170,171,172],\"library\":\"DSL-JSON\",\"custom\":{\"text\":\"abc\"},\"factory\":{\"text\":\"xyz\"}}".byteInputStream()
     val input = ByteArrayInputStream(output.toByteArray())
 
     val deser = dslJson.deserialize(DataClass::class.java, input)

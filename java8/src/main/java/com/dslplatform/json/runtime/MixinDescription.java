@@ -11,31 +11,49 @@ import java.util.Set;
 public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, JsonReader.ReadObject<T> {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
-	private static final int typeHash = DecodePropertyInfo.calcHash("$type");
-	private static final byte[] objectStart = "{\"$type\":".getBytes(utf8);
+	private static final int defaultTypeHash = DecodePropertyInfo.calcHash("$type");
+	private static final byte[] defaultObjectStart = "{\"$type\":".getBytes(utf8);
 
+	private final int typeHash;
+	private final byte[] objectStart;
 	private final Type manifest;
 	private final FormatDescription<T>[] descriptions;
 	private final boolean alwaysSerialize;
 	private final boolean exactMatch;
 	private final boolean canObjectFormat;
 	private final boolean canArrayFormat;
+	private final String discriminator;
 
 	public MixinDescription(
 			final Class<T> manifest,
 			final DslJson json,
 			final FormatDescription<T>[] descriptions) {
-		this((Type) manifest, json, descriptions);
+		this(manifest, json, descriptions, null);
+	}
+
+	public MixinDescription(
+			final Class<T> manifest,
+			final DslJson json,
+			final String discriminator,
+			final FormatDescription<T>[] descriptions) {
+		this(manifest, json, descriptions, discriminator);
 	}
 
 	MixinDescription(
 			final Type manifest,
 			final DslJson json,
-			final FormatDescription<T>[] descriptions) {
+			final FormatDescription<T>[] descriptions,
+			@Nullable final String discriminator) {
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (descriptions == null || descriptions.length == 0) {
 			throw new IllegalArgumentException("descriptions can't be null or empty");
 		}
+		if (discriminator != null && (discriminator.length() == 0 || discriminator.contains("\""))) {
+			throw new IllegalArgumentException("Invalid discriminator provided: " + discriminator);
+		}
+		this.typeHash = discriminator == null ? defaultTypeHash : DecodePropertyInfo.calcHash(discriminator);
+		this.objectStart = discriminator == null ? defaultObjectStart : ("{\"" + discriminator + "\":").getBytes(utf8);
+		this.discriminator = discriminator == null ? "$type" : discriminator;
 		this.manifest = manifest;
 		this.descriptions = descriptions;
 		Set<Integer> uniqueHashNames = new HashSet<>();
@@ -72,11 +90,11 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 	@Nullable
 	private T readObjectFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
-			throw new IOException("Expecting \"$type\" attribute as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting \"" + discriminator + "\" attribute as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		if (reader.fillName() != typeHash) {
 			String name = reader.getLastName();
-			throw new IOException("Expecting \"$type\" attribute as first element of mixin " + reader.positionDescription(name.length() + 2) + ". Found: " + name);
+			throw new IOException("Expecting \"" + discriminator + "\" attribute as first element of mixin " + reader.positionDescription(name.length() + 2) + ". Found: " + name);
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();
@@ -95,7 +113,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 	@Nullable
 	private T readArrayFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
-			throw new IOException("Expecting \"$type\" value as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
+			throw new IOException("Expecting \"" + discriminator + "\" value as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();

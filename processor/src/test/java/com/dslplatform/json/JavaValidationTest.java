@@ -470,12 +470,17 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void arrayFormatDoesntRequiresIndexOnSingleProperty() {
+		checkValidCompilation(ArrayFormatWithoutIndexSingle.class);
+	}
+
+	@Test
 	public void arrayFormatRequiresIndexOnProperties() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
 				8,
-				compileTestCase(ArrayFormatWithoutIndex.class),
-				"When array format is used all properties must have index order defined. Property o doesn't have index defined");
+				compileTestCase(ArrayFormatWithoutIndexMultiple.class),
+				"When array format is used on class with multiple properties all properties must have index order defined. Property o doesn't have index defined");
 	}
 
 	@Test
@@ -666,4 +671,21 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		checkValidCompilation(MapRuntimeCtor.class);
 	}
 
+	@Test
+	public void badDiscriminatorChar() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(InterfaceWithBadDiscriminator.class),
+				"Invalid discriminator value: 'abc\t' for mixin: com.dslplatform.json.models.InterfaceWithBadDiscriminator. Invalid char at: 3");
+	}
+
+	@Test
+	public void conflictingDiscriminatorName() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				5,
+				compileTestCase(InterfaceWithConflictingDiscriminator.class),
+				"Conflicting discriminator name detected: 'abc' for mixin: com.dslplatform.json.models.InterfaceWithConflictingDiscriminator with property 'abc' in class");
+	}
 }

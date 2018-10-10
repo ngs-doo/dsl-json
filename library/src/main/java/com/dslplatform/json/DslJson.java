@@ -1032,6 +1032,19 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return null;
 	}
 
+	private void checkExternal(final Type manifest) {
+		if (manifest instanceof Class<?>) {
+			externalConverterAnalyzer.tryFindConverter((Class<?>) manifest, this);
+		} else if (manifest instanceof ParameterizedType) {
+			ParameterizedType pt = (ParameterizedType) manifest;
+			Type container = pt.getRawType();
+			externalConverterAnalyzer.tryFindConverter((Class<?>) container, this);
+			for (Type arg : pt.getActualTypeArguments()) {
+				checkExternal(arg);
+			}
+		}
+	}
+
 	@Nullable
 	private <T> T lookupFromFactories(
 			final Type manifest,
@@ -1042,8 +1055,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			T found = cache.get(manifest);
 			if (found != null) return found;
 		} else if (manifest instanceof ParameterizedType) {
-			Type container = ((ParameterizedType)manifest).getRawType();
-			externalConverterAnalyzer.tryFindConverter((Class<?>) container, this);
+			checkExternal(manifest);
 		}
 
 		for (ConverterFactory<T> wrt : factories) {

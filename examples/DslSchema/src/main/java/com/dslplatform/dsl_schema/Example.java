@@ -36,6 +36,7 @@ public class Example {
 		//standard serialization using DslJson<>
 		dslJson.serialize(writer2, instance);
 		//writer1 content == writer2 content
+		System.out.println(writer2);
 
 		//deserialization directly though JsonReader
 		JsonReader<Object> reader = dslJson.newReader(writer1.getByteBuffer(), writer1.size());

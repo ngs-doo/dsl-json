@@ -26,6 +26,7 @@ public class StructInfo {
 	public final CompiledJson.Behavior onUnknown;
 	public final CompiledJson.TypeSignature typeSignature;
 	public final TypeElement deserializeAs;
+	public final String deserializeDiscriminator;
 	public final String deserializeName;
 	public final boolean isMinified;
 	public final EnumSet<CompiledJson.Format> formats;
@@ -54,6 +55,7 @@ public class StructInfo {
 			@Nullable CompiledJson.Behavior onUnknown,
 			@Nullable CompiledJson.TypeSignature typeSignature,
 			@Nullable TypeElement deserializeAs,
+			@Nullable String deserializeDiscriminator,
 			@Nullable String deserializeName,
 			@Nullable Element enumConstantNameSource,
 			boolean isMinified,
@@ -72,6 +74,7 @@ public class StructInfo {
 		this.onUnknown = onUnknown;
 		this.typeSignature = typeSignature;
 		this.deserializeAs = deserializeAs;
+		this.deserializeDiscriminator = deserializeDiscriminator != null ? deserializeDiscriminator : "";
 		this.deserializeName = deserializeName != null ? deserializeName : "";
 		this.enumConstantNameSource = enumConstantNameSource;
 		this.isMinified = isMinified;
@@ -110,6 +113,7 @@ public class StructInfo {
 		this.onUnknown = null;
 		this.typeSignature = null;
 		this.deserializeAs = null;
+		this.deserializeDiscriminator = "";
 		this.deserializeName = "";
 		this.enumConstantNameSource = null;
 		this.isMinified = false;

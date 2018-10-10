@@ -231,7 +231,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			try {
 				Class<?> raw = Class.forName(type);
 				return dslJson.canSerialize(raw) && dslJson.canDeserialize(raw);
-			} catch (Exception ignore) {
+			} catch (NoClassDefFoundError | Exception ignore) {
 				return false;
 			}
 		});
@@ -498,6 +498,9 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t\tcom.dslplatform.json.runtime.").append(mixinType).append("<").append(className).append("> description = new com.dslplatform.json.runtime.").append(mixinType).append("<>(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
 		code.append("\t\t\t__dsljson,\n");
+		if (si.deserializeDiscriminator.length() > 0) {
+			code.append("\t\t\t\"").append(si.deserializeDiscriminator).append("\",\n");
+		}
 		code.append("\t\t\tnew com.dslplatform.json.runtime.FormatDescription[] {\n");
 		int i = si.implementations.size();
 		for (StructInfo im : si.implementations) {
