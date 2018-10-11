@@ -201,7 +201,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		if (roundEnv.processingOver() || annotations.isEmpty()) {
 			return false;
 		}
-		final DslJson.Settings settings = new DslJson.Settings()
+		final DslJson.Settings<Object> settings = new DslJson.Settings<>()
 				.resolveReader(Settings.UNKNOWN_READER)
 				.resolveWriter(Settings.UNKNOWN_WRITER)
 				.resolveReader(CollectionAnalyzer.READER)
