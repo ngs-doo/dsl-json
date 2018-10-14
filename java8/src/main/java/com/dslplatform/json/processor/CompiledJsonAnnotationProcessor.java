@@ -286,11 +286,11 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 			for (Map.Entry<String, StructInfo> entry : structs.entrySet()) {
 				StructInfo structInfo = entry.getValue();
-				if (structInfo.type == ObjectType.CLASS && structInfo.attributes.isEmpty()) {
+				if (structInfo.type == ObjectType.CLASS && structInfo.attributes.isEmpty() && !structInfo.hasAnnotation()) {
 					continue;
 				}
 
-				String classNamePath = findConverterName(entry.getValue());
+				String classNamePath = findConverterName(structInfo);
 				try {
 					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
@@ -383,7 +383,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 		final String generateFullClassName = findConverterName(si);
 		final int dotIndex = generateFullClassName.lastIndexOf('.');
-		final String generateClassName = generateFullClassName.substring(dotIndex + 1, generateFullClassName.length());
+		final String generateClassName = generateFullClassName.substring(dotIndex + 1);
 		if (dotIndex != -1) {
 			final String generatePackage = generateFullClassName.substring(0, dotIndex);
 			code.append("package ").append(generatePackage).append(";\n\n");
@@ -400,7 +400,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			if (si.canCreateEmptyInstance()) {
 				code.append("\t\t__dsljson.registerBinderFactory(factory);\n");
 			}
-		} else if ((si.builder != null || si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null)) && !si.attributes.isEmpty()) {
+		} else if (si.builder != null || si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null)) {
 			String objectFormatConverterName = "converter";
 			if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(__dsljson);\n");
@@ -462,7 +462,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 		code.append("\t}\n");
 
-		if ((si.type == ObjectType.CLASS || si.builder != null) && !si.attributes.isEmpty()) {
+		if (si.type == ObjectType.CLASS || si.builder != null) {
 			final String typeName;
 			if (si.isParameterized) {
 				converterTemplate.factoryForGenericConverter(si);

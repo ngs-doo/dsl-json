@@ -207,4 +207,30 @@ public class GenericTest {
 		entry.value = value;
 		return entry;
 	}
+
+	interface Inner {};
+	static class InnerA implements Inner {};
+	static class InnerB implements Inner {};
+
+	@CompiledJson
+	static abstract class X<T extends Inner> {
+	}
+
+	@CompiledJson
+	public static class Y extends X<InnerA> {
+	}
+
+	@CompiledJson
+	public static class Z extends X<InnerB> {
+	}
+
+	@Test
+	public void willCreateClassesWithoutProperties() throws IOException {
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(new Y(), os);
+
+		Y result = dslJson.deserialize(Y.class, os.toByteArray(), os.size());
+		Assert.assertNotNull(result);
+	}
 }
