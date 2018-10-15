@@ -858,7 +858,7 @@ public class Analysis {
 			@Nullable ExecutableElement builder) {
 		if (!(el instanceof TypeElement)) return;
 		String typeName = el.toString();
-		if (structs.containsKey(typeName) || typeSupport.isSupported(typeName)) return;
+		if (structs.containsKey(typeName) || typeSupport.isSupported(typeName) || "java.lang.Object".equals(typeName)) return;
 		final TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
