@@ -585,6 +585,12 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				7,
 				compileTestCase(InvalidObjectProperty.class),
 				"Property o is referencing unknown type: 'java.lang.Object'. Register");
+
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				8,
+				compileTestCase(InvalidObjectProperty.class),
+				"Property o2 is referencing unknown type: 'java.lang.Object'. Register");
 	}
 
 	@Test

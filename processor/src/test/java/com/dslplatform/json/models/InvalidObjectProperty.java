@@ -5,4 +5,5 @@ import com.dslplatform.json.*;
 @CompiledJson
 public class InvalidObjectProperty {
 	public Object o;
+	public Object o2;
 }
