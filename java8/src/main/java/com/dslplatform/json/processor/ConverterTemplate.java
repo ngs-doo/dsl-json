@@ -2,8 +2,11 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
 
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -11,8 +14,11 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 import static com.dslplatform.json.processor.CompiledJsonAnnotationProcessor.findConverterName;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
@@ -24,11 +30,13 @@ class ConverterTemplate {
 	private final Writer code;
 	private final Context context;
 	private final EnumTemplate enumTemplate;
+	private final ProcessingEnvironment processingEnv;
 
-	ConverterTemplate(Context context, EnumTemplate enumTemplate) {
+	ConverterTemplate(Context context, EnumTemplate enumTemplate, ProcessingEnvironment processingEnv) {
 		this.code = context.code;
 		this.context = context;
 		this.enumTemplate = enumTemplate;
+		this.processingEnv = processingEnv;
 	}
 
 	private boolean isStaticEnum(AttributeInfo attr) {
@@ -109,10 +117,32 @@ class ConverterTemplate {
 			code.append("\t\tprivate final java.lang.reflect.Type[] actualTypes;\n");
 		}
 
+		Map<String, TypeMirror> genericAttributes = new HashMap<>();
+		for (AttributeInfo attr : si.attributes.values()) {
+			if (!si.isParameterized && attr.isGeneric) {
+				Queue<TypeMirror> queue = new ArrayDeque<>(processingEnv.getTypeUtils().directSupertypes(si.element.asType()));
+				while (!queue.isEmpty()) {
+					TypeMirror mirror = queue.poll();
+					if (mirror instanceof DeclaredType) {
+						DeclaredType declaredType = (DeclaredType) mirror;
+						Element element = declaredType.asElement();
+						if (element instanceof TypeElement) {
+							List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
+							List<? extends TypeParameterElement> typeParameters = ((TypeElement) element).getTypeParameters();
+							for (int i = 0; i < typeParameters.size(); i++) {
+								genericAttributes.put(typeParameters.get(i).toString(), typeArguments.get(i));
+							}
+							queue.addAll(processingEnv.getTypeUtils().directSupertypes(mirror));
+						}
+					}
+				}
+			}
+		}
+
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			StructInfo target = context.structs.get(attr.typeName);
+		    StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
 				List<String> types = attr.collectionContent(context.typeSupport, context.structs);
 				if (target != null && attr.isEnum(context.structs)) {
@@ -123,7 +153,15 @@ class ConverterTemplate {
 						if (attr.isArray) {
 							content = ((ArrayType) attr.type).getComponentType().toString();
 						} else {
-							content = attr.typeName;
+							if (si.isParameterized) {
+								content = attr.typeName;
+							} else {
+								content = "java.lang.Object";
+								TypeMirror typeMirror = genericAttributes.get(attr.typeName);
+								if (typeMirror != null) {
+									content = typeMirror.toString();
+								}
+							}
 						}
 					} else {
 						content = types.get(0);
@@ -227,7 +265,11 @@ class ConverterTemplate {
 					if (attr.isArray) {
 						type = typeForGeneric(((ArrayType) attr.type).getComponentType(), attr.typeVariablesIndex);
 					} else {
-						type = typeForGeneric(attr.type, attr.typeVariablesIndex);
+					    if (si.isParameterized) {
+							type = typeForGeneric(attr.type, attr.typeVariablesIndex);
+						} else {
+					    	type = genericAttributes.get(attr.typeName).toString() + ".class";
+						}
 					}
 
 					code.append("\t\t\tjava.lang.reflect.Type manifest_").append(attr.name).append(" = ").append(type).append(";\n");

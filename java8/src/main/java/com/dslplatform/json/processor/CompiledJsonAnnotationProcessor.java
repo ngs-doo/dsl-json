@@ -294,7 +294,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				try {
 					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
-						buildCode(writer, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR);
+						buildCode(writer, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR, processingEnv);
 						generatedFiles.put(classNamePath, structInfo);
 						originatingElements.add(structInfo.element);
 					} catch (IOException e) {
@@ -376,10 +376,11 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			final StructInfo si,
 			final Map<String, StructInfo> structs,
 			final TypeSupport typeSupport,
-			final boolean allowUnknown) throws IOException {
+			final boolean allowUnknown,
+			final ProcessingEnvironment processingEnv) throws IOException {
 		final Context context = new Context(code, InlinedConverters, Defaults, structs, typeSupport, allowUnknown);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
-		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate);
+		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate, processingEnv);
 
 		final String generateFullClassName = findConverterName(si);
 		final int dotIndex = generateFullClassName.lastIndexOf('.');
