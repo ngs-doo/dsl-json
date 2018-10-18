@@ -2781,25 +2781,11 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * In most cases JSON is serialized into target `OutputStream`.
 	 * This method will reuse thread local instance of `JsonWriter` and serialize JSON into it.
 	 *
-	 * @param value  instance to serialize
-	 * @param stream where to write resulting JSON
-	 * @throws IOException error when unable to serialize instance
-	 */
-	public final void serialize(@Nullable final Object value, final OutputStream stream) throws IOException {
-	    serialize(value, null, stream);
-    }
-
-	/**
-	 * Convenient serialize API.
-	 * In most cases JSON is serialized into target `OutputStream`.
-	 * This method will reuse thread local instance of `JsonWriter` and serialize JSON into it.
-	 *
 	 * @param value    		instance to serialize
-	 * @param typeManifest 	type manifest
 	 * @param stream 		where to write resulting JSON
 	 * @throws IOException error when unable to serialize instance
 	 */
-	public final void serialize(@Nullable final Object value, @Nullable Class<?> typeManifest, final OutputStream stream) throws IOException {
+	public final void serialize(@Nullable final Object value, final OutputStream stream) throws IOException {
 		if (stream == null) {
 			throw new IllegalArgumentException("stream can't be null");
 		}
@@ -2809,7 +2795,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		final JsonWriter jw = localWriter.get();
 		jw.reset(stream);
-		final Class<?> manifest = typeManifest != null ? typeManifest : value.getClass();
+		final Class<?> manifest = value.getClass();
 		if (!serialize(jw, manifest, value)) {
 			if (fallback == null) {
 				throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
