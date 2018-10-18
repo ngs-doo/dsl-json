@@ -117,28 +117,6 @@ class ConverterTemplate {
 			code.append("\t\tprivate final java.lang.reflect.Type[] actualTypes;\n");
 		}
 
-		Map<String, TypeMirror> genericAttributes = new HashMap<>();
-		for (AttributeInfo attr : si.attributes.values()) {
-			if (!si.isParameterized && attr.isGeneric) {
-				Queue<TypeMirror> queue = new ArrayDeque<>(processingEnv.getTypeUtils().directSupertypes(si.element.asType()));
-				while (!queue.isEmpty()) {
-					TypeMirror mirror = queue.poll();
-					if (mirror instanceof DeclaredType) {
-						DeclaredType declaredType = (DeclaredType) mirror;
-						Element element = declaredType.asElement();
-						if (element instanceof TypeElement) {
-							List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
-							List<? extends TypeParameterElement> typeParameters = ((TypeElement) element).getTypeParameters();
-							for (int i = 0; i < typeParameters.size(); i++) {
-								genericAttributes.put(typeParameters.get(i).toString(), typeArguments.get(i));
-							}
-							queue.addAll(processingEnv.getTypeUtils().directSupertypes(mirror));
-						}
-					}
-				}
-			}
-		}
-
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
@@ -156,11 +134,7 @@ class ConverterTemplate {
 							if (si.isParameterized) {
 								content = attr.typeName;
 							} else {
-								content = "java.lang.Object";
-								TypeMirror typeMirror = genericAttributes.get(attr.typeName);
-								if (typeMirror != null) {
-									content = typeMirror.toString();
-								}
+								content = attr.genericType != null ? attr.genericType.toString() : "java.lang.Object";
 							}
 						}
 					} else {
@@ -268,7 +242,7 @@ class ConverterTemplate {
 					    if (si.isParameterized) {
 							type = typeForGeneric(attr.type, attr.typeVariablesIndex);
 						} else {
-					    	type = genericAttributes.get(attr.typeName).toString() + ".class";
+					    	type = attr.genericType != null ? attr.genericType.toString() + ".class" : "java.lang.Object";
 						}
 					}
 
