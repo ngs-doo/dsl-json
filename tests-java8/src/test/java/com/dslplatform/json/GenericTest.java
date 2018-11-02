@@ -9,6 +9,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +41,13 @@ public class GenericTest {
 		public Map<Double, String> map3;
 		public Set<Double> set;
 		public List<String> list;
+	}
+
+	@CompiledJson
+	static class UnboundedCollections {
+		public Map<String, ? extends BigDecimal> map;
+		public Set<? extends Double> set;
+		public List<? extends String> list;
 	}
 
 	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
@@ -155,6 +163,27 @@ public class GenericTest {
 		dslJson.serialize(model, os);
 
 		GenericCollections result = dslJson.deserialize(GenericCollections.class, os.toByteArray(), os.size());
+
+		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
+	}
+
+	@Test
+	public void unboundedCollections() throws IOException {
+		DslJson<Object> dslJsonUnknown = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
+		UnboundedCollections model = new UnboundedCollections();
+		Map map = new HashMap<>();
+		map.put("x", BigDecimal.valueOf(505, 1));
+		model.map = map;
+		Set set = new HashSet<>();
+		set.add(Double.POSITIVE_INFINITY);
+		set.add(2.2);
+		model.set = set;
+		model.list = Arrays.asList("xXx", null, "xyz");
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonUnknown.serialize(model, os);
+
+		UnboundedCollections result = dslJsonUnknown.deserialize(UnboundedCollections.class, os.toByteArray(), os.size());
 
 		assertThat(result).isEqualToComparingFieldByFieldRecursively(model);
 	}

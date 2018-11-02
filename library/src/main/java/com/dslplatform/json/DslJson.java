@@ -1002,27 +1002,35 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonWriter.WriteObject<?> tryFindWriter(final Type manifest) {
 		JsonWriter.WriteObject writer = writers.get(manifest);
 		if (writer != null) return writer;
-		if (manifest instanceof Class<?>) {
-			final Class<?> signature = (Class<?>) manifest;
+		final Type actualType = extractActualType(manifest);
+		if (actualType != manifest) {
+			writer = writers.get(actualType);
+			if (writer != null) {
+				writers.putIfAbsent(manifest, writer);
+				return writer;
+			}
+		}
+		if (actualType instanceof Class<?>) {
+			final Class<?> signature = (Class<?>) actualType;
 			if (JsonObject.class.isAssignableFrom(signature)) {
 				writers.putIfAbsent(manifest, OBJECT_WRITER);
 				return OBJECT_WRITER;
 			}
 		}
-		writer = lookupFromFactories(manifest, writerFactories, writers);
+		writer = lookupFromFactories(manifest, actualType, writerFactories, writers);
 		if (writer != null) return writer;
-		if (!(manifest instanceof Class<?>)) return null;
-		Class<?> found = writerMap.get(manifest);
+		if (!(actualType instanceof Class<?>)) return null;
+		Class<?> found = writerMap.get(actualType);
 		if (found != null) {
 			return writers.get(found);
 		}
-		Class<?> container = (Class<?>) manifest;
+		Class<?> container = (Class<?>) actualType;
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(container, signatures);
 		for (final Class<?> sig : signatures) {
 			writer = writers.get(sig);
 			if (writer == null) {
-				writer = lookupFromFactories(sig, writerFactories, writers);
+				writer = lookupFromFactories(manifest, sig, writerFactories, writers);
 			}
 			if (writer != null) {
 				writerMap.putIfAbsent(container, sig);
@@ -1032,7 +1040,17 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return null;
 	}
 
-	private void checkExternal(final Type manifest) {
+	private static Type extractActualType(final Type manifest) {
+		if (manifest instanceof WildcardType) {
+			WildcardType wt = (WildcardType) manifest;
+			if (wt.getUpperBounds().length == 1 && wt.getLowerBounds().length == 0) {
+				return wt.getUpperBounds()[0];
+			}
+		}
+		return manifest;
+	}
+
+	private <T> void checkExternal(final Type manifest, final ConcurrentMap<Type, T> cache) {
 		if (manifest instanceof Class<?>) {
 			externalConverterAnalyzer.tryFindConverter((Class<?>) manifest, this);
 		} else if (manifest instanceof ParameterizedType) {
@@ -1040,13 +1058,19 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			Type container = pt.getRawType();
 			externalConverterAnalyzer.tryFindConverter((Class<?>) container, this);
 			for (Type arg : pt.getActualTypeArguments()) {
-				checkExternal(arg);
+				if (!cache.containsKey(arg)) {
+					Type actualType = extractActualType(arg);
+					if (actualType != arg && !cache.containsKey(actualType)) {
+						checkExternal(actualType, cache);
+					}
+				}
 			}
 		}
 	}
 
 	@Nullable
 	private <T> T lookupFromFactories(
+			final Type signature,
 			final Type manifest,
 			final List<ConverterFactory<T>> factories,
 			final ConcurrentMap<Type, T> cache) {
@@ -1055,13 +1079,13 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			T found = cache.get(manifest);
 			if (found != null) return found;
 		} else if (manifest instanceof ParameterizedType) {
-			checkExternal(manifest);
+			checkExternal(manifest, cache);
 		}
 
 		for (ConverterFactory<T> wrt : factories) {
 			final T converter = wrt.tryCreate(manifest, this);
 			if (converter != null) {
-				cache.putIfAbsent(manifest, converter);
+				cache.putIfAbsent(signature, converter);
 				return converter;
 			}
 		}
@@ -1086,8 +1110,16 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.ReadObject<?> tryFindReader(final Type manifest) {
 		JsonReader.ReadObject found = readers.get(manifest);
 		if (found != null) return found;
-		if (manifest instanceof Class<?>) {
-			final Class<?> signature = (Class<?>) manifest;
+		final Type actualType = extractActualType(manifest);
+		if (actualType != manifest) {
+			found = readers.get(actualType);
+			if (found != null) {
+				readers.putIfAbsent(manifest, found);
+				return found;
+			}
+		}
+		if (actualType instanceof Class<?>) {
+			final Class<?> signature = (Class<?>) actualType;
 			if (JsonObject.class.isAssignableFrom(signature)) {
 				final JsonReader.ReadJsonObject<?> decoder = getObjectReader(signature);
 				if (decoder != null) {
@@ -1097,7 +1129,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				}
 			}
 		}
-		return lookupFromFactories(manifest, readerFactories, readers);
+		return lookupFromFactories(manifest, actualType, readerFactories, readers);
 	}
 
 	/**
@@ -1118,7 +1150,15 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public JsonReader.BindObject<?> tryFindBinder(final Type manifest) {
 		JsonReader.BindObject found = binders.get(manifest);
 		if (found != null) return found;
-		return lookupFromFactories(manifest, binderFactories, binders);
+		final Type actualType = extractActualType(manifest);
+		if (actualType != manifest) {
+			found = binders.get(actualType);
+			if (found != null) {
+				binders.putIfAbsent(manifest, found);
+				return found;
+			}
+		}
+		return lookupFromFactories(manifest, actualType, binderFactories, binders);
 	}
 
 	/**

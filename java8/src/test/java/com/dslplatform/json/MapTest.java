@@ -8,6 +8,10 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -116,5 +120,25 @@ public class MapTest {
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
 		GenericMap<LocalDate> wo2 = (GenericMap<LocalDate>) json.deserialize(new TypeDefinition<GenericMap<LocalDate>>() {}.type, bais);
 		Assert.assertEquals(wo.map, wo2.map);
+	}
+
+	@Test
+	public void testUnboundWildcardType() throws IOException {
+		byte[] input = "{\"a\":123.456}".getBytes(StandardCharsets.UTF_8);
+		Type mapType = new TypeDefinition<Map<String, ? extends BigDecimal>>() { }.type;
+		Type[] args = ((ParameterizedType)mapType).getActualTypeArguments();
+		Assert.assertFalse(json.getRegisteredDecoders().contains(mapType));
+		Assert.assertFalse(json.getRegisteredDecoders().contains(args[1]));
+		Map<String, ? extends BigDecimal> map = (Map<String, ? extends BigDecimal>)json.deserialize(mapType, input, input.length);
+		Assert.assertTrue(json.getRegisteredDecoders().contains(mapType));
+		Assert.assertTrue(json.getRegisteredDecoders().contains(args[1]));
+		Assert.assertFalse(json.getRegisteredEncoders().contains(mapType));
+		Assert.assertFalse(json.getRegisteredEncoders().contains(args[1]));
+		Assert.assertEquals(BigDecimal.valueOf(123456, 3), map.get("a"));
+		JsonWriter writer = json.newWriter();
+		Assert.assertTrue(json.serialize(writer, mapType, map));
+		Assert.assertArrayEquals(input, writer.toByteArray());
+		Assert.assertTrue(json.getRegisteredEncoders().contains(mapType));
+		Assert.assertTrue(json.getRegisteredEncoders().contains(args[1]));
 	}
 }
