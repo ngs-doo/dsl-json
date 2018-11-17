@@ -117,8 +117,17 @@ public abstract class Generics {
 		}
 
 		@Override
-		public String getTypeName() {
-			return name;
+		public boolean equals(Object o) {
+			if (o instanceof GenericArrayType) {
+				return componentType.equals(((GenericArrayType) o).getGenericComponentType());
+			} else {
+				return false;
+			}
+		}
+
+		@Override
+		public int hashCode() {
+			return componentType.hashCode();
 		}
 
 		@Override
@@ -134,12 +143,12 @@ public abstract class Generics {
 		if (arguments == null || arguments.length != containerParameterCount)
 			throw new IllegalArgumentException("arguments must have " + containerParameterCount + " elements");
 		final StringBuilder sb = new StringBuilder();
-		sb.append(container.getTypeName());
+		sb.append(container.getName());
 		sb.append("<");
-		sb.append(arguments[0].getTypeName());
+		sb.append(getTypeNameCompat(arguments[0]));
 		for (int i = 1; i < arguments.length; i++) {
 			sb.append(", ");
-			sb.append(arguments[i].getTypeName());
+			sb.append(getTypeNameCompat(arguments[i]));
 		}
 		sb.append(">");
 		final String name = sb.toString();
@@ -151,15 +160,38 @@ public abstract class Generics {
 		return found;
 	}
 
-	public static GenericArrayType makeGenericArrayType(final Type componentType) {
+	public static GenericArrayType makeGenericArrayType(final ParameterizedType componentType) {
 		if (componentType == null) throw new IllegalArgumentException("componentType can't be null");
-		final String name = componentType.getTypeName() + "[]";
+		final String name = componentType.toString() + "[]";
 		GenericArrayType found = (GenericArrayType) typeCache.get(name);
 		if (found == null) {
 			found = new GenericArrayTypeImpl(name, componentType);
 			typeCache.put(name, found);
 		}
 		return found;
+	}
+
+	private static String getTypeNameCompat(Type type) {
+		if (type instanceof Class<?>) {
+			Class<?> clazz = (Class<?>) type;
+			if (clazz.isArray()) {
+				try {
+					int dimensions = 0;
+					while (clazz.isArray()) {
+						dimensions++;
+						clazz = clazz.getComponentType();
+					}
+					StringBuilder sb = new StringBuilder();
+					sb.append(clazz.getName());
+					for (int i = 0; i < dimensions; i++) {
+						sb.append("[]");
+					}
+					return sb.toString();
+				} catch (Throwable ignore) { }
+			}
+			return clazz.getName();
+		}
+		return type.toString();
 	}
 
 	public static boolean isUnknownType(final Type type) {
