@@ -242,13 +242,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 	@Override
 	public SourceVersion getSupportedSourceVersion() {
-		SourceVersion latest = SourceVersion.latest();
-		if ("RELEASE_9".equals(latest.name())
-				|| "RELEASE_8".equals(latest.name())
-				|| "RELEASE_7".equals(latest.name())) {
-			return latest;
-		}
-		return SourceVersion.RELEASE_6;
+		return SourceVersion.latest();
 	}
 
 	private static class TypeCheck {

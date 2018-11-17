@@ -136,6 +136,7 @@ public abstract class AbstractAnnotationProcessorTest {
 
 		ArrayList<String> compileArgs = new ArrayList<String>();
 		compileArgs.add("-proc:only");
+		compileArgs.add("-implicit:class");
 		compileArgs.addAll(arguments);
         /*
          * Call the compiler with the "-proc:only" option. The "class names"
@@ -159,11 +160,6 @@ public abstract class AbstractAnnotationProcessorTest {
 		}
 
 		diagnostics.addAll(diagnosticCollector.getDiagnostics());
-		if (diagnostics.size() > 0 && diagnostics.get(0).getKind() == Kind.WARNING
-				&& diagnostics.get(0).getMessage(Locale.ENGLISH).startsWith("Supported source version 'RELEASE_6' from "
-				+ "annotation processor 'com.dslplatform.json.CompiledJsonProcessor' less than -source")) {
-			diagnostics.remove(0);
-		}
 		return compilationSuccessful;
 	}
 
@@ -272,13 +268,16 @@ public abstract class AbstractAnnotationProcessorTest {
 			if (diagnostic.getKind().equals(expectedDiagnosticKind)
 					&& (diagnostic.getLineNumber() == expectedLineNumber)) {
 				expectedDiagnosticFound = true;
+				if (diagnostic.getMessage(Locale.ENGLISH).contains(contains)) {
+					return diagnostic;
+				}
 				detected = diagnostic;
 			}
 
 		}
 		assertTrue("Expected a result of kind " + expectedDiagnosticKind
 				+ " at line " + expectedLineNumber, expectedDiagnosticFound);
-		Assertions.assertThat(detected.getMessage(Locale.ENGLISH)).contains(contains);
+		assertTrue(detected.getMessage(Locale.ENGLISH).contains(contains));
 		return detected;
 	}
 

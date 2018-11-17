@@ -733,7 +733,7 @@ public class Analysis {
 				converter = validateConverter(typeConverter, declaredType, objectType);
 			} else converter = null;
 			String referenceName = referenceType.toString();
-			boolean isJsonObject = jsonObjectReaderPath(referenceElement) != null;
+			boolean isJsonObject = jsonObjectReaderPath(referenceElement, false) != null;
 			boolean typeResolved = converter != null || isJsonObject || structs.containsKey(referenceName);
 			boolean hasUnknown = false;
 			boolean hasOwnerStructType = false;
@@ -862,7 +862,7 @@ public class Analysis {
 		final TypeElement element = (TypeElement) el;
 		boolean isMixin = element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT);
-		String jsonObjectReaderPath = jsonObjectReaderPath(element);
+		String jsonObjectReaderPath = jsonObjectReaderPath(element, true);
 		boolean isJsonObject = jsonObjectReaderPath != null;
 		final AnnotationMirror annotation = scanClassForAnnotation(element, discoveredBy, factory);
 		if (element.getModifiers().contains(Modifier.PRIVATE)) {
@@ -1332,7 +1332,7 @@ public class Analysis {
 	}
 
 	@Nullable
-	public String jsonObjectReaderPath(Element el) {
+	private String jsonObjectReaderPath(Element el, boolean includeErrors) {
 		if (!(el instanceof TypeElement)) return null;
 		TypeElement element = (TypeElement)el;
 		boolean isJsonObject = false;
@@ -1368,63 +1368,65 @@ public class Analysis {
 			}
 		}
 		String used = jsonReaderMethod != null ? jsonReaderMethod.getSimpleName() + " method" : "JSON_READER field";
-		if (!el.getModifiers().contains(Modifier.PUBLIC)) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's not public. " +
-							"Make it public so it can be used for serialization/deserialization.",
-					el,
-					getAnnotation(el, converterType));
-		} else if (element.getNestingKind().isNested() && !el.getModifiers().contains(Modifier.STATIC)) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it cant be non static nested member. " +
-							"Add static modifier so it can be used for serialization/deserialization.",
-					el,
-					getAnnotation(el, converterType));
-		} else if (onlyBasicFeatures && (element.getQualifiedName().contentEquals(element.getSimpleName())
-				|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
-				&& element.getEnclosingElement() instanceof TypeElement
-				&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName()))) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but its defined without a package name and cannot be accessed. " +
-							"Either add package to it or use a different analysis configuration which support classes without packages.",
-					element,
-					getAnnotation(element, converterType));
-		} else if (jsonReaderField == null && jsonReaderMethod == null) {
-			String allowed = onlyBasicFeatures ? "field" : "field/method";
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER " + allowed + ". " +
-							"It can't be used for serialization/deserialization this way. " +
-							"You probably want to add public static JSON_READER " + allowed + ".",
-					element,
-					getAnnotation(element, converterType));
-		} else if (jsonReaderMethod == null && (!jsonReaderField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
-				|| jsonReaderMethod != null && (!jsonReaderMethod.getModifiers().contains(Modifier.PUBLIC) || jsonReaderMethod.getModifiers().contains(Modifier.STATIC))) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but its " + used + " is not public and static. " +
-							"It can't be used for serialization/deserialization this way. " +
-							"You probably want to change " + used + " so it's public and static.",
-					element,
-					getAnnotation(element, converterType));
-		} else if (jsonReaderField != null && !signatureType.equals(jsonReaderField.asType().toString())
-				|| jsonReaderMethod != null && !signatureType.equals(jsonReaderMethod.getReturnType().toString())) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but its " + used + " is not of correct type. " +
-							"It can't be used for serialization/deserialization this way. " +
-							"You probably want to change " + used + " to: '" + signatureType + "'",
-					element,
-					getAnnotation(element, converterType));
+		if (includeErrors) {
+			if (!el.getModifiers().contains(Modifier.PUBLIC)) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it's not public. " +
+								"Make it public so it can be used for serialization/deserialization.",
+						el,
+						getAnnotation(el, converterType));
+			} else if (element.getNestingKind().isNested() && !el.getModifiers().contains(Modifier.STATIC)) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it cant be non static nested member. " +
+								"Add static modifier so it can be used for serialization/deserialization.",
+						el,
+						getAnnotation(el, converterType));
+			} else if (onlyBasicFeatures && (element.getQualifiedName().contentEquals(element.getSimpleName())
+					|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
+					&& element.getEnclosingElement() instanceof TypeElement
+					&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName()))) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but its defined without a package name and cannot be accessed. " +
+								"Either add package to it or use a different analysis configuration which support classes without packages.",
+						element,
+						getAnnotation(element, converterType));
+			} else if (jsonReaderField == null && jsonReaderMethod == null) {
+				String allowed = onlyBasicFeatures ? "field" : "field/method";
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER " + allowed + ". " +
+								"It can't be used for serialization/deserialization this way. " +
+								"You probably want to add public static JSON_READER " + allowed + ".",
+						element,
+						getAnnotation(element, converterType));
+			} else if (jsonReaderMethod == null && (!jsonReaderField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
+					|| jsonReaderMethod != null && (!jsonReaderMethod.getModifiers().contains(Modifier.PUBLIC) || jsonReaderMethod.getModifiers().contains(Modifier.STATIC))) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but its " + used + " is not public and static. " +
+								"It can't be used for serialization/deserialization this way. " +
+								"You probably want to change " + used + " so it's public and static.",
+						element,
+						getAnnotation(element, converterType));
+			} else if (jsonReaderField != null && !signatureType.equals(jsonReaderField.asType().toString())
+					|| jsonReaderMethod != null && !signatureType.equals(jsonReaderMethod.getReturnType().toString())) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but its " + used + " is not of correct type. " +
+								"It can't be used for serialization/deserialization this way. " +
+								"You probably want to change " + used + " to: '" + signatureType + "'",
+						element,
+						getAnnotation(element, converterType));
+			}
 		}
 		String prefix = companion == null ? "" : "Companion.";
 		return prefix + (jsonReaderMethod != null ? jsonReaderMethod.getSimpleName().toString() + "()" : "JSON_READER");
