@@ -30,7 +30,7 @@ public final class JsonWriter {
 
 	final byte[] ensureCapacity(final int free) {
 		if (position + free >= buffer.length) {
-			buffer = Arrays.copyOf(buffer, buffer.length + (buffer.length << 1) + free);
+			enlargeOrFlush(position, free);
 		}
 		return buffer;
 	}
