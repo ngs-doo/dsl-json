@@ -697,9 +697,36 @@ public class Analysis {
 						}
 					}
 				}
+				findGenericAttributes(info);
 				path.pop();
 			}
 		} while (total != structs.size());
+	}
+
+	private void findGenericAttributes(StructInfo si) {
+		Queue<TypeMirror> queue = new ArrayDeque<TypeMirror>(types.directSupertypes(si.element.asType()));
+		Map<String, TypeMirror> genericAttributes = new HashMap<String, TypeMirror>();
+		while (!queue.isEmpty()) {
+			TypeMirror mirror = queue.poll();
+			if (mirror instanceof DeclaredType) {
+				DeclaredType declaredType = (DeclaredType) mirror;
+				Element element = declaredType.asElement();
+				if (element instanceof TypeElement) {
+					List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
+					List<? extends TypeParameterElement> typeParameters = ((TypeElement) element).getTypeParameters();
+					for (int i = 0; i < typeParameters.size(); i++) {
+						genericAttributes.put(typeParameters.get(i).toString(), typeArguments.get(i));
+					}
+					queue.addAll(types.directSupertypes(mirror));
+				}
+			}
+		}
+		for (AttributeInfo attr : si.attributes.values()) {
+			TypeMirror genericType = genericAttributes.get(attr.typeName);
+			if (genericType != null) {
+				attr.genericType = genericType;
+			}
+		}
 	}
 
 	public static String objectName(final String type) {

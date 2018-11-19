@@ -2,8 +2,11 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
 
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -11,8 +14,11 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 import static com.dslplatform.json.processor.CompiledJsonAnnotationProcessor.findConverterName;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
@@ -24,11 +30,13 @@ class ConverterTemplate {
 	private final Writer code;
 	private final Context context;
 	private final EnumTemplate enumTemplate;
+	private final ProcessingEnvironment processingEnv;
 
-	ConverterTemplate(Context context, EnumTemplate enumTemplate) {
+	ConverterTemplate(Context context, EnumTemplate enumTemplate, ProcessingEnvironment processingEnv) {
 		this.code = context.code;
 		this.context = context;
 		this.enumTemplate = enumTemplate;
+		this.processingEnv = processingEnv;
 	}
 
 	private boolean isStaticEnum(AttributeInfo attr) {
@@ -112,7 +120,7 @@ class ConverterTemplate {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
 			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
-			StructInfo target = context.structs.get(attr.typeName);
+		    StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
 				List<String> types = attr.collectionContent(context.typeSupport, context.structs);
 				if (target != null && attr.isEnum(context.structs)) {
@@ -123,7 +131,11 @@ class ConverterTemplate {
 						if (attr.isArray) {
 							content = ((ArrayType) attr.type).getComponentType().toString();
 						} else {
-							content = attr.typeName;
+							if (si.isParameterized) {
+								content = attr.typeName;
+							} else {
+								content = attr.genericType != null ? attr.genericType.toString() : "java.lang.Object";
+							}
 						}
 					} else {
 						content = types.get(0);
@@ -227,7 +239,11 @@ class ConverterTemplate {
 					if (attr.isArray) {
 						type = typeForGeneric(((ArrayType) attr.type).getComponentType(), attr.typeVariablesIndex);
 					} else {
-						type = typeForGeneric(attr.type, attr.typeVariablesIndex);
+					    if (si.isParameterized) {
+							type = typeForGeneric(attr.type, attr.typeVariablesIndex);
+						} else {
+					    	type = attr.genericType != null ? attr.genericType.toString() + ".class" : "java.lang.Object";
+						}
 					}
 
 					code.append("\t\t\tjava.lang.reflect.Type manifest_").append(attr.name).append(" = ").append(type).append(";\n");
@@ -304,7 +320,7 @@ class ConverterTemplate {
 	void emptyObject(final StructInfo si, String className) throws IOException {
 		asFormatConverter(si, "ObjectFormatConverter", className, true);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
-		writeObject(className, sortedAttributes);
+		writeObject(si, className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" bind(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.last() != '{') throw new java.io.IOException(\"Expecting '{' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
@@ -388,7 +404,7 @@ class ConverterTemplate {
 	void fromObject(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si, "ObjectFormatConverter", className, false);
 		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
-		writeObject(className, sortedAttributes);
+		writeObject(si, className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
 		code.append("\t\t\telse if (reader.last() != '{') throw new java.io.IOException(\"Expecting '{' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
@@ -425,7 +441,33 @@ class ConverterTemplate {
 		code.append("\t}\n");
 	}
 
-	private void writeObject(final String className, List<AttributeInfo> sortedAttributes) throws IOException {
+	private void writeDiscriminator(final StructInfo si) throws IOException {
+		String discriminator = "";
+		if (si.isParameterized || (!si.deserializeDiscriminator.isEmpty())) {
+			discriminator = si.deserializeDiscriminator.isEmpty() ? "$type" : si.deserializeDiscriminator;
+		} else {
+			boolean hasDiscriminator = false;
+			for (AttributeInfo attr : si.attributes.values()) {
+				if (attr.genericType != null) {
+					hasDiscriminator = true;
+					break;
+				}
+			}
+			if (hasDiscriminator) {
+				discriminator = "$type";
+			}
+		}
+		if ((!discriminator.isEmpty()) && (!si.attributes.containsKey(discriminator))) {
+			String deserializeName = si.deserializeName.isEmpty() ? si.binaryName.replaceAll("\\$", ".") : si.deserializeName;
+			code.append("\t\t\twriter.writeAscii(\"\\\"").append(discriminator).append("\\\":\\\"").append(deserializeName).append("\\\"");
+			if (!si.attributes.isEmpty()) {
+				code.append(",");
+			}
+			code.append("\");\n");
+		}
+	}
+
+	private void writeObject(final StructInfo si, final String className, List<AttributeInfo> sortedAttributes) throws IOException {
 		boolean isFirst = true;
 		for (AttributeInfo attr : sortedAttributes) {
 			String prefix = isFirst ? "" : ",";
@@ -446,6 +488,7 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tpublic void writeContentFull(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
+		writeDiscriminator(si);
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\twriter.writeAscii(quoted_").append(attr.name).append(");\n");
 			writeProperty(attr, false);
@@ -454,6 +497,7 @@ class ConverterTemplate {
 		code.append("\t\tpublic boolean writeContentMinimal(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
 		code.append("\t\t\tboolean hasWritten = false;\n");
+		writeDiscriminator(si);
 		for (AttributeInfo attr : sortedAttributes) {
 			String typeName = attr.type.toString();
 			String defaultValue = context.getDefault(typeName);

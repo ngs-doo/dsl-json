@@ -301,7 +301,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		public Settings<TContext> includeServiceLoader() {
 			return includeServiceLoader(Thread.currentThread().getContextClassLoader());
 		}
-		
+
 		/**
 		 * Load converters using provided `ClassLoader` instance
 		 * Will scan through `META-INF/services/com.dslplatform.json.Configuration` file and register implementation during startup.
@@ -2821,8 +2821,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * In most cases JSON is serialized into target `OutputStream`.
 	 * This method will reuse thread local instance of `JsonWriter` and serialize JSON into it.
 	 *
-	 * @param value  instance to serialize
-	 * @param stream where to write resulting JSON
+	 * @param value    		instance to serialize
+	 * @param stream 		where to write resulting JSON
 	 * @throws IOException error when unable to serialize instance
 	 */
 	public final void serialize(@Nullable final Object value, final OutputStream stream) throws IOException {

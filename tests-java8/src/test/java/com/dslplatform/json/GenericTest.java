@@ -3,7 +3,6 @@ package com.dslplatform.json;
 import com.dslplatform.json.runtime.Settings;
 import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -194,7 +193,6 @@ public class GenericTest {
 		public T value;
 	}
 
-	@Ignore//TODO: fix analysis order
 	@Test
 	public void willUseAnnotationProcessorVersion() throws IOException {
 
