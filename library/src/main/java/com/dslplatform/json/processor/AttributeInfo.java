@@ -35,7 +35,6 @@ public class AttributeInfo {
 	public final boolean isGeneric;
 	public final Map<String, Integer> typeVariablesIndex;
 	public final boolean containsStructOwnerType;
-	public TypeMirror genericType;
 
 	public AttributeInfo(
 			String name,

@@ -37,6 +37,24 @@ public class ObjectFormatTest {
 		}
 	}
 
+	@CompiledJson(formats = CompiledJson.Format.OBJECT)
+	public static class NoProps {
+	}
+
+	@CompiledJson(formats = CompiledJson.Format.OBJECT)
+	public static class SingleExcludedProp {
+		public int x;
+	}
+
+	@CompiledJson(formats = CompiledJson.Format.OBJECT, discriminator = "include")
+	public static class NoPropsWithDiscriminator {
+	}
+
+	@CompiledJson(formats = CompiledJson.Format.OBJECT, discriminator = "always", onUnknown = CompiledJson.Behavior.FAIL)
+	public static class SingleExcludedPropWithDiscriminator {
+		public int x;
+	}
+
 	private final DslJson<Object> dslJsonFull = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 	private final DslJson<Object> dslJsonMinimal = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).skipDefaultValues(true).includeServiceLoader());
 
@@ -74,6 +92,48 @@ public class ObjectFormatTest {
 			Assert.assertEquals(c.d, res.d);
 			Assert.assertEquals(c.s, res.s);
 			Assert.assertArrayEquals(c.x, res.x);
+		}
+	}
+
+	@Test
+	public void noProperties() throws IOException {
+		for (DslJson<Object> dslJson : dslJsons) {
+			ByteArrayOutputStream os = new ByteArrayOutputStream();
+			dslJson.serialize(new NoProps(), os);
+			Assert.assertEquals("{}", os.toString());
+			NoProps res = dslJson.deserialize(NoProps.class, os.toByteArray(), os.size());
+			Assert.assertNotNull(res);
+		}
+	}
+
+	@Test
+	public void singleExcluded() throws IOException {
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonMinimal.serialize(new SingleExcludedProp(), os);
+		Assert.assertEquals("{}", os.toString());
+		SingleExcludedProp res = dslJsonMinimal.deserialize(SingleExcludedProp.class, os.toByteArray(), os.size());
+		Assert.assertEquals(0, res.x);
+	}
+
+	@Test
+	public void noPropertiesWithDiscriminator() throws IOException {
+		for (DslJson<Object> dslJson : dslJsons) {
+			ByteArrayOutputStream os = new ByteArrayOutputStream();
+			dslJson.serialize(new NoPropsWithDiscriminator(), os);
+			Assert.assertEquals("{\"include\":\"com.dslplatform.json.ObjectFormatTest.NoPropsWithDiscriminator\"}", os.toString());
+			NoPropsWithDiscriminator res = dslJson.deserialize(NoPropsWithDiscriminator.class, os.toByteArray(), os.size());
+			Assert.assertNotNull(res);
+		}
+	}
+
+	@Test
+	public void singleExcludedWithDiscriminator() throws IOException {
+		for (DslJson<Object> dslJson : dslJsons) {
+			ByteArrayOutputStream os = new ByteArrayOutputStream();
+			dslJson.serialize(new SingleExcludedPropWithDiscriminator(), os);
+			Assert.assertTrue(os.toString().startsWith("{\"always\":\"com.dslplatform.json.ObjectFormatTest.SingleExcludedPropWithDiscriminator\""));
+			SingleExcludedPropWithDiscriminator res = dslJson.deserialize(SingleExcludedPropWithDiscriminator.class, os.toByteArray(), os.size());
+			Assert.assertNotNull(res);
 		}
 	}
 }

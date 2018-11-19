@@ -26,7 +26,7 @@ public class StructInfo {
 	public final CompiledJson.Behavior onUnknown;
 	public final CompiledJson.TypeSignature typeSignature;
 	public final TypeElement deserializeAs;
-	public final String deserializeDiscriminator;
+	public final String discriminator;
 	public final String deserializeName;
 	public final boolean isMinified;
 	public final EnumSet<CompiledJson.Format> formats;
@@ -39,6 +39,7 @@ public class StructInfo {
 	public final Map<String, TypeMirror> unknowns = new LinkedHashMap<String, TypeMirror>();
 	public final boolean isParameterized;
 	public final List<String> typeParametersNames;
+	public final Map<String, TypeMirror> genericSignatures;
 
 	public StructInfo(
 			TypeElement element,
@@ -55,11 +56,12 @@ public class StructInfo {
 			@Nullable CompiledJson.Behavior onUnknown,
 			@Nullable CompiledJson.TypeSignature typeSignature,
 			@Nullable TypeElement deserializeAs,
-			@Nullable String deserializeDiscriminator,
+			@Nullable String discriminator,
 			@Nullable String deserializeName,
 			@Nullable Element enumConstantNameSource,
 			boolean isMinified,
-			@Nullable CompiledJson.Format[] formats) {
+			@Nullable CompiledJson.Format[] formats,
+			Map<String, TypeMirror> genericSignatures) {
 		this.element = element;
 		this.discoveredBy = discoveredBy;
 		this.name = name;
@@ -74,7 +76,7 @@ public class StructInfo {
 		this.onUnknown = onUnknown;
 		this.typeSignature = typeSignature;
 		this.deserializeAs = deserializeAs;
-		this.deserializeDiscriminator = deserializeDiscriminator != null ? deserializeDiscriminator : "";
+		this.discriminator = discriminator != null ? discriminator : "";
 		this.deserializeName = deserializeName != null ? deserializeName : "";
 		this.enumConstantNameSource = enumConstantNameSource;
 		this.isMinified = isMinified;
@@ -95,6 +97,7 @@ public class StructInfo {
 		}
 		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
 		this.isParameterized = !typeParametersNames.isEmpty();
+		this.genericSignatures = genericSignatures;
 	}
 
 	public StructInfo(ConverterInfo converter, DeclaredType discoveredBy, TypeElement target, String name, String binaryName) {
@@ -113,7 +116,7 @@ public class StructInfo {
 		this.onUnknown = null;
 		this.typeSignature = null;
 		this.deserializeAs = null;
-		this.deserializeDiscriminator = "";
+		this.discriminator = "";
 		this.deserializeName = "";
 		this.enumConstantNameSource = null;
 		this.isMinified = false;
@@ -121,6 +124,7 @@ public class StructInfo {
 		this.isObjectFormatFirst = true;
 		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
 		this.isParameterized = !typeParametersNames.isEmpty();
+		this.genericSignatures = Collections.emptyMap();
 	}
 
 	private List<String> extractParametersNames(final List<? extends TypeParameterElement> typeParameters) {

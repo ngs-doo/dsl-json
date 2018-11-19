@@ -11,7 +11,7 @@ import java.io.IOException;
 
 public class ComplexGenericsTest {
 
-    @CompiledJson(deserializeDiscriminator = "type")
+    @CompiledJson(discriminator = "type")
     public static abstract class Parent<T> {
 
         private T prop;
@@ -81,7 +81,7 @@ public class ComplexGenericsTest {
         }
     }
 
-    @CompiledJson(deserializeName = "first")
+    @CompiledJson(discriminator = "$type", name = "first")
     public static class FirstChild2 extends Parent2<Long> {
 
         private Boolean boolValue;
@@ -133,7 +133,7 @@ public class ComplexGenericsTest {
         }
     }
 
-    @CompiledJson
+    @CompiledJson(discriminator = "$type")
     public static class FirstChild3 extends Parent3<Long> {
 
         private Boolean boolValue;

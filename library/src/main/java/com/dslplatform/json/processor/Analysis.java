@@ -408,7 +408,7 @@ public class Analysis {
 			}
 			if (info.deserializeAs == null && info.type == ObjectType.MIXIN) {
 				Set<String> names = new HashSet<String>();
-				String discriminator = info.deserializeDiscriminator;
+				String discriminator = info.discriminator;
 				if (discriminator.length() > 0 && onlyBasicFeatures) {
 					hasError = true;
 					messager.printMessage(
@@ -461,12 +461,36 @@ public class Analysis {
 					}
 				}
 			}
-			if (info.type == ObjectType.MIXIN && info.deserializeDiscriminator.length() > 0 && info.implementations.isEmpty()) {
+			if (info.type == ObjectType.MIXIN && info.discriminator.length() > 0 && info.implementations.isEmpty()) {
 				messager.printMessage(
 						Diagnostic.Kind.WARNING,
-						"Custom deserialization discriminator found: '" + info.deserializeDiscriminator + "', but no implementation detected for mixin: " + className,
+						"Custom discriminator found: '" + info.discriminator + "', but no implementation detected for mixin: " + className,
 						info.element,
 						info.annotation);
+			}
+			if (info.type == ObjectType.CLASS && info.discriminator.length() > 0) {
+				if (info.attributes.containsKey(info.discriminator)) {
+					messager.printMessage(
+							Diagnostic.Kind.WARNING,
+							"Discriminator has the same value as one of the attributes. Discriminator will be excluded in favor of attribute value",
+							info.element,
+							info.annotation);
+				}
+				int hash = StructInfo.calcHash(info.discriminator);
+				for (AttributeInfo attr : info.attributes.values()) {
+					boolean sameHash = StructInfo.calcHash(attr.id) == hash;
+					for (String name : attr.alternativeNames) {
+						sameHash = sameHash || StructInfo.calcHash(name) == hash;
+					}
+					if (sameHash) {
+						hasError = true;
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Discriminator has the same hash value as property: " + attr.name + ". Either simulate class discriminator via property, or remove the discriminator value from class",
+								info.element,
+								info.annotation);
+					}
+				}
 			}
 			if (info.type == ObjectType.CLASS && onlyBasicFeatures && !info.hasKnownConversion() && !info.hasEmptyCtor()) {
 				hasError = true;
@@ -697,14 +721,13 @@ public class Analysis {
 						}
 					}
 				}
-				findGenericAttributes(info);
 				path.pop();
 			}
 		} while (total != structs.size());
 	}
 
-	private void findGenericAttributes(StructInfo si) {
-		Queue<TypeMirror> queue = new ArrayDeque<TypeMirror>(types.directSupertypes(si.element.asType()));
+	private Map<String, TypeMirror> findGenericSignatures(TypeMirror type) {
+		Queue<TypeMirror> queue = new ArrayDeque<TypeMirror>(types.directSupertypes(type));
 		Map<String, TypeMirror> genericAttributes = new HashMap<String, TypeMirror>();
 		while (!queue.isEmpty()) {
 			TypeMirror mirror = queue.poll();
@@ -721,12 +744,7 @@ public class Analysis {
 				}
 			}
 		}
-		for (AttributeInfo attr : si.attributes.values()) {
-			TypeMirror genericType = genericAttributes.get(attr.typeName);
-			if (genericType != null) {
-				attr.genericType = genericType;
-			}
-		}
+		return genericAttributes;
 	}
 
 	public static String objectName(final String type) {
@@ -741,11 +759,12 @@ public class Analysis {
 				: type;
 	}
 
-	private void analyzeAttribute(StructInfo info, TypeMirror type, String name, AccessElements access, String target, Stack<String> path) {
+	private void analyzeAttribute(StructInfo info, TypeMirror originalType, String name, AccessElements access, String target, Stack<String> path) {
 		Element element = access.field != null ? access.field : access.read;
 		path.push(name);
 		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element)) {
 			TypeMirror referenceType = access.field != null ? access.field.asType() : access.read.getReturnType();
+			TypeMirror type = originalType.getKind() == TypeKind.TYPEVAR && info.genericSignatures.containsKey(originalType.toString()) ? info.genericSignatures.get(originalType.toString()) : originalType;
 			Element referenceElement = types.asElement(referenceType);
 			AnnotationMirror annotation = access.annotation;
 			TypeMirror converterMirror = findConverter(annotation);
@@ -782,7 +801,6 @@ public class Analysis {
 					}
 				}
 			}
-
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
 			AttributeInfo attr =
 					new AttributeInfo(
@@ -1006,11 +1024,12 @@ public class Analysis {
 							onUnknown,
 							typeSignature,
 							deserializeAs,
-							deserializeDiscriminator(annotation),
-							deserializeName(annotation),
+							classDiscriminator(annotation),
+							className(annotation),
 							type == ObjectType.ENUM ? findEnumConstantNameSource(element) : null,
 							isMinified(annotation),
-							formats);
+							formats,
+							findGenericSignatures(element.asType()));
 			info.path.addAll(path);
 			if (type == ObjectType.ENUM) {
 				info.constants.addAll(getEnumConstants(info.element));
@@ -1892,22 +1911,24 @@ public class Analysis {
 		return null;
 	}
 
-	public static String deserializeDiscriminator(@Nullable AnnotationMirror annotation) {
+	public static String classDiscriminator(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
-			if (ee.toString().equals("deserializeDiscriminator()")) {
+			if (ee.toString().equals("discriminator()")
+				|| ee.toString().equals("deserializeDiscriminator()")) {
 				return values.get(ee).getValue().toString();
 			}
 		}
 		return "";
 	}
 
-	public static String deserializeName(@Nullable AnnotationMirror annotation) {
+	public static String className(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
-			if (ee.toString().equals("deserializeName()")) {
+			if (ee.toString().equals("name()")
+				|| ee.toString().equals("deserializeName()")) {
 				return values.get(ee).getValue().toString();
 			}
 		}

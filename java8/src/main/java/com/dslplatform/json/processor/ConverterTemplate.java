@@ -30,13 +30,11 @@ class ConverterTemplate {
 	private final Writer code;
 	private final Context context;
 	private final EnumTemplate enumTemplate;
-	private final ProcessingEnvironment processingEnv;
 
-	ConverterTemplate(Context context, EnumTemplate enumTemplate, ProcessingEnvironment processingEnv) {
+	ConverterTemplate(Context context, EnumTemplate enumTemplate) {
 		this.code = context.code;
 		this.context = context;
 		this.enumTemplate = enumTemplate;
-		this.processingEnv = processingEnv;
 	}
 
 	private boolean isStaticEnum(AttributeInfo attr) {
@@ -131,11 +129,7 @@ class ConverterTemplate {
 						if (attr.isArray) {
 							content = ((ArrayType) attr.type).getComponentType().toString();
 						} else {
-							if (si.isParameterized) {
-								content = attr.typeName;
-							} else {
-								content = attr.genericType != null ? attr.genericType.toString() : "java.lang.Object";
-							}
+							content = attr.typeName;
 						}
 					} else {
 						content = types.get(0);
@@ -239,11 +233,7 @@ class ConverterTemplate {
 					if (attr.isArray) {
 						type = typeForGeneric(((ArrayType) attr.type).getComponentType(), attr.typeVariablesIndex);
 					} else {
-					    if (si.isParameterized) {
-							type = typeForGeneric(attr.type, attr.typeVariablesIndex);
-						} else {
-					    	type = attr.genericType != null ? attr.genericType.toString() + ".class" : "java.lang.Object";
-						}
+						type = typeForGeneric(attr.type, attr.typeVariablesIndex);
 					}
 
 					code.append("\t\t\tjava.lang.reflect.Type manifest_").append(attr.name).append(" = ").append(type).append(";\n");
@@ -359,17 +349,40 @@ class ConverterTemplate {
 			i += 1;
 		}
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) {
-			code.append("\t\t\tif (reader.getNextToken() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \" since unknown properties are not allowed on ");
-			code.append(className).append(". Found \" + (char) reader.last());\n");
+			if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
+				code.append("\t\t\tif (reader.getNextToken() == '}') return;\n");
+				if (si.attributes.isEmpty()) {
+					code.append("\t\t\tif (reader.last() == '\"') {\n");
+				} else {
+					code.append("\t\t\tif (reader.last() == ',') {\n");
+					code.append("\t\t\t\treader.getNextToken();\n");
+				}
+				code.append("\t\t\t\treader.fillNameWeakHash();\n");
+				code.append("\t\t\t\tbindSlow(reader, instance, ").append(Integer.toString(sortedAttributes.size())).append(");\n");
+				code.append("\t\t\t\treturn;\n");
+				code.append("\t\t\t}\n");
+				code.append("\t\t\tthrow new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \" since unknown properties are not allowed on ");
+				code.append(className).append(". Found \" + (char) reader.last());\n");
+			} else {
+				code.append("\t\t\tif (reader.getNextToken() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \" since unknown properties are not allowed on ");
+				code.append(className).append(". Found \" + (char) reader.last());\n");
+			}
 		} else {
-			code.append("\t\t\tif (reader.getNextToken() != '}') {\n");
-			code.append("\t\t\t\tif (reader.last() == ',') {\n");
-			code.append("\t\t\t\t\treader.getNextToken();\n");
+			boolean hasDiscriminator = si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator) && si.attributes.isEmpty();
+			if (hasDiscriminator) {
+				code.append("\t\t\tif (reader.last() == '\"') {\n");
+			} else {
+				code.append("\t\t\tif (reader.getNextToken() != '}') {\n");
+				code.append("\t\t\t\tif (reader.last() == ',') {\n");
+				code.append("\t\t\t\t\treader.getNextToken();\n");
+			}
 			code.append("\t\t\t\t\treader.fillNameWeakHash();\n");
 			code.append("\t\t\t\t\tbindSlow(reader, instance, ").append(Integer.toString(sortedAttributes.size())).append(");\n");
 			code.append("\t\t\t\t}\n");
 			code.append("\t\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
-			code.append("\t\t\t}\n");
+			if (!hasDiscriminator) {
+				code.append("\t\t\t}\n");
+			}
 		}
 		code.append("\t\t}\n");
 		code.append("\t\tprivate void bindSlow(final com.dslplatform.json.JsonReader reader, final ");
@@ -442,29 +455,12 @@ class ConverterTemplate {
 	}
 
 	private void writeDiscriminator(final StructInfo si) throws IOException {
-		String discriminator = "";
-		if (si.isParameterized || (!si.deserializeDiscriminator.isEmpty())) {
-			discriminator = si.deserializeDiscriminator.isEmpty() ? "$type" : si.deserializeDiscriminator;
-		} else {
-			boolean hasDiscriminator = false;
-			for (AttributeInfo attr : si.attributes.values()) {
-				if (attr.genericType != null) {
-					hasDiscriminator = true;
-					break;
-				}
-			}
-			if (hasDiscriminator) {
-				discriminator = "$type";
-			}
+		String name = si.deserializeName.isEmpty() ? si.binaryName.replace('$', '.') : si.deserializeName;
+		code.append("\t\t\t\twriter.writeAscii(\"\\\"").append(si.discriminator).append("\\\":\\\"").append(name).append("\\\"");
+		if (!si.attributes.isEmpty()) {
+			code.append(",");
 		}
-		if ((!discriminator.isEmpty()) && (!si.attributes.containsKey(discriminator))) {
-			String deserializeName = si.deserializeName.isEmpty() ? si.binaryName.replaceAll("\\$", ".") : si.deserializeName;
-			code.append("\t\t\twriter.writeAscii(\"\\\"").append(discriminator).append("\\\":\\\"").append(deserializeName).append("\\\"");
-			if (!si.attributes.isEmpty()) {
-				code.append(",");
-			}
-			code.append("\");\n");
-		}
+		code.append("\");\n");
 	}
 
 	private void writeObject(final StructInfo si, final String className, List<AttributeInfo> sortedAttributes) throws IOException {
@@ -481,14 +477,23 @@ class ConverterTemplate {
 		code.append("\t\t\tif (instance == null) writer.writeNull();\n");
 		code.append("\t\t\telse {\n");
 		code.append("\t\t\t\twriter.writeByte((byte)'{');\n");
-		code.append("\t\t\t\tif (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
-		code.append("\t\t\t\telse if (writeContentMinimal(writer, instance)) writer.getByteBuffer()[writer.size() - 1] = '}';\n");
-		code.append("\t\t\t\telse writer.writeByte((byte)'}');\n");
+		if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
+			writeDiscriminator(si);
+			if (!si.attributes.isEmpty()) {
+				code.append("\t\t\t\tif (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
+				code.append("\t\t\t\telse { writeContentMinimal(writer, instance); writer.getByteBuffer()[writer.size() - 1] = '}'; }\n");
+			} else {
+				code.append("\t\t\t\twriter.writeByte((byte)'}');\n");
+			}
+		} else {
+			code.append("\t\t\t\tif (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
+			code.append("\t\t\t\telse if (writeContentMinimal(writer, instance)) writer.getByteBuffer()[writer.size() - 1] = '}';\n");
+			code.append("\t\t\t\telse writer.writeByte((byte)'}');\n");
+		}
 		code.append("\t\t\t}\n");
 		code.append("\t\t}\n");
 		code.append("\t\tpublic void writeContentFull(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
-		writeDiscriminator(si);
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\twriter.writeAscii(quoted_").append(attr.name).append(");\n");
 			writeProperty(attr, false);
@@ -497,7 +502,6 @@ class ConverterTemplate {
 		code.append("\t\tpublic boolean writeContentMinimal(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
 		code.append("\t\t\tboolean hasWritten = false;\n");
-		writeDiscriminator(si);
 		for (AttributeInfo attr : sortedAttributes) {
 			String typeName = attr.type.toString();
 			String defaultValue = context.getDefault(typeName);
@@ -736,6 +740,22 @@ class ConverterTemplate {
 			if (localNames) readPropertyValue(attr, alignment);
 			else setPropertyValue(attr, alignment);
 			code.append(alignment).append("\t\treader.getNextToken();\n");
+			code.append(alignment).append("\t\tbreak;\n");
+		}
+		if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
+			code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(si.discriminator))).append(":\n");
+			String name = si.deserializeName.isEmpty() ? si.binaryName.replace('$', '.') : si.deserializeName;
+			if (si.onUnknown == CompiledJson.Behavior.FAIL) {
+				code.append(alignment).append("\t\treader.getNextToken();\n");
+				code.append(alignment).append("\t\treader.calcHash();\n");
+				code.append(alignment).append("\t\tif (!reader.wasLastName(\"").append(name).append("\")) {\n");
+				code.append(alignment).append("\t\t\tthrow new java.io.IOException(\"Unknown property detected: '\" + reader.getLastName()");
+				code.append(" + \"' \" + reader.positionDescription(reader.getLastName().length() + 3));\n");
+				code.append(alignment).append("\t\t}\n");
+				code.append(alignment).append("\t\treader.getNextToken();\n");
+			} else {
+				code.append(alignment).append("\t\treader.skip();\n");
+			}
 			code.append(alignment).append("\t\tbreak;\n");
 		}
 		code.append(alignment).append("\tdefault:\n");

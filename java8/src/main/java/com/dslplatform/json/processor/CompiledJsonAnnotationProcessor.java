@@ -294,7 +294,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				try {
 					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
-						buildCode(writer, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR, processingEnv);
+						buildCode(writer, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR);
 						generatedFiles.put(classNamePath, structInfo);
 						originatingElements.add(structInfo.element);
 					} catch (IOException e) {
@@ -376,11 +376,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			final StructInfo si,
 			final Map<String, StructInfo> structs,
 			final TypeSupport typeSupport,
-			final boolean allowUnknown,
-			final ProcessingEnvironment processingEnv) throws IOException {
+			final boolean allowUnknown) throws IOException {
 		final Context context = new Context(code, InlinedConverters, Defaults, structs, typeSupport, allowUnknown);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
-		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate, processingEnv);
+		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate);
 
 		final String generateFullClassName = findConverterName(si);
 		final int dotIndex = generateFullClassName.lastIndexOf('.');
@@ -499,8 +498,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t\tcom.dslplatform.json.runtime.").append(mixinType).append("<").append(className).append("> description = new com.dslplatform.json.runtime.").append(mixinType).append("<>(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
 		code.append("\t\t\t__dsljson,\n");
-		if (si.deserializeDiscriminator.length() > 0) {
-			code.append("\t\t\t\"").append(si.deserializeDiscriminator).append("\",\n");
+		if (si.discriminator.length() > 0) {
+			code.append("\t\t\t\"").append(si.discriminator).append("\",\n");
 		}
 		code.append("\t\t\tnew com.dslplatform.json.runtime.FormatDescription[] {\n");
 		int i = si.implementations.size();

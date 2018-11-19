@@ -70,6 +70,10 @@ public class ArrayFormatTest {
 		}
 	}
 
+	@CompiledJson(formats = CompiledJson.Format.ARRAY)
+	public static class NoProps {
+	}
+
 	private final DslJson<Object> dslJsonArray = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 	private final DslJson<Object> dslJsonMinimal = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).skipDefaultValues(true).includeServiceLoader());
 
@@ -258,5 +262,14 @@ public class ArrayFormatTest {
 		Assert.assertEquals(c.firstName, res.firstName);
 		Assert.assertEquals(c.lastName, res.lastName);
 		Assert.assertEquals(c.age, res.age);
+	}
+
+	@Test
+	public void noProperties() throws IOException {
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonArray.serialize(new NoProps(), os);
+		Assert.assertEquals("[]", os.toString());
+		NoProps res = dslJsonArray.deserialize(NoProps.class, os.toByteArray(), os.size());
+		Assert.assertNotNull(res);
 	}
 }

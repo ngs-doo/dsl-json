@@ -83,22 +83,44 @@ public @interface CompiledJson {
 	 */
 	Class deserializeAs() default CompiledJson.class;
 
+
 	/**
-	 * When used in mixin which doesn't have deserializeAs "discriminator":signature will be injected into JSON.
-	 * If discriminator is not set, default value of $type will be used.
-	 * Only one value
+	 * use discriminator instead.
+	 * Will be removed in 1.9
 	 *
 	 * @return deserialization hint
 	 */
+	@Deprecated
 	String deserializeDiscriminator() default "";
+
+	/**
+	 * When used in mixin which doesn't have deserializeAs "discriminator":signature will be injected into JSON.
+	 * If discriminator is not set, default value of $type will be used.
+	 * When discriminator is used on class (in object format), additional property with name will be added to JSON,
+	 * even when there is no underlying abstract class or interface.
+	 *
+	 * @return deserialization hint or additional serialization info
+	 */
+	String discriminator() default "";
+
+	/**
+	 * use name instead.
+	 * Will be removed in 1.9
+	 *
+	 * @return deserialization hint
+	 */
+	String deserializeName() default "";
+
 
 	/**
 	 * When used in mixin which doesn't have deserializeAs "$type":name will be injected into JSON.
 	 * If not specified name will be the class full name, otherwise it will use value provided here.
 	 * Value must be unique across all mixin implementations.
-	 * To change default discriminator $type to something else, use deserializeDiscriminator value.
+	 * To change default discriminator '$type' to something else, use discriminator value.
+	 * When both discriminator and name are set on class, additional serialization info will be added to JSON,
+	 * even when there is no underlying abstract class or interface.
 	 *
-	 * @return deserialization hint
+	 * @return deserialization hint or additional serialization info
 	 */
-	String deserializeName() default "";
+	String name() default "";
 }

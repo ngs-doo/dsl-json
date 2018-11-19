@@ -694,4 +694,18 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(InterfaceWithConflictingDiscriminator.class),
 				"Conflicting discriminator name detected: 'abc' for mixin: com.dslplatform.json.models.InterfaceWithConflictingDiscriminator with property 'abc' in class");
 	}
+
+	@Test
+	public void genericsWithInheritence() {
+		checkValidCompilation(GenericsWithInheritance.FirstChild.class);
+	}
+
+	@Test
+	public void conflictingDiscriminator() {
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				16,
+				compileTestCase(GenericsWithDuplicate.SecondChild.class),
+				"Discriminator has the same value as one of the attributes");
+	}
 }
