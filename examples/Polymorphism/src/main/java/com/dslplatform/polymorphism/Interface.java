@@ -30,7 +30,7 @@ public interface Interface {
 	}
 
 	//custom deserialize name can be specified
-	@CompiledJson(deserializeName = "mutable")
+	@CompiledJson(name = "mutable")
 	class MutableImplementation implements Interface {
 		private int number;
 		private String name;

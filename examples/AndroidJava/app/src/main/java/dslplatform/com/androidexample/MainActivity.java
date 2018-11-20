@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
             int x();
         }
 
-        @CompiledJson(deserializeName = "custom-name")//by default class name will be used for $type attribute
+        @CompiledJson(name = "custom-name")//by default class name will be used for $type attribute
         public static class WithCustomCtor implements Interface {
             private int x;
             private int y;

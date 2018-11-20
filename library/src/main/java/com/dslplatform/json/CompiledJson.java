@@ -109,6 +109,7 @@ public @interface CompiledJson {
 	 *
 	 * @return deserialization hint
 	 */
+	@Deprecated
 	String deserializeName() default "";
 
 

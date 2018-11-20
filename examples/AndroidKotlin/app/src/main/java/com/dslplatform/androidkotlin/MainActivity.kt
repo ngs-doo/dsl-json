@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         fun x(): Int
     }
 
-    @CompiledJson(deserializeName = "custom-name")//by default class name will be used for $type attribute
+    @CompiledJson(name = "custom-name")//by default class name will be used for $type attribute
     class WithCustomCtor : Interface {
         private var x: Int = 0
         var y: Int = 0
