@@ -318,6 +318,18 @@ Library has various configurable limits built-in to protect against malicious in
  * default of 512 digits
  * default of 128MB strings
 
+### String API
+
+DSL-JSON works on byte level. To discourage use of String for JSON processing there is no high level String API.
+If one really needs to use String, manual conversion is required.
+
+    DslJson<Object> json = new DslJson<Object>();
+    byte[] bytes = "{\"number\":123}".getBytes("UTF-8"); //convert string to UTF-8 bytes
+    POJO instance = json.deserialize(POJO.class, bytes, bytes.length);
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    json.serialize(instance, os);
+    String outputAsString = os.toString("UTF-8"); //convert stream to string
+
 ### Scala support
 
 Scala types can be used. They will be analyzed at runtime with. Scala specific behaviour:
