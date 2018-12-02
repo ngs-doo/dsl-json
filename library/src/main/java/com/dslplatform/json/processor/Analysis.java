@@ -1749,6 +1749,12 @@ public class Analysis {
 							&& !field.getModifiers().contains(Modifier.TRANSIENT)
 							&& !field.getModifiers().contains(Modifier.STATIC);
 					if (!isAccessible || !isFinal) {
+						if (getAnnotation(field, attributeType) != null) {
+							messager.printMessage(
+									Diagnostic.Kind.WARNING,
+									attributeType.toString() + " detected on non accessible builder field which is ignored during processing. Put annotation on public field instead.",
+									element);
+						}
 						continue;
 					}
 					fields.put(name, field);
@@ -1764,13 +1770,15 @@ public class Analysis {
 						&& !method.getModifiers().contains(Modifier.NATIVE)
 						&& !method.getModifiers().contains(Modifier.TRANSIENT);
 				if (!isAccessible) {
+					if (getAnnotation(method, attributeType) != null) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible builder method which is ignored during processing. Put annotation on public method instead.",
+								element);
+					}
 					continue;
 				}
-				String property = name.length() < 4 || !name.startsWith("set")
-						? name
-						: name.length() > 4 && name.substring(3).toUpperCase().equals(name.substring(3))
-						? name.substring(3)
-						: name.substring(3, 4).toLowerCase() + name.substring(4);
+				String property = beanOrActualName(name);
 				if (method.getParameters().size() == 1 && types.isSameType(method.getReturnType(), builderType)) {
 					boolean canAdd = withExact || withBeans && name.startsWith("set") && name.length() > 4;
 					if (canAdd && !setters.containsKey(property)) {

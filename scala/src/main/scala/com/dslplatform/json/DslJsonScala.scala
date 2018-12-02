@@ -13,14 +13,18 @@ class DslJsonScala(val json: DslJson[_]) extends AnyVal {
     val tpe = typeOf[T]
     val javaType = TypeAnalysis.convertType(tpe)
     checkConversion(tpe, javaType, json.getRegisteredEncoders)
-    json.tryFindWriter(javaType).asInstanceOf[JsonWriter.WriteObject[T]]
+    val encoder = json.tryFindWriter(javaType).asInstanceOf[JsonWriter.WriteObject[T]]
+    require(encoder ne null, s"Unable to create encoder for ${typeOf[T]}")
+    encoder
   }
 
   def decoder[T: TypeTag]: JsonReader.ReadObject[T] = {
     val tpe = typeOf[T]
     val javaType = TypeAnalysis.convertType(tpe)
     checkConversion(tpe, javaType, json.getRegisteredDecoders)
-    json.tryFindReader(javaType).asInstanceOf[JsonReader.ReadObject[T]]
+    val decoder = json.tryFindReader(javaType).asInstanceOf[JsonReader.ReadObject[T]]
+    require(decoder ne null, s"Unable to create decoder for ${typeOf[T]}")
+    decoder
   }
 
   private def checkConversion(tpe: Type, foundType: JavaType, known: java.util.Set[JavaType]): JavaType = {
@@ -39,6 +43,7 @@ class DslJsonScala(val json: DslJson[_]) extends AnyVal {
 
   def encode[T](value: T, os: OutputStream)(implicit encoder: JsonWriter.WriteObject[T]): Unit = {
     require(os ne null, "os can't be null")
+    require(encoder ne null, "encoder can't be null")
     val writer = json.localWriter.get()
     writer.reset(os)
     try {
@@ -57,6 +62,7 @@ class DslJsonScala(val json: DslJson[_]) extends AnyVal {
   def decode[T](bytes: Array[Byte], length: Int)(implicit decoder: JsonReader.ReadObject[T]): T = {
     require(bytes ne null, "bytes can't be null")
     require(length <= bytes.length, "length must be less or equal to bytes length")
+    require(decoder ne null, "decoder can't be null")
     val reader = json.localReader.get()
     reader.process(bytes, length).getNextToken()
     decoder.read(reader)

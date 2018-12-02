@@ -17,10 +17,14 @@ object ScalaClassAnalyzer {
         case Some(Right(id)) => id
         case _ => null
       }
-      case pt: ParameterizedType if pt.getActualTypeArguments.length == 1 =>
+      case pt: ParameterizedType =>
         pt.getRawType match {
-            //TODO: support for generics
-          case rc: Class[_] => null//analyze(manifest, rc, dslJson).orNull
+          case rc: Class[_] =>
+            analyze(manifest, rc, dslJson, reading = true) match {
+            case Some(Left(fd)) => fd
+            case Some(Right(id)) => id
+            case _ => null
+          }
           case _ => null
         }
       case _ => null
@@ -33,10 +37,12 @@ object ScalaClassAnalyzer {
         case Some(Left(fd)) => fd
         case _ => null
       }
-      case pt: ParameterizedType if pt.getActualTypeArguments.length == 1 =>
+      case pt: ParameterizedType =>
         pt.getRawType match {
-          //TODO: support for generics
-          case rc: Class[_] => null//analyze(manifest, rc, dslJson).orNull
+          case rc: Class[_] => analyze(manifest, rc, dslJson, reading = false) match {
+            case Some(Left(fd)) => fd
+            case _ => null
+          }
           case _ => null
         }
       case _ => null
@@ -50,10 +56,13 @@ object ScalaClassAnalyzer {
         case Some(Right(id)) => id
         case _ => null
       }
-      case pt: ParameterizedType if pt.getActualTypeArguments.length == 1 =>
+      case pt: ParameterizedType =>
         pt.getRawType match {
-            //TODO: support for generics
-          case rc: Class[_] => null//analyze(manifest, rc, dslJson).orNull
+          case rc: Class[_] => analyze(manifest, rc, dslJson, reading = false) match {
+            case Some(Left(fd)) => fd
+            case Some(Right(id)) => id
+            case _ => null
+          }
           case _ => null
         }
       case _ => null
@@ -180,7 +189,7 @@ object ScalaClassAnalyzer {
     reading: Boolean
   ) = {
     if (isSupported(manifest, raw)) {
-      val sc = scala.reflect.runtime.currentMirror.staticClass(manifest.getTypeName)
+      val sc = scala.reflect.runtime.currentMirror.staticClass(raw.getTypeName)
       analyzeType(manifest, raw, json, reading, sc.info)
     } else {
       None
@@ -231,8 +240,10 @@ object ScalaClassAnalyzer {
     params: List[universe.Symbol],
     reading: Boolean
   ) = {
+    import scala.collection.JavaConverters._
     val isProduct = classOf[Product].isAssignableFrom(raw)
     val genericMappings = Generics.analyze(manifest, raw)
+    val genericsByName = genericMappings.entrySet().asScala.map(kv => kv.getKey.getTypeName -> kv.getValue).toMap
     val defaults = tpe.companion.members.filter(_.name.toString.startsWith("$lessinit$greater$default$"))
     val types = params.map(_.typeSignature).toSet
     val sameTypes = tpe.members.filter { it =>
@@ -247,18 +258,18 @@ object ScalaClassAnalyzer {
         }
       }
       val pName = if (p.name.toString.contains("$")) names.map(it => it(i)) else Some(p.name.toString)
-      Try(TypeAnalysis.convertType(p.typeSignature)).toOption.flatMap { rt =>
+      Try(TypeAnalysis.convertType(p.typeSignature, genericsByName)).toOption.flatMap { rt =>
         val concreteType = Generics.makeConcrete(rt, genericMappings)
         val isUnknown = Generics.isUnknownType(rt)
-        val machingTypeAndName = {
+        val matchingTypeAndName = {
           if (pName.isEmpty) None
           else sameTypes.find(it => it.typeSignature == p.typeSignature && it.name.toString.trim == pName.get)
         }
-        lazy val machingTypeOnly = {
+        lazy val matchingTypeOnly = {
           if (sameTypes.size != params.size) None
           else sameTypes.find(it => it.typeSignature == p.typeSignature)
         }
-        val name = machingTypeAndName.orElse(machingTypeOnly).map(_.name.toString.trim).orElse(pName)
+        val name = matchingTypeAndName.orElse(matchingTypeOnly).map(_.name.toString.trim).orElse(pName)
         if (name.isEmpty || name.get.contains("$")) None
         Some(TypeInfo(name.get, rt, isUnknown, concreteType, i, defMethod))
       }
@@ -340,12 +351,14 @@ object ScalaClassAnalyzer {
     methods: Map[universe.Symbol, universe.Symbol],
     reading: Boolean
   ) = {
+    import scala.collection.JavaConverters._
     val tmp = new LazyObjectDescription(json, manifest)
     val oldWriter = json.registerWriter(manifest, tmp)
     val oldReader = json.registerReader(manifest, tmp)
     val foundWrite = new mutable.LinkedHashMap[String, JsonWriter.WriteObject[_]]
     val foundRead = new mutable.LinkedHashMap[String, DecodePropertyInfo[JsonReader.BindObject[_]]]
     val genericMappings = Generics.analyze(manifest, raw)
+    val genericsByName = genericMappings.entrySet().asScala.map(kv => kv.getKey.getTypeName -> kv.getValue).toMap
     val rawAny = raw.asInstanceOf[Class[AnyRef]]
     val newInstance = new InstanceFactory[AnyRef] {
       override def create(): AnyRef = rawAny.newInstance()
@@ -355,7 +368,7 @@ object ScalaClassAnalyzer {
     methods.foreach { case (g, _) =>
       val gName = g.name.toString
       rawMethods.find(m => m.getParameterCount == 0 && m.getName.equals(gName)).foreach { jm =>
-        Try(TypeAnalysis.convertType(g.typeSignature.resultType)).foreach { t =>
+        Try(TypeAnalysis.convertType(g.typeSignature.resultType, genericsByName)).foreach { t =>
           if (analyzeMethods(jm, t, raw, json, foundWrite, foundRead, index, genericMappings)) {
             index += 1
           }
@@ -404,7 +417,8 @@ object ScalaClassAnalyzer {
     foundWrite: mutable.LinkedHashMap[String, JsonWriter.WriteObject[_]],
     foundRead: mutable.LinkedHashMap[String, DecodePropertyInfo[JsonReader.BindObject[_]]],
     index: Int,
-    genericMappings: java.util.HashMap[JavaType, JavaType]): Boolean = {
+    genericMappings: java.util.HashMap[JavaType, JavaType]
+  ): Boolean = {
     if (mget.getParameterTypes.length != 0) false
     else {
       val name = mget.getName

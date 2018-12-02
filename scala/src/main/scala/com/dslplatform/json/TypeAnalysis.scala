@@ -71,11 +71,13 @@ private[json] object TypeAnalysis {
     override def toString: String = typeName
   }
 
+  private val emptyMap = Map.empty[String, JavaType]
+
   def convertType(tpe: Type): JavaType = {
     val found = typeTagCache.get(tpe)
     if (found != null) found
     else {
-      findUnknownType(tpe, scala.reflect.runtime.currentMirror) match {
+      findUnknownType(tpe, scala.reflect.runtime.currentMirror, emptyMap) match {
         case Some(jt) =>
           typeTagCache.put(tpe, jt)
           jt
@@ -85,19 +87,42 @@ private[json] object TypeAnalysis {
     }
   }
 
-  private def findUnknownType(tpe: Type, mirror: Mirror): Option[JavaType] = {
+  def convertType(tpe: Type, genericsMap: Map[String, JavaType]): JavaType = {
+    val found = typeTagCache.get(tpe)
+    if (found != null) found
+    else {
+      val mapping = genericsMap.get(tpe.toString)
+      if (mapping.isDefined) mapping.get
+      else {
+        findUnknownType(tpe, scala.reflect.runtime.currentMirror, genericsMap) match {
+          case Some(jt) =>
+            if (genericsMap.isEmpty) {
+              typeTagCache.put(tpe, jt)
+            }
+            jt
+          case _ =>
+            sys.error(s"Unable to convert $tpe to Java representation")
+        }
+      }
+    }
+  }
+
+  private def findUnknownType(tpe: Type, mirror: Mirror, genericsMap: Map[String, JavaType]): Option[JavaType] = {
     tpe.dealias match {
       case TypeRef(_, sym, args) if args.isEmpty =>
-        Try(mirror.runtimeClass(sym.asClass)).toOption
+        genericsMap.get(tpe.toString) match {
+          case f@Some(_) => f
+          case _ => Try(mirror.runtimeClass(sym.asClass)).toOption
+        }
       case TypeRef(_, sym, args) if sym.fullName == "scala.Array" && args.lengthCompare(1) == 0 =>
-        Try(convertType(args.head)) match {
+        Try(convertType(args.head, genericsMap)) match {
           case Success(typeArg) => Some(new GenArrType(typeArg))
           case _ => None
         }
       case TypeRef(_, sym, args) =>
         Try(mirror.runtimeClass(sym.asClass)) match {
           case Success(symClass) =>
-            val typeArgs = args.flatMap(it => Try(convertType(it)).toOption)
+            val typeArgs = args.flatMap(it => Try(convertType(it, genericsMap)).toOption)
             if (typeArgs.lengthCompare(args.size) == 0) {
               Some(makeGenericType(symClass, typeArgs))
             } else None

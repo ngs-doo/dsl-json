@@ -6,17 +6,17 @@ import runtime._
 
 class ConfigureScala extends Configuration {
   override def configure(json: DslJson[_]): Unit = {
-    json.registerReaderFactory(ScalaCollectionAnalyzer.Reader)
-    json.registerWriterFactory(ScalaCollectionAnalyzer.Writer)
+    json.registerReaderFactory(OptionAnalyzer.Reader)
+    json.registerWriterFactory(OptionAnalyzer.Writer)
     json.registerReaderFactory(ScalaMapAnalyzer.Reader)
     json.registerWriterFactory(ScalaMapAnalyzer.Writer)
+    json.registerReaderFactory(ScalaTupleAnalyzer.Reader)
+    json.registerWriterFactory(ScalaTupleAnalyzer.Writer)
+    json.registerReaderFactory(ScalaCollectionAnalyzer.Reader)
+    json.registerWriterFactory(ScalaCollectionAnalyzer.Writer)
     json.registerReaderFactory(ScalaClassAnalyzer.Reader)
     json.registerWriterFactory(ScalaClassAnalyzer.Writer)
     json.registerBinderFactory(ScalaClassAnalyzer.Binder)
-    json.registerReaderFactory(ScalaTupleAnalyzer.Reader)
-    json.registerWriterFactory(ScalaTupleAnalyzer.Writer)
-    json.registerReaderFactory(OptionAnalyzer.Reader)
-    json.registerWriterFactory(OptionAnalyzer.Writer)
     json.registerReader(classOf[BigDecimal], new ReadObject[BigDecimal] {
       override def read(reader: JsonReader[_]): BigDecimal = {
         BigDecimal(NumberConverter.deserializeDecimal(reader))
