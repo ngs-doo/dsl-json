@@ -372,7 +372,8 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(
 						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
 						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
-		Assert.assertEquals(5, diagnostics.size());
+		//new Java versions perform analysis a bit differently
+		Assert.assertTrue(diagnostics.size() >= 5 && diagnostics.size() <= 6);
 		Diagnostic note = diagnostics.get(0);
 		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		String error = note.getMessage(Locale.ENGLISH);
@@ -563,5 +564,14 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 	@Test
 	public void simpleEnums() {
 		checkValidCompilation(WithEnums.class);
+	}
+
+	@Test
+	public void annotationOnPrivateWillCreateWarning() {
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				9,
+				compileTestCase(PrivateField.class),
+				"com.dslplatform.json.JsonAttribute detected on non accessible field which is ignored during processing. Put annotation on public field instead");
 	}
 }

@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.*;
+import com.dslplatform.json.processor.Analysis;
 
 import java.io.IOException;
 import java.lang.reflect.*;
@@ -227,9 +228,7 @@ public abstract class ObjectAnalyzer {
 		} catch (NoSuchMethodException ignore) {
 			return false;
 		}
-		final String name = mget.getName().startsWith("get") && mget.getName().length() > 3
-				? Character.toLowerCase(mget.getName().charAt(3)) + mget.getName().substring(4)
-				: mget.getName();
+		final String name = Analysis.beanOrActualName(mget.getName());
 		if (!canRead(mget.getModifiers()) || !canWrite(mset.getModifiers())) return false;
 		if (foundRead.containsKey(name) && foundWrite.containsKey(name)) return false;
 		final Type type = mget.getGenericReturnType();

@@ -136,4 +136,23 @@ public class ObjectFormatTest {
 			Assert.assertNotNull(res);
 		}
 	}
+
+	public static class UppercaseName {
+		private int doc;
+		public int getDOC() { return doc; }
+		public void setDOC(int value) { doc = value; }
+	}
+
+	@Test
+	public void uppercaseName() throws IOException {
+		UppercaseName val = new UppercaseName();
+		val.setDOC(505);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		dslJsonFull.serialize(val, baos);
+		Assert.assertEquals("{\"DOC\":505}", baos.toString("UTF-8"));
+		byte[] bytes = baos.toByteArray();
+		UppercaseName deser = dslJsonFull.deserialize(UppercaseName.class, bytes, bytes.length);
+		Assert.assertEquals(val.getDOC(), deser.getDOC());
+
+	}
 }

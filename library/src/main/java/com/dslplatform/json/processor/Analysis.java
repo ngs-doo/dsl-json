@@ -1536,6 +1536,17 @@ public class Analysis {
 		return types.isAssignable(right, left);
 	}
 
+	public static String beanOrActualName(String name) {
+		if ((name.startsWith("get") || name.startsWith("set")) && name.length() > 3) {
+			String after = name.substring(3);
+			if (name.length() == 4) return after.toLowerCase();
+			return after.toUpperCase().equals(after)
+					? after
+					: Character.toLowerCase(after.charAt(0)) + after.substring(1);
+		}
+		return name;
+	}
+
 	public Map<String, AccessElements> getBeanProperties(TypeElement element, ExecutableElement ctor, @Nullable ExecutableElement factory) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
@@ -1545,27 +1556,40 @@ public class Analysis {
 					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
 			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
 				String name = method.getSimpleName().toString();
+				if (name.length() < 4) {
+					continue;
+				}
 				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
 						|| method.getModifiers().contains(Modifier.PUBLIC)
 						&& !method.getModifiers().contains(Modifier.STATIC)
 						&& !method.getModifiers().contains(Modifier.NATIVE)
 						&& !method.getModifiers().contains(Modifier.TRANSIENT)
 						&& !method.getModifiers().contains(Modifier.ABSTRACT);
-				if (name.length() < 4 || !isAccessible) {
-					continue;
-				}
-				String property = name.substring(3).toUpperCase().equals(name.substring(3)) && name.length() > 4
-						? name.substring(3)
-						: name.substring(3, 4).toLowerCase() + name.substring(4);
+				AnnotationMirror annotation = getAnnotation(method, attributeType);
+				boolean producesWarning = !isAccessible && annotation != null;
+				String property = beanOrActualName(name);
 				if (name.startsWith("get")
 						&& method.getParameters().size() == 0
 						&& method.getReturnType() != null) {
-					if (!getters.containsKey(property)) {
+					if (producesWarning) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible bean getter method which is ignored during processing. Put annotation on public method instead.",
+								method,
+								annotation);
+					} else if (!getters.containsKey(property)) {
 						getters.put(property, method);
 					}
-				} else if (name.startsWith("set")
-						&& method.getParameters().size() == 1) {
-					setters.put(property, method);
+				} else if (name.startsWith("set") && method.getParameters().size() == 1) {
+					if (producesWarning) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible bean setter method which is ignored during processing. Put annotation on public method instead.",
+								method,
+								annotation);
+					} else {
+						setters.put(property, method);
+					}
 				}
 			}
 		}
@@ -1596,21 +1620,37 @@ public class Analysis {
 					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
 			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
 				String name = method.getSimpleName().toString();
+				if (name.startsWith("get") || name.startsWith("set")) {
+					continue;
+				}
 				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
 						|| method.getModifiers().contains(Modifier.PUBLIC)
 						&& !method.getModifiers().contains(Modifier.STATIC)
 						&& !method.getModifiers().contains(Modifier.NATIVE)
 						&& !method.getModifiers().contains(Modifier.TRANSIENT)
 						&& !method.getModifiers().contains(Modifier.ABSTRACT);
-				if (name.startsWith("get") || name.startsWith("set") || !isAccessible) {
-					continue;
-				}
+				AnnotationMirror annotation = getAnnotation(method, attributeType);
+				boolean producesWarning = !isAccessible && annotation != null;
 				if (method.getParameters().size() == 0 && method.getReturnType() != null) {
-					if (!getters.containsKey(name)) {
+					if (producesWarning) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible setter method which is ignored during processing. Put annotation on public method instead.",
+								method,
+								annotation);
+					} else if (!getters.containsKey(name)) {
 						getters.put(name, method);
 					}
 				} else if (method.getParameters().size() == 1) {
-					setters.put(name, method);
+					if (producesWarning) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible setter method which is ignored during processing. Put annotation on public method instead.",
+								method,
+								annotation);
+					} else {
+						setters.put(name, method);
+					}
 				}
 			}
 		}
@@ -1645,6 +1685,14 @@ public class Analysis {
 						&& !field.getModifiers().contains(Modifier.TRANSIENT)
 						&& !field.getModifiers().contains(Modifier.STATIC);
 				if (!isAccessible) {
+					AnnotationMirror fieldAnnotation = getAnnotation(field, attributeType);
+					if (fieldAnnotation != null) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible field which is ignored during processing. Put annotation on public field instead.",
+								field,
+								fieldAnnotation);
+					}
 					continue;
 				}
 				VariableElement arg = arguments.get(name);
@@ -1676,13 +1724,15 @@ public class Analysis {
 						&& !method.getModifiers().contains(Modifier.NATIVE)
 						&& !method.getModifiers().contains(Modifier.TRANSIENT);
 				if (!isAccessible) {
+					if (getAnnotation(method, attributeType) != null) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible builder method which is ignored during processing. Put annotation on public method instead.",
+								element);
+					}
 					continue;
 				}
-				String property = name.length() < 4 || !name.startsWith("get")
-						? name
-						: name.length() > 4 && name.substring(3).toUpperCase().equals(name.substring(3))
-						? name.substring(3)
-						: name.substring(3, 4).toLowerCase() + name.substring(4);
+				final String property = Analysis.beanOrActualName(name);
 				if (method.getParameters().size() == 0 && method.getReturnType() != null) {
 					boolean canAdd = withExact || withBeans && name.startsWith("get") && name.length() > 4;
 					if (canAdd && !getters.containsKey(property)) {

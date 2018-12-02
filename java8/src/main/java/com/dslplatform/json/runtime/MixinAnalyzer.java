@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.*;
+import com.dslplatform.json.processor.Analysis;
 
 import java.lang.reflect.*;
 import java.util.Collection;
@@ -134,9 +135,7 @@ public abstract class MixinAnalyzer {
 			final HashMap<Type, Type> genericMappings) {
 		if (mget.getParameterTypes().length != 0) return;
 		if (!canRead(mget.getModifiers())) return;
-		final String name = mget.getName().startsWith("get") && mget.getName().length() > 3
-				? Character.toLowerCase(mget.getName().charAt(3)) + mget.getName().substring(4)
-				: mget.getName();
+		final String name = Analysis.beanOrActualName(mget.getName());
 		if (foundWrite.containsKey(name)) return;
 		final Type type = mget.getGenericReturnType();
 		final Type concreteType = Generics.makeConcrete(type, genericMappings);

@@ -8,6 +8,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class ReflectionTest {
@@ -485,5 +486,23 @@ public class ReflectionTest {
 		skip = json.deserialize(SkipMeImmutable.class, bytes, bytes.length);
 		Assert.assertEquals(1, skip.x);
 		Assert.assertNull(skip.s);
+	}
+
+	public static class UppercaseName {
+		private int doc;
+		public int getDOC() { return doc; }
+		public void setDOC(int value) { doc = value; }
+	}
+
+	@Test
+	public void uppercaseName() throws IOException {
+		UppercaseName val = new UppercaseName();
+		val.setDOC(505);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		json.serialize(val, baos);
+		Assert.assertEquals("{\"DOC\":505}", baos.toString("UTF-8"));
+		byte[] bytes = baos.toByteArray();
+		UppercaseName deser = json.deserialize(UppercaseName.class, bytes, bytes.length);
+		Assert.assertEquals(val.getDOC(), deser.getDOC());
 	}
 }

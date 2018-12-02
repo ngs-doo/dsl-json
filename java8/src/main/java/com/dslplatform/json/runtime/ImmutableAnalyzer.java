@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.*;
+import com.dslplatform.json.processor.Analysis;
 
 import java.io.IOException;
 import java.lang.reflect.*;
@@ -168,9 +169,7 @@ public abstract class ImmutableAnalyzer {
 		final LinkedHashMap<String, Method> matchingMethods = new LinkedHashMap<>();
 		for (final Method mget : raw.getMethods()) {
 			if (mget.getParameterTypes().length != 0) continue;
-			final String name = mget.getName().startsWith("get") && mget.getName().length() > 3
-					? Character.toLowerCase(mget.getName().charAt(3)) + mget.getName().substring(4)
-					: mget.getName();
+			final String name = Analysis.beanOrActualName(mget.getName());
 			if (isPublicNonStatic(mget.getModifiers()) && !name.contains("$") && !objectMethods.contains(name)) {
 				matchingMethods.put(name, mget);
 			}

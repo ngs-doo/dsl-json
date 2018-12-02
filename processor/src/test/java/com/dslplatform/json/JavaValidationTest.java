@@ -357,7 +357,8 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(
 						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
 						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
-		Assert.assertEquals(4, diagnostics.size());
+		//new Java versions perform analysis a bit differently
+		Assert.assertTrue(diagnostics.size() >= 4 && diagnostics.size() <= 5);
 		Diagnostic note = diagnostics.get(0);
 		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		String error = note.getMessage(Locale.ENGLISH);
@@ -707,5 +708,14 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				16,
 				compileTestCase(GenericsWithDuplicate.SecondChild.class),
 				"Discriminator has the same value as one of the attributes");
+	}
+
+	@Test
+	public void annotationOnPrivateWillCreateWarning() {
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				9,
+				compileTestCase(PrivateField.class),
+				"com.dslplatform.json.JsonAttribute detected on non accessible field which is ignored during processing. Put annotation on public field instead.");
 	}
 }
