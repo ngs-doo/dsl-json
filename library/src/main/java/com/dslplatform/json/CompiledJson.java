@@ -30,16 +30,52 @@ public @interface CompiledJson {
 	 */
 	Format[] formats() default {Format.OBJECT};
 
+	/**
+	 * JSON object format.
+	 */
 	enum Format {
+		/**
+		 * Standard format which includes both name and value, eg: {"number":123,"name":"json"}
+		 */
 		OBJECT,
+		/**
+		 * Compact format without attribute names, eg: [123,"json"]
+		 */
 		ARRAY
 	}
 
+	/**
+	 * Object format can be fine tuned to either:<br>
+	 *  - always include all properties<br>
+	 *  - serialize only some properties<br>
+	 *  <p>
+	 *  This can be defined per DslJson instance via omitDefaults property during initialization through: skipDefaultValues<br>
+	 *  To fine tune the behavior on class level specific policy can be set on the class which will override the global setting.<br>
+	 *  <p>
+	 *  By default minimal serialization will only include properties which have non-default values.
+	 *  If some properties need to be always included regardless, this can be done via additional annotation on property level.
+	 *
+	 * @return object format policy
+	 */
 	ObjectFormatPolicy objectFormatPolicy() default ObjectFormatPolicy.DEFAULT;
 
+	/**
+	 * Class level tuning for object format serialization behavior.
+	 * DEFAULT will inherit the runtime setting while other ones will always serialize object in
+	 * specific way regardless of the runtime setting
+	 */
 	enum ObjectFormatPolicy {
+		/**
+		 * Inherit the serialization policy from DslJson omitDefaults setting
+		 */
 		DEFAULT,
+		/**
+		 * Serialize minimal set of properties (only required ones) regardless of DslJson omitDefaults setting
+		 */
 		MINIMAL,
+		/**
+		 * Always serialize all properties regardless of DslJson omitDefaults setting
+		 */
 		FULL
 	}
 
@@ -62,9 +98,23 @@ public @interface CompiledJson {
 	 */
 	Behavior onUnknown() default Behavior.DEFAULT;
 
+	/**
+	 * Defines behavior for handling unknown properties.
+	 * Enums fail by default, while class ignores unknown properties by default.
+	 */
 	enum Behavior {
+		/**
+		 * Use the object type default behavior
+		 */
 		DEFAULT,
+		/**
+		 * Always fail on unknown property
+		 */
 		FAIL,
+		/**
+		 * Cope with unknown properties somehow.
+		 * In enums, first enum value will be used when an unknown value is parsed
+		 */
 		IGNORE
 	}
 
@@ -77,8 +127,20 @@ public @interface CompiledJson {
 	 */
 	TypeSignature typeSignature() default TypeSignature.DEFAULT;
 
+	/**
+	 * Some types (abstract classes and interfaces) require additional metadata so they can be correctly deserialized.
+	 * This information can be excluded by using EXCLUDE type signature.
+	 * An example of valid use case for exclusion is if there is some other way of handling deserialization, or if they are never deserialized at all.
+	 *
+	 */
 	enum TypeSignature {
+		/**
+		 * Embed additional metadata as the first property during serialization
+		 */
 		DEFAULT,
+		/**
+		 * Exclude additional metadata from serialization of abstract classes and interfaces
+		 */
 		EXCLUDE
 	}
 

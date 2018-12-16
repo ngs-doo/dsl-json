@@ -21,8 +21,11 @@ public @interface JsonAttribute {
 	boolean ignore() default false;
 
 	/**
-	 * When mandatory is enabled, property will always be written in JSON.
-	 * If property is missing during parsing an IOException will be thrown.
+	 * When mandatory is enabled, property must always exist in incoming JSON.
+	 * If property is missing during parsing an IOException will be thrown.<br>
+	 * Mandatory does not mean property will always be included in JSON,
+	 * but this can be enforced either by using full serialization on object format,
+	 * array format, or includeToMinimal setting for minimal serialization.<br>
 	 *
 	 * @return true for mandatory property
 	 */
@@ -93,10 +96,28 @@ public @interface JsonAttribute {
 	 */
 	CompiledJson.TypeSignature typeSignature() default CompiledJson.TypeSignature.DEFAULT;
 
+	/**
+	 * Allows for fine tuning minimal serialization object format.
+	 * By default only properties with non default values will be included during serialization for such configuration.
+	 * To always include some properties in output JSON this settings can be set to ALWAYS.<br>
+	 * While mandatory will require that property exists during parsing,
+	 * this complements the feature so that property always exist in output JSON.
+	 *
+	 * @return minimal serialization object format policy for this property
+	 */
 	IncludePolicy includeToMinimal() default IncludePolicy.NON_DEFAULT;
 
+	/**
+	 * Customize property serialization behavior in minimal serialization object format.
+	 */
 	enum IncludePolicy {
+		/**
+		 * Include property only if the value is non default. Eg, non 0 for int, non null for references
+		 */
 		NON_DEFAULT,
+		/**
+		 * Always include property in the output
+		 */
 		ALWAYS
 	}
 }

@@ -528,6 +528,17 @@ public class Analysis {
 					}
 				}
 			}
+			if (info.objectFormatPolicy == CompiledJson.ObjectFormatPolicy.FULL) {
+				for (AttributeInfo attr : info.attributes.values()) {
+					if (attr.includeToMinimal == JsonAttribute.IncludePolicy.ALWAYS) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								"When object format is set to  FULL, all properties will always be included in the output. It is not necessary to explicitly mark property to be ALWAYS included, since minimal format is not used",
+								attr.element,
+								attr.annotation);
+					}
+				}
+			}
 			if (info.isMinified) {
 				info.prepareMinifiedNames();
 			}

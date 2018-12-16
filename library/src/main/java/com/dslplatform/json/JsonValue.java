@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * Specify json value source used for serialization/deserialization.
  *
- * Can be used on field or getter. Currently only 'String' and 'int' types are supported.
+ * Can be used on field or getter.
  *
  * <pre>
  *     enum MyEnum {
