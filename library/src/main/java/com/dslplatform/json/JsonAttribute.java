@@ -92,4 +92,11 @@ public @interface JsonAttribute {
 	 * @return should include type signature in JSON
 	 */
 	CompiledJson.TypeSignature typeSignature() default CompiledJson.TypeSignature.DEFAULT;
+
+	IncludePolicy includeToMinimal() default IncludePolicy.NON_DEFAULT;
+
+	enum IncludePolicy {
+		NON_DEFAULT,
+		ALWAYS
+	}
 }

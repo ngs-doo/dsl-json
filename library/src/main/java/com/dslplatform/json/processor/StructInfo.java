@@ -25,6 +25,7 @@ public class StructInfo {
 	public final AnnotationMirror annotation;
 	public final CompiledJson.Behavior onUnknown;
 	public final CompiledJson.TypeSignature typeSignature;
+	public final CompiledJson.ObjectFormatPolicy objectFormatPolicy;
 	public final TypeElement deserializeAs;
 	public final String discriminator;
 	public final String deserializeName;
@@ -55,6 +56,7 @@ public class StructInfo {
 			@Nullable AnnotationMirror annotation,
 			@Nullable CompiledJson.Behavior onUnknown,
 			@Nullable CompiledJson.TypeSignature typeSignature,
+			CompiledJson.ObjectFormatPolicy objectFormatPolicy,
 			@Nullable TypeElement deserializeAs,
 			@Nullable String discriminator,
 			@Nullable String deserializeName,
@@ -75,6 +77,7 @@ public class StructInfo {
 		this.annotation = annotation;
 		this.onUnknown = onUnknown;
 		this.typeSignature = typeSignature;
+		this.objectFormatPolicy = objectFormatPolicy;
 		this.deserializeAs = deserializeAs;
 		this.discriminator = discriminator != null ? discriminator : "";
 		this.deserializeName = deserializeName != null ? deserializeName : "";
@@ -115,6 +118,7 @@ public class StructInfo {
 		this.annotation = null;
 		this.onUnknown = null;
 		this.typeSignature = null;
+		this.objectFormatPolicy = CompiledJson.ObjectFormatPolicy.DEFAULT;
 		this.deserializeAs = null;
 		this.discriminator = "";
 		this.deserializeName = "";
