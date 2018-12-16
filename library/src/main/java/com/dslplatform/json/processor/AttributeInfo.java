@@ -1,6 +1,7 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.JsonAttribute;
 import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.*;
@@ -23,6 +24,7 @@ public class AttributeInfo {
 	public final String alias;
 	public final boolean fullMatch;
 	public final CompiledJson.TypeSignature typeSignature;
+	public final JsonAttribute.IncludePolicy includeToMinimal;
 	public final ConverterInfo converter;
 	public final boolean isJsonObject;
 	public final List<String> alternativeNames = new ArrayList<String>();
@@ -49,6 +51,7 @@ public class AttributeInfo {
 			@Nullable String alias,
 			boolean fullMatch,
 			@Nullable CompiledJson.TypeSignature typeSignature,
+			JsonAttribute.IncludePolicy includeToMinimal,
 			@Nullable ConverterInfo converter,
 			boolean isJsonObject,
 			Map<String, Integer> typeVariablesIndex,
@@ -67,6 +70,7 @@ public class AttributeInfo {
 		this.alias = alias;
 		this.fullMatch = fullMatch;
 		this.typeSignature = typeSignature;
+		this.includeToMinimal = includeToMinimal;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
 		this.typeName = type.toString();

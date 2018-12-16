@@ -802,6 +802,7 @@ public class Analysis {
 				}
 			}
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
+			JsonAttribute.IncludePolicy includeToMinimal = includeToMinimalValue(annotation);
 			AttributeInfo attr =
 					new AttributeInfo(
 							name,
@@ -816,6 +817,7 @@ public class Analysis {
 							findNameAlias(element, annotation),
 							isFullMatch(element, annotation),
 							typeSignature,
+							includeToMinimal,
 							converter,
 							isJsonObject,
 							typeVariablesIndex,
@@ -995,6 +997,7 @@ public class Analysis {
 					}
 				}
 			}
+			CompiledJson.ObjectFormatPolicy objectFormatPolicy = objectFormatPolicyValue(annotation);
 			CompiledJson.Format[] formats = getFormats(annotation);
 			if ((new HashSet<CompiledJson.Format>(Arrays.asList(formats))).size() != formats.length) {
 				hasError = true;
@@ -1023,6 +1026,7 @@ public class Analysis {
 							annotation,
 							onUnknown,
 							typeSignature,
+							objectFormatPolicy,
 							deserializeAs,
 							classDiscriminator(annotation),
 							className(annotation),
@@ -2016,31 +2020,25 @@ public class Analysis {
 	}
 
 	@Nullable
-	public CompiledJson.Behavior onUnknownValue(@Nullable AnnotationMirror annotation) {
-		if (annotation == null) return null;
-		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
-		for (ExecutableElement ee : values.keySet()) {
-			if (ee.toString().equals("onUnknown()")) {
-				Object val = values.get(ee).getValue();
-				if (val == null) return null;
-				return CompiledJson.Behavior.valueOf(val.toString());
-			}
-		}
-		return null;
+	private CompiledJson.Behavior onUnknownValue(@Nullable AnnotationMirror annotation) {
+		return enumAnnotationElementValue(annotation, "onUnknown()", CompiledJson.Behavior.class);
 	}
 
 	@Nullable
-	public CompiledJson.TypeSignature typeSignatureValue(@Nullable AnnotationMirror annotation) {
-		if (annotation == null) return null;
-		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
-		for (ExecutableElement ee : values.keySet()) {
-			if (ee.toString().equals("typeSignature()")) {
-				Object val = values.get(ee).getValue();
-				if (val == null) return null;
-				return CompiledJson.TypeSignature.valueOf(val.toString());
-			}
-		}
-		return null;
+	private CompiledJson.TypeSignature typeSignatureValue(@Nullable AnnotationMirror annotation) {
+		return enumAnnotationElementValue(annotation, "typeSignature()", CompiledJson.TypeSignature.class);
+	}
+
+	private CompiledJson.ObjectFormatPolicy objectFormatPolicyValue(@Nullable AnnotationMirror annotation) {
+		CompiledJson.ObjectFormatPolicy value = enumAnnotationElementValue(annotation,
+				"objectFormatPolicy()", CompiledJson.ObjectFormatPolicy.class);
+		return value != null ? value : CompiledJson.ObjectFormatPolicy.DEFAULT;
+	}
+
+	private JsonAttribute.IncludePolicy includeToMinimalValue(@Nullable AnnotationMirror annotation) {
+		JsonAttribute.IncludePolicy value = enumAnnotationElementValue(annotation,
+				"includeToMinimal()", JsonAttribute.IncludePolicy.class);
+		return value != null ? value : JsonAttribute.IncludePolicy.NON_DEFAULT;
 	}
 
 	public CompiledJson.Format[] getFormats(@Nullable AnnotationMirror ann) {
@@ -2060,6 +2058,21 @@ public class Analysis {
 			}
 		}
 		return new CompiledJson.Format[]{CompiledJson.Format.OBJECT};
+	}
+
+	@Nullable
+	private static <T extends Enum<T>> T enumAnnotationElementValue(@Nullable AnnotationMirror annotation,
+																	String elementName, Class<T> enumClass) {
+		if (annotation == null) return null;
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals(elementName)) {
+				Object val = values.get(ee).getValue();
+				if (val == null) return null;
+				return T.valueOf(enumClass, val.toString());
+			}
+		}
+		return null;
 	}
 
 	public boolean isMinified(@Nullable AnnotationMirror ann) {

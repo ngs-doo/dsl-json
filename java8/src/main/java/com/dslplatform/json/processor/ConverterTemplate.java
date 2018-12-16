@@ -1,12 +1,10 @@
 package com.dslplatform.json.processor;
 
 import com.dslplatform.json.CompiledJson;
+import com.dslplatform.json.JsonAttribute;
 
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -14,11 +12,8 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.io.Writer;
-import java.util.ArrayDeque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 import static com.dslplatform.json.processor.CompiledJsonAnnotationProcessor.findConverterName;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
@@ -184,7 +179,19 @@ class ConverterTemplate {
 			code.append(", java.lang.reflect.Type[] actualTypes");
 		}
 		code.append(") {\n");
-		code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults;\n");
+
+		switch (si.objectFormatPolicy) {
+			case DEFAULT:
+				code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults;\n");
+				break;
+			case MINIMAL:
+				code.append("\t\t\tthis.alwaysSerialize = false;\n");
+				break;
+			case FULL:
+				code.append("\t\t\tthis.alwaysSerialize = true;\n");
+				break;
+		}
+
 		code.append("\t\t\tthis.__dsljson = __dsljson;\n");
 		if (si.isParameterized) {
 			code.append("\t\t\tthis.actualTypes = actualTypes;\n");
@@ -496,31 +503,42 @@ class ConverterTemplate {
 		code.append(className).append(" instance) {\n");
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\twriter.writeAscii(quoted_").append(attr.name).append(");\n");
-			writeProperty(attr, false);
+			writeProperty(attr, false, "\t\t\t");
 		}
 		code.append("\t\t}\n");
+
 		code.append("\t\tpublic boolean writeContentMinimal(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
 		code.append("\t\t\tboolean hasWritten = false;\n");
 		for (AttributeInfo attr : sortedAttributes) {
 			String typeName = attr.type.toString();
 			String defaultValue = context.getDefault(typeName);
-			code.append("\t\t\tif (");
-			String readValue = "instance." + attr.readProperty;
-			if ("null".equals(defaultValue) || typeName.indexOf('<') == -1) {
-				code.append(readValue).append(" != ").append(defaultValue);
-			} else {
-				code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+
+			boolean checkDefaults = attr.includeToMinimal != JsonAttribute.IncludePolicy.ALWAYS;
+
+			if (checkDefaults) {
+				code.append("\t\t\tif (");
+				String readValue = "instance." + attr.readProperty;
+				if ("null".equals(defaultValue) || typeName.indexOf('<') == -1) {
+					code.append(readValue).append(" != ").append(defaultValue);
+				} else {
+					code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+				}
+				code.append(") {\n");
 			}
-			code.append(") {\n");
-			code.append("\t\t\t\twriter.writeByte((byte)'\"'); writer.writeAscii(name_").append(attr.name).append("); writer.writeByte((byte)'\"'); writer.writeByte((byte)':');\n");
-			writeProperty(attr, true);
-			code.append("\t\t\t\twriter.writeByte((byte)','); hasWritten = true;\n");
-			code.append("\t\t\t}");
-			if (attr.notNull && "null".equals(defaultValue)) {
-				code.append(" else throw new com.dslplatform.json.SerializationException(\"Property '");
-				code.append(attr.name).append("' is not allowed to be null\");\n");
-			} else code.append("\n");
+
+			String alignment = checkDefaults ? "\t\t\t\t" : "\t\t\t";
+			code.append(alignment).append("writer.writeByte((byte)'\"'); writer.writeAscii(name_").append(attr.name).append("); writer.writeByte((byte)'\"'); writer.writeByte((byte)':');\n");
+			writeProperty(attr, checkDefaults, alignment);
+			code.append(alignment).append("writer.writeByte((byte)','); hasWritten = true;\n");
+
+			if (checkDefaults) {
+				code.append("\t\t\t}");
+				if (attr.notNull && "null".equals(defaultValue)) {
+					code.append(" else throw new com.dslplatform.json.SerializationException(\"Property '");
+					code.append(attr.name).append("' is not allowed to be null\");\n");
+				} else code.append("\n");
+			}
 		}
 		code.append("\t\t\treturn hasWritten;\n");
 		code.append("\t\t}\n");
@@ -662,30 +680,29 @@ class ConverterTemplate {
 		code.append(className).append(" instance) {\n");
 		int i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
-			writeProperty(attr, false);
+			writeProperty(attr, false, "\t\t\t");
 			i--;
 			if (i > 0) code.append("\t\t\twriter.writeByte((byte)',');\n");
 		}
 		code.append("\t\t}\n");
 	}
 
-	private void writeProperty(AttributeInfo attr, boolean checkedDefault) throws IOException {
+	private void writeProperty(AttributeInfo attr, boolean checkedDefault, String alignment) throws IOException {
 		String typeName = attr.type.toString();
 		String readValue = "instance." + attr.readProperty;
 		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
 		StructInfo target = context.structs.get(attr.typeName);
 		boolean canBeNull = !checkedDefault && (optimizedConverter == null || optimizedConverter.defaultValue == null);
 		if (attr.notNull && canBeNull) {
-			code.append("\t\t\tif (").append(readValue);
+			code.append(alignment).append("if (").append(readValue);
 			code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Property '").append(attr.name).append("' is not allowed to be null\");\n");
-			code.append("\t\t\t");
+			code.append(alignment);
 		} else if (canBeNull) {
-			code.append("\t\t\tif (").append(readValue).append(" == null) writer.writeNull();\n");
-			code.append("\t\t\telse ");
+			code.append(alignment).append("if (").append(readValue).append(" == null) writer.writeNull();\n");
+			code.append(alignment).append("else ");
 		} else {
-			code.append("\t\t\t");
+			code.append(alignment);
 		}
-		if (checkedDefault) code.append("\t");
 		if (attr.converter != null) {
 			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
 		} else if (attr.isJsonObject) {

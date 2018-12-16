@@ -35,6 +35,14 @@ public @interface CompiledJson {
 		ARRAY
 	}
 
+	ObjectFormatPolicy objectFormatPolicy() default ObjectFormatPolicy.DEFAULT;
+
+	enum ObjectFormatPolicy {
+		DEFAULT,
+		MINIMAL,
+		FULL
+	}
+
 	/**
 	 * JSON attribute names can be minified using builtin simplistic algorithm
 	 * which results in smaller JSON and faster processing.
