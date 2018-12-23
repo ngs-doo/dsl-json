@@ -17,7 +17,9 @@ public abstract class NumberConverter {
 			1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
 			1e20, 1e21, 1e22, 1e23, 1e24, 1e25, 1e26, 1e27, 1e28, 1e29,
 			1e30, 1e31, 1e32, 1e33, 1e34, 1e35, 1e36, 1e37, 1e38, 1e39,
-			1e40, 1e41, 1e42, 1e43, 1e44, 1e45, 1e46
+			1e40, 1e41, 1e42, 1e43, 1e44, 1e45, 1e46, 1e47, 1e48, 1e49,
+			1e50, 1e51, 1e52, 1e53, 1e54, 1e55, 1e56, 1e57, 1e58, 1e59,
+			1e60, 1e61, 1e62, 1e63, 1e64, 1e65
 	};
 	public static final JsonReader.ReadObject<Double> DOUBLE_READER = new JsonReader.ReadObject<Double>() {
 		@Nullable
@@ -270,10 +272,8 @@ public abstract class NumberConverter {
 
 	private static void numberException(final JsonReader reader, final int start, final int end, String message) throws IOException {
 		final int len = end - start;
-		final char[] buf = reader.prepareBuffer(reader.getCurrentIndex() - len, len);
-		if (len < reader.maxNumberDigits) {
-			final NumberFormatException error = new NumberFormatException(new String(buf, 0, len));
-			throw new IOException("Error parsing number " + reader.positionDescription(len) + ". " + message, error);
+		if (len > reader.maxNumberDigits) {
+			throw new IOException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len) + ". " + message);
 		}
 		throw new IOException("Error parsing number " + reader.positionDescription(len) + ". " + message);
 	}
@@ -290,6 +290,9 @@ public abstract class NumberConverter {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
+		}
+		if (end > reader.maxNumberDigits) {
+			throw new IOException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len));
 		}
 		try {
 			return new BigDecimal(buf, 0, end);
@@ -331,7 +334,6 @@ public abstract class NumberConverter {
 	private static NumberInfo readLongNumber(final JsonReader reader, final int start) throws IOException {
 		int i = reader.length() - start;
 		char[] tmp = reader.prepareBuffer(start, i);
-		final long position = reader.positionInStream();
 		while (!reader.isEndOfStream()) {
 			while (i < tmp.length) {
 				final char ch = (char) reader.read();
@@ -341,7 +343,9 @@ public abstract class NumberConverter {
 				}
 			}
 			final int newSize = tmp.length * 2;
-			if (newSize > reader.maxNumberDigits) throw new IOException("Unable to read number at: " + position + ". Number of digits larger than " + reader.maxNumberDigits);
+			if (newSize > reader.maxNumberDigits) {
+				throw new IOException("Unable to read number " + reader.positionDescription(tmp.length) + ". Number of digits larger than " + reader.maxNumberDigits);
+			}
 			tmp = Arrays.copyOf(tmp, newSize);
 		}
 		return new NumberInfo(tmp, i);
@@ -519,6 +523,9 @@ public abstract class NumberConverter {
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
 		}
+		if (end > reader.maxNumberDigits) {
+			throw new IOException("Too many digits (" + end + ") detected in double: " + reader.positionDescription(len));
+		}
 		try {
 			return Double.parseDouble(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
@@ -617,37 +624,50 @@ public abstract class NumberConverter {
 		}
 		if (i == digitStart) numberException(reader, start, end, "Digit not found");
 		else if (i > 18 + digitStart) {
-			return (float)parseDoubleGeneric(reader.prepareBuffer(start, end - start), end - start, reader);
+			return parseFloatGeneric(reader.prepareBuffer(start, end - start), end - start, reader);
 		} else if (i == end) {
 			return value;
 		} else if (ch == '.') {
 			i++;
 			if (i == end) numberException(reader, start, end, "Number ends with a dot");
-			final int dp = i;
+			final int decPos;
 			final int maxLen;
+			final int pointOffset;
 			if (value == 0) {
+				pointOffset = 0;
+				decPos = i + 1;
 				while (i < end && buf[i] == '0') {
 					i++;
 				}
-				maxLen = i + 12;
+				maxLen = i + 17;
 			} else {
-				maxLen = digitStart + 12;
+				pointOffset = 1;
+				maxLen = digitStart + 17;
+				decPos = i;
 			}
 			final int numLimit = maxLen < end ? maxLen : end;
+			boolean foundE = false;
 			for (; i < numLimit; i++) {
 				ch = buf[i];
-				if (ch == 'e' || ch == 'E') break;
+				if (ch == 'e' || ch == 'E') {
+					foundE = true;
+					++i;
+					break;
+				}
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
-					if (reader.allWhitespace(i, end)) return (float) (value / POW_10[i - dp - 1]);
+					if (reader.allWhitespace(i, end)) return (float) (value / POW_10[i - decPos - pointOffset]);
 					numberException(reader, start, end, "Unknown digit: " + (char) ch);
 				}
 				value = (value << 3) + (value << 1) + ind;
 			}
-			final double number = value / POW_10[i - dp - 1];
-			while (i < end && ch >= '0' && ch <= '9') {
-				ch = buf[i++];
-			}
+			final int endPos;
+			if (i == numLimit && !foundE && i < end) {
+				endPos = i + 1;
+				while (i < end && ch >= '0' && ch <= '9') {
+					ch = buf[i++];
+				}
+			} else endPos = i;
 			while (i == end && reader.length() == end) {
 				i = reader.scanNumber();
 				end = reader.getCurrentIndex();
@@ -657,47 +677,46 @@ public abstract class NumberConverter {
 				}
 			}
 			if (ch == 'e' || ch == 'E') {
-				i++;
-				ch = buf[i];
-				final int exp;
-				if (ch == '-') {
-					exp = parseNegativeInt(buf, reader, i, end);
-				} else if (ch == '+') {
-					exp = parsePositiveInt(buf, reader, i, end, 1);
-				} else {
-					exp = parsePositiveInt(buf, reader, i, end, 0);
-				}
-				if (exp == 0) return (float) number;
-				else if (exp > 0 && exp < POW_10.length) return (float) (number * POW_10[exp - 1]);
-				else if (exp < 0 && -exp < POW_10.length) return (float) (number / POW_10[-exp - 1]);
-				else if (exp > 0) return Float.POSITIVE_INFINITY;
-				else return 0;
+				return floatExponent(reader, value, endPos - decPos - pointOffset, buf, end, i);
 			}
-			return (float) number;
-		} else if (ch == 'e' || ch == 'E') {
-			i++;
-			ch = buf[i];
-			final int exp;
-			if (ch == '-') {
-				exp = parseNegativeInt(buf, reader, i, end);
-			} else if (ch == '+') {
-				exp = parsePositiveInt(buf, reader, i, end, 1);
+			final int expDiff = endPos - decPos;
+			if (expDiff > 0) {
+				return (float)(value / POW_10[expDiff - 1]);
+			} else if (expDiff < 0) {
+				return (float)(value * POW_10[-expDiff - 1]);
 			} else {
-				exp = parsePositiveInt(buf, reader, i, end, 0);
+				return value;
 			}
-			if (exp == 0) return value;
-			else if (exp > 0 && exp < POW_10.length) return (float)(value * POW_10[exp - 1]);
-			else if (exp < 0 && -exp < POW_10.length) return (float)(value / POW_10[-exp - 1]);
-			else if (exp > 0) return Float.POSITIVE_INFINITY;
-			else return 0;
+		} else if (ch == 'e' || ch == 'E') {
+			return floatExponent(reader, value, 0, buf, end, i + 1);
 		}
 		return value;
+	}
+
+	private static float floatExponent(JsonReader reader, final long whole, final int decimals, byte[] buf, int end, int i) throws IOException {
+		byte ch;
+		ch = buf[i];
+		final int exp;
+		if (ch == '-') {
+			exp = parseNegativeInt(buf, reader, i, end) - decimals;
+		} else if (ch == '+') {
+			exp = parsePositiveInt(buf, reader, i, end, 1) - decimals;
+		} else {
+			exp = parsePositiveInt(buf, reader, i, end, 0) - decimals;
+		}
+		if (exp == 0) return whole;
+		else if (exp > 0 && exp < POW_10.length) return (float) (whole * POW_10[exp - 1]);
+		else if (exp < 0 && -exp < POW_10.length) return (float) (whole / POW_10[-exp - 1]);
+		else return exp > 0 ? Float.POSITIVE_INFINITY : 0f;
 	}
 
 	private static float parseFloatGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
+		}
+		if (end > reader.maxNumberDigits) {
+			throw new IOException("Too many digits (" + end + ") detected in float: " + reader.positionDescription(len));
 		}
 		try {
 			return Float.parseFloat(new String(buf, 0, end));

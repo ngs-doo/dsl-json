@@ -1078,4 +1078,105 @@ public class NumberConverterTest {
 		prepareJson(jr, negative);
 		Assert.assertEquals(0, BigDecimal.valueOf(-1.2e3).compareTo((BigDecimal)checkNumberError(jr, null)));
 	}
+
+	@Test
+	public void smallNumbersArray() throws IOException {
+		DslJson[] jsons = {new DslJson<Object>(), dslJson};
+		for (DslJson<Object> json : jsons) {
+			final JsonReader<Object> jr = json.newReader(new byte[0]);
+
+			byte[] input = "[7.006492321624086e-46,0.7006492321624086e-45,7006492321624086e-61,700649232162408.6e-60,7.006492321624086000000e-46,0.007006492321624086e-43]".getBytes("UTF-8");
+
+			jr.process(input, input.length);
+			jr.read();
+			jr.read();
+
+			final float[] floats = NumberConverter.deserializeFloatArray(jr);
+			Assert.assertEquals(6, floats.length);
+			for (int i = 0; i < floats.length; i++) {
+				Assert.assertEquals(7.006492321624086e-46f, floats[i], 0);
+			}
+
+			jr.process(input, input.length);
+			jr.read();
+			jr.read();
+
+			final double[] doubles = NumberConverter.deserializeDoubleArray(jr);
+			Assert.assertEquals(6, doubles.length);
+			for (int i = 0; i < doubles.length; i++) {
+				Assert.assertEquals(7.006492321624086e-46, doubles[i], 0);
+			}
+		}
+		for (DslJson<Object> json : jsons) {
+			final JsonReader<Object> jr = json.newReader(new byte[0]);
+
+			byte[] input = "[7e-45,7e-45 , 7e-45, 7e-45 ,0.7e-44, 0.7e-44,0.7e-44 , 0.7e-44 ]".getBytes("UTF-8");
+
+			jr.process(input, input.length);
+			jr.read();
+			jr.read();
+
+			final float[] floats = NumberConverter.deserializeFloatArray(jr);
+			Assert.assertEquals(8, floats.length);
+			for (int i = 0; i < floats.length; i++) {
+				Assert.assertEquals(7e-45f, floats[i], 0);
+			}
+
+			jr.process(input, input.length);
+			jr.read();
+			jr.read();
+
+			final double[] doubles = NumberConverter.deserializeDoubleArray(jr);
+			Assert.assertEquals(8, doubles.length);
+			for (int i = 0; i < doubles.length; i++) {
+				Assert.assertEquals(7e-45, doubles[i], 0);
+			}
+		}
+
+		for (DslJson<Object> json : jsons) {
+			final JsonReader<Object> jr = json.newReader(new byte[0]);
+
+			byte[] input = "[1.4e-45,14e-46,0.14e-44,0.0140e-43]".getBytes("UTF-8");
+
+			jr.process(input, input.length);
+			jr.read();
+			jr.read();
+
+			final float[] floats = NumberConverter.deserializeFloatArray(jr);
+			Assert.assertEquals(4, floats.length);
+			for (int i = 0; i < floats.length; i++) {
+				Assert.assertEquals(1.4e-45f, floats[i], 0);
+			}
+		}
+	}
+
+	@Test
+	public void largeNumbersArray() throws IOException {
+		DslJson[] jsons = {new DslJson<Object>(), dslJson};
+		for (DslJson<Object> json : jsons) {
+			final JsonReader<Object> jr = json.newReader(new byte[0]);
+
+			byte[] input = "[3.4028235e+38,0.34028235e+39,34028235e+31,3402823.5e+32,3.4028235000000000000e+38,0.0034028235e+41]".getBytes("UTF-8");
+
+			jr.process(input, input.length);
+			jr.read();
+			jr.read();
+
+			final float[] floats = NumberConverter.deserializeFloatArray(jr);
+			Assert.assertEquals(6, floats.length);
+			for (int i = 0; i < floats.length; i++) {
+				Assert.assertEquals(3.4028235e+38f, floats[i], 0);
+			}
+
+			jr.process(input, input.length);
+			jr.read();
+			jr.read();
+
+			final double[] doubles = NumberConverter.deserializeDoubleArray(jr);
+			Assert.assertEquals(6, doubles.length);
+			for (int i = 0; i < doubles.length; i++) {
+				Assert.assertEquals(3.4028235e+38, doubles[i], 0);
+			}
+		}
+	}
 }
