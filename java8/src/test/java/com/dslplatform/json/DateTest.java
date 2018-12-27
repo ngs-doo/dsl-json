@@ -119,4 +119,53 @@ public class DateTest {
 		dslJson.serialize(n, os);;
 		Assert.assertEquals("{\"at\":\"1930-09-04T00:03:48.750431006Z\"}", os.toString());
 	}
+
+	public static class ModelLDT {
+
+		public LocalDateTime now;
+
+		public LocalDateTime date;
+	}
+
+	@Test
+	public void twoDateTimes() throws IOException {
+		ModelLDT model = new ModelLDT();
+		model.date = LocalDateTime.of(2018, 12, 25, 1, 0);
+		model.now = LocalDateTime.now();
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().skipDefaultValues(true));
+		dslJson.serialize(model, os);
+		byte[] bytes = os.toByteArray();
+		System.out.println(new String(bytes));
+		for (int i = 0; i < 1000; i++) {
+			ModelLDT result = dslJson.deserialize(ModelLDT.class, bytes, bytes.length);
+			Assert.assertEquals(model.date, result.date);
+			Assert.assertEquals(model.now, result.now);
+		}
+	}
+
+	public static class ModelODT {
+
+		public OffsetDateTime now;
+
+		public OffsetDateTime date;
+	}
+
+	@Test
+	public void twoOffsets() throws IOException {
+		ModelODT model = new ModelODT();
+		model.date = OffsetDateTime.of(2018, 12, 25, 1, 0, 0, 0, ZoneOffset.UTC);
+		model.now = OffsetDateTime.now();
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().skipDefaultValues(true));
+		dslJson.serialize(model, os);
+		byte[] bytes = os.toByteArray();
+		System.out.println(new String(bytes));
+		for (int i = 0; i < 1000; i++) {
+			ModelODT result = dslJson.deserialize(ModelODT.class, bytes, bytes.length);
+			Assert.assertEquals(model.date, result.date);
+			Assert.assertEquals(model.now, result.now);
+		}
+	}
+
 }

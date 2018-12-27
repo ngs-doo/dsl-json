@@ -192,7 +192,7 @@ public abstract class JavaTimeConverter {
 	public static OffsetDateTime deserializeDateTime(final JsonReader reader) throws IOException {
 		final char[] tmp = reader.readSimpleQuote();
 		final int len = reader.getCurrentIndex() - reader.getTokenStart() - 1;
-		if (len > 18 && len < 31 && tmp[len - 1] == 'Z' && tmp[4] == '-' && tmp[7] == '-'
+		if (len > 19 && len < 31 && tmp[len - 1] == 'Z' && tmp[4] == '-' && tmp[7] == '-'
 				&& (tmp[10] == 'T' || tmp[10] == 't' || tmp[10] == ' ')
 				&& tmp[13] == ':' && tmp[16] == ':' && allDigits(tmp, 20, len - 1)) {
 			final int year = NumberConverter.read4(tmp, 0);
@@ -266,11 +266,11 @@ public abstract class JavaTimeConverter {
 			final int hour = NumberConverter.read2(tmp, 11);
 			final int min = NumberConverter.read2(tmp, 14);
 			final int sec = NumberConverter.read2(tmp, 17);
-			if (tmp[19] == '.') {
+			if (len > 19 && tmp[19] == '.') {
 				final int nanos = readNanos(tmp, len);
 				return LocalDateTime.of(year, month, day, hour, min, sec, nanos);
 			}
-			return LocalDateTime.of(year, month, day, hour, min, sec, 0);
+			return LocalDateTime.of(year, month, day, hour, min, sec);
 		} else {
 			return LocalDateTime.parse(new String(tmp, 0, len));
 		}
