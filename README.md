@@ -11,7 +11,7 @@ Java JSON library designed for performance. Built for invasive software composit
 
  * supports external schema - Domain Specification Language (DSL)
  * works on existing POJO classes via annotation processor
- * performance - faster than any other Java JSON library. On pair with fastest binary JVM codecs
+ * performance - faster than any other Java JSON library. On par with fastest binary JVM codecs
  * works on byte level - deserialization can work on byte[] or InputStream. It doesn't need intermediate char representation
  * extensibility - support for custom types, custom analyzers, annotation processor extensions...
  * streaming support - large JSON lists support streaming with minimal memory usage
