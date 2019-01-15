@@ -60,7 +60,7 @@ To use Java8 annotation processor its sufficient to just reference Java8 version
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-java8</artifactId>
-      <version>1.8.4</version>
+      <version>1.8.5</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -72,8 +72,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.8.4'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.8.4'
+      compile 'com.dslplatform:dsl-json-java8:1.8.5'
+      annotationProcessor 'com.dslplatform:dsl-json-java8:1.8.5'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -96,15 +96,15 @@ DSL Platform annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.8.4</version>
+      <version>1.8.5</version>
       <scope>provided</scope>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.8.4'
-      annotationProcessor 'com.dslplatform:dsl-json-processor:1.8.4'
+      compile 'com.dslplatform:dsl-json:1.8.5'
+      annotationProcessor 'com.dslplatform:dsl-json-processor:1.8.5'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -257,7 +257,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.8.4</version>
+      <version>1.8.5</version>
     </dependency>
 
 ## Runtime analysis
@@ -350,7 +350,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.8.4"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.8.5"
 
 ### Kotlin support
 
@@ -359,8 +359,8 @@ When used with Gradle, configuration can be done via:
 
     apply plugin: 'kotlin-kapt'
     dependencies {
-      compile "com.dslplatform:dsl-json-java8:1.8.4"
-      kapt "com.dslplatform:dsl-json-java8:1.8.4"
+      compile "com.dslplatform:dsl-json-java8:1.8.5"
+      kapt "com.dslplatform:dsl-json-java8:1.8.5"
     }
 
 ## FAQ
@@ -372,7 +372,7 @@ When used with Gradle, configuration can be done via:
  ***A***: Almost zero allocations. Works on byte level. Better algorithms for conversion from `byte[]` -> type and vice-versa. Minimized unexpected branching. Reflection version is comparable with Jackson performance. Extra difference comes from compile-time databinding.
  
  ***Q***: DslJson is failing with unable to resolve reader/writer. What does it mean?  
- ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json_Annotation_Processor_External_Serialization` or `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. Make sure you've referenced processor library (which is responsible for setting up readers/writers during compilation) and double check if annotation processor is running. Refer to [example projects](examples) for how to set up environment. As of v1.8.0 Java8 version of the library avoids this issue since services are not used by default anymore in favor of named based convention.
+ ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json_Annotation_Processor_External_Serialization` or `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. Make sure you've referenced processor library (which is responsible for setting up readers/writers during compilation) and double check if annotation processor is running. Refer to [example projects](examples) for how to set up environment. As of v1.8.0 Java8 version of the library avoids this issue since services are not used by default anymore in favor of named based convention. Eclipse is known to create problems with annotation processor since it requires manual setup (instead of using pom.xml setup). For Eclipse the best workaround is to build with Maven instead or relying on its build tools.
  
  ***Q***: Maven/Gradle are failing during compilation with `@CompiledJson` when I'm using DSL Platform annotation processor. What can I do about it?  
  ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/MavenJava6/pom.xml#L35)
