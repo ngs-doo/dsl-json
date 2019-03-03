@@ -532,6 +532,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void multipleCtorsWithoutAnnotation() {
+		checkValidCompilation(MultipleCtorsWithoutAnnotation.class);
+	}
+
+	@Test
 	public void jacksonAnnotation() {
 		assertCompilationSuccessful(
 				compileTestCase(

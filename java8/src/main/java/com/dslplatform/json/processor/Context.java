@@ -60,7 +60,7 @@ final class Context {
 			else if (a.index == -1) return 1;
 			return a.index - b.index;
 		});
-		final ExecutableElement factoryOrCtor = info.factory != null ? info.factory : info.constructor;
+		final ExecutableElement factoryOrCtor = info.annotatedFactory != null ? info.annotatedFactory : info.selectedConstructor();
 		if (factoryOrCtor != null && !factoryOrCtor.getParameters().isEmpty()) {
 			int firstNonSet = 0;
 			while (firstNonSet < result.size()) {

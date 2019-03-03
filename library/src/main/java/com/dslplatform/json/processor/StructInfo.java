@@ -17,8 +17,8 @@ public class StructInfo {
 	public final ConverterInfo converter;
 	public final String jsonObjectReaderPath;
 	public final List<ExecutableElement> matchingConstructors;
-	public final ExecutableElement constructor;
-	public final ExecutableElement factory;
+	public final ExecutableElement annotatedFactory;
+	public final ExecutableElement annotatedConstructor;
 	public final BuilderInfo builder;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
 	public final Map<String, String> minifiedNames = new HashMap<String, String>();
@@ -41,6 +41,9 @@ public class StructInfo {
 	public final boolean isParameterized;
 	public final List<String> typeParametersNames;
 	public final Map<String, TypeMirror> genericSignatures;
+
+	private ExecutableElement selectedConstructor;
+	private boolean createThroughConstructor;
 
 	public StructInfo(
 			TypeElement element,
@@ -72,7 +75,7 @@ public class StructInfo {
 		this.jsonObjectReaderPath = jsonObjectReaderPath;
 		this.converter = null;
 		this.matchingConstructors = matchingConstructors;
-		this.factory = annotatedFactory;
+		this.annotatedFactory = annotatedFactory;
 		this.builder = builder;
 		this.annotation = annotation;
 		this.onUnknown = onUnknown;
@@ -85,10 +88,13 @@ public class StructInfo {
 		this.isMinified = isMinified;
 		this.formats = formats == null ? EnumSet.of(CompiledJson.Format.OBJECT) : EnumSet.copyOf(Arrays.asList(formats));
 		this.isObjectFormatFirst = formats == null || formats.length == 0 || formats[0] == CompiledJson.Format.OBJECT;
-		if (annotatedConstructor != null) this.constructor = annotatedConstructor;
-		else if (matchingConstructors == null) this.constructor = null;
-		else if (matchingConstructors.size() == 1) this.constructor = matchingConstructors.get(0);
-		else {
+		this.createThroughConstructor = annotatedFactory == null && annotatedConstructor != null;
+		if (annotatedConstructor != null) this.annotatedConstructor = this.selectedConstructor = annotatedConstructor;
+		else if (matchingConstructors == null) this.annotatedConstructor = null;
+		else if (matchingConstructors.size() == 1) {
+			this.selectedConstructor = matchingConstructors.get(0);
+			this.annotatedConstructor = null;
+		} else {
 			ExecutableElement emptyCtor = null;
 			for (ExecutableElement ee : matchingConstructors) {
 				if (ee.getParameters().size() == 0) {
@@ -96,7 +102,8 @@ public class StructInfo {
 					break;
 				}
 			}
-			this.constructor = emptyCtor;
+			this.selectedConstructor = emptyCtor;
+			this.annotatedConstructor = null;
 		}
 		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
 		this.isParameterized = !typeParametersNames.isEmpty();
@@ -112,8 +119,8 @@ public class StructInfo {
 		this.jsonObjectReaderPath = null;
 		this.converter = converter;
 		this.matchingConstructors = null;
-		this.constructor = null;
-		this.factory = null;
+		this.annotatedConstructor = null;
+		this.annotatedFactory = null;
 		this.builder = null;
 		this.annotation = null;
 		this.onUnknown = null;
@@ -140,17 +147,42 @@ public class StructInfo {
 		return names;
 	}
 
+	@Nullable
+	public ExecutableElement selectedConstructor() {
+		return selectedConstructor;
+	}
+
+	public void useConstructor(ExecutableElement ctor) {
+		if (matchingConstructors == null || !matchingConstructors.contains(ctor)) {
+			throw new IllegalArgumentException("Specified ctor is not a part of matchingConstructors");
+		}
+		selectedConstructor = ctor;
+		createThroughConstructor = true;
+	}
+
 	public boolean hasKnownConversion() {
 		return jsonObjectReaderPath != null || converter != null;
 	}
 
-	public boolean hasEmptyCtor() {
-		return constructor != null && constructor.getParameters().size() == 0;
+	public boolean usesEmptyCtor() {
+		return (createThroughConstructor || annotatedFactory == null) && selectedConstructor != null && selectedConstructor.getParameters().size() == 0;
 	}
 
-	public boolean canCreateEmptyInstance() {
-		if (factory != null) return factory.getParameters().size() == 0;
-		return hasEmptyCtor();
+	public boolean usesCtorWithArguments() {
+		return (createThroughConstructor || annotatedFactory == null) && selectedConstructor != null && selectedConstructor.getParameters().size() > 0;
+	}
+
+	public boolean hasEmptyCtor() {
+		if (matchingConstructors == null) return false;
+		for (ExecutableElement ctor : matchingConstructors) {
+			if (ctor.getParameters().isEmpty()) return true;
+		}
+		return false;
+	}
+
+	public boolean createFromEmptyInstance() {
+		return annotatedFactory != null && annotatedFactory.getParameters().size() == 0
+				|| selectedConstructor != null && selectedConstructor.getParameters().size() == 0;
 	}
 
 	public boolean hasAnnotation() {

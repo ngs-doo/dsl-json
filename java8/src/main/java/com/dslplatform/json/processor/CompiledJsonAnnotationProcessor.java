@@ -397,10 +397,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			code.append("\t\tConverterFactory factory = new ConverterFactory();\n");
 			code.append("\t\t__dsljson.registerReaderFactory(factory);\n");
 			code.append("\t\t__dsljson.registerWriterFactory(factory);\n");
-			if (si.canCreateEmptyInstance()) {
+			if (si.createFromEmptyInstance()) {
 				code.append("\t\t__dsljson.registerBinderFactory(factory);\n");
 			}
-		} else if (si.builder != null || si.type == ObjectType.CLASS && (si.constructor != null || si.factory != null)) {
+		} else if (si.builder != null || si.type == ObjectType.CLASS && (si.selectedConstructor() != null || si.annotatedFactory != null)) {
 			String objectFormatConverterName = "converter";
 			if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(__dsljson);\n");
@@ -420,13 +420,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				String typeAlias = si.deserializeName.isEmpty() ? className : si.deserializeName;
 				code.append("\t\t\t\"").append(typeAlias).append("\",\n");
 				code.append("\t\t\t__dsljson);\n");
-				if (si.canCreateEmptyInstance()) {
+				if (si.createFromEmptyInstance()) {
 					code.append("\t\t__dsljson.registerBinder(").append(className).append(".class, description);\n");
 				}
 				code.append("\t\t__dsljson.registerReader(").append(className).append(".class, description);\n");
 				code.append("\t\t__dsljson.registerWriter(").append(className).append(".class, description);\n");
 			} else {
-				if (si.canCreateEmptyInstance()) {
+				if (si.createFromEmptyInstance()) {
 					code.append("\t\t__dsljson.registerBinder(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
 				}
 				code.append("\t\t__dsljson.registerReader(").append(className).append(".class, ").append(objectFormatConverterName).append(");\n");
@@ -470,14 +470,14 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			} else {
 				typeName = className;
 			}
-			if (si.canCreateEmptyInstance()) {
+			if (si.createFromEmptyInstance()) {
 				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 					converterTemplate.emptyObject(si, typeName);
 				}
 				if (si.formats.contains(CompiledJson.Format.ARRAY)) {
 					converterTemplate.emptyArray(si, typeName);
 				}
-			} else if (si.constructor != null || si.factory != null || si.builder != null) {
+			} else if (si.selectedConstructor() != null || si.annotatedFactory != null || si.builder != null) {
 				if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 					converterTemplate.fromObject(si, typeName);
 				}

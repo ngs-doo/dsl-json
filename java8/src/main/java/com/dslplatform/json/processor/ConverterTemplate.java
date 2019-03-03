@@ -275,8 +275,8 @@ class ConverterTemplate {
 			code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 			code.append("\t\t\tif (reader.wasNull()) return null;\n");
 			code.append("\t\t\treturn bind(reader, ");
-			if (si.factory != null) {
-				code.append(si.factory.getEnclosingElement().toString()).append(".").append(si.factory.getSimpleName()).append("());\n");
+			if (si.annotatedFactory != null) {
+				code.append(si.annotatedFactory.getEnclosingElement().toString()).append(".").append(si.annotatedFactory.getSimpleName()).append("());\n");
 			} else {
 				code.append("new ").append(className).append("());\n");
 			}
@@ -327,8 +327,8 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\t").append(className).append(" instance = ");
-		if (si.factory != null) {
-			code.append(si.factory.getEnclosingElement().toString()).append(".").append(si.factory.getSimpleName()).append("();\n ");
+		if (si.annotatedFactory != null) {
+			code.append(si.annotatedFactory.getEnclosingElement().toString()).append(".").append(si.annotatedFactory.getSimpleName()).append("();\n ");
 		} else {
 			code.append("new ").append(className).append("();\n ");
 		}
@@ -571,8 +571,8 @@ class ConverterTemplate {
 		writeArray(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\t").append(className).append(" instance = ");
-		if (si.factory != null) {
-			code.append(si.factory.getEnclosingElement().toString()).append(".").append(si.factory.getSimpleName()).append("();\n ");
+		if (si.annotatedFactory != null) {
+			code.append(si.annotatedFactory.getEnclosingElement().toString()).append(".").append(si.annotatedFactory.getSimpleName()).append("();\n ");
 		} else {
 			code.append("new ").append(className).append("();\n ");
 		}
@@ -626,7 +626,7 @@ class ConverterTemplate {
 	private void returnInstance(final String alignment, StructInfo info, final String className) throws IOException {
 		code.append(alignment).append("return ");
 		//builder can be invalid, so execute it only when other methods are not available
-		if (info.factory == null && info.constructor == null && info.builder != null) {
+		if (info.annotatedFactory == null && info.selectedConstructor() == null && info.builder != null) {
 			ExecutableElement factory = info.builder.factory;
 			if (factory != null) {
 				code.append(factory.getEnclosingElement().toString()).append(".").append(factory.getSimpleName()).append("()");
@@ -640,12 +640,12 @@ class ConverterTemplate {
 			return;
 		}
 		final List<? extends VariableElement> params;
-		if (info.factory != null) {
-			code.append(info.factory.getEnclosingElement().toString()).append(".").append(info.factory.getSimpleName()).append("(");
-			params = info.factory.getParameters();
+		if (info.annotatedFactory != null) {
+			code.append(info.annotatedFactory.getEnclosingElement().toString()).append(".").append(info.annotatedFactory.getSimpleName()).append("(");
+			params = info.annotatedFactory.getParameters();
 		} else {
 			code.append("new ").append(className).append("(");
-			params = info.constructor.getParameters();
+			params = info.selectedConstructor().getParameters();
 		}
 		int i = params.size();
 		for (VariableElement p : params) {

@@ -7,10 +7,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class CtorWithGetterTest {
 
@@ -61,6 +58,40 @@ public class CtorWithGetterTest {
 		}
 	}
 
+	@CompiledJson()
+	public static final class MultipleCtors {
+
+		private final String id;
+		public final String getId() {
+			return id;
+		}
+
+		private final String query;
+		public final String getQuery() {
+			return query;
+		}
+
+		private final Map<String, Object> variables;
+		public final Map<String, Object> getVariables() {
+			return variables;
+		}
+
+		public MultipleCtors(
+				String id,
+				String query,
+				Map<String, ? extends Object> variables) {
+			this.id = id;
+			this.query = query;
+			this.variables = new HashMap<>(variables);
+		}
+
+		public MultipleCtors() {
+			this.id = "";
+			this.query = null;
+			this.variables = new HashMap<>();
+		}
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
 
 	@Test
@@ -101,5 +132,14 @@ public class CtorWithGetterTest {
 		Assert.assertEquals("{\"map\":{\"abc\":\"dfg\"}}", os.toString("UTF-8"));
 		MapRuntimeCtor res = dslJson.deserialize(MapRuntimeCtor.class, os.toByteArray(), os.size());
 		Assert.assertEquals(r.getMap(), res.getMap());
+	}
+
+	@Test
+	public void classWithMultipleCtors() throws IOException {
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		os.write("{\"query\":\"mutation T($input: [DocumentInput]) {createDocument(input: $input) {name,id}}\",\"variables\":{\"input\":[{\"name\":\"doc1\"},{\"name\":\"doc2\"}]},\"operationName\":\"T\"}".getBytes("UTF-8"));
+		MultipleCtors res = dslJson.deserialize(MultipleCtors.class, os.toByteArray(), os.size());
+		Assert.assertEquals(1, res.getVariables().size());
+		//Assert.assertEquals("", res.getId());
 	}
 }
