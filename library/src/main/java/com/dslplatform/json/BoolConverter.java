@@ -7,6 +7,8 @@ import java.util.Collection;
 
 public abstract class BoolConverter {
 
+	public final static boolean[] EMPTY_ARRAY = new boolean[0];
+
 	public static final JsonReader.ReadObject<Boolean> READER = new JsonReader.ReadObject<Boolean>() {
 		@Override
 		public Boolean read(JsonReader reader) throws IOException {
@@ -87,7 +89,7 @@ public abstract class BoolConverter {
 
 	public static boolean[] deserializeBoolArray(final JsonReader reader) throws IOException {
 		if (reader.last() == ']') {
-			return new boolean[0];
+			return EMPTY_ARRAY;
 		}
 		boolean[] buffer = new boolean[4];
 		buffer[0] = deserialize(reader);

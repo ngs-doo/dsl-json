@@ -18,6 +18,9 @@ public class GenericTest {
 	private final DslJson<Object> dslJson = new DslJson<>(
 			new DslJson.Settings<>().allowArrayFormat(true).includeServiceLoader());
 
+	private final DslJson<Object> dslJsonRuntime = new DslJson<>(
+			Settings.withRuntime().allowArrayFormat(true).includeServiceLoader());
+
 	@CompiledJson
 	static class GenericModel<T, V> {
 		public T value1;
@@ -259,5 +262,61 @@ public class GenericTest {
 
 		Y result = dslJson.deserialize(Y.class, os.toByteArray(), os.size());
 		Assert.assertNotNull(result);
+	}
+
+	@CompiledJson
+	public static class GenericArrays<T1, T2> {
+		@JsonAttribute(nullable = false)
+		public T1[] i1;
+		@JsonAttribute(nullable = false)
+		public T2[][] i2;
+		@JsonAttribute(nullable = false)
+		public List<T1>[] i3;
+		@JsonAttribute(nullable = false)
+		public List<T2>[][] i4;
+		@JsonAttribute(nullable = false)
+		public Map<T1,List<T2>>[][] i5;
+	}
+
+	@Test
+	public void emptyGenericArrays() throws IOException {
+		GenericArrays<String, Integer> z = (GenericArrays)dslJsonRuntime.deserialize(new TypeDefinition<GenericArrays<String, Integer>>(){}.type, new byte[]{'{', '}'}, 2);
+		Assert.assertEquals(0, z.i1.length);
+		Assert.assertEquals(0, z.i2.length);
+		Assert.assertEquals(0, z.i3.length);
+		Assert.assertEquals(0, z.i4.length);
+		Assert.assertEquals(0, z.i5.length);
+	}
+
+	@CompiledJson
+	public static class GenericArraysWithCtor<T1, T2> {
+		@JsonAttribute(nullable = false)
+		public T1[] i1;
+		@JsonAttribute(nullable = false)
+		public T2[][] i2;
+		@JsonAttribute(nullable = false)
+		public List<T1>[] i3;
+		@JsonAttribute(nullable = false)
+		public List<T2>[][] i4;
+		@JsonAttribute(nullable = false)
+		public Map<T1,List<T2>>[][] i5;
+
+		public GenericArraysWithCtor(T1[] i1, T2[][] i2, List<T1>[] i3, List<T2>[][] i4, Map<T1,List<T2>>[][] i5) {
+			this.i1 = i1;
+			this.i2 = i2;
+			this.i3 = i3;
+			this.i4 = i4;
+			this.i5 = i5;
+		}
+	}
+
+	@Test
+	public void emptyGenericArraysWithCtor() throws IOException {
+		GenericArraysWithCtor<String, Integer> z = (GenericArraysWithCtor)dslJsonRuntime.deserialize(new TypeDefinition<GenericArraysWithCtor<String, Integer>>(){}.type, new byte[]{'{', '}'}, 2);
+		Assert.assertEquals(0, z.i1.length);
+		Assert.assertEquals(0, z.i2.length);
+		Assert.assertEquals(0, z.i3.length);
+		Assert.assertEquals(0, z.i4.length);
+		Assert.assertEquals(0, z.i5.length);
 	}
 }

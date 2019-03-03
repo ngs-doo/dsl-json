@@ -41,12 +41,12 @@ final class Context {
 		if (converter != null && converter.defaultValue != null) {
 			return converter.defaultValue;
 		}
-		int arrIndex = type.indexOf('[');
+		int arrIndex = type.lastIndexOf('[');
 		if (attr.isArray) {
 			String rawType = genIndex != -1 ? type.substring(0, genIndex)
 					: arrIndex != -1 ? type.substring(0, arrIndex)
 					: type;
-			return "new " + rawType + "[0]";
+			return "new " + rawType + "[]{}";
 		} else if (attr.isList && type.startsWith("java.util.List<")) {
 			return "java.util.Collections.emptyList()";
 		} else if (attr.isSet && type.startsWith("java.util.Set<")) {

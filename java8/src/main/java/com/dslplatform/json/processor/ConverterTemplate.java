@@ -258,15 +258,11 @@ class ConverterTemplate {
 				}
 				if (attr.isArray) {
 					TypeMirror arrayComponentType = ((ArrayType) attr.type).getComponentType();
-					if (arrayComponentType.getKind() == TypeKind.TYPEVAR) {
-						code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = ");
-						String content = arrayComponentType.toString();
-						code.append("(").append(content).append("[]) java.lang.reflect.Array.newInstance((Class<?>) actualTypes[");
-						code.append(attr.typeVariablesIndex.get(content).toString()).append("], 0);\n");
-					} else {
-						String content = Context.extractRawType(arrayComponentType);
-						code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = new ").append(content).append("[0];\n");
-					}
+					code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = ");
+					String content = arrayComponentType.toString();
+					code.append("(").append(content).append("[]) java.lang.reflect.Array.newInstance((Class<?>) ");
+					buildArrayType(arrayComponentType, attr.typeVariablesIndex);
+					code.append(", 0);\n");
 				}
 			}
 		}
@@ -306,11 +302,36 @@ class ConverterTemplate {
 			}
 		} else if (type.getKind() == TypeKind.ARRAY) {
 			ArrayType arrayType = (ArrayType) type;
-			builder.append("com.dslplatform.json.runtime.Generics.makeGenericArrayType(");
+			builder.append("com.dslplatform.json.runtime.Generics.makeArrayType(");
 			buildGenericType(arrayType.getComponentType(), typeVariableIndexes, builder);
 			builder.append(")");
 		} else if (typeVariableIndexes.containsKey(type.toString())) {
 			builder.append("actualTypes[").append(typeVariableIndexes.get(type.toString())).append("]");
+		} else {
+			builder.append(type.toString()).append(".class");
+		}
+	}
+
+	private void buildArrayType(TypeMirror type, Map<String, Integer> typeVariableIndexes) throws IOException {
+		if (type.getKind() == TypeKind.DECLARED) {
+			DeclaredType declaredType = (DeclaredType) type;
+			if (declaredType.getTypeArguments().isEmpty()) {
+				code.append(type.toString());
+			} else {
+				String fullName = type.toString();
+				int first = fullName.indexOf('<');
+				code.append(fullName, 0, first);
+			}
+			code.append(".class");
+		} else if (type.getKind() == TypeKind.ARRAY) {
+			ArrayType arrayType = (ArrayType) type;
+			code.append("com.dslplatform.json.runtime.Generics.makeArrayType(");
+			buildArrayType(arrayType.getComponentType(), typeVariableIndexes);
+			code.append(")");
+		} else if (typeVariableIndexes.containsKey(type.toString())) {
+			code.append("actualTypes[").append(Integer.toString(typeVariableIndexes.get(type.toString()))).append("]");
+		} else {
+			code.append(type.toString()).append(".class");
 		}
 	}
 
@@ -352,7 +373,7 @@ class ConverterTemplate {
 			code.append(" || !reader.wasLastName(name_").append(attr.name).append(")) { bindSlow(reader, instance, ");
 			code.append(Integer.toString(i)).append("); return; }\n");
 			code.append("\t\t\treader.getNextToken();\n");
-			setPropertyValue(attr, "\t");
+			processPropertyValue(attr, "\t", true);
 			i += 1;
 		}
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) {
@@ -396,7 +417,9 @@ class ConverterTemplate {
 		code.append(className).append(" instance, int index) throws java.io.IOException {\n");
 		i = 0;
 		for (AttributeInfo attr : sortedAttributes) {
-			if (attr.mandatory) {
+			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
+			String defaultValue = context.getDefault(attr);
+			if (attr.mandatory || attr.notNull && nonPrimitive && (attr.isArray || !"null".equals(defaultValue))) {
 				code.append("\t\t\tboolean __detected_").append(attr.name).append("__ = index > ").append(Integer.toString(i)).append(";\n");
 				i += 1;
 			}
@@ -412,9 +435,32 @@ class ConverterTemplate {
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tif (reader.last() != '}') throw new java.io.IOException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
 		for (AttributeInfo attr : sortedAttributes) {
+			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			if (attr.mandatory) {
 				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw new java.io.IOException(\"Property '").append(attr.name);
 				code.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
+			} else if (attr.notNull && nonPrimitive) {
+				final String defaultValue;
+				if (attr.isArray) {
+					OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
+					if (converter != null && converter.defaultValue != null) {
+						defaultValue = converter.defaultValue;
+					} else {
+						defaultValue = "emptyArray_" + attr.name;
+					}
+				} else {
+					defaultValue = context.getDefault(attr);
+				}
+				if (!"null".equals(defaultValue)) {
+					code.append("\t\t\tif (!__detected_").append(attr.name).append("__ && instance.");
+					if (attr.field != null) code.append(attr.field.getSimpleName());
+					else code.append(attr.writeMethod.getSimpleName()).append("()");
+					code.append(" == null) {\n");
+					code.append("\t\t\t\tinstance.");
+					if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ").append(defaultValue).append(";\n");
+					else code.append(attr.writeMethod.getSimpleName()).append("(").append(defaultValue).append(");\n");
+					code.append("\t\t\t}\n");
+				}
 			}
 		}
 		code.append("\t\t}\n");
@@ -436,7 +482,17 @@ class ConverterTemplate {
 			String typeName = attr.type.toString();
 			code.append("\t\t\t").append(typeName).append(" _").append(attr.name).append("_ = ");
 			String defaultValue = context.getDefault(attr);
-			code.append(defaultValue).append(";\n");
+			if (attr.isArray && attr.notNull) {
+				OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
+				if (converter != null && converter.defaultValue != null) {
+					code.append(converter.defaultValue);
+				} else {
+					code.append("emptyArray_").append(attr.name);
+				}
+			} else {
+				code.append(defaultValue);
+			}
+			code.append(";\n");
 			if (attr.mandatory) {
 				code.append("\t\t\tboolean __detected_").append(attr.name).append("__ = false;\n");
 			}
@@ -542,7 +598,7 @@ class ConverterTemplate {
 				if (attr.notNull && !isPrimitive) {
 					code.append(" else ");
 					if (!"null".equals(defaultValue) || attr.isArray || attr.isList || attr.isSet || attr.isMap) {
-						code.append(" if (").append(readValue).append(" == null) ");
+						code.append("if (").append(readValue).append(" == null) ");
 					}
 					code.append("throw new com.dslplatform.json.SerializationException(\"Property '");
 					code.append(attr.name).append("' is not allowed to be null\");\n");
@@ -554,15 +610,43 @@ class ConverterTemplate {
 	}
 
 	private void checkMandatory(final List<AttributeInfo> attributes, final int start) throws IOException {
+		StringBuilder sb = new StringBuilder();
 		for (int i = start; i < attributes.size(); i++) {
 			AttributeInfo attr = attributes.get(i);
+			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			if (attr.mandatory) {
-				code.append(" throw new java.io.IOException(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
+				sb.append(" throw new java.io.IOException(\"Property '").append(attr.name);
+				sb.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
 				return;
+			} else if (attr.notNull && nonPrimitive) {
+				final String defaultValue;
+				if (attr.isArray) {
+					OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
+					if (converter != null && converter.defaultValue != null) {
+						defaultValue = converter.defaultValue;
+					} else {
+						defaultValue = "emptyArray_" + attr.name;
+					}
+				} else {
+					defaultValue = context.getDefault(attr);
+				}
+				if (!"null".equals(defaultValue)) {
+					sb.append(" if (instance.");
+					if (attr.field != null) sb.append(attr.field.getSimpleName());
+					else sb.append(attr.writeMethod.getSimpleName()).append("()");
+					sb.append(" == null) instance.");
+					if (attr.field != null) sb.append(attr.field.getSimpleName()).append(" = ").append(defaultValue).append("; ");
+					else sb.append(attr.writeMethod.getSimpleName()).append("(").append(defaultValue).append("); ");
+				}
 			}
 		}
-		code.append(" return;\n");
+		if (sb.length() > 0) {
+			code.append(" { ");
+			code.append(sb.toString());
+			code.append(" return; }\n");
+		} else {
+			code.append(" return;\n");
+		}
 	}
 
 	private void checkMandatory(final List<AttributeInfo> attributes) throws IOException {
@@ -594,7 +678,7 @@ class ConverterTemplate {
 		int i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\treader.getNextToken();\n");
-			setPropertyValue(attr, "\t");
+			processPropertyValue(attr, "\t", true);
 			i--;
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
@@ -620,7 +704,7 @@ class ConverterTemplate {
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\tfinal ").append(attr.type.toString()).append(" _").append(attr.name).append("_;\n");
 			code.append("\t\t\treader.getNextToken();\n");
-			readPropertyValue(attr, "\t");
+			processPropertyValue(attr, "\t", false);
 			i--;
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() != ',') throw new java.io.IOException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
@@ -760,12 +844,13 @@ class ConverterTemplate {
 				}
 				code.append(alignment).append("\t\t}\n");
 			}
-			if (attr.mandatory) {
+			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
+			String defaultValue = context.getDefault(attr);
+			if (attr.mandatory || !localNames && attr.notNull && nonPrimitive && (attr.isArray || !"null".equals(defaultValue))) {
 				code.append(alignment).append("\t\t__detected_").append(attr.name).append("__ = true;\n");
 			}
 			code.append(alignment).append("\t\treader.getNextToken();\n");
-			if (localNames) readPropertyValue(attr, alignment);
-			else setPropertyValue(attr, alignment);
+			processPropertyValue(attr, alignment, !localNames);
 			code.append(alignment).append("\t\treader.getNextToken();\n");
 			code.append(alignment).append("\t\tbreak;\n");
 		}
@@ -796,40 +881,58 @@ class ConverterTemplate {
 		}
 	}
 
-	private void setPropertyValue(AttributeInfo attr, String alignment) throws IOException {
+	private void processPropertyValue(AttributeInfo attr, String alignment, boolean useInstance) throws IOException {
 		if (attr.notNull) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) throw new java.io.IOException(\"Property '").append(attr.name).append("' is not allowed to be null.");
 			code.append(" Null value found \" + reader.positionDescription());\n");
 		}
 		String typeName = attr.type.toString();
 		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
-		String assignmentEnding = attr.field == null ? ");\n" : ";\n";
+		String assignmentEnding = useInstance && attr.field == null ? ");\n" : ";\n";
 		StructInfo target = context.structs.get(attr.typeName);
 		if (attr.isJsonObject && attr.converter == null && target != null) {
 			if (!attr.notNull) {
-				code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
-				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
-				else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
+				code.append(alignment).append("\t\tif (reader.wasNull()) ");
+				if (useInstance) {
+					code.append("instance.");
+					if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
+					else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
+				} else {
+					code.append("_").append(attr.name).append("_ = null;\n");
+				}
 			}
 			code.append(alignment).append("\t\telse if (reader.last() == '{') {\n");
 			code.append(alignment).append("\t\t\treader.getNextToken();\n");
-			code.append(alignment).append("\t\t\tinstance.");
-			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
-			else code.append(attr.writeMethod.getSimpleName()).append("(");
-			code.append(attr.typeName).append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader)").append(assignmentEnding);
+			if (useInstance) {
+				code.append(alignment).append("\t\t\tinstance.");
+				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
+				else code.append(attr.writeMethod.getSimpleName()).append("(");
+				code.append(attr.typeName).append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader)").append(assignmentEnding);
+			} else {
+				code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName);
+				code.append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader);\n");
+			}
 			code.append(alignment).append("\t\t} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
 		} else if ((target == null || target.converter == null) && attr.converter == null && optimizedConverter != null && optimizedConverter.defaultValue == null && !attr.notNull && optimizedConverter.hasNonNullableMethod()) {
-			code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
-			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
-			else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
-			code.append(alignment).append("\t\telse instance.");
-			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
-			else code.append(attr.writeMethod.getSimpleName()).append("(");
+			if (useInstance) {
+				code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
+				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
+				else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
+				code.append(alignment).append("\t\telse instance.");
+				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
+				else code.append(attr.writeMethod.getSimpleName()).append("(");
+			} else {
+				code.append(alignment).append("\t\t_").append(attr.name).append("_ = reader.wasNull() ? null : ");
+			}
 			code.append(optimizedConverter.nonNullableDecoder()).append("(reader)").append(assignmentEnding);
 		} else {
-			code.append(alignment).append("\t\tinstance.");
-			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
-			else code.append(attr.writeMethod.getSimpleName()).append("(");
+			if (useInstance) {
+				code.append(alignment).append("\t\tinstance.");
+				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
+				else code.append(attr.writeMethod.getSimpleName()).append("(");
+			} else {
+				code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
+			}
 			if (attr.converter != null) {
 				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader)");
 			} else if (target != null && target.converter != null) {
@@ -857,52 +960,6 @@ class ConverterTemplate {
 				code.append("reader_").append(attr.name).append("().read(reader)");
 			}
 			code.append(assignmentEnding);
-		}
-	}
-
-	private void readPropertyValue(AttributeInfo attr, String alignment) throws IOException {
-		if (attr.notNull) {
-			code.append(alignment).append("\t\tif (reader.wasNull()) throw new java.io.IOException(\"Property '").append(attr.name).append("' is not allowed to be null.");
-			code.append(" Null value found \" + reader.positionDescription());\n");
-		}
-		String typeName = attr.type.toString();
-		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
-		StructInfo target = context.structs.get(attr.typeName);
-		if (attr.isJsonObject && attr.converter == null && target != null) {
-			if (!attr.notNull) {
-				code.append(alignment).append("\t\tif (reader.wasNull()) _").append(attr.name).append("_ = null;\n");
-			}
-			code.append(alignment).append("\t\telse if (reader.last() == '{') {\n");
-			code.append(alignment).append("\t\t\treader.getNextToken();\n");
-			code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName);
-			code.append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader);\n");
-			code.append(alignment).append("\t\t} else throw new java.io.IOException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
-		} else if ((target == null || target.converter == null) && attr.converter == null && optimizedConverter != null && optimizedConverter.defaultValue == null && !attr.notNull && optimizedConverter.hasNonNullableMethod()) {
-			code.append(alignment).append("\t\t_").append(attr.name).append("_ = reader.wasNull() ? null : ");
-			code.append(optimizedConverter.nonNullableDecoder()).append("(reader);\n");
-		} else {
-			code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
-			if (attr.converter != null) {
-				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader);\n");
-			} else if (target != null && target.converter != null) {
-				code.append(target.converter.fullName).append(".").append(target.converter.reader).append(".read(reader);\n");
-			} else if (optimizedConverter != null) {
-				code.append(optimizedConverter.nonNullableDecoder()).append("(reader);\n");
-			} else if (target != null && attr.isEnum(context.structs)) {
-				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
-				if (enumTemplate.isStatic(target)) {
-					code.append(findConverterName(target)).append(".EnumConverter.readStatic(reader);\n");
-				} else {
-					code.append("converter_").append(attr.name).append(".read(reader)");
-				}
-			} else if (attr.collectionContent(context.typeSupport, context.structs) != null) {
-				context.serializeKnownCollection(attr);
-				code.append(";\n");
-			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
-				code.append("reader_").append(attr.name).append(".read(reader);\n");
-			} else {
-				code.append("reader_").append(attr.name).append("().read(reader);\n");
-			}
 		}
 	}
 

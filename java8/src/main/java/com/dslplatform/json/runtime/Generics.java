@@ -160,12 +160,18 @@ public abstract class Generics {
 		return found;
 	}
 
-	public static GenericArrayType makeGenericArrayType(final ParameterizedType componentType) {
+	public static Type makeArrayType(final Type componentType) {
 		if (componentType == null) throw new IllegalArgumentException("componentType can't be null");
 		final String name = componentType.toString() + "[]";
-		GenericArrayType found = (GenericArrayType) typeCache.get(name);
+		Type found = typeCache.get(name);
 		if (found == null) {
-			found = new GenericArrayTypeImpl(name, componentType);
+			if (componentType instanceof Class<?>) {
+				found = Array.newInstance((Class<?>)componentType, 0).getClass();
+			} else if (componentType instanceof ParameterizedType) {
+				found = new GenericArrayTypeImpl(name, componentType);
+			} else {
+				throw new IllegalArgumentException("Invalid componentType provided: " + componentType + ". Only ParameterizedType or Class supported");
+			}
 			typeCache.put(name, found);
 		}
 		return found;

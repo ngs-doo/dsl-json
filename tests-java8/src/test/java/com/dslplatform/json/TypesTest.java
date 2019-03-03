@@ -1,11 +1,15 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class TypesTest {
 
@@ -29,5 +33,187 @@ public class TypesTest {
 			All res = dslJson.deserialize(All.class, os.toByteArray(), os.size());
 			Assert.assertEquals(a.b, res.b);
 		}
+	}
+
+	@CompiledJson
+	public static class Zeros {
+		@JsonAttribute(nullable = false)
+		public Boolean b;
+		@JsonAttribute(nullable = false)
+		public Short s;
+		@JsonAttribute(nullable = false)
+		public Integer i;
+		@JsonAttribute(nullable = false)
+		public Long l;
+		@JsonAttribute(nullable = false)
+		public Double d;
+		@JsonAttribute(nullable = false)
+		public Float f;
+
+		public Zeros(Boolean b, Short s, Integer i, Long l, Double d, Float f) {
+			this.b = b;
+			this.s = s;
+			this.i = i;
+			this.l = l;
+			this.d = d;
+			this.f = f;
+		}
+	}
+
+	@Test
+	public void allZeros() throws IOException {
+		Zeros z = dslJsonFull.deserialize(Zeros.class, new byte[]{'{', '}'}, 2);
+		Assert.assertEquals(Boolean.FALSE, z.b);
+		Assert.assertEquals(Short.valueOf((short) 0), z.s);
+		Assert.assertEquals(Integer.valueOf(0), z.i);
+		Assert.assertEquals(Long.valueOf(0L), z.l);
+		Assert.assertEquals(Double.valueOf(0.0), z.d);
+		Assert.assertEquals(Float.valueOf(0f), z.f);
+	}
+
+	@CompiledJson
+	public static class BasicCollections {
+		@JsonAttribute(nullable = false)
+		public boolean[] b1;
+		@JsonAttribute(nullable = false)
+		public Boolean[] b2;
+		@JsonAttribute(nullable = false)
+		public List<Boolean> b3;
+		@JsonAttribute(nullable = false)
+		public Set<Boolean> b4;
+		@JsonAttribute(nullable = false)
+		public short[] s1;
+		@JsonAttribute(nullable = false)
+		public Short[] s2;
+		@JsonAttribute(nullable = false)
+		public List<Short> s3;
+		@JsonAttribute(nullable = false)
+		public Set<Short> s4;
+		@JsonAttribute(nullable = false)
+		public int[] i1;
+		@JsonAttribute(nullable = false)
+		public Integer[] i2;
+		@JsonAttribute(nullable = false)
+		public List<Integer> i3;
+		@JsonAttribute(nullable = false)
+		public Set<Integer> i4;
+		@JsonAttribute(nullable = false)
+		public long[] l1;
+		@JsonAttribute(nullable = false)
+		public Long[] l2;
+		@JsonAttribute(nullable = false)
+		public List<Long> l3;
+		@JsonAttribute(nullable = false)
+		public Set<Long> l4;
+		@JsonAttribute(nullable = false)
+		public double[] d1;
+		@JsonAttribute(nullable = false)
+		public Double[] d2;
+		@JsonAttribute(nullable = false)
+		public List<Double> d3;
+		@JsonAttribute(nullable = false)
+		public Set<Double> d4;
+		@JsonAttribute(nullable = false)
+		public float[] f1;
+		@JsonAttribute(nullable = false)
+		public Float[] f2;
+		@JsonAttribute(nullable = false)
+		public List<Float> f3;
+		@JsonAttribute(nullable = false)
+		public Set<Float> f4;
+
+		public BasicCollections(
+				boolean[] b1, Boolean[] b2, List<Boolean> b3, Set<Boolean> b4,
+				short[] s1, Short[] s2, List<Short> s3, Set<Short> s4,
+				int[] i1, Integer[] i2, List<Integer> i3, Set<Integer> i4,
+				long[] l1, Long[] l2, List<Long> l3, Set<Long> l4,
+				double[] d1, Double[] d2, List<Double> d3, Set<Double> d4,
+				float[] f1, Float[] f2, List<Float> f3, Set<Float> f4) {
+			this.b1 = b1;
+			this.b2 = b2;
+			this.b3 = b3;
+			this.b4 = b4;
+			this.s1 = s1;
+			this.s2 = s2;
+			this.s3 = s3;
+			this.s4 = s4;
+			this.i1 = i1;
+			this.i2 = i2;
+			this.i3 = i3;
+			this.i4 = i4;
+			this.l1 = l1;
+			this.l2 = l2;
+			this.l3 = l3;
+			this.l4 = l4;
+			this.d1 = d1;
+			this.d2 = d2;
+			this.d3 = d3;
+			this.d4 = d4;
+			this.f1 = f1;
+			this.f2 = f2;
+			this.f3 = f3;
+			this.f4 = f4;
+		}
+	}
+
+	@Test
+	public void emptyCollections() throws IOException {
+		BasicCollections c = dslJsonFull.deserialize(BasicCollections.class, new byte[]{'{', '}'}, 2);
+		Assert.assertEquals(0, c.b1.length);
+		Assert.assertEquals(0, c.b2.length);
+		Assert.assertEquals(0, c.b3.size());
+		Assert.assertEquals(0, c.b4.size());
+		Assert.assertEquals(0, c.s1.length);
+		Assert.assertEquals(0, c.s2.length);
+		Assert.assertEquals(0, c.s3.size());
+		Assert.assertEquals(0, c.s4.size());
+		Assert.assertEquals(0, c.i1.length);
+		Assert.assertEquals(0, c.i2.length);
+		Assert.assertEquals(0, c.i3.size());
+		Assert.assertEquals(0, c.i4.size());
+		Assert.assertEquals(0, c.l1.length);
+		Assert.assertEquals(0, c.l2.length);
+		Assert.assertEquals(0, c.l3.size());
+		Assert.assertEquals(0, c.l4.size());
+		Assert.assertEquals(0, c.d1.length);
+		Assert.assertEquals(0, c.d2.length);
+		Assert.assertEquals(0, c.d3.size());
+		Assert.assertEquals(0, c.d4.size());
+		Assert.assertEquals(0, c.f1.length);
+		Assert.assertEquals(0, c.f2.length);
+		Assert.assertEquals(0, c.f3.size());
+		Assert.assertEquals(0, c.f4.size());
+	}
+
+	@CompiledJson
+	public static class ComplexArrays {
+		@JsonAttribute(nullable = false)
+		public int[][] i1;
+		@JsonAttribute(nullable = false)
+		public Integer[][] i2;
+		@JsonAttribute(nullable = false)
+		public List<Integer>[] i3;
+		@JsonAttribute(nullable = false)
+		public List<int[]>[] i4;
+		@JsonAttribute(nullable = false)
+		public Map<Integer,List<int[]>>[] i5;
+
+		public ComplexArrays(int[][] i1, Integer[][] i2, List<Integer>[] i3, List<int[]>[] i4, Map<Integer,List<int[]>>[] i5) {
+			this.i1 = i1;
+			this.i2 = i2;
+			this.i3 = i3;
+			this.i4 = i4;
+			this.i5 = i5;
+		}
+	}
+
+	@Test
+	public void emptyArrays() throws IOException {
+		ComplexArrays z = dslJsonFull.deserialize(ComplexArrays.class, new byte[]{'{', '}'}, 2);
+		Assert.assertEquals(0, z.i1.length);
+		Assert.assertEquals(0, z.i2.length);
+		Assert.assertEquals(0, z.i3.length);
+		Assert.assertEquals(0, z.i4.length);
+		Assert.assertEquals(0, z.i5.length);
 	}
 }

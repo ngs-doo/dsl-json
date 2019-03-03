@@ -8,6 +8,17 @@ import java.util.Collection;
 
 public abstract class NumberConverter {
 
+	public final static short[] SHORT_EMPTY_ARRAY = new short[0];
+	public final static int[] INT_EMPTY_ARRAY = new int[0];
+	public final static long[] LONG_EMPTY_ARRAY = new long[0];
+	public final static float[] FLOAT_EMPTY_ARRAY = new float[0];
+	public final static double[] DOUBLE_EMPTY_ARRAY = new double[0];
+	public final static Short SHORT_ZERO = 0;
+	public final static Integer INT_ZERO = 0;
+	public final static Long LONG_ZERO = 0L;
+	public final static Float FLOAT_ZERO = 0f;
+	public final static Double DOUBLE_ZERO = 0.0;
+
 	private final static int[] DIGITS = new int[1000];
 	private final static int[] DIFF = {111, 222, 444, 888, 1776};
 	private final static int[] ERROR = {50, 100, 200, 400, 800};
@@ -128,27 +139,27 @@ public abstract class NumberConverter {
 			serialize(value, writer);
 		}
 	};
-	public static final JsonReader.ReadObject<Short> ShortReader = new JsonReader.ReadObject<Short>() {
+	public static final JsonReader.ReadObject<Short> SHORT_READER = new JsonReader.ReadObject<Short>() {
 		@Override
 		public Short read(JsonReader reader) throws IOException {
-			return (short)deserializeInt(reader);
+			return deserializeShort(reader);
 		}
 	};
-	static final JsonReader.ReadObject<Short> NullableShortReader = new JsonReader.ReadObject<Short>() {
+	public static final JsonReader.ReadObject<Short> NULLABLE_SHORT_READER = new JsonReader.ReadObject<Short>() {
 		@Nullable
 		@Override
 		public Short read(JsonReader reader) throws IOException {
-			return reader.wasNull() ? null : (short)deserializeInt(reader);
+			return reader.wasNull() ? null : deserializeShort(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<Short> ShortWriter = new JsonWriter.WriteObject<Short>() {
+	public static final JsonWriter.WriteObject<Short> SHORT_WRITER = new JsonWriter.WriteObject<Short>() {
 		@Override
 		public void write(JsonWriter writer, @Nullable Short value) {
 			if (value == null) writer.writeNull();
 			else serialize(value.intValue(), writer);
 		}
 	};
-	static final JsonReader.ReadObject<short[]> ShortArrayReader = new JsonReader.ReadObject<short[]>() {
+	public static final JsonReader.ReadObject<short[]> SHORT_ARRAY_READER = new JsonReader.ReadObject<short[]>() {
 		@Nullable
 		@Override
 		public short[] read(JsonReader reader) throws IOException {
@@ -158,7 +169,7 @@ public abstract class NumberConverter {
 			return deserializeShortArray(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<short[]> ShortArrayWriter = new JsonWriter.WriteObject<short[]>() {
+	public static final JsonWriter.WriteObject<short[]> SHORT_ARRAY_WRITER = new JsonWriter.WriteObject<short[]>() {
 		@Override
 		public void write(JsonWriter writer, @Nullable short[] value) {
 			serialize(value, writer);
@@ -841,6 +852,29 @@ public abstract class NumberConverter {
 		}
 	}
 
+	public static short deserializeShort(final JsonReader reader) throws IOException {
+		if (reader.last() == '"') {
+			final int position = reader.getCurrentIndex();
+			final char[] buf = reader.readSimpleQuote();
+			try {
+				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).shortValueExact();
+			} catch (ArithmeticException ignore) {
+				throw new IOException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
+			}
+		}
+		final int start = reader.scanNumber();
+		final int end = reader.getCurrentIndex();
+		final byte[] buf = reader.buffer;
+		final byte ch = buf[start];
+		final int value = ch == '-'
+				? parseNegativeInt(buf, reader, start, end)
+				: parsePositiveInt(buf, reader, start, end, 0);
+		if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
+			throw new IOException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex()));
+		}
+		return (short)value;
+	}
+
 	public static int deserializeInt(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
 			final int position = reader.getCurrentIndex();
@@ -909,10 +943,9 @@ public abstract class NumberConverter {
 		return reader.deserializeCollection(INT_READER);
 	}
 
-	private static final int[] emptyIntArray = new int[0];
 	public static int[] deserializeIntArray(final JsonReader reader) throws IOException {
 		if (reader.last() == ']') {
-			return emptyIntArray;
+			return INT_EMPTY_ARRAY;
 		}
 		int[] buffer = new int[4];
 		buffer[0] = deserializeInt(reader);
@@ -928,10 +961,9 @@ public abstract class NumberConverter {
 		return Arrays.copyOf(buffer, i);
 	}
 
-	private static final short[] emptyShortArray = new short[0];
 	public static short[] deserializeShortArray(final JsonReader reader) throws IOException {
 		if (reader.last() == ']') {
-			return emptyShortArray;
+			return SHORT_EMPTY_ARRAY;
 		}
 		short[] buffer = new short[4];
 		buffer[0] = (short)deserializeInt(reader);
@@ -947,10 +979,9 @@ public abstract class NumberConverter {
 		return Arrays.copyOf(buffer, i);
 	}
 
-	private static final long[] emptyLongArray = new long[0];
 	public static long[] deserializeLongArray(final JsonReader reader) throws IOException {
 		if (reader.last() == ']') {
-			return emptyLongArray;
+			return LONG_EMPTY_ARRAY;
 		}
 		long[] buffer = new long[4];
 		buffer[0] = deserializeLong(reader);
@@ -966,10 +997,9 @@ public abstract class NumberConverter {
 		return Arrays.copyOf(buffer, i);
 	}
 
-	private static final float[] emptyFloatArray = new float[0];
 	public static float[] deserializeFloatArray(final JsonReader reader) throws IOException {
 		if (reader.last() == ']') {
-			return emptyFloatArray;
+			return FLOAT_EMPTY_ARRAY;
 		}
 		float[] buffer = new float[4];
 		buffer[0] = deserializeFloat(reader);
@@ -985,10 +1015,9 @@ public abstract class NumberConverter {
 		return Arrays.copyOf(buffer, i);
 	}
 
-	private static final double[] emptyDoubleArray = new double[0];
 	public static double[] deserializeDoubleArray(final JsonReader reader) throws IOException {
 		if (reader.last() == ']') {
-			return emptyDoubleArray;
+			return DOUBLE_EMPTY_ARRAY;
 		}
 		double[] buffer = new double[4];
 		buffer[0] = deserializeDouble(reader);
@@ -1002,6 +1031,19 @@ public abstract class NumberConverter {
 		}
 		reader.checkArrayEnd();
 		return Arrays.copyOf(buffer, i);
+	}
+
+	public static void deserializeShortCollection(final JsonReader reader, final Collection<Short> res) throws IOException {
+		reader.deserializeCollection(SHORT_READER, res);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static ArrayList<Short> deserializeShortNullableCollection(final JsonReader reader) throws IOException {
+		return reader.deserializeNullableCollection(SHORT_READER);
+	}
+
+	public static void deserializeShortNullableCollection(final JsonReader reader, final Collection<Short> res) throws IOException {
+		reader.deserializeNullableCollection(SHORT_READER, res);
 	}
 
 	public static void deserializeIntCollection(final JsonReader reader, final Collection<Integer> res) throws IOException {
