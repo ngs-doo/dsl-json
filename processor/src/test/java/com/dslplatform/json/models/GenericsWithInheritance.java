@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@CompiledJson(deserializeDiscriminator = "type")
+@CompiledJson(discriminator = "type")
 public abstract class GenericsWithInheritance<T> {
 	private T prop;
 	public abstract String getType();
@@ -18,7 +18,7 @@ public abstract class GenericsWithInheritance<T> {
 		this.prop = prop;
 	}
 
-	@CompiledJson(deserializeDiscriminator = "type", deserializeName = "first")
+	@CompiledJson(discriminator = "type", name = "first")
 	public static class FirstChild extends GenericsWithInheritance<Long> {
 		private Boolean boolValue;
 		public Boolean getBoolValue() {

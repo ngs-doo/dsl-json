@@ -37,7 +37,7 @@ public class DeserializeAsTest {
 		}
 	}
 
-	@CompiledJson(deserializeName = "custom-name")
+	@CompiledJson(name = "custom-name")
 	public static class IsIfaceCustom implements Iface {
 		private int y;
 

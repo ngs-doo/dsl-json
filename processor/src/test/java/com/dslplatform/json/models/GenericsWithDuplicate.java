@@ -2,7 +2,7 @@ package com.dslplatform.json.models;
 
 import com.dslplatform.json.CompiledJson;
 
-@CompiledJson(deserializeDiscriminator = "type")
+@CompiledJson(discriminator = "type")
 public abstract class GenericsWithDuplicate<T> {
 	private T prop;
 	public abstract String getType();
@@ -13,7 +13,7 @@ public abstract class GenericsWithDuplicate<T> {
 		this.prop = prop;
 	}
 
-	@CompiledJson(deserializeDiscriminator = "boolValue", deserializeName = "second")
+	@CompiledJson(discriminator = "boolValue", name = "second")
 	public static class SecondChild extends GenericsWithDuplicate<Long> {
 		private Boolean boolValue;
 		public Boolean getBoolValue() {

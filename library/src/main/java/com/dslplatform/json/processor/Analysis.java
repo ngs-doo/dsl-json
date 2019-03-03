@@ -2051,8 +2051,7 @@ public class Analysis {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
-			if (ee.toString().equals("discriminator()")
-				|| ee.toString().equals("deserializeDiscriminator()")) {
+			if (ee.toString().equals("discriminator()")) {
 				return values.get(ee).getValue().toString();
 			}
 		}
@@ -2063,8 +2062,7 @@ public class Analysis {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
-			if (ee.toString().equals("name()")
-				|| ee.toString().equals("deserializeName()")) {
+			if (ee.toString().equals("name()")) {
 				return values.get(ee).getValue().toString();
 			}
 		}

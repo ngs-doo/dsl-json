@@ -2,7 +2,7 @@ package com.dslplatform.json.models;
 
 import com.dslplatform.json.CompiledJson;
 
-@CompiledJson(deserializeName = "MyCustom.Name")
+@CompiledJson(name = "MyCustom.Name")
 public class DeserializationName {
 	public long y;
 	private int o;

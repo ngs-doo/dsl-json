@@ -27,7 +27,7 @@ public class ComplexGenericsTest {
         }
     }
 
-    @CompiledJson(deserializeDiscriminator = "type", deserializeName = "first")
+    @CompiledJson(discriminator = "type", name = "first")
     public static class FirstChild extends Parent<Long> {
 
         private Boolean boolValue;
@@ -46,7 +46,7 @@ public class ComplexGenericsTest {
         }
     }
 
-    @CompiledJson(deserializeDiscriminator = "type", deserializeName = "second")
+    @CompiledJson(discriminator = "type", name = "second")
     public static class SecondChild extends Parent<String> {
 
         private Integer intValue;
@@ -100,7 +100,7 @@ public class ComplexGenericsTest {
         }
     }
 
-    @CompiledJson(deserializeName = "second")
+    @CompiledJson(name = "second")
     public static class SecondChild2 extends Parent2<String> {
 
         private Integer intValue;

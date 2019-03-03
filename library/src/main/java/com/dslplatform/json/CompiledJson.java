@@ -153,16 +153,6 @@ public @interface CompiledJson {
 	 */
 	Class deserializeAs() default CompiledJson.class;
 
-
-	/**
-	 * use discriminator instead.
-	 * Will be removed in 1.9
-	 *
-	 * @return deserialization hint
-	 */
-	@Deprecated
-	String deserializeDiscriminator() default "";
-
 	/**
 	 * When used in mixin which doesn't have deserializeAs "discriminator":signature will be injected into JSON.
 	 * If discriminator is not set, default value of $type will be used.
@@ -172,16 +162,6 @@ public @interface CompiledJson {
 	 * @return deserialization hint or additional serialization info
 	 */
 	String discriminator() default "";
-
-	/**
-	 * use name instead.
-	 * Will be removed in 1.9
-	 *
-	 * @return deserialization hint
-	 */
-	@Deprecated
-	String deserializeName() default "";
-
 
 	/**
 	 * When used in mixin which doesn't have deserializeAs "$type":name will be injected into JSON.

@@ -2,7 +2,7 @@ package com.dslplatform.json.models;
 
 import com.dslplatform.json.CompiledJson;
 
-@CompiledJson(deserializeDiscriminator = "abc")
+@CompiledJson(discriminator = "abc")
 public interface InterfaceWithConflictingDiscriminator {
 
 	@CompiledJson

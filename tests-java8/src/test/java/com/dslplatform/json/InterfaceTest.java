@@ -29,7 +29,7 @@ public class InterfaceTest {
 		void y(int y);
 	}
 
-	@CompiledJson(deserializeDiscriminator = "@type")
+	@CompiledJson(discriminator = "@type")
 	public interface Iface2 {
 		int y();
 		void y(int y);
@@ -52,7 +52,7 @@ public class InterfaceTest {
 		}
 	}
 
-	@CompiledJson(deserializeName = "custom-name")
+	@CompiledJson(name = "custom-name")
 	public static class IsIfaceCustom1 implements Iface1 {
 		private int y;
 
@@ -86,7 +86,7 @@ public class InterfaceTest {
 		}
 	}
 
-	@CompiledJson(deserializeName = "custom")
+	@CompiledJson(name = "custom")
 	public static class IsIfaceCustom2 implements Iface2 {
 		private int y;
 
