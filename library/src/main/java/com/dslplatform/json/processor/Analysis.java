@@ -13,6 +13,7 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
+import java.lang.reflect.Type;
 import java.util.*;
 
 public class Analysis {
@@ -43,6 +44,10 @@ public class Analysis {
 	private final Map<String, List<AnnotationMapping<Boolean>>> alternativeMandatory;
 	private final Set<String> alternativeCreators;
 	private final Map<String, String> alternativeIndex;
+
+	private final TypeMirror baseListType;
+	private final TypeMirror baseSetType;
+	private final TypeMirror baseMapType;
 
 	public static class AnnotationMapping<T> {
 		public final String name;
@@ -104,6 +109,9 @@ public class Analysis {
 		this.includeFields = includeFields;
 		this.includeBeanMethods = includeBeanMethods;
 		this.includeExactMethods = includeExactMethods;
+		this.baseListType = types.erasure(elements.getTypeElement(List.class.getName()).asType());
+		this.baseSetType = types.erasure(elements.getTypeElement(Set.class.getName()).asType());
+		this.baseMapType = types.erasure(elements.getTypeElement(Map.class.getName()).asType());
 	}
 
 	public Map<String, Element> processConverters(Set<? extends Element> converters) {
@@ -861,6 +869,7 @@ public class Analysis {
 			}
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
 			JsonAttribute.IncludePolicy includeToMinimal = includeToMinimalValue(annotation);
+
 			AttributeInfo attr =
 					new AttributeInfo(
 							name,
@@ -868,6 +877,9 @@ public class Analysis {
 							access.write,
 							access.field,
 							type,
+							isCompatibileCollection(type, baseListType),
+							isCompatibileCollection(type, baseSetType),
+							isCompatibileCollection(type, baseMapType),
 							annotation,
 							hasNonNullable(element, annotation),
 							hasMandatoryAnnotation(element, annotation),
@@ -1596,6 +1608,15 @@ public class Analysis {
 		if (left.getKind() != right.getKind()) return false;
 		if (!leftStr.substring(0, ind).equals(rightStr.substring(0, ind))) return false;
 		return types.isAssignable(right, left);
+	}
+
+	private boolean isCompatibileCollection(TypeMirror left, TypeMirror rawCollection) {
+		final String leftStr = left.toString();
+		final String rightStr = rawCollection.toString();
+		if (leftStr.equals(rightStr)) return true;
+		if (left.getKind() != rawCollection.getKind()) return false;
+		TypeMirror leftRaw = types.erasure(left);
+		return types.isAssignable(rawCollection, leftRaw);
 	}
 
 	public static String beanOrActualName(String name) {

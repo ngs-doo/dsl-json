@@ -27,15 +27,34 @@ final class Context {
 		this.allowUnknown = allowUnknown;
 	}
 
-	String getDefault(String type) {
-		OptimizedConverter converter = inlinedConverters.get(type);
-		if (converter != null && converter.defaultValue != null) return converter.defaultValue;
+	String getDefault(AttributeInfo attr) {
+		String type = attr.typeName;
 		String defVal = defaults.get(type);
 		if (defVal != null) return defVal;
-		if (type.contains("<")) {
-			defVal = defaults.get(type.substring(0, type.indexOf('<')));
+		int genIndex = type.indexOf('<');
+		if (genIndex != -1) {
+			defVal = defaults.get(type.substring(0, genIndex));
 			if (defVal != null) return defVal;
 		}
+		if (!attr.notNull) return "null";
+		OptimizedConverter converter = inlinedConverters.get(type);
+		if (converter != null && converter.defaultValue != null) {
+			return converter.defaultValue;
+		}
+		int arrIndex = type.indexOf('[');
+		if (attr.isArray) {
+			String rawType = genIndex != -1 ? type.substring(0, genIndex)
+					: arrIndex != -1 ? type.substring(0, arrIndex)
+					: type;
+			return "new " + rawType + "[0]";
+		} else if (attr.isList && type.startsWith("java.util.List<")) {
+			return "java.util.Collections.emptyList()";
+		} else if (attr.isSet && type.startsWith("java.util.Set<")) {
+			return "java.util.Collections.emptySet()";
+		} else if (attr.isMap && type.startsWith("java.util.Map<")) {
+			return "java.util.Collections.emptyMap()";
+		}
+
 		return "null";
 	}
 

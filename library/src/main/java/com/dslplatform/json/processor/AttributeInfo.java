@@ -44,6 +44,9 @@ public class AttributeInfo {
 			ExecutableElement writeMethod,
 			@Nullable VariableElement field,
 			TypeMirror type,
+			boolean isList,
+			boolean isSet,
+			boolean isMap,
 			AnnotationMirror annotation,
 			boolean notNull,
 			boolean mandatory,
@@ -76,11 +79,9 @@ public class AttributeInfo {
 		this.typeName = type.toString();
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 		this.isArray = type.getKind() == TypeKind.ARRAY;
-		this.isList = typeName.startsWith("java.util.List<") || typeName.startsWith("java.util.ArrayList<");
-		this.isSet = typeName.startsWith("java.util.Set<") || typeName.startsWith("java.util.HashSet<")
-				|| typeName.startsWith("java.util.LinkedHashSet<");
-		this.isMap = typeName.startsWith("java.util.Map<") || typeName.startsWith("java.util.HashMap<")
-				|| typeName.startsWith("java.util.LinkedHashMap<");
+		this.isList = isList;
+		this.isSet = isSet;
+		this.isMap = isMap;
 		this.typeVariablesIndex = typeVariablesIndex;
 		this.isGeneric = !typeVariablesIndex.isEmpty();
 		this.containsStructOwnerType = containsStructOwnerType;

@@ -62,6 +62,7 @@ public class CtorWithGetterTest {
 	public static final class MultipleCtors {
 
 		private final String id;
+		@JsonAttribute(nullable = false)
 		public final String getId() {
 			return id;
 		}
@@ -72,6 +73,7 @@ public class CtorWithGetterTest {
 		}
 
 		private final Map<String, Object> variables;
+		@JsonAttribute(nullable = false)
 		public final Map<String, Object> getVariables() {
 			return variables;
 		}
@@ -140,6 +142,6 @@ public class CtorWithGetterTest {
 		os.write("{\"query\":\"mutation T($input: [DocumentInput]) {createDocument(input: $input) {name,id}}\",\"variables\":{\"input\":[{\"name\":\"doc1\"},{\"name\":\"doc2\"}]},\"operationName\":\"T\"}".getBytes("UTF-8"));
 		MultipleCtors res = dslJson.deserialize(MultipleCtors.class, os.toByteArray(), os.size());
 		Assert.assertEquals(1, res.getVariables().size());
-		//Assert.assertEquals("", res.getId());
+		Assert.assertEquals("", res.getId());
 	}
 }

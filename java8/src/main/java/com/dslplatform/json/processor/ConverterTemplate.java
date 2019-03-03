@@ -435,7 +435,7 @@ class ConverterTemplate {
 		for (AttributeInfo attr : sortedAttributes) {
 			String typeName = attr.type.toString();
 			code.append("\t\t\t").append(typeName).append(" _").append(attr.name).append("_ = ");
-			String defaultValue = context.getDefault(typeName);
+			String defaultValue = context.getDefault(attr);
 			code.append(defaultValue).append(";\n");
 			if (attr.mandatory) {
 				code.append("\t\t\tboolean __detected_").append(attr.name).append("__ = false;\n");
@@ -511,16 +511,21 @@ class ConverterTemplate {
 		code.append(className).append(" instance) {\n");
 		code.append("\t\t\tboolean hasWritten = false;\n");
 		for (AttributeInfo attr : sortedAttributes) {
-			String typeName = attr.type.toString();
-			String defaultValue = context.getDefault(typeName);
+			String defaultValue = context.getDefault(attr);
 
 			boolean checkDefaults = attr.includeToMinimal != JsonAttribute.IncludePolicy.ALWAYS;
+			String typeName = attr.type.toString();
+			boolean isPrimitive = !typeName.equals(Analysis.objectName(typeName));
+			String readValue = "instance." + attr.readProperty;
 
 			if (checkDefaults) {
 				code.append("\t\t\tif (");
-				String readValue = "instance." + attr.readProperty;
-				if ("null".equals(defaultValue) || typeName.indexOf('<') == -1) {
+				if ("null".equals(defaultValue) || isPrimitive) {
 					code.append(readValue).append(" != ").append(defaultValue);
+				} else if (attr.notNull && attr.isArray) {
+					code.append(readValue).append(" != null && ").append(readValue).append(".length != 0");
+				} else if (attr.notNull && (attr.isList || attr.isSet || attr.isMap)) {
+					code.append(readValue).append(" != null && !").append(readValue).append(".isEmpty()");
 				} else {
 					code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
 				}
@@ -534,8 +539,12 @@ class ConverterTemplate {
 
 			if (checkDefaults) {
 				code.append("\t\t\t}");
-				if (attr.notNull && "null".equals(defaultValue)) {
-					code.append(" else throw new com.dslplatform.json.SerializationException(\"Property '");
+				if (attr.notNull && !isPrimitive) {
+					code.append(" else ");
+					if (!"null".equals(defaultValue) || attr.isArray || attr.isList || attr.isSet || attr.isMap) {
+						code.append(" if (").append(readValue).append(" == null) ");
+					}
+					code.append("throw new com.dslplatform.json.SerializationException(\"Property '");
 					code.append(attr.name).append("' is not allowed to be null\");\n");
 				} else code.append("\n");
 			}
@@ -690,9 +699,9 @@ class ConverterTemplate {
 	private void writeProperty(AttributeInfo attr, boolean checkedDefault, String alignment) throws IOException {
 		String typeName = attr.type.toString();
 		String readValue = "instance." + attr.readProperty;
-		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
 		StructInfo target = context.structs.get(attr.typeName);
-		boolean canBeNull = !checkedDefault && (optimizedConverter == null || optimizedConverter.defaultValue == null);
+		String objectType = Analysis.objectName(typeName);
+		boolean canBeNull = !checkedDefault && objectType.equals(typeName);
 		if (attr.notNull && canBeNull) {
 			code.append(alignment).append("if (").append(readValue);
 			code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Property '").append(attr.name).append("' is not allowed to be null\");\n");
@@ -710,6 +719,7 @@ class ConverterTemplate {
 		} else if (target != null && target.converter != null) {
 				code.append(target.converter.fullName).append(".").append(target.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
 		} else {
+			OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
 			if (optimizedConverter != null) {
 				code.append(optimizedConverter.nonNullableEncoder("writer", readValue)).append(";\n");
 			} else if (target != null && attr.isEnum(context.structs)) {
