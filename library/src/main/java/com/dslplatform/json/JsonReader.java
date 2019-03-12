@@ -1,5 +1,6 @@
 package com.dslplatform.json;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -301,7 +302,7 @@ public final class JsonReader<TContext> {
 			prepareNextBlock();
 		}
 		if (currentIndex >= length) {
-			throw new IOException("Unexpected end of JSON input");
+			throw new EOFException("Unexpected end of JSON input");
 		}
 		return last = buffer[currentIndex++];
 	}
