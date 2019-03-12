@@ -301,7 +301,7 @@ public final class JsonReader<TContext> {
 			prepareNextBlock();
 		}
 		if (currentIndex >= length) {
-			throw new IOException("Unexpected end of JSON input");
+			throw new EOFException("Unexpected end of JSON input");
 		}
 		return last = buffer[currentIndex++];
 	}
