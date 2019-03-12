@@ -281,12 +281,12 @@ public abstract class NumberConverter {
 				+ buf[pos + 3] - 48;
 	}
 
-	private static void numberException(final JsonReader reader, final int start, final int end, String message) throws IOException {
+	private static void numberException(final JsonReader reader, final int start, final int end, String message) throws ParsingException {
 		final int len = end - start;
 		if (len > reader.maxNumberDigits) {
-			throw new IOException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len) + ". " + message);
+			throw new ParsingException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len) + ". " + message);
 		}
-		throw new IOException("Error parsing number " + reader.positionDescription(len) + ". " + message);
+		throw new ParsingException("Error parsing number " + reader.positionDescription(len) + ". " + message);
 	}
 
 	public static void serializeNullable(@Nullable final Double value, final JsonWriter sw) {
@@ -297,18 +297,18 @@ public abstract class NumberConverter {
 		}
 	}
 
-	private static BigDecimal parseNumberGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
+	private static BigDecimal parseNumberGeneric(final char[] buf, final int len, final JsonReader reader) throws ParsingException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
 		}
 		if (end > reader.maxNumberDigits) {
-			throw new IOException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len));
+			throw new ParsingException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len));
 		}
 		try {
 			return new BigDecimal(buf, 0, end);
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Error parsing number " + reader.positionDescription(len), nfe);
+			throw new ParsingException("Error parsing number " + reader.positionDescription(len), nfe);
 		}
 	}
 
@@ -355,7 +355,7 @@ public abstract class NumberConverter {
 			}
 			final int newSize = tmp.length * 2;
 			if (newSize > reader.maxNumberDigits) {
-				throw new IOException("Unable to read number " + reader.positionDescription(tmp.length) + ". Number of digits larger than " + reader.maxNumberDigits);
+				throw new ParsingException("Unable to read number " + reader.positionDescription(tmp.length) + ". Number of digits larger than " + reader.maxNumberDigits);
 			}
 			tmp = Arrays.copyOf(tmp, newSize);
 		}
@@ -535,12 +535,12 @@ public abstract class NumberConverter {
 			end--;
 		}
 		if (end > reader.maxNumberDigits) {
-			throw new IOException("Too many digits (" + end + ") detected in double: " + reader.positionDescription(len));
+			throw new ParsingException("Too many digits (" + end + ") detected in double: " + reader.positionDescription(len));
 		}
 		try {
 			return Double.parseDouble(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Error parsing number " + reader.positionDescription(len), nfe);
+			throw new ParsingException("Error parsing number " + reader.positionDescription(len), nfe);
 		}
 	}
 
@@ -721,18 +721,18 @@ public abstract class NumberConverter {
 		else return exp > 0 ? Float.POSITIVE_INFINITY : 0f;
 	}
 
-	private static float parseFloatGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
+	private static float parseFloatGeneric(final char[] buf, final int len, final JsonReader reader) throws ParsingException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
 		}
 		if (end > reader.maxNumberDigits) {
-			throw new IOException("Too many digits (" + end + ") detected in float: " + reader.positionDescription(len));
+			throw new ParsingException("Too many digits (" + end + ") detected in float: " + reader.positionDescription(len));
 		}
 		try {
 			return Float.parseFloat(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Error parsing number " + reader.positionDescription(len), nfe);
+			throw new ParsingException("Error parsing number " + reader.positionDescription(len), nfe);
 		}
 	}
 
@@ -859,7 +859,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).shortValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new IOException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
+				throw new ParsingException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
 			}
 		}
 		final int start = reader.scanNumber();
@@ -870,7 +870,7 @@ public abstract class NumberConverter {
 				? parseNegativeInt(buf, reader, start, end)
 				: parsePositiveInt(buf, reader, start, end, 0);
 		if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
-			throw new IOException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex()));
+			throw new ParsingException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex()));
 		}
 		return (short)value;
 	}
@@ -882,7 +882,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).intValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new IOException("Integer overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
+				throw new ParsingException("Integer overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
 			}
 		}
 		final int start = reader.scanNumber();
@@ -1210,7 +1210,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).longValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new IOException("Long overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
+				throw new ParsingException("Long overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
 			}
 		}
 		final int start = reader.scanNumber();

@@ -98,9 +98,9 @@ abstract class AnnotationCompiler {
 			if (options.compiler != null && options.compiler.length() > 0) {
 				File compiler = new File(options.compiler);
 				if (!compiler.exists()) {
-					throw new IOException("DSL compiler specified with dsljson.compiler option not found. Check used option: " + options.compiler);
+					throw new ConfigurationException("DSL compiler specified with dsljson.compiler option not found. Check used option: " + options.compiler);
 				} else if (compiler.isDirectory()) {
-					throw new IOException("DSL compiler specified with dsljson.compiler option is an folder. Please specify file instead: " + options.compiler);
+					throw new ConfigurationException("DSL compiler specified with dsljson.compiler option is an folder. Please specify file instead: " + options.compiler);
 				}
 			} else {
 				File compiler = new File("dsl-compiler.exe");
@@ -112,9 +112,9 @@ abstract class AnnotationCompiler {
 			List<CompileParameter> parameters = Main.initializeParameters(ctx, ".");
 			if (!Main.processContext(ctx, parameters)) {
 				if (logLevel != LogLevel.DEBUG) {
-					throw new IOException("Unable to setup DSL-JSON processing environment. Specify dsljson.loglevel=DEBUG for more information.");
+					throw new ConfigurationException("Unable to setup DSL-JSON processing environment. Specify dsljson.loglevel=DEBUG for more information.");
 				} else {
-					throw new IOException("Unable to setup DSL-JSON processing environment. Inspect javac output log for more information.");
+					throw new ConfigurationException("Unable to setup DSL-JSON processing environment. Inspect javac output log for more information.");
 				}
 			}
 			File projectPath = TempPath.getTempProjectPath(ctx);
@@ -122,7 +122,7 @@ abstract class AnnotationCompiler {
 			File jsonFolder = new File(rootPackage, "json");
 			Either<String> content = Utils.readFile(new File(jsonFolder, "ExternalSerialization.java"));
 			if (!content.isSuccess()) {
-				throw new IOException(content.whyNot());
+				throw new ConfigurationException(content.whyNot());
 			}
 			return content.get();
 		} finally {

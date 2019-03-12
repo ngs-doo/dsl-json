@@ -121,7 +121,7 @@ public class RecursiveTest {
 				for (Recursive r : parsed) {
 					if (r.x == id) return r;
 				}
-				throw new IOException("Unable to find recursive with id: " + id);
+				throw new ParsingException("Unable to find recursive with id: " + id);
 			}
 		});
 		Recursive r1 = new Recursive();

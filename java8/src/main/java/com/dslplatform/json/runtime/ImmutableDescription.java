@@ -3,6 +3,7 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.Nullable;
+import com.dslplatform.json.ParsingException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -54,7 +55,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		else if (reader.last() != '{') {
-			throw new IOException("Expecting '{' " + reader.positionDescription() + " while parsing " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " while parsing " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 		if (reader.getNextToken() == '}') {
 			if (hasMandatory) {
@@ -73,7 +74,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new IOException("Null value found for property " + ri.name + " " + reader.positionDescription());
+				throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -94,7 +95,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new IOException("Null value found for property " + ri.name + " " + reader.positionDescription());
+				throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -114,7 +115,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 				}
 				reader.getNextToken();
 				if (ri.nonNull && reader.wasNull()) {
-					throw new IOException("Null value found for property " + ri.name + " " + reader.positionDescription());
+					throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
 				}
 				args[ri.index] = ri.value.read(reader);
 				currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -130,11 +131,12 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	@Nullable
 	private T finalChecks(Object[] args, JsonReader reader, long currentMandatory) throws IOException {
 		if (reader.last() != '}') {
-			if (reader.last() == ',') {
-				reader.getNextToken();
-				reader.fillNameWeakHash();
-				return readObjectSlow(args, reader, currentMandatory);
-			} else throw new IOException("Expecting '}' or ',' " + reader.positionDescription() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			if (reader.last() != ',') {
+				throw new ParsingException("Expecting '}' or ',' " + reader.positionDescription() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			}
+			reader.getNextToken();
+			reader.fillNameWeakHash();
+			return readObjectSlow(args, reader, currentMandatory);
 		}
 		if (hasMandatory && currentMandatory != 0) {
 			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
@@ -145,7 +147,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private void skip(final JsonReader reader) throws IOException {
 		if (!skipOnUnknown) {
 			final String name = reader.getLastName();
-			throw new IOException("Unknown property detected: '" + name + "' while reading " + manifest.getTypeName() + " " + reader.positionDescription(name.length() + 3));
+			throw new ParsingException("Unknown property detected: '" + name + "' while reading " + manifest.getTypeName() + " " + reader.positionDescription(name.length() + 3));
 		}
 		reader.getNextToken();
 		reader.skip();

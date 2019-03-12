@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonReader;
+import com.dslplatform.json.ParsingException;
 import com.dslplatform.json.SerializationException;
 
 import java.io.IOException;
@@ -120,7 +121,7 @@ public class DecodePropertyInfo<T> {
 	static void showMandatoryError(
 			final JsonReader reader,
 			final long mandatoryFlag,
-			final DecodePropertyInfo[] decoders) throws IOException {
+			final DecodePropertyInfo[] decoders) throws ParsingException {
 		final StringBuilder sb = new StringBuilder("Mandatory ");
 		sb.append(Long.bitCount(mandatoryFlag) == 1 ? "property" : "properties");
 		sb.append(" (");
@@ -132,6 +133,6 @@ public class DecodePropertyInfo<T> {
 		sb.setLength(sb.length() - 2);
 		sb.append(") not found ");
 		sb.append(reader.positionDescription());
-		throw new IOException(sb.toString());
+		throw new ParsingException(sb.toString());
 	}
 }

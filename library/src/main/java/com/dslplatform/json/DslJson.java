@@ -1593,7 +1593,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (fallback != null) {
 				return fallback.deserialize(context, manifest, body, size);
 			}
-			throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+			throw new ConfigurationException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 					"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 		} finally {
 			json.reset();
@@ -2052,7 +2052,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (fallback != null) {
 			return fallback.deserialize(context, manifest, new RereadStream(buffer, stream));
 		}
-		throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+		throw new ConfigurationException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 				"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 	}
 
@@ -2093,7 +2093,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (fallback != null) {
 				return fallback.deserialize(context, manifest, new RereadStream(json.buffer, stream));
 			}
-			throw new IOException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
+			throw new ConfigurationException("Unable to find reader for provided type: " + manifest + " and fallback serialization is not registered.\n" +
 					"Try initializing DslJson with custom fallback in case of unsupported objects or register specified type using registerReader into " + getClass());
 		} finally {
 			json.reset();
@@ -2388,13 +2388,13 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 							}
 							writer.writeAscii(stream.toByteArray());
 						} else {
-							throw new SerializationException("Unable to serialize provided object. Failed to find serializer for: " + items.getClass());
+							throw new ConfigurationException("Unable to serialize provided object. Failed to find serializer for: " + items.getClass());
 						}
 					}
 				}
 			};
 		}
-		throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
+		throw new ConfigurationException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
 	}
 
 	/**
@@ -2442,6 +2442,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			buffer.reset();
 			try {
 				lastWriter.write(buffer, item);
+			} catch (ConfigurationException e) {
+				throw e;
 			} catch (Exception e) {
 				throw new IOException(e);
 			}
@@ -2461,6 +2463,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				buffer.reset();
 				try {
 					lastWriter.write(buffer, item);
+				} catch (ConfigurationException e) {
+					throw e;
 				} catch (Exception e) {
 					throw new IOException(e);
 				}
@@ -2512,6 +2516,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			buffer.reset();
 			try {
 				instanceWriter.write(buffer, item);
+			} catch (ConfigurationException e) {
+				throw e;
 			} catch (Exception e) {
 				throw new IOException(e);
 			}
@@ -2526,6 +2532,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				buffer.reset();
 				try {
 					instanceWriter.write(buffer, item);
+				} catch (ConfigurationException e) {
+					throw e;
 				} catch (Exception e) {
 					throw new IOException(e);
 				}
@@ -2838,7 +2846,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		final Class<?> manifest = value.getClass();
 		if (!serialize(jw, manifest, value)) {
 			if (fallback == null) {
-				throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
+				throw new ConfigurationException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
 			}
 			fallback.serialize(value, stream);
 		} else {
@@ -2871,7 +2879,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		final Class<?> manifest = value.getClass();
 		if (!serialize(writer, manifest, value)) {
 			if (fallback == null) {
-				throw new IOException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
+				throw new ConfigurationException("Unable to serialize provided object. Failed to find serializer for: " + manifest);
 			}
 			ByteArrayOutputStream stream = new ByteArrayOutputStream();
 			fallback.serialize(value, stream);

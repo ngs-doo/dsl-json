@@ -1,7 +1,6 @@
 package com.dslplatform.json
 package runtime
 
-import java.io.IOException
 import java.lang.reflect.{Constructor, Method, Modifier, ParameterizedType, Type => JavaType}
 
 import scala.collection.mutable
@@ -402,7 +401,7 @@ object ScalaClassAnalyzer {
       if (decoder.isEmpty) {
         Option(json.tryFindReader(manifest)) match {
           case Some(f: JsonReader.ReadObject[Any @unchecked]) => decoder = Some(f)
-          case _ => throw new IOException(s"Unable to find reader for $manifest on $ctor")
+          case _ => throw new ConfigurationException(s"Unable to find reader for $manifest on $ctor")
         }
       }
       decoder.get.read(reader)

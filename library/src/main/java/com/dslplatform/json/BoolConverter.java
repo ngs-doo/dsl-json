@@ -84,7 +84,7 @@ public abstract class BoolConverter {
 		} else if (reader.wasFalse()) {
 			return false;
 		}
-		throw new IOException("Found invalid boolean value " + reader.positionDescription());
+		throw new ParsingException("Found invalid boolean value " + reader.positionDescription());
 	}
 
 	public static boolean[] deserializeBoolArray(final JsonReader reader) throws IOException {

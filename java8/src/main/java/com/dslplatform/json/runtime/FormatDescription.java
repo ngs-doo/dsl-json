@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
+import com.dslplatform.json.*;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -67,35 +64,35 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() == '{') {
-			if (objectFormat == null) throw new IOException("Object format for " + manifest.getTypeName() + " is not defined");
+			if (objectFormat == null) throw new ConfigurationException("Object format for " + manifest.getTypeName() + " is not defined");
 			return objectFormat.read(reader);
 		} else if (reader.last() == '[') {
-			if (arrayFormat == null) throw new IOException("Array format for " + manifest.getTypeName() + " is not defined");
+			if (arrayFormat == null) throw new ConfigurationException("Array format for " + manifest.getTypeName() + " is not defined");
 			return arrayFormat.read(reader);
 		} else if (objectFormat != null && arrayFormat != null) {
-			throw new IOException("Expecting '{' or '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' or '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else if (objectFormat != null) {
-			throw new IOException("Expecting '{' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else {
-			throw new IOException("Expecting '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 	}
 
 	public T bind(final JsonReader reader, final T instance) throws IOException {
 		if (reader.last() == '{') {
-			if (objectFormat == null) throw new IOException("Object format for " + manifest.getTypeName() + " is not defined");
-			if (objectBinder == null) throw new IOException(manifest.getTypeName() + " does not support binding");
+			if (objectFormat == null) throw new ConfigurationException("Object format for " + manifest.getTypeName() + " is not defined");
+			if (objectBinder == null) throw new ConfigurationException(manifest.getTypeName() + " does not support binding");
 			return objectBinder.bind(reader, instance);
 		} else if (reader.last() == '[') {
-			if (arrayFormat == null) throw new IOException("Array format for " + manifest.getTypeName() + " is not defined");
-			if (arrayBinder == null) throw new IOException(manifest.getTypeName() + " does not support binding");
+			if (arrayFormat == null) throw new ConfigurationException("Array format for " + manifest.getTypeName() + " is not defined");
+			if (arrayBinder == null) throw new ConfigurationException(manifest.getTypeName() + " does not support binding");
 			return arrayBinder.bind(reader, instance);
 		} else if (objectFormat != null && arrayFormat != null) {
-			throw new IOException("Expecting '{' or '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' or '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else if (objectFormat != null) {
-			throw new IOException("Expecting '{' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else {
-			throw new IOException("Expecting '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 	}
 }

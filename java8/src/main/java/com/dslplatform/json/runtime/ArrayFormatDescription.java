@@ -3,6 +3,7 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.Nullable;
+import com.dslplatform.json.ParsingException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -90,7 +91,7 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 	@Override
 	public B bind(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() != '[') {
-			throw new IOException("Expecting '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 		reader.getNextToken();
 		bindContent(reader, instance);
@@ -113,10 +114,10 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 			else break;
 		}
 		if (i != decoders.length) {
-			throw new IOException("Expecting to read " + decoders.length + " elements in the array while decoding " + manifest.getTypeName() + ". Read only: " +  i + " at position: " + reader.positionInStream());
+			throw new ParsingException("Expecting to read " + decoders.length + " elements in the array while decoding " + manifest.getTypeName() + ". Read only: " +  i + " at position: " + reader.positionInStream());
 		}
 		if (reader.last() != ']') {
-			throw new IOException("Expecting ']' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting ']' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 	}
 }

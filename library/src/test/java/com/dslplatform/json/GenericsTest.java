@@ -103,7 +103,7 @@ public class GenericsTest {
 			return new JsonReader.ReadObject<int[][]>() {
 				@Override
 				public int[][] read(JsonReader reader) throws IOException {
-					if (reader.last() != '[') throw new IOException("Expecting '['");
+					if (reader.last() != '[') throw new ParsingException("Expecting '['");
 					if (reader.getNextToken() == ']') return new int[0][];
 					ArrayList<int[]> result = new ArrayList<int[]>();
 					if (reader.wasNull()) {
@@ -111,7 +111,7 @@ public class GenericsTest {
 					} else if (reader.last() == '[') {
 						reader.getNextToken();
 						result.add(NumberConverter.deserializeIntArray(reader));
-					} else throw new IOException("Expecting '[' or null");
+					} else throw new ParsingException("Expecting '[' or null");
 					while (reader.getNextToken() == ',') {
 						reader.getNextToken();
 						if (reader.wasNull()) {
@@ -119,9 +119,9 @@ public class GenericsTest {
 						} else if (reader.last() == '[') {
 							reader.getNextToken();
 							result.add(NumberConverter.deserializeIntArray(reader));
-						} else throw new IOException("Expecting '[' or null");
+						} else throw new ParsingException("Expecting '[' or null");
 					}
-					if (reader.last() != ']') throw new IOException("Expecting ']'");
+					if (reader.last() != ']') throw new ParsingException("Expecting ']'");
 					return result.toArray(new int[0][]);
 				}
 			};

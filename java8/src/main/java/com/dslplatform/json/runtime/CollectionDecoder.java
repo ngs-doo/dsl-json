@@ -1,7 +1,9 @@
 package com.dslplatform.json.runtime;
 
+import com.dslplatform.json.ConfigurationException;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.Nullable;
+import com.dslplatform.json.ParsingException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -31,13 +33,13 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() != '[') {
-			throw new java.io.IOException("Expecting '[' " + reader.positionDescription() + ". Found " + (char)reader.last());
+			throw new ParsingException("Expecting '[' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		}
 		final T instance;
 		try {
 			instance = newInstance.call();
 		} catch (Exception e) {
-			throw new IOException("Unable to create a new instance of " + manifest, e);
+			throw new ConfigurationException("Unable to create a new instance of " + manifest, e);
 		}
 		if (reader.getNextToken() == ']') return instance;
 		instance.add(decoder.read(reader));
@@ -46,7 +48,7 @@ public final class CollectionDecoder<E, T extends Collection<E>> implements Json
 			instance.add(decoder.read(reader));
 		}
 		if (reader.last() != ']') {
-			throw new java.io.IOException("Expecting ']' " + reader.positionDescription() + ". Found " + (char)reader.last());
+			throw new ParsingException("Expecting ']' " + reader.positionDescription() + ". Found " + (char)reader.last());
 		}
 		return instance;
 	}

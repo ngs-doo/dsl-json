@@ -82,7 +82,7 @@ public abstract class JavaGeomConverter {
 
 	public static Point2D.Double deserializeLocation(final JsonReader reader) throws IOException {
 		if (reader.last() != '{') {
-			throw new IOException("Expecting '{' " + reader.positionDescription() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new Point2D.Double();
@@ -91,7 +91,7 @@ public abstract class JavaGeomConverter {
 		String name = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
 		if (nextToken != ':') {
-			throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
+			throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
 		}
 		reader.getNextToken();
 		double value = NumberConverter.deserializeDouble(reader);
@@ -105,7 +105,7 @@ public abstract class JavaGeomConverter {
 			name = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
 			if (nextToken != ':') {
-				throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
+				throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
 			}
 			reader.getNextToken();
 			value = NumberConverter.deserializeDouble(reader);
@@ -116,7 +116,7 @@ public abstract class JavaGeomConverter {
 			}
 		}
 		if (nextToken != '}') {
-			throw new IOException("Expecting '}' " + reader.positionDescription() + ". Found " + (char) nextToken);
+			throw new ParsingException("Expecting '}' " + reader.positionDescription() + ". Found " + (char) nextToken);
 		}
 		return new Point2D.Double(x, y);
 	}
@@ -159,7 +159,7 @@ public abstract class JavaGeomConverter {
 
 	public static Point deserializePoint(final JsonReader reader) throws IOException {
 		if (reader.last() != '{') {
-			throw new IOException("Expecting '{' " + reader.positionDescription() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new Point();
@@ -168,7 +168,7 @@ public abstract class JavaGeomConverter {
 		String name = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
 		if (nextToken != ':') {
-			throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
+			throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
 		}
 		reader.getNextToken();
 		int value = NumberConverter.deserializeInt(reader);
@@ -182,7 +182,7 @@ public abstract class JavaGeomConverter {
 			name = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
 			if (nextToken != ':') {
-				throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
+				throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
 			}
 			reader.getNextToken();
 			value = NumberConverter.deserializeInt(reader);
@@ -193,7 +193,7 @@ public abstract class JavaGeomConverter {
 			}
 		}
 		if (nextToken != '}') {
-			throw new IOException("Expecting '}' " + reader.positionDescription() + ". Found " + (char) nextToken);
+			throw new ParsingException("Expecting '}' " + reader.positionDescription() + ". Found " + (char) nextToken);
 		}
 		return new Point(x, y);
 
@@ -239,7 +239,7 @@ public abstract class JavaGeomConverter {
 
 	public static Rectangle2D.Double deserializeRectangle(final JsonReader reader) throws IOException {
 		if (reader.last() != '{') {
-			throw new IOException("Expecting '{' " + reader.positionDescription() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new Rectangle2D.Double();
@@ -250,7 +250,7 @@ public abstract class JavaGeomConverter {
 		String name = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
 		if (nextToken != ':') {
-			throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
+			throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
 		}
 		reader.getNextToken();
 		double value = NumberConverter.deserializeDouble(reader);
@@ -268,7 +268,7 @@ public abstract class JavaGeomConverter {
 			name = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
 			if (nextToken != ':') {
-				throw new IOException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
+				throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
 			}
 			reader.getNextToken();
 			value = NumberConverter.deserializeDouble(reader);
@@ -283,7 +283,7 @@ public abstract class JavaGeomConverter {
 			}
 		}
 		if (nextToken != '}') {
-			throw new IOException("Expecting '}' " + reader.positionDescription() + ". Found " + (char) nextToken);
+			throw new ParsingException("Expecting '}' " + reader.positionDescription() + ". Found " + (char) nextToken);
 		}
 		return new Rectangle2D.Double(x, y, width, height);
 	}

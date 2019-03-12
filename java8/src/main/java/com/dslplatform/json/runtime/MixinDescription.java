@@ -79,22 +79,22 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			return readArrayFormat(reader);
 		}
 		if (canObjectFormat && canArrayFormat) {
-			throw new IOException("Expecting '{' or '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' or '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else if (canObjectFormat) {
-			throw new IOException("Expecting '{' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		} else {
-			throw new IOException("Expecting '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
 		}
 	}
 
 	@Nullable
 	private T readObjectFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
-			throw new IOException("Expecting \"" + discriminator + "\" attribute as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting \"" + discriminator + "\" attribute as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		if (reader.fillName() != typeHash) {
 			String name = reader.getLastName();
-			throw new IOException("Expecting \"" + discriminator + "\" attribute as first element of mixin " + reader.positionDescription(name.length() + 2) + ". Found: " + name);
+			throw new ParsingException("Expecting \"" + discriminator + "\" attribute as first element of mixin " + reader.positionDescription(name.length() + 2) + ". Found: " + name);
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();
@@ -107,13 +107,13 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			}
 			return ofd.readContent(reader);
 		}
-		throw new IOException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest.getTypeName() + " which supports object format. Add @CompiledJson to specified type to allow deserialization into it");
+		throw new ConfigurationException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest.getTypeName() + " which supports object format. Add @CompiledJson to specified type to allow deserialization into it");
 	}
 
 	@Nullable
 	private T readArrayFormat(final JsonReader reader) throws IOException {
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
-			throw new IOException("Expecting \"" + discriminator + "\" value as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
+			throw new ParsingException("Expecting \"" + discriminator + "\" value as first element of mixin " + reader.positionDescription() + ". Found " + (char) reader.last());
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();
@@ -126,7 +126,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			}
 			return afd.readContent(reader);
 		}
-		throw new IOException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest.getTypeName() + " which supports array format. Add @CompiledJson to specified type to allow deserialization into it");
+		throw new ConfigurationException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest.getTypeName() + " which supports array format. Add @CompiledJson to specified type to allow deserialization into it");
 	}
 
 	@Override
@@ -165,6 +165,6 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			}
 			return;
 		}
-		throw new SerializationException("Unable to find encoder for '" + instance.getClass() + "'. Add @CompiledJson to specified type to allow serialization from it");
+		throw new ConfigurationException("Unable to find encoder for '" + instance.getClass() + "'. Add @CompiledJson to specified type to allow serialization from it");
 	}
 }

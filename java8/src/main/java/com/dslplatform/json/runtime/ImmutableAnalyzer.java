@@ -268,7 +268,7 @@ public abstract class ImmutableAnalyzer {
 			if (decoder == null) {
 				decoder = json.tryFindReader(type);
 				if (decoder == null) {
-					throw new IOException("Unable to find reader for " + type + " on " + ctor);
+					throw new ConfigurationException("Unable to find reader for " + type + " on " + ctor);
 				}
 			}
 			return decoder.read(reader);

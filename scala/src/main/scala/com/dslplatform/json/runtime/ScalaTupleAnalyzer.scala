@@ -1,7 +1,6 @@
 package com.dslplatform.json
 package runtime
 
-import java.io.IOException
 import java.lang.reflect.{Constructor, Modifier, ParameterizedType, Type => JavaType}
 
 import scala.reflect.runtime.universe
@@ -87,7 +86,7 @@ object ScalaTupleAnalyzer {
         Some(
           if (isNullable) decoder else new JsonReader.BindObject[Array[AnyRef]] {
             override def bind(reader: JsonReader[_], args: Array[AnyRef]): Array[AnyRef] = {
-              if (reader.wasNull()) throw new IOException(s"Tuple property ${ti.index + 1} of $manifest is not allowed to be null.")
+              if (reader.wasNull()) throw new ParsingException(s"Tuple property ${ti.index + 1} of $manifest is not allowed to be null.")
               decoder.bind(reader, args)
             }
           })

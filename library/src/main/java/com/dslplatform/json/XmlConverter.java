@@ -67,7 +67,7 @@ public abstract class XmlConverter {
 				InputSource source = new InputSource(new StringReader(reader.readString()));
 				return documentBuilder.parse(source).getDocumentElement();
 			} catch (SAXException ex) {
-				throw new IOException(ex);
+				throw new ParsingException(ex);
 			}
 		} else {
 			final Map<String, Object> map = ObjectConverter.deserializeMap(reader);
@@ -77,7 +77,7 @@ public abstract class XmlConverter {
 
 	public static Element mapToXml(final Map<String, Object> map) throws IOException {
 		final Set<String> xmlRootElementNames = map.keySet();
-		if (xmlRootElementNames.size() > 1) throw new IOException("Invalid XML. Expecting root element");
+		if (xmlRootElementNames.size() > 1) throw new ParsingException("Invalid XML. Expecting root element");
 		final String rootName = xmlRootElementNames.iterator().next();
 		final Document document = createDocument();
 		final Element rootElement = document.createElement(rootName);
@@ -86,13 +86,13 @@ public abstract class XmlConverter {
 		return rootElement;
 	}
 
-	private static synchronized Document createDocument() throws IOException {
+	private static synchronized Document createDocument() {
 		try {
 			final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			final DocumentBuilder builder = factory.newDocumentBuilder();
 			return builder.newDocument();
 		} catch (ParserConfigurationException e) {
-			throw new IOException(e);
+			throw new ConfigurationException(e);
 		}
 	}
 

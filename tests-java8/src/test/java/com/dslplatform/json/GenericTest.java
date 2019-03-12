@@ -111,7 +111,7 @@ public class GenericTest {
 		try {
 			dslJson.serialize(model, os);
 			Assert.fail("Expecting exception");
-		} catch (IOException ex) {
+		} catch (ConfigurationException ex) {
 			Assert.assertTrue(ex.getMessage().contains("Unable to serialize provided object. Failed to find serializer"));
 		}
 		os.reset();
@@ -131,7 +131,7 @@ public class GenericTest {
 		try {
 			dslJson.serialize(model, os);
 			Assert.fail("Expecting exception");
-		} catch (IOException ex) {
+		} catch (ConfigurationException ex) {
 			Assert.assertTrue(ex.getMessage().contains("Unable to serialize provided object. Failed to find serializer"));
 		}
 		os.reset();
