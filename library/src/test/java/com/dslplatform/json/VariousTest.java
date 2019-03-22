@@ -3,9 +3,13 @@ package com.dslplatform.json;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class VariousTest {
@@ -57,5 +61,28 @@ public class VariousTest {
 		} catch (IOException e) {
 			Assert.assertTrue(e.getMessage().contains("Unable to parse input at position: 11"));
 		}
+	}
+
+	@Test
+	public void testNullSerializationWithASmallBuffer() throws IOException {
+		Map<String, Object> map = new HashMap<String, Object>();
+		List<String> list = new ArrayList<String>();
+		list.add(null);
+		list.add(null);
+		map.put("n", list);
+		DslJson<Object> dsl = new DslJson<Object>();
+		// Allocate a buffer that is small enough that it will need to
+		// be flushed when writing the first null
+		JsonWriter writer = dsl.newWriter(10);
+
+		// Create a ByteArrayOutputStream to capture the output
+		// (and so that the buffer in the writer is flushed, and not just expanded)
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		writer.reset(outputStream);
+
+		dsl.serializeMap(map, writer);
+		writer.flush();
+
+		Assert.assertEquals("{\"n\":[null,null]}", new String(outputStream.toByteArray()));
 	}
 }
