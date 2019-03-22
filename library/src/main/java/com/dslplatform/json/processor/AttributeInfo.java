@@ -35,6 +35,7 @@ public class AttributeInfo {
 	public final boolean isSet;
 	public final boolean isMap;
 	public final boolean isGeneric;
+	public final Set<TypeMirror> usedTypes;
 	public final Map<String, Integer> typeVariablesIndex;
 	public final boolean containsStructOwnerType;
 
@@ -57,6 +58,7 @@ public class AttributeInfo {
 			JsonAttribute.IncludePolicy includeToMinimal,
 			@Nullable ConverterInfo converter,
 			boolean isJsonObject,
+			Set<TypeMirror> usedTypes,
 			Map<String, Integer> typeVariablesIndex,
 			boolean containsStructOwnerType) {
 		this.id = alias != null ? alias : name;
@@ -82,6 +84,7 @@ public class AttributeInfo {
 		this.isList = isList;
 		this.isSet = isSet;
 		this.isMap = isMap;
+		this.usedTypes = usedTypes;
 		this.typeVariablesIndex = typeVariablesIndex;
 		this.isGeneric = !typeVariablesIndex.isEmpty();
 		this.containsStructOwnerType = containsStructOwnerType;

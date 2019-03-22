@@ -850,8 +850,11 @@ public class Analysis {
 			boolean hasUnknown = false;
 			boolean hasOwnerStructType = false;
 			Map<String, Integer> typeVariablesIndex = new HashMap<String, Integer>();
+			Map<String, PartKind> references = new HashMap<String, PartKind>();
+			Set<TypeMirror> usedTypes = new HashSet<TypeMirror>();
+			analyzePartsRecursively(referenceType, references, usedTypes);
+
 			if (!typeResolved || info.isParameterized) {
-				Map<String, PartKind> references = analyzeParts(referenceType);
 				for (Map.Entry<String, PartKind> kv : references.entrySet()) {
 					String partTypeName = kv.getKey();
 					PartKind partKind = kv.getValue();
@@ -890,6 +893,7 @@ public class Analysis {
 							includeToMinimal,
 							converter,
 							isJsonObject,
+							usedTypes,
 							typeVariablesIndex,
 							hasOwnerStructType);
 			String[] alternativeNames = attr.annotation == null ? null : getAlternativeNames(attr.annotation);
@@ -1310,13 +1314,15 @@ public class Analysis {
 
 	private Map<String, PartKind> analyzeParts(TypeMirror target) {
 		Map<String, PartKind> parts = new HashMap<String, PartKind>();
-		analyzePartsRecursively(target, parts);
+		Set<TypeMirror> used = new HashSet<TypeMirror>();
+		analyzePartsRecursively(target, parts, used);
 		return parts;
 	}
 
-	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts) {
+	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts, Set<TypeMirror> usedTypes) {
 		String typeName = target.toString();
 		if (typeSupport.isSupported(typeName)) {
+			usedTypes.add(target);
 			if (isRawType(target)) {
 				parts.put(typeName, PartKind.RAW_TYPE);
 			} else {
@@ -1328,7 +1334,7 @@ public class Analysis {
 		switch (target.getKind()) {
 			case ARRAY:
 				ArrayType at = (ArrayType) target;
-				analyzePartsRecursively(at.getComponentType(), parts);
+				analyzePartsRecursively(at.getComponentType(), parts, usedTypes);
 				break;
 
 			case DECLARED:
@@ -1336,6 +1342,7 @@ public class Analysis {
 				List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
 
 				String rawTypeName = declaredType.asElement().toString();
+				usedTypes.add(declaredType.asElement().asType());
 
 				StructInfo struct = structs.get(rawTypeName);
 				boolean knownAndValidStruct = struct != null
@@ -1356,15 +1363,17 @@ public class Analysis {
 				}
 
 				for (TypeMirror typeArgument : typeArguments) {
-					analyzePartsRecursively(typeArgument, parts);
+					analyzePartsRecursively(typeArgument, parts, usedTypes);
 				}
 				break;
 
 			case TYPEVAR:
-				parts.put(target.toString(), PartKind.TYPE_VARIABLE);
+				usedTypes.add(target);
+				parts.put(typeName, PartKind.TYPE_VARIABLE);
 				break;
 
 			default:
+				usedTypes.add(target);
 				parts.put(typeName, PartKind.UNKNOWN);
 				break;
 		}

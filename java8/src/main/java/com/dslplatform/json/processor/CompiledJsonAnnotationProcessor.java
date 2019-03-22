@@ -11,6 +11,7 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
@@ -297,7 +298,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				try {
 					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
-						buildCode(writer, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR);
+						buildCode(writer, processingEnv, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR);
 						generatedFiles.put(classNamePath, structInfo);
 						originatingElements.add(structInfo.element);
 					} catch (IOException e) {
@@ -375,12 +376,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 	private static void buildCode(
 			final Writer code,
+			final ProcessingEnvironment environment,
 			final String className,
 			final StructInfo si,
 			final Map<String, StructInfo> structs,
 			final TypeSupport typeSupport,
 			final boolean allowUnknown) throws IOException {
-		final Context context = new Context(code, InlinedConverters, Defaults, structs, typeSupport, allowUnknown);
+		final Context context = new Context(code, environment, InlinedConverters, Defaults, structs, typeSupport, allowUnknown);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
 		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate);
 

@@ -189,6 +189,26 @@ public class StructInfo {
 		return annotation != null;
 	}
 
+	public boolean hasCycles(Map<String, StructInfo> structs) {
+		return hasCycles(new HashSet<TypeMirror>(), structs);
+	}
+
+	private boolean hasCycles(HashSet<TypeMirror> processed, Map<String, StructInfo> structs) {
+		if (type == ObjectType.ENUM || type == ObjectType.CONVERTER) return false;
+		processed.add(element.asType());
+		for (AttributeInfo ai : attributes.values()) {
+			if (ai.converter != null || ai.isJsonObject) continue;
+			if (ai.isGeneric) return true;
+			for (TypeMirror tm : ai.usedTypes) {
+				if (processed.add(tm)) {
+					StructInfo find = structs.get(tm.toString());
+					if (find != null && find.hasCycles(processed, structs)) return true;
+				} else return true;
+			}
+		}
+		return false;
+	}
+
 	public static int calcHash(String name) {
 		long hash = 0x811c9dc5;
 		for (int i = 0; i < name.length(); i++) {

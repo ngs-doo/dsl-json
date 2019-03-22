@@ -98,8 +98,11 @@ public class InterfaceTest {
 			this.y = y;
 		}
 
-		public IsIfaceCustom2(int y) {
+		public List<Iface2> list;
+
+		public IsIfaceCustom2(int y, List<Iface2> list) {
 			this.y = y;
+			this.list = list;
 		}
 	}
 
@@ -133,10 +136,10 @@ public class InterfaceTest {
 		HasInterface hi = new HasInterface();
 		hi.x = 505;
 		hi.i = new IsIfaceCustom1(-123);
-		hi.c = new IsIfaceCustom2(2);
+		hi.c = new IsIfaceCustom2(2, Arrays.asList(null, new IsIfaceCustom2(3, Collections.emptyList())));
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(hi, os);
-		Assert.assertEquals("{\"i\":{\"$type\":\"custom-name\",\"y\":-123},\"c\":{\"@type\":\"custom\",\"y\":2},\"x\":505,\"ii\":null}", os.toString());
+		Assert.assertEquals("{\"i\":{\"$type\":\"custom-name\",\"y\":-123},\"c\":{\"@type\":\"custom\",\"y\":2,\"list\":[null,{\"@type\":\"custom\",\"y\":3,\"list\":[]}]},\"x\":505,\"ii\":null}", os.toString());
 		HasInterface res = dslJson.deserialize(HasInterface.class, os.toByteArray(), os.size());
 		Assert.assertEquals(hi.x, res.x);
 		Assert.assertEquals(hi.i.y(), res.i.y());

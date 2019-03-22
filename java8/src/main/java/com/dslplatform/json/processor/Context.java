@@ -1,6 +1,10 @@
 package com.dslplatform.json.processor;
 
+import com.dslplatform.json.Nullable;
+
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -12,14 +16,16 @@ import java.util.*;
 
 final class Context {
 	final Writer code;
+	private final ProcessingEnvironment environment;
 	final Map<String, OptimizedConverter> inlinedConverters;
 	final Map<String, String> defaults;
 	final Map<String, StructInfo> structs;
 	final TypeSupport typeSupport;
 	final boolean allowUnknown;
 
-	Context(Writer code, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, TypeSupport typeSupport, boolean allowUnknown) {
+	Context(Writer code, ProcessingEnvironment environment, Map<String, OptimizedConverter> inlinedConverters, Map<String, String> defaults, Map<String, StructInfo> structs, TypeSupport typeSupport, boolean allowUnknown) {
 		this.code = code;
+		this.environment = environment;
 		this.inlinedConverters = inlinedConverters;
 		this.defaults = defaults;
 		this.structs = structs;
@@ -113,19 +119,34 @@ final class Context {
 		}
 	}
 
-	void serializeKnownCollection(AttributeInfo attr) throws IOException {
+	boolean useLazyResolution(String type) {
+		OptimizedConverter converter = inlinedConverters.get(type);
+		StructInfo found = structs.get(type);
+		return converter == null && found != null
+				&& (found.type == ObjectType.MIXIN && findType(type) != null || found.hasCycles(structs));
+	}
+
+	void serializeKnownCollection(AttributeInfo attr, List<String> types) throws IOException {
 		if (attr.isArray) {
 			String content = extractRawType(((ArrayType) attr.type).getComponentType());
 			code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
+			code.append(useLazyResolution(content) ? "()" : "");
 			code.append(", emptyArray_").append(attr.name).append(")");
 		} else if (attr.isList) {
-			code.append("reader.readCollection(reader_").append(attr.name).append(")");
+			code.append("reader.readCollection(reader_").append(attr.name).append(useLazyResolution(types.get(0)) ? "()" : "").append(")");
 		} else if (attr.isSet) {
-			code.append("reader.readSet(reader_").append(attr.name).append(")");
+			code.append("reader.readSet(reader_").append(attr.name).append(useLazyResolution(types.get(0)) ? "()" : "").append(")");
 		} else if (attr.isMap) {
-			code.append("reader.readMap(key_reader_").append(attr.name).append(", value_reader_").append(attr.name).append(")");
+			code.append("reader.readMap(key_reader_").append(attr.name).append(useLazyResolution(types.get(0)) ? "()" : "");
+			code.append(", value_reader_").append(attr.name).append(useLazyResolution(types.get(1)) ? "()" : "").append(")");
 		} else {
 			throw new IllegalArgumentException("Unknown attribute collection " + attr.name);
 		}
+	}
+
+	@Nullable
+	TypeMirror findType(String content) {
+		TypeElement element = environment.getElementUtils().getTypeElement(content);
+		return element != null ? element.asType() : null;
 	}
 }

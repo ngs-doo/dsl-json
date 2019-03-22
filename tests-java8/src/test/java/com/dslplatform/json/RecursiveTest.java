@@ -26,6 +26,14 @@ public class RecursiveTest {
 		}
 	}
 
+	@CompiledJson
+	public static class RecursiveList {
+		@JsonAttribute(index = 1)
+		public int x;
+		@JsonAttribute(index = 2)
+		public List<RecursiveList> rl;
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>();
 
 	@Test
@@ -137,5 +145,22 @@ public class RecursiveTest {
 		Assert.assertEquals(r1.x, res.x);
 		Assert.assertEquals(r1.r.x, res.r.x);
 		Assert.assertEquals(res, res.r.r);
+	}
+
+	@Test
+	public void nonEmptyList() throws IOException {
+		RecursiveList ra = new RecursiveList();
+		ra.x = 5;
+		RecursiveList rb = new RecursiveList();
+		rb.x = 7;
+		ra.rl = Arrays.asList(rb, null);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(ra, os);
+		Assert.assertEquals("{\"x\":5,\"rl\":[{\"x\":7,\"rl\":null},null]}", os.toString());
+		RecursiveList res = dslJson.deserialize(RecursiveList.class, os.toByteArray(), os.size());
+		Assert.assertEquals(ra.x, res.x);
+		Assert.assertEquals(2, res.rl.size());
+		Assert.assertNull(res.rl.get(1));
+		Assert.assertEquals(7, res.rl.get(0).x);
 	}
 }
