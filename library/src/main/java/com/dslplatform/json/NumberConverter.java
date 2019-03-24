@@ -57,7 +57,7 @@ public abstract class NumberConverter {
 		@Override
 		public double[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
-			if (reader.last() != '[') throw reader.expecting("[");
+			if (reader.last() != '[') throw reader.newParseError("Expecting '[' for double array start");
 			reader.getNextToken();
 			return deserializeDoubleArray(reader);
 		}
@@ -93,7 +93,7 @@ public abstract class NumberConverter {
 		@Override
 		public float[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
-			if (reader.last() != '[') throw reader.expecting("[");
+			if (reader.last() != '[') throw reader.newParseError("Expecting '[' for float array start");
 			reader.getNextToken();
 			return deserializeFloatArray(reader);
 		}
@@ -128,7 +128,7 @@ public abstract class NumberConverter {
 		@Override
 		public int[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
-			if (reader.last() != '[') throw reader.expecting("[");
+			if (reader.last() != '[') throw reader.newParseError("Expecting '[' for int array start");
 			reader.getNextToken();
 			return deserializeIntArray(reader);
 		}
@@ -164,7 +164,7 @@ public abstract class NumberConverter {
 		@Override
 		public short[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
-			if (reader.last() != '[') throw reader.expecting("[");
+			if (reader.last() != '[') throw reader.newParseError("Expecting '[' for short array start");
 			reader.getNextToken();
 			return deserializeShortArray(reader);
 		}
@@ -200,7 +200,7 @@ public abstract class NumberConverter {
 		@Override
 		public long[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
-			if (reader.last() != '[') throw reader.expecting("[");
+			if (reader.last() != '[') throw reader.newParseError("Expecting '[' for long array start");
 			reader.getNextToken();
 			return deserializeLongArray(reader);
 		}
@@ -281,12 +281,20 @@ public abstract class NumberConverter {
 				+ buf[pos + 3] - 48;
 	}
 
-	private static void numberException(final JsonReader reader, final int start, final int end, String message) throws ParsingException {
+	static void numberException(final JsonReader reader, final int start, final int end, String message) throws ParsingException {
 		final int len = end - start;
 		if (len > reader.maxNumberDigits) {
-			throw new ParsingException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len) + ". " + message);
+			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
 		}
-		throw new ParsingException("Error parsing number " + reader.positionDescription(len) + ". " + message);
+		throw reader.newParseErrorWith("Error parsing number", len, "", message, null, ". Error parsing number");
+	}
+
+	static void numberException(final JsonReader reader, final int start, final int end, String message, Object messageArgument) throws ParsingException {
+		final int len = end - start;
+		if (len > reader.maxNumberDigits) {
+			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
+		}
+		throw reader.newParseErrorWith("Error parsing number", len, "", message, messageArgument, ". Error parsing number");
 	}
 
 	public static void serializeNullable(@Nullable final Double value, final JsonWriter sw) {
@@ -303,12 +311,12 @@ public abstract class NumberConverter {
 			end--;
 		}
 		if (end > reader.maxNumberDigits) {
-			throw new ParsingException("Too many digits (" + end + ") detected in number: " + reader.positionDescription(len));
+			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
 		}
 		try {
 			return new BigDecimal(buf, 0, end);
 		} catch (NumberFormatException nfe) {
-			throw new ParsingException("Error parsing number " + reader.positionDescription(len), nfe);
+			throw reader.newParseErrorAt("Error parsing number", len, nfe);
 		}
 	}
 
@@ -355,7 +363,7 @@ public abstract class NumberConverter {
 			}
 			final int newSize = tmp.length * 2;
 			if (newSize > reader.maxNumberDigits) {
-				throw new ParsingException("Unable to read number " + reader.positionDescription(tmp.length) + ". Number of digits larger than " + reader.maxNumberDigits);
+				throw reader.newParseErrorFormat("Too many digits detected in number", tmp.length, "Number of digits larger than %d. Unable to read number", reader.maxNumberDigits);
 			}
 			tmp = Arrays.copyOf(tmp, newSize);
 		}
@@ -395,7 +403,7 @@ public abstract class NumberConverter {
 			final int ind = buf[i] - 48;
 			if (ind < 0 || ind > 9) {
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
-				numberException(reader, start, end, "Unknown digit: " + (char)ch);
+				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}
@@ -443,7 +451,7 @@ public abstract class NumberConverter {
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
 					if (reader.allWhitespace(i, end)) return value / POW_10[i - decPos - 1];
-					numberException(reader, start, end, "Unknown digit: " + (char)buf[i]);
+					numberException(reader, start, end, "Unknown digit", (char)buf[i]);
 				}
 				value = (value << 3) + (value << 1) + ind;
 			}
@@ -465,7 +473,7 @@ public abstract class NumberConverter {
 					if (reader.allWhitespace(i, end)) {
 						return approximateDouble(decimals, value / preciseDividor, i - remPos - decOffset);
 					}
-					numberException(reader, start, end, "Unknown digit: " + (char)buf[i]);
+					numberException(reader, start, end, "Unknown digit", (char)buf[i]);
 				}
 				decimals = (decimals << 3) + (decimals << 1) + ind;
 			}
@@ -535,12 +543,12 @@ public abstract class NumberConverter {
 			end--;
 		}
 		if (end > reader.maxNumberDigits) {
-			throw new ParsingException("Too many digits (" + end + ") detected in double: " + reader.positionDescription(len));
+			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
 		}
 		try {
 			return Double.parseDouble(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new ParsingException("Error parsing number " + reader.positionDescription(len), nfe);
+			throw reader.newParseErrorAt("Error parsing number", len, nfe);
 		}
 	}
 
@@ -629,7 +637,7 @@ public abstract class NumberConverter {
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
-				numberException(reader, start, end, "Unknown digit: " + (char)ch);
+				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}
@@ -668,7 +676,7 @@ public abstract class NumberConverter {
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
 					if (reader.allWhitespace(i, end)) return (float) (value / POW_10[i - decPos - pointOffset]);
-					numberException(reader, start, end, "Unknown digit: " + (char) ch);
+					numberException(reader, start, end, "Unknown digit", (char) ch);
 				}
 				value = (value << 3) + (value << 1) + ind;
 			}
@@ -727,12 +735,12 @@ public abstract class NumberConverter {
 			end--;
 		}
 		if (end > reader.maxNumberDigits) {
-			throw new ParsingException("Too many digits (" + end + ") detected in float: " + reader.positionDescription(len));
+			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
 		}
 		try {
 			return Float.parseFloat(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new ParsingException("Error parsing number " + reader.positionDescription(len), nfe);
+			throw reader.newParseErrorAt("Error parsing number", len, nfe);
 		}
 	}
 
@@ -859,7 +867,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).shortValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new ParsingException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
+				throw reader.newParseErrorAt("Short overflow detected", reader.getCurrentIndex() - position);
 			}
 		}
 		final int start = reader.scanNumber();
@@ -870,7 +878,7 @@ public abstract class NumberConverter {
 				? parseNegativeInt(buf, reader, start, end)
 				: parsePositiveInt(buf, reader, start, end, 0);
 		if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
-			throw new ParsingException("Short overflow detected " + reader.positionDescription(reader.getCurrentIndex()));
+			throw reader.newParseErrorAt("Short overflow detected", reader.getCurrentIndex());
 		}
 		return (short)value;
 	}
@@ -882,7 +890,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).intValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new ParsingException("Integer overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
+				throw reader.newParseErrorAt("Integer overflow detected", reader.getCurrentIndex() - position);
 			}
 		}
 		final int start = reader.scanNumber();
@@ -905,7 +913,7 @@ public abstract class NumberConverter {
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
 				else if (i == end - 1 && buf[i] == '.') numberException(reader, start, end, "Number ends with a dot");
 				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader);
-				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value: " + v);
+				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value", v);
 				return v.intValue();
 
 			}
@@ -927,7 +935,7 @@ public abstract class NumberConverter {
 				if (i > start + 1 && reader.allWhitespace(i, end)) return value;
 				else if (i == end - 1 && buf[i] == '.') numberException(reader, start, end, "Number ends with a dot");
 				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader);
-				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value: " + v);
+				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value", v);
 				return v.intValue();
 			}
 			value = (value << 3) + (value << 1) - ind;
@@ -1210,7 +1218,7 @@ public abstract class NumberConverter {
 			try {
 				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).longValueExact();
 			} catch (ArithmeticException ignore) {
-				throw new ParsingException("Long overflow detected " + reader.positionDescription(reader.getCurrentIndex() - position));
+				throw reader.newParseErrorAt("Long overflow detected", reader.getCurrentIndex() - position);
 			}
 		}
 		final int start = reader.scanNumber();
@@ -1256,7 +1264,7 @@ public abstract class NumberConverter {
 		final char[] buf = reader.prepareBuffer(start, len);
 		if (len > 0 && buf[len - 1] == '.') numberException(reader, start, end, "Number ends with a dot");
 		final BigDecimal v = parseNumberGeneric(buf, len, reader);
-		if (v.scale() > 0) numberException(reader, start, end, "Expecting long, but found decimal value: " + v);
+		if (v.scale() > 0) numberException(reader, start, end, "Expecting long, but found decimal value ", v);
 		return v.longValue();
 	}
 
@@ -1326,7 +1334,7 @@ public abstract class NumberConverter {
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
 				if (i > start + offset && reader.allWhitespace(i, end)) return BigDecimal.valueOf(value);
-				numberException(reader, start, end, "Unknown digit: " + (char)ch);
+				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}
@@ -1342,7 +1350,7 @@ public abstract class NumberConverter {
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
 					if (reader.allWhitespace(i, end)) return BigDecimal.valueOf(value, i - dp);
-					numberException(reader, start, end, "Unknown digit: " + (char)ch);
+					numberException(reader, start, end, "Unknown digit", (char)ch);
 				}
 				value = (value << 3) + (value << 1) + ind;
 			}
@@ -1388,7 +1396,7 @@ public abstract class NumberConverter {
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
 				if (i > start + 1 && reader.allWhitespace(i, end)) return BigDecimal.valueOf(value);
-				numberException(reader, start, end, "Unknown digit: " + (char)ch);
+				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) - ind;
 		}
@@ -1404,7 +1412,7 @@ public abstract class NumberConverter {
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
 					if (reader.allWhitespace(i, end)) return BigDecimal.valueOf(value, i - dp);
-					numberException(reader, start, end, "Unknown digit: " + (char)ch);
+					numberException(reader, start, end, "Unknown digit", (char)ch);
 				}
 				value = (value << 3) + (value << 1) - ind;
 			}

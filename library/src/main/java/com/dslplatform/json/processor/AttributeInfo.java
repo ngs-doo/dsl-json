@@ -35,7 +35,7 @@ public class AttributeInfo {
 	public final boolean isSet;
 	public final boolean isMap;
 	public final boolean isGeneric;
-	public final Set<TypeMirror> usedTypes;
+	public final LinkedHashSet<TypeMirror> usedTypes;
 	public final Map<String, Integer> typeVariablesIndex;
 	public final boolean containsStructOwnerType;
 
@@ -58,7 +58,7 @@ public class AttributeInfo {
 			JsonAttribute.IncludePolicy includeToMinimal,
 			@Nullable ConverterInfo converter,
 			boolean isJsonObject,
-			Set<TypeMirror> usedTypes,
+			LinkedHashSet<TypeMirror> usedTypes,
 			Map<String, Integer> typeVariablesIndex,
 			boolean containsStructOwnerType) {
 		this.id = alias != null ? alias : name;

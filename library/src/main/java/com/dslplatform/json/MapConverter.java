@@ -42,17 +42,13 @@ public abstract class MapConverter {
 	}
 
 	public static Map<String, String> deserialize(final JsonReader reader) throws IOException {
-		if (reader.last() != '{') {
-			throw new ParsingException("Expecting '{' " + reader.positionDescription() + ". Found " + (char) reader.last());
-		}
+		if (reader.last() != '{') throw reader.newParseError("Expecting '{' for map start");
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new LinkedHashMap<String, String>(0);
 		final LinkedHashMap<String, String> res = new LinkedHashMap<String, String>();
 		String key = StringConverter.deserialize(reader);
 		nextToken = reader.getNextToken();
-		if (nextToken != ':') {
-			throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
-		}
+		if (nextToken != ':') throw reader.newParseError("Expecting ':' after attribute name");
 		reader.getNextToken();
 		String value = StringConverter.deserializeNullable(reader);
 		res.put(key, value);
@@ -60,16 +56,12 @@ public abstract class MapConverter {
 			reader.getNextToken();
 			key = StringConverter.deserialize(reader);
 			nextToken = reader.getNextToken();
-			if (nextToken != ':') {
-				throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char) nextToken);
-			}
+			if (nextToken != ':') throw reader.newParseError("Expecting ':' after attribute name");
 			reader.getNextToken();
 			value = StringConverter.deserializeNullable(reader);
 			res.put(key, value);
 		}
-		if (nextToken != '}') {
-			throw new ParsingException("Expecting '}' " + reader.positionDescription() + ". Found " + (char) nextToken);
-		}
+		if (nextToken != '}') throw reader.newParseError("Expecting '}' for map end");
 		return res;
 	}
 

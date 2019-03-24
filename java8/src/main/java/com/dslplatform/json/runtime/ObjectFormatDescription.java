@@ -14,6 +14,8 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
 	private final long mandatoryFlag;
+	private final String startError;
+	private final String endError;
 
 	private static final Settings.Function identity = new Settings.Function() {
 		@Override
@@ -52,6 +54,8 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 		this.skipOnUnknown = skipOnUnknown;
 		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
 		this.hasMandatory = mandatoryFlag != 0;
+		this.startError = String.format("Expecting '{' to start decoding %s", manifest.getTypeName());
+		this.endError = String.format("Expecting '}' or ',' while decoding %s", manifest.getTypeName());
 	}
 
 	@Nullable
@@ -59,7 +63,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		else if (reader.last() != '{') {
-			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startError);
 		}
 		reader.getNextToken();
 		return readContent(reader);
@@ -68,7 +72,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	@Override
 	public B bind(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() != '{') {
-			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " while binding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startError);
 		}
 		reader.getNextToken();
 		bindContent(reader, instance);
@@ -100,7 +104,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
+				throw reader.newParseErrorWith("Null value found for non-null attribute", ri.name);
 			}
 			ri.value.bind(reader, instance);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -120,7 +124,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
+				throw reader.newParseErrorWith("Null value found for non-null attribute", ri.name);
 			}
 			ri.value.bind(reader, instance);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -140,7 +144,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 				}
 				reader.getNextToken();
 				if (ri.nonNull && reader.wasNull()) {
-					throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
+					throw reader.newParseErrorWith("Null value found for non-null attribute", ri.name);
 				}
 				ri.value.bind(reader, instance);
 				currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -160,7 +164,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 				reader.fillNameWeakHash();
 				bindObjectSlow(reader, instance, currentMandatory);
 				return;
-			} else throw new ParsingException("Expecting '}' or ',' " + reader.positionDescription() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			} else throw reader.newParseError(endError);
 		}
 		if (hasMandatory && currentMandatory != 0) {
 			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
@@ -170,7 +174,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	private void skip(final JsonReader reader) throws IOException {
 		if (!skipOnUnknown) {
 			final String name = reader.getLastName();
-			throw new ParsingException("Unknown property detected: '" + name + "' while reading " + manifest.getTypeName() + " " + reader.positionDescription(name.length() + 3));
+			throw reader.newParseErrorFormat("Unknown property detected", name.length() + 3, "Unknown property detected: '%s' while reading %s", name, manifest.getTypeName());
 		}
 		reader.getNextToken();
 		reader.skip();

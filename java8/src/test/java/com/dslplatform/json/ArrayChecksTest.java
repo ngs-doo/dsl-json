@@ -53,7 +53,7 @@ public class ArrayChecksTest {
 			dslJson.deserialize(MyClass.class, bytes, bytes.length);
 			Assert.fail("Expecting exception");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Expecting ']' at position: 10, following: `[1,\"t\",3,4` while decoding com.dslplatform.json.ArrayChecksTest$MyClass. Found 4"));
+			Assert.assertEquals("Expecting ']' to end decoding com.dslplatform.json.ArrayChecksTest$MyClass. Found 4 at position: 9, following: `[1,\"t\",3,`, before: `4]`", ex.getMessage());
 		}
 	}
 }

@@ -1,10 +1,9 @@
 package com.dslplatform.json.runtime;
 
+import com.dslplatform.json.ConfigurationException;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.ParsingException;
-import com.dslplatform.json.SerializationException;
 
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -78,7 +77,7 @@ public class DecodePropertyInfo<T> {
 			if (ri.mandatory) {
 				ri = decoders[i];
 				if (mandatoryIndex > 63) {
-					throw new SerializationException("Only up to 64 mandatory properties are supported");
+					throw new ConfigurationException("Only up to 64 mandatory properties are supported");
 				}
 				decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, true, ~(1 << mandatoryIndex), ri.index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
 				mandatoryIndex++;
@@ -131,8 +130,7 @@ public class DecodePropertyInfo<T> {
 			}
 		}
 		sb.setLength(sb.length() - 2);
-		sb.append(") not found ");
-		sb.append(reader.positionDescription());
-		throw new ParsingException(sb.toString());
+		sb.append(") not found");
+		throw reader.newParseErrorAt(sb.toString(), 1);
 	}
 }

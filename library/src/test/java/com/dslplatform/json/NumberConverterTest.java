@@ -689,7 +689,7 @@ public class NumberConverterTest {
 			res = NumberConverter.deserializeDouble(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
-			Assert.assertTrue(ex.getMessage().startsWith(error));
+			Assert.assertTrue(ex.getMessage().contains(error));
 		}
 		return res;
 	}
@@ -700,7 +700,7 @@ public class NumberConverterTest {
 			res = NumberConverter.deserializeFloat(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
-			Assert.assertTrue(ex.getMessage().startsWith(error));
+			Assert.assertTrue(ex.getMessage().contains(error));
 		}
 		return res;
 	}
@@ -711,7 +711,7 @@ public class NumberConverterTest {
 			res = NumberConverter.deserializeDecimal(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
-			Assert.assertTrue(ex.getMessage().startsWith(error));
+			Assert.assertTrue(ex.getMessage().contains(error));
 		}
 		return res;
 	}
@@ -722,7 +722,7 @@ public class NumberConverterTest {
 			res = NumberConverter.deserializeInt(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
-			Assert.assertTrue(ex.getMessage().startsWith(error));
+			Assert.assertTrue(ex.getMessage().contains(error));
 		}
 		return res;
 	}
@@ -733,7 +733,7 @@ public class NumberConverterTest {
 			res = NumberConverter.deserializeLong(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
-			Assert.assertTrue(ex.getMessage().startsWith(error));
+			Assert.assertTrue(ex.getMessage().contains(error));
 		}
 		return res;
 	}
@@ -744,7 +744,7 @@ public class NumberConverterTest {
 			res = NumberConverter.deserializeNumber(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
-			Assert.assertTrue(ex.getMessage().startsWith(error));
+			Assert.assertTrue(ex.getMessage().contains(error));
 		}
 		return res;
 	}

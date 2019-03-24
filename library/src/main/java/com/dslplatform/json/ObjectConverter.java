@@ -58,17 +58,17 @@ public abstract class ObjectConverter {
 		switch (reader.last()) {
 			case 'n':
 				if (!reader.wasNull()) {
-					throw reader.expecting("null");
+					throw reader.newParseErrorAt("Expecting 'null' for null constant", 0);
 				}
 				return null;
 			case 't':
 				if (!reader.wasTrue()) {
-					throw reader.expecting("true");
+					throw reader.newParseErrorAt("Expecting 'true' for true constant", 0);
 				}
 				return true;
 			case 'f':
 				if (!reader.wasFalse()) {
-					throw reader.expecting("false");
+					throw reader.newParseErrorAt("Expecting 'false' for false constant", 0);
 				}
 				return false;
 			case '"':
@@ -83,9 +83,7 @@ public abstract class ObjectConverter {
 	}
 
 	public static ArrayList<Object> deserializeList(final JsonReader reader) throws IOException {
-		if (reader.last() != '[') {
-			throw reader.expecting("[");
-		}
+		if (reader.last() != '[') throw reader.newParseError("Expecting '[' for list start");
 		byte nextToken = reader.getNextToken();
 		if (nextToken == ']') return new ArrayList<Object>(0);
 		final ArrayList<Object> res = new ArrayList<Object>(4);
@@ -94,16 +92,12 @@ public abstract class ObjectConverter {
 			reader.getNextToken();
 			res.add(deserializeObject(reader));
 		}
-		if (nextToken != ']') {
-			throw reader.expecting("]", nextToken);
-		}
+		if (nextToken != ']') throw reader.newParseError("Expecting ']' for list end");
 		return res;
 	}
 
 	public static LinkedHashMap<String, Object> deserializeMap(final JsonReader reader) throws IOException {
-		if (reader.last() != '{') {
-			throw reader.expecting("{");
-		}
+		if (reader.last() != '{') throw reader.newParseError("Expecting '{' for map start");
 		byte nextToken = reader.getNextToken();
 		if (nextToken == '}') return new LinkedHashMap<String, Object>(0);
 		final LinkedHashMap<String, Object> res = new LinkedHashMap<String, Object>();
@@ -114,9 +108,7 @@ public abstract class ObjectConverter {
 			key = reader.readKey();
 			res.put(key, deserializeObject(reader));
 		}
-		if (nextToken != '}') {
-			throw reader.expecting("}", nextToken);
-		}
+		if (nextToken != '}') throw reader.newParseError("Expecting '}' for map end");
 		return res;
 	}
 

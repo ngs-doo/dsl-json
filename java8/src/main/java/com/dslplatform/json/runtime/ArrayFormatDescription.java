@@ -3,7 +3,6 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.Nullable;
-import com.dslplatform.json.ParsingException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -16,6 +15,9 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 	private final boolean isEmpty;
 	private final JsonWriter.WriteObject[] encoders;
 	private final JsonReader.BindObject[] decoders;
+	private final String startError;
+	private final String endError;
+	private final String countError;
 
 	private static final Settings.Function identity = new Settings.Function() {
 		@Override
@@ -50,6 +52,9 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 		this.isEmpty = encoders.length == 0;
 		this.encoders = encoders.clone();
 		this.decoders = decoders.clone();
+		this.startError = String.format("Expecting '[' to start decoding %s", manifest.getTypeName());
+		this.endError = String.format("Expecting ']' to end decoding %s", manifest.getTypeName());
+		this.countError = String.format("Expecting to read %d elements in the array while decoding %s", decoders.length, manifest.getTypeName());
 	}
 
 	@Override
@@ -90,9 +95,7 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 
 	@Override
 	public B bind(final JsonReader reader, final B instance) throws IOException {
-		if (reader.last() != '[') {
-			throw new ParsingException("Expecting '[' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
-		}
+		if (reader.last() != '[') throw reader.newParseError(startError);
 		reader.getNextToken();
 		bindContent(reader, instance);
 		return instance;
@@ -114,10 +117,8 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 			else break;
 		}
 		if (i != decoders.length) {
-			throw new ParsingException("Expecting to read " + decoders.length + " elements in the array while decoding " + manifest.getTypeName() + ". Read only: " +  i + " at position: " + reader.positionInStream());
+			throw reader.newParseErrorWith(countError, 0, countError, ". Read only: ", i, "");
 		}
-		if (reader.last() != ']') {
-			throw new ParsingException("Expecting ']' " + reader.positionDescription() + " while decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
-		}
+		if (reader.last() != ']') throw reader.newParseError(endError, 1);
 	}
 }

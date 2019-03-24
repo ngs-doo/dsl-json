@@ -20,16 +20,6 @@ public abstract class BigIntegerConverter {
 		}
 	};
 
-	private static void numberException(final JsonReader reader, final int start, final int end, String message) throws IOException {
-		final int len = end - start;
-		final char[] buf = reader.prepareBuffer(reader.getCurrentIndex() - len, len);
-		if (len < reader.maxNumberDigits) {
-			final NumberFormatException error = new NumberFormatException(new String(buf, 0, len));
-			throw new ParsingException("Error parsing number " + reader.positionDescription(len) + ". " + message, error);
-		}
-		throw new ParsingException("Error parsing number " + reader.positionDescription(len) + ". " + message);
-	}
-
 	private static BigInteger parseNumberGeneric(final char[] buf, final int len, final JsonReader reader) throws ParsingException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
@@ -38,7 +28,7 @@ public abstract class BigIntegerConverter {
 		try {
 			return new BigInteger(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw new ParsingException("Error parsing number " + reader.positionDescription(len), nfe);
+			throw reader.newParseErrorAt("Error parsing number", len, nfe);
 		}
 	}
 
@@ -65,8 +55,9 @@ public abstract class BigIntegerConverter {
 				}
 			}
 			final int newSize = tmp.length * 2;
-			//TODO: use position description instead
-			if (newSize > reader.maxNumberDigits) throw new ParsingException("Unable to read number at: " + position + ". Number of digits larger than " + reader.maxNumberDigits);
+			if (newSize > reader.maxNumberDigits) {
+				throw reader.newParseErrorFormat("Too many digits detected in number", tmp.length, "Number of digits larger than %d. Unable to read number", reader.maxNumberDigits);
+			}
 			tmp = Arrays.copyOf(tmp, newSize);
 		}
 		return new NumberInfo(tmp, i);
@@ -104,24 +95,24 @@ public abstract class BigIntegerConverter {
 		long value = 0;
 		if (ch == '-') {
 			i = start + 1;
-			if (i == end) numberException(reader, start, end, "Digit not found");
+			if (i == end) NumberConverter.numberException(reader, start, end, "Digit not found");
 			for (; i < end; i++) {
 				final int ind = buf[i] - 48;
 				if (ind < 0 || ind > 9) {
 					if (i > start + 1 && reader.allWhitespace(i, end)) return BigInteger.valueOf(value);
-					numberException(reader, start, end, "Unknown digit: " + (char)ch);
+					NumberConverter.numberException(reader, start, end, "Unknown digit", (char)ch);
 				}
 				value = (value << 3) + (value << 1) - ind;
 			}
 			return BigInteger.valueOf(value);
 		}
-		if (i == end) numberException(reader, start, end, "Digit not found");
+		if (i == end) NumberConverter.numberException(reader, start, end, "Digit not found");
 		for (; i < end; i++) {
 			final int ind = buf[i] - 48;
 			if (ind < 0 || ind > 9) {
 				if (ch == '+' && i > start + 1 && reader.allWhitespace(i, end)) return BigInteger.valueOf(value);
 				else if (ch != '+' && i > start && reader.allWhitespace(i, end)) return BigInteger.valueOf(value);
-				numberException(reader, start, end, "Unknown digit: " + (char)ch);
+				NumberConverter.numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}

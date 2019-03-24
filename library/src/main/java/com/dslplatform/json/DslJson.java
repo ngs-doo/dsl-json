@@ -90,6 +90,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	private final int settingsReaders;
 	protected final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new CopyOnWriteArrayList<ConverterFactory<JsonReader.BindObject>>();
 	private final int settingsBinders;
+	private final JsonReader.ErrorInfo errorInfo;
 	private final JsonReader.DoublePrecision doublePrecision;
 	private final JsonReader.UnknownNumberParsing unknownNumbers;
 	private final int maxNumberDigits;
@@ -129,6 +130,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private StringCache keyCache = new SimpleStringCache();
 		private StringCache valuesCache;
 		private int fromServiceLoader;
+		private JsonReader.ErrorInfo errorInfo = JsonReader.ErrorInfo.WITH_STACK_TRACE;
 		private JsonReader.DoublePrecision doublePrecision = JsonReader.DoublePrecision.DEFAULT;
 		private JsonReader.UnknownNumberParsing unknownNumbers = JsonReader.UnknownNumberParsing.LONG_AND_BIGDECIMAL;
 		private int maxNumberDigits = 512;
@@ -336,6 +338,18 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		/**
 		 * By default doubles are not deserialized into an exact value in some rare edge cases.
 		 *
+		 * @param errorInfo information about error in parsing exception
+		 * @return itself
+		 */
+		public Settings<TContext> errorInfo(JsonReader.ErrorInfo errorInfo) {
+			if (errorInfo == null) throw new IllegalArgumentException("errorInfo can't be null");
+			this.errorInfo = errorInfo;
+			return this;
+		}
+
+		/**
+		 * By default doubles are not deserialized into an exact value in some rare edge cases.
+		 *
 		 * @param precision type of double deserialization
 		 * @return itself
 		 */
@@ -471,7 +485,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.localReader = new ThreadLocal<JsonReader>() {
 			@Override
 			protected JsonReader initialValue() {
-				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self, self.doublePrecision, self.unknownNumbers, self.maxNumberDigits, self.maxStringSize);
+				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self, self.errorInfo, self.doublePrecision, self.unknownNumbers, self.maxNumberDigits, self.maxStringSize);
 			}
 		};
 		this.context = settings.context;
@@ -481,6 +495,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.keyCache = settings.keyCache;
 		this.valuesCache = settings.valuesCache;
 		this.unknownNumbers = settings.unknownNumbers;
+		this.errorInfo = settings.errorInfo;
 		this.doublePrecision = settings.doublePrecision;
 		this.maxNumberDigits = settings.maxNumberDigits;
 		this.maxStringSize = settings.maxStringBuffer;
@@ -688,7 +703,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader() {
-		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -700,7 +715,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes) {
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -713,7 +728,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
-		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 
@@ -729,7 +744,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length, char[] tmp) {
-		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -761,7 +776,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	@Deprecated
 	public JsonReader<TContext> newReader(String input) {
 		final byte[] bytes = input.getBytes(UTF8);
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	private static void loadDefaultConverters(final DslJson json, Set<ClassLoader> loaders, final String name) {
@@ -1539,7 +1554,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				if (json.wasNull()) {
 					return null;
 				} else if (json.last() != '[') {
-					throw json.expecting("[");
+					throw json.newParseError("Expecting '[' for array start");
 				}
 				final Class<?> elementManifest = manifest.getComponentType();
 				final List<?> list = deserializeList(elementManifest, body, size);
@@ -1616,7 +1631,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 					if (json.wasNull()) {
 						return null;
 					} else if (json.last() != '[') {
-						throw json.expecting("[");
+						throw json.newParseError("Expecting '[' for array start");
 					}
 					if (json.getNextToken() == ']') {
 						if (container.isArray()) {
@@ -1638,7 +1653,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (json.wasNull()) {
 				return null;
 			} else if (json.last() != '[') {
-				throw json.expecting("[");
+				throw json.newParseError("Expecting '[' for array start");
 			}
 			final Type content = ((GenericArrayType) manifest).getGenericComponentType();
 			if (json.getNextToken() == ']') {
@@ -1714,12 +1729,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			final Class<TResult> manifest,
 			final byte[] body,
 			final int size) throws IOException {
-		if (manifest == null) {
-			throw new IllegalArgumentException("manifest can't be null");
-		}
-		if (body == null) {
-			throw new IllegalArgumentException("body can't be null");
-		}
+		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (body == null) throw new IllegalArgumentException("body can't be null");
 		if (size == 4 && body[0] == 'n' && body[1] == 'u' && body[2] == 'l' && body[3] == 'l') {
 			return null;
 		} else if (size == 2 && body[0] == '[' && body[1] == ']') {
@@ -1731,7 +1742,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				if (json.wasNull()) {
 					return null;
 				}
-				throw json.expecting("[");
+				throw json.newParseError("Expecting '[' for list start");
 			}
 			if (json.getNextToken() == ']') {
 				return new ArrayList<TResult>(0);
@@ -1797,15 +1808,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			final Class<TResult> manifest,
 			final InputStream stream,
 			final byte[] buffer) throws IOException {
-		if (manifest == null) {
-			throw new IllegalArgumentException("manifest can't be null");
-		}
-		if (stream == null) {
-			throw new IllegalArgumentException("stream can't be null");
-		}
-		if (buffer == null) {
-			throw new IllegalArgumentException("buffer can't be null");
-		}
+		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (stream == null) throw new IllegalArgumentException("stream can't be null");
+		if (buffer == null) throw new IllegalArgumentException("buffer can't be null");
 		return deserializeList(manifest, newReader(stream, buffer), stream);
 	}
 
@@ -1831,13 +1836,9 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public <TResult> List<TResult> deserializeList(
 			final Class<TResult> manifest,
 			final InputStream stream) throws IOException {
-		if (manifest == null) {
-			throw new IllegalArgumentException("manifest can't be null");
-		}
-		if (stream == null) {
-			throw new IllegalArgumentException("stream can't be null");
-		}
-		//
+		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (stream == null) throw new IllegalArgumentException("stream can't be null");
+
 		final JsonReader json = localReader.get().process(stream);
 		try {
 			return deserializeList(manifest, json, stream);
@@ -1856,7 +1857,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (json.wasNull()) {
 				return null;
 			}
-			throw json.expecting("[");
+			throw json.newParseError("Expecting '[' for list start");
 		}
 		if (json.getNextToken() == ']') {
 			return new ArrayList<TResult>(0);
@@ -1980,7 +1981,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (json.wasNull()) {
 				return null;
 			} else if (json.last() != '[') {
-				throw json.expecting("[");
+				throw json.newParseError("Expecting '[' for array start");
 			}
 			final Class<?> elementManifest = manifest.getComponentType();
 			if (json.getNextToken() == ']') {
@@ -2240,7 +2241,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			if (json.wasNull()) {
 				return null;
 			}
-			throw json.expecting("[");
+			throw json.newParseError("Expecting '[' for iterator start");
 		}
 		if (json.getNextToken() == ']') {
 			return EMPTY_ITERATOR;
@@ -2283,7 +2284,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			@Override
 			public T read(JsonReader reader) throws IOException {
 				if (reader.wasNull()) return null;
-				else if (reader.last() != '{') throw reader.expecting("{");
+				else if (reader.last() != '{') throw reader.newParseError("Expecting '{' for object start");
 				reader.getNextToken();
 				return decoder.deserialize(reader);
 			}

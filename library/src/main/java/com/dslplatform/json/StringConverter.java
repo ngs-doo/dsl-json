@@ -78,7 +78,7 @@ public abstract class StringConverter {
 	@Nullable
 	public static String deserializeNullable(final JsonReader reader) throws IOException {
 		if (reader.last() == 'n') {
-			if (!reader.wasNull()) throw new ParsingException("Expecting 'null' " + reader.positionDescription() + ". Found " + (char)reader.last());
+			if (!reader.wasNull()) throw reader.newParseErrorAt("Expecting 'null' for null constant", 0);
 			return null;
 		}
 		return reader.readString();

@@ -67,7 +67,7 @@ public abstract class XmlConverter {
 				InputSource source = new InputSource(new StringReader(reader.readString()));
 				return documentBuilder.parse(source).getDocumentElement();
 			} catch (SAXException ex) {
-				throw new ParsingException(ex);
+				throw reader.newParseErrorAt("Invalid XML value", 0, ex);
 			}
 		} else {
 			final Map<String, Object> map = ObjectConverter.deserializeMap(reader);
@@ -77,7 +77,9 @@ public abstract class XmlConverter {
 
 	public static Element mapToXml(final Map<String, Object> map) throws IOException {
 		final Set<String> xmlRootElementNames = map.keySet();
-		if (xmlRootElementNames.size() > 1) throw new ParsingException("Invalid XML. Expecting root element");
+		if (xmlRootElementNames.size() > 1) {
+			throw ParsingException.create("Invalid XML. Expecting root element", true);
+		}
 		final String rootName = xmlRootElementNames.iterator().next();
 		final Document document = createDocument();
 		final Element rootElement = document.createElement(rootName);

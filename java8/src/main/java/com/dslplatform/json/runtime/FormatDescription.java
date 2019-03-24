@@ -19,6 +19,11 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 	final int typeHash;
 	final byte[] typeName;
 	final byte[] quotedTypeName;
+	private final String startErrorBoth;
+	private final String startErrorObject;
+	private final String startErrorArray;
+	private final String formatErrorObject;
+	private final String formatErrorArray;
 
 	public FormatDescription(
 			final Type manifest,
@@ -48,6 +53,11 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 		this.typeName = name.getBytes(utf8);
 		this.quotedTypeName = ("\"" + name + "\"").getBytes(utf8);
 		this.typeHash = DecodePropertyInfo.calcHash(name);
+		this.startErrorBoth = String.format("Expecting '{' or '[' to start decoding %s", manifest.getTypeName());
+		this.startErrorObject = String.format("Expecting '{' to start decoding %s", manifest.getTypeName());
+		this.startErrorArray = String.format("Expecting '[' to start decoding %s", manifest.getTypeName());
+		this.formatErrorObject = String.format("Object format for %s is not defined", manifest.getTypeName());
+		this.formatErrorArray = String.format("Array format for %s is not defined", manifest.getTypeName());
 	}
 
 	public final void write(final JsonWriter writer, @Nullable final T instance) {
@@ -64,35 +74,35 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		if (reader.last() == '{') {
-			if (objectFormat == null) throw new ConfigurationException("Object format for " + manifest.getTypeName() + " is not defined");
+			if (objectFormat == null) throw reader.newParseError(formatErrorObject);
 			return objectFormat.read(reader);
 		} else if (reader.last() == '[') {
-			if (arrayFormat == null) throw new ConfigurationException("Array format for " + manifest.getTypeName() + " is not defined");
+			if (arrayFormat == null) throw reader.newParseError(formatErrorArray);
 			return arrayFormat.read(reader);
 		} else if (objectFormat != null && arrayFormat != null) {
-			throw new ParsingException("Expecting '{' or '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startErrorBoth);
 		} else if (objectFormat != null) {
-			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startErrorObject);
 		} else {
-			throw new ParsingException("Expecting '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startErrorArray);
 		}
 	}
 
 	public T bind(final JsonReader reader, final T instance) throws IOException {
 		if (reader.last() == '{') {
-			if (objectFormat == null) throw new ConfigurationException("Object format for " + manifest.getTypeName() + " is not defined");
+			if (objectFormat == null) throw reader.newParseError(formatErrorObject);
 			if (objectBinder == null) throw new ConfigurationException(manifest.getTypeName() + " does not support binding");
 			return objectBinder.bind(reader, instance);
 		} else if (reader.last() == '[') {
-			if (arrayFormat == null) throw new ConfigurationException("Array format for " + manifest.getTypeName() + " is not defined");
+			if (arrayFormat == null) throw reader.newParseError(formatErrorArray);
 			if (arrayBinder == null) throw new ConfigurationException(manifest.getTypeName() + " does not support binding");
 			return arrayBinder.bind(reader, instance);
 		} else if (objectFormat != null && arrayFormat != null) {
-			throw new ParsingException("Expecting '{' or '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startErrorBoth);
 		} else if (objectFormat != null) {
-			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startErrorObject);
 		} else {
-			throw new ParsingException("Expecting '[' " + reader.positionDescription() + " for decoding " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startErrorArray);
 		}
 	}
 }

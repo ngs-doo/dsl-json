@@ -41,7 +41,7 @@ public class BindingChecksTest {
 			dslJson.deserialize(MyClass.class, "{}".getBytes(), 2);
 			Assert.fail("Expecting exception");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Mandatory properties (x, y) not found at position: 2"));
+			Assert.assertEquals("Mandatory properties (x, y) not found at position: 1, following: `{`, before: `}`", ex.getMessage());
 		}
 	}
 
@@ -52,7 +52,7 @@ public class BindingChecksTest {
 			dslJson.deserialize(MyClass.class, bytes, bytes.length);
 			Assert.fail("Expecting exception");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Mandatory property (y) not found at position: 7"));
+			Assert.assertEquals("Mandatory property (y) not found at position: 6, following: `{\"x\":4`, before: `}`", ex.getMessage());
 		}
 	}
 

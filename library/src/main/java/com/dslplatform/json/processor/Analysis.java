@@ -851,7 +851,7 @@ public class Analysis {
 			boolean hasOwnerStructType = false;
 			Map<String, Integer> typeVariablesIndex = new HashMap<String, Integer>();
 			Map<String, PartKind> references = new HashMap<String, PartKind>();
-			Set<TypeMirror> usedTypes = new HashSet<TypeMirror>();
+			LinkedHashSet<TypeMirror> usedTypes = new LinkedHashSet<TypeMirror>();
 			analyzePartsRecursively(referenceType, references, usedTypes);
 
 			if (!typeResolved || info.isParameterized) {

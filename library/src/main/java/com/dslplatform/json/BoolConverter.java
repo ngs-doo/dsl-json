@@ -33,7 +33,7 @@ public abstract class BoolConverter {
 		@Override
 		public boolean[] read(JsonReader reader) throws IOException {
 			if (reader.wasNull()) return null;
-			if (reader.last() != '[') throw reader.expecting("[");
+			if (reader.last() != '[') throw reader.newParseError("Expecting '[' for boolean array start");
 			reader.getNextToken();
 			return deserializeBoolArray(reader);
 		}
@@ -84,7 +84,7 @@ public abstract class BoolConverter {
 		} else if (reader.wasFalse()) {
 			return false;
 		}
-		throw new ParsingException("Found invalid boolean value " + reader.positionDescription());
+		throw reader.newParseErrorAt("Found invalid boolean value", 0);
 	}
 
 	public static boolean[] deserializeBoolArray(final JsonReader reader) throws IOException {

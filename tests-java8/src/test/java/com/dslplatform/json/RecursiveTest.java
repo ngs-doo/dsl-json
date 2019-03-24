@@ -1,6 +1,8 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -34,7 +36,26 @@ public class RecursiveTest {
 		public List<RecursiveList> rl;
 	}
 
+	@CompiledJson
+	public static class RecursiveAll {
+		public RecursiveAll r1;
+		public List<RecursiveAll> r2;
+		public Set<RecursiveAll> r3;
+		public Map<String, RecursiveAll> r4;
+		public Map<String, List<RecursiveAll>[]>[] r5;
+		public List<RecursiveAll[]>[] r6;
+	}
+
+	@CompiledJson
+	public static class RecursiveWithWrapper {
+		public RecursiveListWrapper r = new RecursiveListWrapper();
+	}
+
+	public static class RecursiveListWrapper extends ArrayList<RecursiveList> {
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>();
+	private final DslJson<Object> dslJsonRuntime = new DslJson<>(Settings.basicSetup());
 
 	@Test
 	public void nullObjectRoundtrip() throws IOException {
@@ -129,7 +150,7 @@ public class RecursiveTest {
 				for (Recursive r : parsed) {
 					if (r.x == id) return r;
 				}
-				throw new ParsingException("Unable to find recursive with id: " + id);
+				throw reader.newParseErrorAt("Unable to find recursive with id: " + id, 0);
 			}
 		});
 		Recursive r1 = new Recursive();
@@ -162,5 +183,23 @@ public class RecursiveTest {
 		Assert.assertEquals(2, res.rl.size());
 		Assert.assertNull(res.rl.get(1));
 		Assert.assertEquals(7, res.rl.get(0).x);
+	}
+
+	//TODO: support for custom lists
+	@Ignore
+	@Test
+	public void recursiveWrapperWithRuntime() throws IOException {
+		RecursiveWithWrapper ra = new RecursiveWithWrapper();
+		RecursiveList rs = new RecursiveList();
+		rs.x = 5;
+		ra.r.add(rs);
+		ra.r.add(null);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonRuntime.serialize(ra, os);
+		Assert.assertEquals("{\"r\":[{\"x\":5,\"rl\":null},null]}", os.toString());
+		RecursiveWithWrapper res = dslJson.deserialize(RecursiveWithWrapper.class, os.toByteArray(), os.size());
+		Assert.assertEquals(2, res.r.size());
+		Assert.assertNull(res.r.get(1));
+		Assert.assertEquals(5, res.r.get(0).x);
 	}
 }

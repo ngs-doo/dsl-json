@@ -365,7 +365,7 @@ class ConverterTemplate {
 		writeObject(si, className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" bind(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance) throws java.io.IOException {\n");
-		code.append("\t\t\tif (reader.last() != '{') throw new com.dslplatform.json.ParsingException(\"Expecting '{' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '{') throw reader.newParseError(\"Expecting '{' for object start\");\n");
 		code.append("\t\t\treader.getNextToken();\n");
 		code.append("\t\t\tbindContent(reader, instance);\n");
 		code.append("\t\t\treturn instance;\n");
@@ -390,8 +390,7 @@ class ConverterTemplate {
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() == '}') ");
 				checkMandatory(sortedAttributes, i);
-				code.append("\t\t\tif (reader.last() != ',') throw new com.dslplatform.json.ParsingException(\"Expecting ',' \"");
-				code.append(" + reader.positionDescription() + \". Found: \" + (char)reader.last()); else reader.getNextToken();\n");
+				code.append("\t\t\tif (reader.last() != ',') throw reader.newParseError(\"Expecting ',' for other mandatory properties\"); else reader.getNextToken();\n");
 			}
 			code.append("\t\t\tif (reader.fillNameWeakHash() != ").append(Integer.toString(calcWeakHash(mn != null ? mn : attr.id)));
 			code.append(" || !reader.wasLastName(name_").append(attr.name).append(")) { bindSlow(reader, instance, ");
@@ -413,11 +412,11 @@ class ConverterTemplate {
 				code.append("\t\t\t\tbindSlow(reader, instance, ").append(Integer.toString(sortedAttributes.size())).append(");\n");
 				code.append("\t\t\t\treturn;\n");
 				code.append("\t\t\t}\n");
-				code.append("\t\t\tthrow new com.dslplatform.json.ParsingException(\"Expecting '}' \" + reader.positionDescription() + \" since unknown properties are not allowed on ");
-				code.append(className).append(". Found \" + (char) reader.last());\n");
+				code.append("\t\t\tthrow reader.newParseError(\"Expecting '}' for object end since unknown properties are not allowed on ");
+				code.append(className).append("\");\n");
 			} else {
-				code.append("\t\t\tif (reader.getNextToken() != '}') throw new com.dslplatform.json.ParsingException(\"Expecting '}' \" + reader.positionDescription() + \" since unknown properties are not allowed on ");
-				code.append(className).append(". Found \" + (char) reader.last());\n");
+				code.append("\t\t\tif (reader.getNextToken() != '}') throw reader.newParseError(\"Expecting '}' for object end since unknown properties are not allowed on ");
+				code.append(className).append("\");\n");
 			}
 		} else {
 			boolean hasDiscriminator = si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator) && si.attributes.isEmpty();
@@ -431,7 +430,7 @@ class ConverterTemplate {
 			code.append("\t\t\t\t\treader.fillNameWeakHash();\n");
 			code.append("\t\t\t\t\tbindSlow(reader, instance, ").append(Integer.toString(sortedAttributes.size())).append(");\n");
 			code.append("\t\t\t\t}\n");
-			code.append("\t\t\t\tif (reader.last() != '}') throw new com.dslplatform.json.ParsingException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+			code.append("\t\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
 			if (!hasDiscriminator) {
 				code.append("\t\t\t}\n");
 			}
@@ -457,12 +456,12 @@ class ConverterTemplate {
 		handleSwitch(si, "\t\t\t\t", false);
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
-		code.append("\t\t\tif (reader.last() != '}') throw new com.dslplatform.json.ParsingException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
 		for (AttributeInfo attr : sortedAttributes) {
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			if (attr.mandatory) {
-				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw new com.dslplatform.json.ParsingException(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
+				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '").append(attr.name);
+				code.append("' is mandatory but was not found in JSON \", 0);\n");
 			} else if (attr.notNull && nonPrimitive) {
 				final String defaultValue;
 				if (attr.isArray) {
@@ -497,7 +496,7 @@ class ConverterTemplate {
 		writeObject(si, className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
-		code.append("\t\t\telse if (reader.last() != '{') throw new com.dslplatform.json.ParsingException(\"Expecting '{' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\telse if (reader.last() != '{') throw reader.newParseError(\"Expecting '{' for object start\");\n");
 		code.append("\t\t\treader.getNextToken();\n");
 		code.append("\t\t\treturn readContent(reader);\n");
 		code.append("\t\t}\n");
@@ -534,7 +533,7 @@ class ConverterTemplate {
 		handleSwitch(si, "\t\t\t\t", true);
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
-		code.append("\t\t\tif (reader.last() != '}') throw new com.dslplatform.json.ParsingException(\"Expecting '}' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
 		checkMandatory(sortedAttributes);
 		returnInstance("\t\t\t", si, className);
 		code.append("\t\t}\n");
@@ -639,8 +638,8 @@ class ConverterTemplate {
 			AttributeInfo attr = attributes.get(i);
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			if (attr.mandatory) {
-				sb.append(" throw new com.dslplatform.json.ParsingException(\"Property '").append(attr.name);
-				sb.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
+				sb.append(" throw reader.newParseErrorAt(\"Property '").append(attr.name);
+				sb.append("' is mandatory but was not found in JSON \", 0);\n");
 				return;
 			} else if (attr.notNull && nonPrimitive) {
 				final String defaultValue;
@@ -676,8 +675,8 @@ class ConverterTemplate {
 	private void checkMandatory(final List<AttributeInfo> attributes) throws IOException {
 		for (AttributeInfo attr : attributes) {
 			if (attr.mandatory) {
-				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw new com.dslplatform.json.ParsingException(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON \" + reader.positionDescription());\n");
+				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '").append(attr.name);
+				code.append("' is mandatory but was not found in JSON \", 0);\n");
 			}
 		}
 	}
@@ -698,17 +697,17 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" bind(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance) throws java.io.IOException {\n");
-		code.append("\t\t\tif (reader.last() != '[') throw new com.dslplatform.json.ParsingException(\"Expecting '[' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.last() != '[') throw reader.newParseError(\"Expecting '[' for object start\");\n");
 		int i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\treader.getNextToken();\n");
 			processPropertyValue(attr, "\t", true);
 			i--;
 			if (i > 0) {
-				code.append("\t\t\tif (reader.getNextToken() != ',') throw new com.dslplatform.json.ParsingException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+				code.append("\t\t\tif (reader.getNextToken() != ',') throw reader.newParseError(\"Expecting ',' for other object elements\");\n");
 			}
 		}
-		code.append("\t\t\tif (reader.getNextToken() != ']') throw new com.dslplatform.json.ParsingException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.getNextToken() != ']') throw reader.newParseError(\"Expecting ']' for object end\");\n");
 		code.append("\t\t\treturn instance;\n");
 		code.append("\t\t}\n");
 		code.append("\t}\n");
@@ -720,7 +719,7 @@ class ConverterTemplate {
 		writeArray(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
-		code.append("\t\t\telse if (reader.last() != '[') throw new com.dslplatform.json.ParsingException(\"Expecting '[' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\telse if (reader.last() != '[') throw reader.newParseError(\"Expecting '[' for object start\");\n");
 		code.append("\t\t\treturn readContent(reader);\n");
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
@@ -731,10 +730,10 @@ class ConverterTemplate {
 			processPropertyValue(attr, "\t", false);
 			i--;
 			if (i > 0) {
-				code.append("\t\t\tif (reader.getNextToken() != ',') throw new com.dslplatform.json.ParsingException(\"Expecting ',' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+				code.append("\t\t\tif (reader.getNextToken() != ',') throw reader.newParseError(\"Expecting ',' for other object elements\");\n");
 			}
 		}
-		code.append("\t\t\tif (reader.getNextToken() != ']') throw new com.dslplatform.json.ParsingException(\"Expecting ']' \" + reader.positionDescription() + \". Found \" + (char) reader.last());\n");
+		code.append("\t\t\tif (reader.getNextToken() != ']') throw reader.newParseError(\"Expecting ']' for object end\");\n");
 		returnInstance("\t\t\t", si, className);
 		code.append("\t\t}\n");
 		code.append("\t}\n");
@@ -866,8 +865,7 @@ class ConverterTemplate {
 			if (attr.fullMatch) {
 				code.append(alignment).append("\t\tif (!reader.wasLastName(name_").append(attr.name).append(")) {\n");
 				if (si.onUnknown == CompiledJson.Behavior.FAIL) {
-					code.append(alignment).append("\t\tthrow new com.dslplatform.json.ParsingException(\"Unknown property detected: '\" + reader.getLastName()");
-					code.append(" + \"' \" + reader.positionDescription(reader.getLastName().length() + 3));\n");
+					code.append(alignment).append("\t\tthrow reader.newParseErrorWith(\"Unknown property detected\", reader.getLastName().length() + 3, \"\", \"Unknown property detected\", reader.getLastName(), \"\");\n");
 				} else {
 					code.append(alignment).append("\t\treader.getNextToken(); reader.skip(); break;\n");
 				}
@@ -890,8 +888,7 @@ class ConverterTemplate {
 				code.append(alignment).append("\t\treader.getNextToken();\n");
 				code.append(alignment).append("\t\treader.calcHash();\n");
 				code.append(alignment).append("\t\tif (!reader.wasLastName(\"").append(name).append("\")) {\n");
-				code.append(alignment).append("\t\t\tthrow new com.dslplatform.json.ParsingException(\"Unknown property detected: '\" + reader.getLastName()");
-				code.append(" + \"' \" + reader.positionDescription(reader.getLastName().length() + 3));\n");
+				code.append(alignment).append("\t\t\tthrow reader.newParseErrorWith(\"Unknown property detected\", reader.getLastName().length() + 3, \"\", \"Unknown property detected\", reader.getLastName(), \"\");\n");
 				code.append(alignment).append("\t\t}\n");
 				code.append(alignment).append("\t\treader.getNextToken();\n");
 			} else {
@@ -902,8 +899,7 @@ class ConverterTemplate {
 		code.append(alignment).append("\tdefault:\n");
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) {
 			code.append(alignment).append("\t\tString lastName = reader.getLastName();\n");
-			code.append(alignment).append("\t\tthrow new com.dslplatform.json.ParsingException(\"Unknown property detected: '\" + lastName");
-			code.append(" + \"' \" + reader.positionDescription(lastName.length() + 3));\n");
+			code.append(alignment).append("\t\tthrow reader.newParseErrorWith(\"Unknown property detected\", lastName.length() + 3, \"\", \"Unknown property detected\", lastName, \"\");\n");
 		} else {
 			code.append(alignment).append("\t\treader.getNextToken();\n");
 			code.append(alignment).append("\t\treader.skip();\n");
@@ -912,8 +908,7 @@ class ConverterTemplate {
 
 	private void processPropertyValue(AttributeInfo attr, String alignment, boolean useInstance) throws IOException {
 		if (attr.notNull) {
-			code.append(alignment).append("\t\tif (reader.wasNull()) throw new com.dslplatform.json.ParsingException(\"Property '").append(attr.name).append("' is not allowed to be null.");
-			code.append(" Null value found \" + reader.positionDescription());\n");
+			code.append(alignment).append("\t\tif (reader.wasNull()) throw reader.newParseErrorAt(\"Property '").append(attr.name).append("' is not allowed to be null.\", 0);\n");
 		}
 		String typeName = attr.type.toString();
 		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
@@ -941,7 +936,7 @@ class ConverterTemplate {
 				code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName);
 				code.append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader);\n");
 			}
-			code.append(alignment).append("\t\t} else throw new com.dslplatform.json.ParsingException(\"Expecting '{' as start for '").append(attr.name).append("' \" + reader.positionDescription());\n");
+			code.append(alignment).append("\t\t} else throw reader.newParseError(\"Expecting '{' as start for '").append(attr.name).append("'\");\n");
 		} else if ((target == null || target.converter == null) && attr.converter == null && optimizedConverter != null && optimizedConverter.defaultValue == null && !attr.notNull && optimizedConverter.hasNonNullableMethod()) {
 			if (useInstance) {
 				code.append(alignment).append("\t\tif (reader.wasNull()) instance.");

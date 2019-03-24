@@ -66,7 +66,7 @@ public class StringTest {
 			dslJson.deserializeList(String.class, is);
 			Assert.fail("Exception expected");
 		} catch (IOException ex) {
-			Assert.assertTrue(ex.getMessage().contains("Expecting ']' at position: 72, following: `��� something\",nulll`, before: `,x]`. Found l"));
+			Assert.assertEquals("Expecting ']' as array end. Found l at position: 72, following: `��� something\",nulll`, before: `,x]`", ex.getMessage());
 		}
 	}
 }

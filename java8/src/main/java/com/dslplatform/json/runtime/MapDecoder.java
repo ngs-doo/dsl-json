@@ -3,7 +3,6 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.ConfigurationException;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.Nullable;
-import com.dslplatform.json.ParsingException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -36,9 +35,7 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 	@Override
 	public T read(JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
-		if (reader.last() != '{') {
-			throw new ParsingException("Expecting '{' " + reader.positionDescription() + ". Found " + (char)reader.last());
-		}
+		if (reader.last() != '{') throw reader.newParseError("Expecting '{' for map start");
 		final T instance;
 		try {
 			instance = newInstance.call();
@@ -48,30 +45,22 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 		if (reader.getNextToken() == '}') return instance;
 		K key = keyDecoder.read(reader);
 		if (key == null) {
-			throw new ParsingException("Null value detected for key element of " + manifest.getTypeName() + " " + reader.positionDescription());
+			throw reader.newParseErrorFormat("Null value detected for key element of map", 0, "Null value detected for key element of %s", manifest.getTypeName());
 		}
-		if (reader.getNextToken() != ':') {
-			throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)reader.last());
-		}
+		if (reader.getNextToken() != ':') throw reader.newParseError("Expecting ':' after key attribute");
 		reader.getNextToken();
 		V value = valueDecoder.read(reader);
 		instance.put(key, value);
 		while (reader.getNextToken() == ','){
 			reader.getNextToken();
 			key = keyDecoder.read(reader);
-			if (key == null) {
-				throw new ParsingException("Null value detected for key element of " + manifest.getTypeName() + " " + reader.positionDescription());
-			}
-			if (reader.getNextToken() != ':') {
-				throw new ParsingException("Expecting ':' " + reader.positionDescription() + ". Found " + (char)reader.last());
-			}
+			if (key == null) throw reader.newParseErrorFormat("Null value detected for key element of map", 0, "Null value detected for key element of %s", manifest.getTypeName());
+			if (reader.getNextToken() != ':') throw reader.newParseError("Expecting ':' after key attribute");
 			reader.getNextToken();
 			value = valueDecoder.read(reader);
 			instance.put(key, value);
 		}
-		if (reader.last() != '}') {
-			throw new ParsingException("Expecting '}' " + reader.positionDescription() + ". Found " + (char)reader.last());
-		}
+		if (reader.last() != '}') throw reader.newParseError("Expecting '}' as map ending");
 		return instance;
 	}
 }

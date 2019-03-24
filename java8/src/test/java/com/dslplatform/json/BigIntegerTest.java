@@ -66,7 +66,7 @@ public class BigIntegerTest {
 			res = BigIntegerConverter.deserialize(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
-			Assert.assertTrue(ex.getMessage().startsWith(error));
+			Assert.assertTrue(ex.getMessage().contains(error));
 		}
 		return res;
 	}

@@ -3,7 +3,6 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.Nullable;
-import com.dslplatform.json.ParsingException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -17,6 +16,8 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
 	private final long mandatoryFlag;
+	private final String startError;
+	private final String endError;
 
 	public ImmutableDescription(
 			final Class<T> manifest,
@@ -49,13 +50,15 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		this.skipOnUnknown = skipOnUnknown;
 		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
 		hasMandatory = mandatoryFlag != 0;
+		this.startError = String.format("Expecting '{' to start decoding %s", manifest.getTypeName());
+		this.endError = String.format("Expecting '}' or ',' while decoding %s", manifest.getTypeName());
 	}
 
 	@Nullable
 	public T read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
 		else if (reader.last() != '{') {
-			throw new ParsingException("Expecting '{' " + reader.positionDescription() + " while parsing " + manifest.getTypeName() + ". Found " + (char) reader.last());
+			throw reader.newParseError(startError);
 		}
 		if (reader.getNextToken() == '}') {
 			if (hasMandatory) {
@@ -74,7 +77,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
+				throw reader.newParseErrorWith("Null value found for non-null attribute", ri.name);
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -95,7 +98,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
-				throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
+				throw reader.newParseErrorWith("Null value found for non-null attribute", ri.name);
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -115,7 +118,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 				}
 				reader.getNextToken();
 				if (ri.nonNull && reader.wasNull()) {
-					throw new ParsingException("Null value found for property " + ri.name + " " + reader.positionDescription());
+					throw reader.newParseErrorWith("Null value found for non-null attribute", ri.name);
 				}
 				args[ri.index] = ri.value.read(reader);
 				currentMandatory = currentMandatory & ri.mandatoryValue;
@@ -132,7 +135,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private T finalChecks(Object[] args, JsonReader reader, long currentMandatory) throws IOException {
 		if (reader.last() != '}') {
 			if (reader.last() != ',') {
-				throw new ParsingException("Expecting '}' or ',' " + reader.positionDescription() + " while reading " + manifest.getTypeName() + ". Found " + (char) reader.last());
+				throw reader.newParseError(endError);
 			}
 			reader.getNextToken();
 			reader.fillNameWeakHash();
@@ -147,7 +150,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private void skip(final JsonReader reader) throws IOException {
 		if (!skipOnUnknown) {
 			final String name = reader.getLastName();
-			throw new ParsingException("Unknown property detected: '" + name + "' while reading " + manifest.getTypeName() + " " + reader.positionDescription(name.length() + 3));
+			throw reader.newParseErrorFormat("Unknown property detected", name.length() + 3, "Unknown property detected: '%s' while reading %s", name, manifest.getTypeName());
 		}
 		reader.getNextToken();
 		reader.skip();

@@ -2,7 +2,6 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.Nullable;
-import com.dslplatform.json.ParsingException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,9 +24,7 @@ public final class ArrayDecoder<T> implements JsonReader.ReadObject<T[]> {
 	@Override
 	public T[] read(final JsonReader reader) throws IOException {
 		if (reader.wasNull()) return null;
-		if (reader.last() != '[') {
-			throw new ParsingException("Expecting '[' " + reader.positionDescription() + ". Found " + (char)reader.last());
-		}
+		if (reader.last() != '[') throw reader.newParseError("Expecting '[' for array start");
 		if (reader.getNextToken() == ']') return emptyInstance;
 		final ArrayList<T> list = new ArrayList<>(4);
 		list.add(decoder.read(reader));
@@ -35,9 +32,7 @@ public final class ArrayDecoder<T> implements JsonReader.ReadObject<T[]> {
 			reader.getNextToken();
 			list.add(decoder.read(reader));
 		}
-		if (reader.last() != ']') {
-			throw new ParsingException("Expecting ']' " + reader.positionDescription() + ". Found " + (char)reader.last());
-		}
+		if (reader.last() != ']') throw reader.newParseError("Expecting ']' for array end");
 		return list.toArray(emptyInstance);
 	}
 }
