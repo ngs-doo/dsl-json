@@ -49,7 +49,7 @@ class TupleTest extends Specification with ScalaCheck {
       val input = "[\"a\",null,0.1]".getBytes("UTF-8")
       val tryDecode = Try{dslJson.decode[(String, Int, Double)](input)}
       tryDecode.isFailure === true
-      tryDecode.failed.get.getMessage === "Tuple property 2 of scala.Tuple3<java.lang.String, int, double> is not allowed to be null."
+      tryDecode.failed.get.getMessage === "Tuple property 2 of scala.Tuple3<java.lang.String, int, double> is not allowed to be null at position: 9, following: `[\"a\",null`, before: `,0.1]`"
     }
   }
 }

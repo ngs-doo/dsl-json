@@ -17,7 +17,7 @@ final class ArrayBufferDecoder[E](
 
 	override def read(reader: JsonReader[_]): scala.collection.Iterable[E] = {
 		if (reader.last != '[') {
-			throw new ParsingException(s"Expecting '[' ${reader.positionDescription}. Found ${reader.last.asInstanceOf[Char]}")
+			throw reader.newParseError("Expecting '[' for array start")
 		}
     val buffer = new mutable.ArrayBuffer[E]()
 		if (reader.getNextToken() != ']') {
@@ -27,7 +27,7 @@ final class ArrayBufferDecoder[E](
         buffer += decoder.read(reader)
       }
       if (reader.last() != ']') {
-        throw new ParsingException(s"Expecting ']' ${reader.positionDescription}. Found ${reader.last.asInstanceOf[Char]}")
+        throw reader.newParseError("Expecting ']' for array end")
       }
     }
     finalize(buffer)

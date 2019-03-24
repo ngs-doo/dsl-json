@@ -86,7 +86,13 @@ object ScalaTupleAnalyzer {
         Some(
           if (isNullable) decoder else new JsonReader.BindObject[Array[AnyRef]] {
             override def bind(reader: JsonReader[_], args: Array[AnyRef]): Array[AnyRef] = {
-              if (reader.wasNull()) throw new ParsingException(s"Tuple property ${ti.index + 1} of $manifest is not allowed to be null.")
+              if (reader.wasNull()) {
+                throw reader.newParseErrorFormat(
+                  "Null detected for non-nullable tuple property",
+                  0,
+                  "Tuple property %d of %s is not allowed to be null", Integer.valueOf(ti.index + 1), manifest
+                )
+              }
               decoder.bind(reader, args)
             }
           })
