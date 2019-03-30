@@ -496,7 +496,7 @@ public final class JsonWriter {
 	 */
 	public final byte[] toByteArray() {
 		if (target != null) {
-			throw new SerializationException("Method is not available when targeting stream");
+			throw new ConfigurationException("Method is not available when targeting stream");
 		}
 		return Arrays.copyOf(buffer, position);
 	}
@@ -510,7 +510,7 @@ public final class JsonWriter {
 	 */
 	public final void toStream(final OutputStream stream) throws IOException {
 		if (target != null) {
-			throw new SerializationException("Method should not be used when targeting streams. Instead use flush() to copy what's remaining in the buffer");
+			throw new ConfigurationException("Method should not be used when targeting streams. Instead use flush() to copy what's remaining in the buffer");
 		}
 		stream.write(buffer, 0, position);
 		flushed += position;
@@ -871,7 +871,7 @@ public final class JsonWriter {
 				throw new SerializationException(ex);
 			}
 		} else {
-			throw new SerializationException("Unable to serialize: " + value.getClass() + ".\n" +
+			throw new ConfigurationException("Unable to serialize: " + value.getClass() + ".\n" +
 					"Check that JsonWriter was created through DslJson#newWriter.");
 		}
 	}

@@ -114,7 +114,7 @@ object OptionAnalyzer {
         if (unpacked == null) writer.writeNull()
         else {
           val jw = json.tryFindWriter(unpacked.getClass).asInstanceOf[JsonWriter.WriteObject[T]]
-          if (jw == null) throw new SerializationException(s"Unable to find writer for ${unpacked.getClass}")
+          if (jw == null) throw new ConfigurationException(s"Unable to find writer for ${unpacked.getClass}")
           jw.write(writer, unpacked)
         }
       }

@@ -51,7 +51,7 @@ final class ScalaMapEncoder[K, V](
           lastKeyClass = Some(currentKeyClass)
           json.tryFindWriter(currentKeyClass) match {
             case wo: JsonWriter.WriteObject[K] => lastKeyEncoder = Some(wo)
-            case _ => throw new SerializationException(s"Unable to find writer for $lastKeyClass")
+            case _ => throw new ConfigurationException(s"Unable to find writer for $lastKeyClass")
           }
         }
         writeQuoted(writer, lastKeyEncoder.get, k)
@@ -64,7 +64,7 @@ final class ScalaMapEncoder[K, V](
             lastValueClass = Some(currentValueClass)
             json.tryFindWriter(currentValueClass) match {
               case wo: JsonWriter.WriteObject[V] => lastValueEncoder = Some(wo)
-              case _ => throw new SerializationException(s"Unable to find writer for $lastValueClass")
+              case _ => throw new ConfigurationException(s"Unable to find writer for $lastValueClass")
             }
           }
           lastValueEncoder.get.write(writer, v)

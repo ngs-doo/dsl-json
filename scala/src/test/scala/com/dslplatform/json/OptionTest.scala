@@ -1,6 +1,6 @@
 package com.dslplatform.json
 
-import java.io.{ByteArrayOutputStream, IOException}
+import java.io.ByteArrayOutputStream
 
 import org.specs2.ScalaCheck
 import org.specs2.mutable.Specification

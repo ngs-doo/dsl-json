@@ -55,7 +55,7 @@ final class IterableEncoder[E](
           if (lastClass.isEmpty || (currentClass ne lastClass.get)) {
             lastClass = Some(currentClass)
             lastEncoder = Option(json.tryFindWriter(lastClass.get).asInstanceOf[JsonWriter.WriteObject[E]])
-            if (lastEncoder.isEmpty) throw new SerializationException(s"Unable to find writer for $lastClass")
+            if (lastEncoder.isEmpty) throw new ConfigurationException(s"Unable to find writer for $lastClass")
           }
           lastEncoder.get.write(writer, v)
         }

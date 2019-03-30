@@ -224,14 +224,14 @@ public class ConverterTest {
 		try {
 			dslJson.serialize(nc, new ByteArrayOutputStream());
 			Assert.fail("Expecting exception");
-		} catch (SerializationException ex) {
+		} catch (ConfigurationException ex) {
 			Assert.assertTrue(ex.getMessage().contains("Property 'x' is not allowed to be null"));
 		}
 		try {
 			byte[] bytes = "{\"x\":null}".getBytes(StandardCharsets.UTF_8);
 			dslJson.deserialize(NullChecks.class, bytes, bytes.length);
 			Assert.fail("Expecting exception");
-		} catch (IOException ex) {
+		} catch (ParsingException ex) {
 			Assert.assertTrue(ex.getMessage().contains("Property 'x' is not allowed to be null"));
 		}
 	}

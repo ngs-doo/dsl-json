@@ -8,6 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 public class ObjectFormatTest {
 
@@ -183,5 +184,35 @@ public class ObjectFormatTest {
 		byte[] bytes = "{\"x\":505,\"p1\":123,\"p2\":\"abc\"}".getBytes("UTF-8");
 		UnusedProperty deser = dslJsonFull.deserialize(UnusedProperty.class, bytes, bytes.length);
 		Assert.assertEquals(505, deser.x);
+	}
+
+	@CompiledJson
+	public static class WithMandatory {
+		@JsonAttribute(name = "guids", index = 1)
+		public UUID[] uuids;
+		@JsonAttribute(ignore = true)
+		public String ignore;
+		@JsonAttribute(mandatory = true, index = 2)
+		public List<Response> codes;
+	}
+
+	public enum Response { Ok, BadRequest }
+
+	@Test
+	public void withMandatory() throws IOException {
+		WithMandatory m = new WithMandatory();
+		UUID id1 = UUID.randomUUID();
+		UUID id2 = UUID.randomUUID();
+		m.uuids = new UUID[] { id1, id2 };
+		m.codes = Arrays.asList(Response.BadRequest, Response.Ok);
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		dslJsonFull.serialize(m, baos);
+		Assert.assertEquals("{\"guids\":[\"" + id1 + "\",\"" + id2 + "\"],\"codes\":[\"BadRequest\",\"Ok\"]}", baos.toString("UTF-8"));
+		byte[] bytes = baos.toByteArray();
+		WithMandatory deser = dslJsonFull.deserialize(WithMandatory.class, bytes, bytes.length);
+		Assert.assertEquals(2, deser.uuids.length);
+		Assert.assertEquals(id1, deser.uuids[0]);
+		Assert.assertEquals(id2, deser.uuids[1]);
+		Assert.assertEquals(m.codes, deser.codes);
 	}
 }

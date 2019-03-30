@@ -25,7 +25,7 @@ public class Example {
 		Model instance = new Model();
 		instance.abstractProperty = new AbstractClass.ImmutableImplementation(5, "DSL");
 		instance.abstractList = Arrays.asList(
-				new AbstractClass.ImmutableImplementation(1, "speed"),
+				new AbstractClass.RecursiveClass(1, "speed", Arrays.asList(new AbstractClass.ImmutableImplementation(5, "DSLList"))),
 				null,
 				new AbstractClass.MutableImplementation().number(2).setName("features"));
 		instance.ifaceProperty = new Interface.ImmutableImplementation(6, "JSON");

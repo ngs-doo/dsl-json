@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
-import com.dslplatform.json.SerializationException;
+import com.dslplatform.json.*;
 
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
@@ -41,7 +38,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 		if (type != null && encoder == null) {
 			encoder = json.tryFindWriter(type);
 			if (encoder == null) {
-				throw new SerializationException("Unable to find writer for " + type);
+				throw new ConfigurationException("Unable to find writer for " + type);
 			}
 		}
 		final R attr = read.apply(value);
@@ -55,7 +52,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 				final Class<?> manifest = attr.getClass();
 				final JsonWriter.WriteObject tmp = json.tryFindWriter(manifest);
 				if (tmp == null) {
-					throw new SerializationException("Unable to find writer for " + manifest);
+					throw new ConfigurationException("Unable to find writer for " + manifest);
 				}
 				if (!alwaysSerialize) {
 					final Object tmpDefault = json.getDefault(manifest);

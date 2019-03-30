@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
-import com.dslplatform.json.SerializationException;
+import com.dslplatform.json.*;
 
 import java.util.Optional;
 
@@ -28,7 +25,7 @@ public final class OptionalEncoder<T> implements JsonWriter.WriteObject<Optional
 			final T unpacked = value.get();
 			final JsonWriter.WriteObject jw = json.tryFindWriter(unpacked.getClass());
 			if (jw == null) {
-				throw new SerializationException("Unable to find writer for " + unpacked.getClass());
+				throw new ConfigurationException("Unable to find writer for " + unpacked.getClass());
 			}
 			jw.write(writer, unpacked);
 		}

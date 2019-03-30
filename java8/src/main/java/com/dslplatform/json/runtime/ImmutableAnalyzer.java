@@ -63,7 +63,7 @@ public abstract class ImmutableAnalyzer {
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
-					throw new SerializationException(e);
+					throw new ConfigurationException(e);
 				}
 				local = resolved;
 				if (local != null) {
@@ -82,7 +82,7 @@ public abstract class ImmutableAnalyzer {
 				if (checkSignatureNotFound()) {
 					final JsonReader.ReadObject tmp = json.tryFindReader(type);
 					if (tmp == null || tmp == this) {
-						throw new SerializationException("Unable to find reader for " + type);
+						throw new ConfigurationException("Unable to find reader for " + type);
 					}
 					decoder = tmp;
 				}
@@ -96,7 +96,7 @@ public abstract class ImmutableAnalyzer {
 				if (checkSignatureNotFound()) {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
 					if (tmp == null || tmp == this) {
-						throw new SerializationException("Unable to find writer for " + type);
+						throw new ConfigurationException("Unable to find writer for " + type);
 					}
 					encoder = tmp;
 				}

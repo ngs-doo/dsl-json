@@ -34,7 +34,7 @@ public abstract class Settings {
 					Class<?> signature = value.getClass();
 					JsonWriter.WriteObject instanceWriter = dslJson.tryFindWriter(signature);
 					if (instanceWriter instanceof ObjectWriter || instanceWriter == null) {
-						throw new SerializationException("Unable to serialize provided instance");
+						throw new ConfigurationException("Unable to serialize provided instance");
 					}
 					instanceWriter.write(writer, value);
 				}

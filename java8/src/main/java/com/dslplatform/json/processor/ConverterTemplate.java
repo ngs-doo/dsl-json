@@ -224,13 +224,13 @@ class ConverterTemplate {
 					code.append("\t\t\tjava.lang.reflect.Type manifest_").append(attr.name).append(" = ").append(type).append(";\n");
 					code.append("\t\t\tthis.reader_").append(attr.name).append(" = __dsljson.tryFindReader(manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\tif (reader_").append(attr.name).append(" == null) {\n");
-					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest_").append(attr.name);
+					code.append("\t\t\t\tthrow new com.dslplatform.json.ConfigurationException(\"Unable to find reader for \" + manifest_").append(attr.name);
 					code.append(" + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.withRuntime().includeServiceLoader())\");\n");
 					code.append("\t\t\t}\n");
 
 					code.append("\t\t\tthis.writer_").append(attr.name).append(" = __dsljson.tryFindWriter(manifest_").append(attr.name).append(");\n");
 					code.append("\t\t\tif (writer_").append(attr.name).append(" == null) {\n");
-					code.append("\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest_").append(attr.name);
+					code.append("\t\t\t\tthrow new com.dslplatform.json.ConfigurationException(\"Unable to find writer for \" + manifest_").append(attr.name);
 					code.append(" + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.withRuntime().includeServiceLoader())\");\n");
 					code.append("\t\t\t}\n");
 				}
@@ -285,7 +285,7 @@ class ConverterTemplate {
 		code.append("\t\t\t\tjava.lang.reflect.Type manifest = ").append(type).append(";\n");
 		code.append("\t\t\t\t").append(namePrefix).append("reader_").append(attr.name).append(" = __dsljson.tryFindReader(manifest);\n");
 		code.append("\t\t\t\tif (").append(namePrefix).append("reader_").append(attr.name).append(" == null) {\n");
-		code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find reader for \" + manifest + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.basicSetup())\");\n");
+		code.append("\t\t\t\t\tthrow new com.dslplatform.json.ConfigurationException(\"Unable to find reader for \" + manifest + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.basicSetup())\");\n");
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
 		code.append("\t\t\treturn ").append(namePrefix).append("reader_").append(attr.name).append(";\n");
@@ -297,7 +297,7 @@ class ConverterTemplate {
 		code.append("\t\t\t\tjava.lang.reflect.Type manifest = ").append(type).append(";\n");
 		code.append("\t\t\t\t").append(namePrefix).append("writer_").append(attr.name).append(" = __dsljson.tryFindWriter(manifest);\n");
 		code.append("\t\t\t\tif (").append(namePrefix).append("writer_").append(attr.name).append(" == null) {\n");
-		code.append("\t\t\t\t\tthrow new com.dslplatform.json.SerializationException(\"Unable to find writer for \" + manifest + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.basicSetup())\");\n");
+		code.append("\t\t\t\t\tthrow new com.dslplatform.json.ConfigurationException(\"Unable to find writer for \" + manifest + \". Enable runtime conversion by initializing DslJson with new DslJson<>(Settings.basicSetup())\");\n");
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
 		code.append("\t\t\treturn ").append(namePrefix).append("writer_").append(attr.name).append(";\n");
@@ -475,7 +475,7 @@ class ConverterTemplate {
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			if (attr.mandatory) {
 				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON \", 0);\n");
+				code.append("' is mandatory but was not found in JSON\", 0);\n");
 			} else if (attr.notNull && nonPrimitive) {
 				final String defaultValue;
 				if (attr.isArray) {
@@ -637,7 +637,7 @@ class ConverterTemplate {
 					if (!"null".equals(defaultValue) || attr.isArray || attr.isList || attr.isSet || attr.isMap) {
 						code.append("if (").append(readValue).append(" == null) ");
 					}
-					code.append("throw new com.dslplatform.json.SerializationException(\"Property '");
+					code.append("throw new com.dslplatform.json.ConfigurationException(\"Property '");
 					code.append(attr.name).append("' is not allowed to be null\");\n");
 				} else code.append("\n");
 			}
@@ -653,7 +653,8 @@ class ConverterTemplate {
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			if (attr.mandatory) {
 				sb.append(" throw reader.newParseErrorAt(\"Property '").append(attr.name);
-				sb.append("' is mandatory but was not found in JSON \", 0);\n");
+				sb.append("' is mandatory but was not found in JSON\", 0);\n");
+				code.append(sb.toString());
 				return;
 			} else if (attr.notNull && nonPrimitive) {
 				final String defaultValue;
@@ -690,7 +691,7 @@ class ConverterTemplate {
 		for (AttributeInfo attr : attributes) {
 			if (attr.mandatory) {
 				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON \", 0);\n");
+				code.append("' is mandatory but was not found in JSON\", 0);\n");
 			}
 		}
 	}
@@ -825,7 +826,7 @@ class ConverterTemplate {
 		boolean canBeNull = !checkedDefault && objectType.equals(typeName);
 		if (attr.notNull && canBeNull) {
 			code.append(alignment).append("if (").append(readValue);
-			code.append(" == null) throw new com.dslplatform.json.SerializationException(\"Property '").append(attr.name).append("' is not allowed to be null\");\n");
+			code.append(" == null) throw new com.dslplatform.json.ConfigurationException(\"Property '").append(attr.name).append("' is not allowed to be null\");\n");
 			code.append(alignment);
 		} else if (canBeNull) {
 			code.append(alignment).append("if (").append(readValue).append(" == null) writer.writeNull();\n");

@@ -1,9 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
-import com.dslplatform.json.SerializationException;
+import com.dslplatform.json.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,7 +63,7 @@ public final class CollectionEncoder<E, T extends Collection<E>> implements Json
 						lastClass = currentClass;
 						lastEncoder = json.tryFindWriter(lastClass);
 						if (lastEncoder == null) {
-							throw new SerializationException("Unable to find writer for " + lastClass);
+							throw new ConfigurationException("Unable to find writer for " + lastClass);
 						}
 					}
 					lastEncoder.write(writer, e);

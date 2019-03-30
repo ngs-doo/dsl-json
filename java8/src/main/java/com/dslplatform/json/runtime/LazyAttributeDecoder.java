@@ -1,5 +1,6 @@
 package com.dslplatform.json.runtime;
 
+import com.dslplatform.json.ConfigurationException;
 import com.dslplatform.json.DslJson;
 import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.SerializationException;
@@ -31,7 +32,7 @@ class LazyAttributeDecoder<T, P> implements JsonReader.BindObject<T> {
 		if (decoder == null) {
 			decoder = json.tryFindReader(type);
 			if (decoder == null) {
-				throw new SerializationException("Unable to find reader for " + type);
+				throw new ConfigurationException("Unable to find reader for " + type);
 			}
 		}
 		final P attr = decoder.read(reader);

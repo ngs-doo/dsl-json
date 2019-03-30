@@ -79,7 +79,7 @@ object ScalaClassAnalyzer {
         try {
           Thread.sleep(100)
         } catch {
-          case e: InterruptedException => throw new SerializationException(e)
+          case e: InterruptedException => throw new ConfigurationException(e)
         }
         if (resolved.nonEmpty) {
           encoder = Some(resolved.get.asInstanceOf[JsonWriter.WriteObject[AnyRef]])
@@ -95,7 +95,7 @@ object ScalaClassAnalyzer {
       if (decoder.isEmpty) {
         if (checkSignatureNotFound()) {
           val tmp = json.tryFindReader(manifest).asInstanceOf[JsonReader.ReadObject[AnyRef]]
-          if (tmp == null || (tmp eq this)) throw new SerializationException(s"Unable to find reader for $manifest")
+          if (tmp == null || (tmp eq this)) throw new ConfigurationException(s"Unable to find reader for $manifest")
           decoder = Some(tmp)
         }
       }
@@ -106,7 +106,7 @@ object ScalaClassAnalyzer {
       if (encoder.isEmpty) {
         if (checkSignatureNotFound()) {
           val tmp = json.tryFindWriter(manifest).asInstanceOf[JsonWriter.WriteObject[AnyRef]]
-          if (tmp == null || (tmp eq this)) throw new SerializationException(s"Unable to find writer for $manifest")
+          if (tmp == null || (tmp eq this)) throw new ConfigurationException(s"Unable to find writer for $manifest")
           encoder = Some(tmp)
         }
       }
@@ -126,7 +126,7 @@ object ScalaClassAnalyzer {
         try {
           Thread.sleep(100)
         } catch {
-          case e: InterruptedException => throw new SerializationException(e)
+          case e: InterruptedException => throw new ConfigurationException(e)
         }
         if (resolved.nonEmpty) {
           encoder = Some(resolved.get.asInstanceOf[JsonWriter.WriteObject[AnyRef]])
@@ -143,7 +143,7 @@ object ScalaClassAnalyzer {
       if (decoder.isEmpty) {
         if (checkSignatureNotFound()) {
           val tmp = json.tryFindReader(manifest).asInstanceOf[JsonReader.ReadObject[AnyRef]]
-          if (tmp == null || (tmp eq this)) throw new SerializationException(s"Unable to find reader for $manifest")
+          if (tmp == null || (tmp eq this)) throw new ConfigurationException(s"Unable to find reader for $manifest")
           decoder = Some(tmp)
         }
       }
@@ -154,7 +154,7 @@ object ScalaClassAnalyzer {
       if (binder.isEmpty) {
         if (checkSignatureNotFound()) {
           val tmp = json.tryFindBinder(manifest).asInstanceOf[JsonReader.BindObject[AnyRef]]
-          if (tmp == null || (tmp eq this)) throw new SerializationException(s"Unable to find binder for $manifest")
+          if (tmp == null || (tmp eq this)) throw new ConfigurationException(s"Unable to find binder for $manifest")
           binder = Some(tmp)
         }
       }
@@ -165,7 +165,7 @@ object ScalaClassAnalyzer {
       if (encoder.isEmpty) {
         if (checkSignatureNotFound()) {
           val tmp = json.tryFindWriter(manifest).asInstanceOf[JsonWriter.WriteObject[AnyRef]]
-          if (tmp == null || (tmp eq this)) throw new SerializationException(s"Unable to find writer for $manifest")
+          if (tmp == null || (tmp eq this)) throw new ConfigurationException(s"Unable to find writer for $manifest")
           encoder = Some(tmp)
         }
       }

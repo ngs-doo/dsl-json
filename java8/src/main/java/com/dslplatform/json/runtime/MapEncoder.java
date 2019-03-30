@@ -63,7 +63,7 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 					lastKeyClass = currentKeyClass;
 					lastKeyEncoder = json.tryFindWriter(lastKeyClass);
 					if (lastKeyEncoder == null) {
-						throw new SerializationException("Unable to find writer for " + lastKeyClass);
+						throw new ConfigurationException("Unable to find writer for " + lastKeyClass);
 					}
 				}
 				writer.writeQuoted(lastKeyEncoder, e.getKey());
@@ -79,7 +79,7 @@ public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.W
 							lastValueClass = currentValueClass;
 							lastValueEncoder = json.tryFindWriter(lastValueClass);
 							if (lastValueEncoder == null)
-								throw new SerializationException("Unable to find writer for " + lastValueClass);
+								throw new ConfigurationException("Unable to find writer for " + lastValueClass);
 						}
 						lastValueEncoder.write(writer, e.getValue());
 					}

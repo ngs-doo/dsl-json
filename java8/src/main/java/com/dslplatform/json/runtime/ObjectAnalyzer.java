@@ -50,7 +50,7 @@ public abstract class ObjectAnalyzer {
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
-					throw new SerializationException(e);
+					throw new ConfigurationException(e);
 				}
 				local = resolved;
 				if (local != null) {
@@ -70,7 +70,7 @@ public abstract class ObjectAnalyzer {
 				if (checkSignatureNotFound()) {
 					final JsonReader.ReadObject tmp = json.tryFindReader(type);
 					if (tmp == null || tmp == this) {
-						throw new SerializationException("Unable to find reader for " + type);
+						throw new ConfigurationException("Unable to find reader for " + type);
 					}
 					resolvedReader = tmp;
 				}
@@ -84,7 +84,7 @@ public abstract class ObjectAnalyzer {
 				if (checkSignatureNotFound()) {
 					final JsonReader.BindObject tmp = json.tryFindBinder(type);
 					if (tmp == null || tmp == this) {
-						throw new SerializationException("Unable to find binder for " + type);
+						throw new ConfigurationException("Unable to find binder for " + type);
 					}
 					resolvedBinder = tmp;
 				}
@@ -98,7 +98,7 @@ public abstract class ObjectAnalyzer {
 				if (checkSignatureNotFound()) {
 					final JsonWriter.WriteObject tmp = json.tryFindWriter(type);
 					if (tmp == null || tmp == this) {
-						throw new SerializationException("Unable to find writer for " + type);
+						throw new ConfigurationException("Unable to find writer for " + type);
 					}
 					resolvedWriter = tmp;
 				}
@@ -149,7 +149,7 @@ public abstract class ObjectAnalyzer {
 				try {
 					return raw.newInstance();
 				} catch (Exception ex) {
-					throw new SerializationException("Unable to create an instance of " + raw);
+					throw new ConfigurationException("Unable to create an instance of " + raw);
 				}
 			}
 		};
