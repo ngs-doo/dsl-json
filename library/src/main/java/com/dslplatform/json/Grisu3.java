@@ -811,7 +811,7 @@ abstract class Grisu3 {
 		}
 
 		// allocate buffer for generated digits + extra notation + padding zeroes
-		private final byte[] chars = new byte[kFastDtoaMaximalLength + 8];
+		private final byte[] chars = new byte[kFastDtoaMaximalLength + 10];
 		private int end = 0;
 		private int point;
 

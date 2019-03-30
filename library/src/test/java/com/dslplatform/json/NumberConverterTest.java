@@ -1179,4 +1179,31 @@ public class NumberConverterTest {
 			}
 		}
 	}
+
+	@Test
+	public void edgeCases() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(null);
+		final double[] input = { -2.3550447074000003E-4, -2.3550447074000003E-5, -2.3550447074000003E-6, -2.3550447074000003E-7 };
+
+		NumberConverter.serialize(input, sw);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		// init
+		jr.process(null, sw.size());
+		jr.read();
+		jr.read();
+
+		double[] numbers1 = NumberConverter.deserializeDoubleArray(jr);
+		Assert.assertArrayEquals(input, numbers1, 0);
+
+		jsr.process(new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size()));
+		// init
+		jsr.read();
+		jsr.read();
+
+		double[] numbers2 = NumberConverter.deserializeDoubleArray(jsr);
+		Assert.assertArrayEquals(input, numbers2, 0);
+	}
 }
