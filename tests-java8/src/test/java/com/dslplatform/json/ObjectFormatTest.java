@@ -153,6 +153,35 @@ public class ObjectFormatTest {
 		byte[] bytes = baos.toByteArray();
 		UppercaseName deser = dslJsonFull.deserialize(UppercaseName.class, bytes, bytes.length);
 		Assert.assertEquals(val.getDOC(), deser.getDOC());
+	}
 
+	@CompiledJson
+	public static class EmptyClass {
+	}
+
+	@CompiledJson
+	public static class UnusedProperty {
+		public int x;
+	}
+
+	@Test
+	public void classWithoutProperties() throws IOException {
+		byte[] bytes = "{\"p1\":123,\"p2\":\"abc\"}".getBytes("UTF-8");
+		EmptyClass deser = dslJsonFull.deserialize(EmptyClass.class, bytes, bytes.length);
+		Assert.assertNotNull(deser);
+	}
+
+	@Test
+	public void classWithUnusedProperty() throws IOException {
+		byte[] bytes = "{\"p1\":123,\"p2\":\"abc\"}".getBytes("UTF-8");
+		UnusedProperty deser = dslJsonFull.deserialize(UnusedProperty.class, bytes, bytes.length);
+		Assert.assertNotNull(deser);
+	}
+
+	@Test
+	public void classWithUsedProperty() throws IOException {
+		byte[] bytes = "{\"x\":505,\"p1\":123,\"p2\":\"abc\"}".getBytes("UTF-8");
+		UnusedProperty deser = dslJsonFull.deserialize(UnusedProperty.class, bytes, bytes.length);
+		Assert.assertEquals(505, deser.x);
 	}
 }

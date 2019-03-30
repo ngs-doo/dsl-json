@@ -420,19 +420,28 @@ class ConverterTemplate {
 			}
 		} else {
 			boolean hasDiscriminator = si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator) && si.attributes.isEmpty();
+			boolean hasProperties = !si.attributes.isEmpty();
 			if (hasDiscriminator) {
 				code.append("\t\t\tif (reader.last() == '\"') {\n");
 			} else {
-				code.append("\t\t\tif (reader.getNextToken() != '}') {\n");
-				code.append("\t\t\t\tif (reader.last() == ',') {\n");
-				code.append("\t\t\t\t\treader.getNextToken();\n");
+				if (hasProperties) {
+					code.append("\t\t\tif (reader.getNextToken() != '}') {\n");
+					code.append("\t\t\t\tif (reader.last() == ',') {\n");
+					code.append("\t\t\t\t\treader.getNextToken();\n");
+				} else {
+					code.append("\t\t\tif (reader.last() != '\"') throw reader.newParseError(\"Expecting '}' for object end or '\\\"' for attribute start\");\n");
+					code.append("\t\t\treader.fillNameWeakHash();\n");
+					code.append("\t\t\tbindSlow(reader, instance, 0);\n");
+				}
 			}
-			code.append("\t\t\t\t\treader.fillNameWeakHash();\n");
-			code.append("\t\t\t\t\tbindSlow(reader, instance, ").append(Integer.toString(sortedAttributes.size())).append(");\n");
-			code.append("\t\t\t\t}\n");
-			code.append("\t\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
-			if (!hasDiscriminator) {
-				code.append("\t\t\t}\n");
+			if (hasDiscriminator || hasProperties) {
+				code.append("\t\t\t\t\treader.fillNameWeakHash();\n");
+				code.append("\t\t\t\t\tbindSlow(reader, instance, ").append(Integer.toString(sortedAttributes.size())).append(");\n");
+				code.append("\t\t\t\t}\n");
+				code.append("\t\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
+				if (!hasDiscriminator) {
+					code.append("\t\t\t}\n");
+				}
 			}
 		}
 		code.append("\t\t}\n");
@@ -450,6 +459,11 @@ class ConverterTemplate {
 		code.append("\t\t\tswitch(reader.getLastHash()) {\n");
 		handleSwitch(si, "\t\t\t", false);
 		code.append("\t\t\t}\n");
+		if (sortedAttributes.isEmpty()) {
+			code.append("\t\t}\n");
+			code.append("\t}\n");
+			return;
+		}
 		code.append("\t\t\twhile (reader.last() == ','){\n");
 		code.append("\t\t\t\treader.getNextToken();\n");
 		code.append("\t\t\t\tswitch(reader.fillName()) {\n");

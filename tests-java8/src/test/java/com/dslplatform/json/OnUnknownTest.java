@@ -18,6 +18,10 @@ public class OnUnknownTest {
 	}
 
 	@CompiledJson(onUnknown = CompiledJson.Behavior.FAIL)
+	public static class Empty {
+	}
+
+	@CompiledJson(onUnknown = CompiledJson.Behavior.FAIL)
 	public static class SingleImmutable {
 		@JsonAttribute(name = "x")
 		public final long y;
@@ -108,5 +112,24 @@ public class OnUnknownTest {
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslUnknown.serialize(new UnknownModel(), os);
 		Assert.assertEquals("{\"key\":\"abc\",\"value\":42}", os.toString("UTF-8"));
+	}
+
+	@Test
+	public void willFailOnUnknownAndEmpty() throws IOException {
+		byte[] input = "{\"a\":1}".getBytes("UTF-8");
+		try {
+			dslJson.deserialize(Empty.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (Exception ex) {
+			Assert.assertTrue(ex.getMessage().contains("Expecting '}' for object end since unknown properties are not allowed on com.dslplatform.json.OnUnknownTest.Empty"));
+			Assert.assertTrue(ex.getMessage().contains("at position: 3"));
+		}
+	}
+
+	@Test
+	public void willPassOnEmpty() throws IOException {
+		byte[] input = "{  }".getBytes("UTF-8");
+		Empty res = dslJson.deserialize(Empty.class, input, input.length);
+		Assert.assertNotNull(res);
 	}
 }
