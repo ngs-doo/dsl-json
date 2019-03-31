@@ -1184,7 +1184,7 @@ public class NumberConverterTest {
 	public void edgeCasesDouble() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(null);
-		final double[] input = { -2.3550447074000003E-4, -2.3550447074000003E-5, -2.3550447074000003E-6, -2.3550447074000003E-7 };
+		final double[] input = { -2.3550447074000003E-4, -2.3550447074000003E-5, -2.3550447074000003E-6, -2.3550447074000003E-7, 1.00000017881393432617187499 };
 
 		NumberConverter.serialize(input, sw);
 		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
@@ -1211,8 +1211,12 @@ public class NumberConverterTest {
 	public void edgeCasesFloat() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(null);
-		final float[] numbers = {0.11596030607005024f,1.1596030607005024f,11.1596030607005024f,-1.1596030607005024f,1.1596031f,-1.1596031f,0.011596030607005024f,Float.NEGATIVE_INFINITY};
-		final byte[] input = "[0.11596030607005024,1.1596030607005024,11.1596030607005024,-1.1596030607005024,1.1596031,-1.1596031,0.011596030607005024,-1234567890123456789e55]".getBytes("UTF-8");
+		final float[] numbers = {0.11596030607005024f,1.1596030607005024f,11.1596030607005024f,-1.1596030607005024f,1.1596031f,
+				-1.1596031f,0.011596030607005024f,Float.NEGATIVE_INFINITY,0f,0f,1.00000017881393432617187499f,1.00000017881393432617187499f,
+				1.0000001788139343f,1.0000001788139343f};
+		final byte[] input = ("[0.11596030607005024,1.1596030607005024,11.1596030607005024,-1.1596030607005024,1.1596031," +
+				"-1.1596031,0.011596030607005024,-1234567890123456789e55,0E+75,0E-85,1.00000017881393432617187499,10.0000017881393432617187499E-1," +
+				"1.0000001788139343,1.0000001788139343]").getBytes("UTF-8");
 
 		final JsonReader<Object> jr = dslJson.newReader(new byte[64]);
 		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);

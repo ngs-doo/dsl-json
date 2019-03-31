@@ -518,7 +518,7 @@ public abstract class NumberConverter {
 			exp = parsePositiveInt(buf, reader, i, end, 0) - decimals;
 		}
 		if (fraction == 0) {
-			if (exp == 0) return whole;
+			if (exp == 0 || whole == 0) return whole;
 			else if (exp > 0 && exp < POW_10.length) return whole * POW_10[exp - 1];
 			else if (exp < 0 && -exp < POW_10.length) return whole / POW_10[-exp - 1];
 			else if (reader.doublePrecision != JsonReader.DoublePrecision.HIGH) {
@@ -723,7 +723,7 @@ public abstract class NumberConverter {
 		} else {
 			exp = parsePositiveInt(buf, reader, i, end, 0) - decimals;
 		}
-		if (exp == 0) return whole;
+		if (exp == 0 || whole == 0) return whole;
 		else if (exp > 0 && exp < POW_10.length) return (float) (whole * POW_10[exp - 1]);
 		else if (exp < 0 && -exp < POW_10.length) return (float) (whole / POW_10[-exp - 1]);
 		else return exp > 0 ? Float.POSITIVE_INFINITY : 0f;
