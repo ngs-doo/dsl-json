@@ -1181,7 +1181,7 @@ public class NumberConverterTest {
 	}
 
 	@Test
-	public void edgeCases() throws IOException {
+	public void edgeCasesDouble() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(null);
 		final double[] input = { -2.3550447074000003E-4, -2.3550447074000003E-5, -2.3550447074000003E-6, -2.3550447074000003E-7 };
@@ -1205,5 +1205,32 @@ public class NumberConverterTest {
 
 		double[] numbers2 = NumberConverter.deserializeDoubleArray(jsr);
 		Assert.assertArrayEquals(input, numbers2, 0);
+	}
+
+	@Test
+	public void edgeCasesFloat() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(null);
+		final float[] numbers = {0.11596030607005024f,1.1596030607005024f,11.1596030607005024f,-1.1596030607005024f,1.1596031f,-1.1596031f,0.011596030607005024f};
+		final byte[] input = "[0.11596030607005024,1.1596030607005024,11.1596030607005024,-1.1596030607005024,1.1596031,-1.1596031,0.011596030607005024]".getBytes("UTF-8");
+
+		final JsonReader<Object> jr = dslJson.newReader(new byte[64]);
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		// init
+		jr.process(input, input.length);
+		jr.read();
+		jr.read();
+
+		float[] numbers1 = NumberConverter.deserializeFloatArray(jr);
+		Assert.assertArrayEquals(numbers, numbers1, 0);
+
+		jsr.process(new ByteArrayInputStream(input, 0, input.length));
+		// init
+		jsr.read();
+		jsr.read();
+
+		float[] numbers2 = NumberConverter.deserializeFloatArray(jsr);
+		Assert.assertArrayEquals(numbers, numbers2, 0);
 	}
 }

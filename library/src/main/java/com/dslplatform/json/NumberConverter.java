@@ -681,12 +681,12 @@ public abstract class NumberConverter {
 				value = (value << 3) + (value << 1) + ind;
 			}
 			final int endPos;
-			if (i == numLimit && !foundE && i < end) {
-				endPos = i + 1;
+			if (i == numLimit && !foundE) {
+				endPos = i + 1 - pointOffset;
 				while (i < end && ch >= '0' && ch <= '9') {
 					ch = buf[i++];
 				}
-			} else endPos = i;
+			} else endPos = i - pointOffset;
 			while (i == end && reader.length() == end) {
 				i = reader.scanNumber();
 				end = reader.getCurrentIndex();
@@ -696,7 +696,7 @@ public abstract class NumberConverter {
 				}
 			}
 			if (ch == 'e' || ch == 'E') {
-				return floatExponent(reader, value, endPos - decPos - pointOffset, buf, end, i);
+				return floatExponent(reader, value, endPos - decPos, buf, end, i);
 			}
 			final int expDiff = endPos - decPos;
 			if (expDiff > 0) {
