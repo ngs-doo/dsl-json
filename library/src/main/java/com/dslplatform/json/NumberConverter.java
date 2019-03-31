@@ -643,7 +643,7 @@ public abstract class NumberConverter {
 		}
 		if (i == digitStart) numberException(reader, start, end, "Digit not found");
 		else if (i > 18 + digitStart) {
-			return parseFloatGeneric(reader.prepareBuffer(start, end - start), end - start, reader);
+			return parseFloatGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader);
 		} else if (i == end) {
 			return value;
 		} else if (ch == '.') {

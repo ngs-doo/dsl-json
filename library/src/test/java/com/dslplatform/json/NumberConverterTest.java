@@ -1211,8 +1211,8 @@ public class NumberConverterTest {
 	public void edgeCasesFloat() throws IOException {
 		// setup
 		final JsonWriter sw = new JsonWriter(null);
-		final float[] numbers = {0.11596030607005024f,1.1596030607005024f,11.1596030607005024f,-1.1596030607005024f,1.1596031f,-1.1596031f,0.011596030607005024f};
-		final byte[] input = "[0.11596030607005024,1.1596030607005024,11.1596030607005024,-1.1596030607005024,1.1596031,-1.1596031,0.011596030607005024]".getBytes("UTF-8");
+		final float[] numbers = {0.11596030607005024f,1.1596030607005024f,11.1596030607005024f,-1.1596030607005024f,1.1596031f,-1.1596031f,0.011596030607005024f,Float.NEGATIVE_INFINITY};
+		final byte[] input = "[0.11596030607005024,1.1596030607005024,11.1596030607005024,-1.1596030607005024,1.1596031,-1.1596031,0.011596030607005024,-1234567890123456789e55]".getBytes("UTF-8");
 
 		final JsonReader<Object> jr = dslJson.newReader(new byte[64]);
 		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
@@ -1232,5 +1232,49 @@ public class NumberConverterTest {
 
 		float[] numbers2 = NumberConverter.deserializeFloatArray(jsr);
 		Assert.assertArrayEquals(numbers, numbers2, 0);
+	}
+
+	@Test
+	public void doubleAndFloatRandom() throws IOException {
+		final JsonWriter sw = new JsonWriter(40, null);
+		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
+		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);
+
+		final Random rnd = new Random(0);
+
+		for (int i = 0; i < 1000000; i++) {
+			sw.reset();
+
+			BigDecimal bd =
+				i%5 == 0 ? BigDecimal.valueOf(rnd.nextLong(), rnd.nextInt(500))
+				: BigDecimal.valueOf(rnd.nextLong(), rnd.nextInt(1000) - 500);
+
+			double d = bd.doubleValue();
+			float f = bd.floatValue();
+
+			NumberConverter.serialize(bd, sw);
+
+			jr.process(null, sw.size());
+			jr.read();
+			final double dp1 = NumberConverter.deserializeDouble(jr);
+			Assert.assertEquals(d, dp1, 0);
+
+			final ByteArrayInputStream isd = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.process(isd);
+			jsr.read();
+			final double dp2 = NumberConverter.deserializeDouble(jsr);
+			Assert.assertEquals(d, dp2, 0);
+
+			jr.process(null, sw.size());
+			jr.read();
+			final float fp1 = NumberConverter.deserializeFloat(jr);
+			Assert.assertEquals(f, fp1, 0);
+
+			final ByteArrayInputStream isf = new ByteArrayInputStream(sw.getByteBuffer(), 0, sw.size());
+			jsr.process(isf);
+			jsr.read();
+			final float fp2 = NumberConverter.deserializeFloat(jsr);
+			Assert.assertEquals(f, fp2, 0);
+		}
 	}
 }

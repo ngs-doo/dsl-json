@@ -528,7 +528,10 @@ public final class JsonReader<TContext> {
 		return tokenStart;
 	}
 
-	final char[] prepareBuffer(final int start, final int len) {
+	final char[] prepareBuffer(final int start, final int len) throws ParsingException {
+		if (len > maxNumberDigits) {
+			throw newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", len, "");
+		}
 		while (chars.length < len) {
 			chars = Arrays.copyOf(chars, chars.length * 2);
 		}

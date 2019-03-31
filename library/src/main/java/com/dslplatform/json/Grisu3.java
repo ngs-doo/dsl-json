@@ -899,7 +899,7 @@ abstract class Grisu3 {
 				chars[dot] = '.';
 				end++;
 			}
-			chars[end++] = 'e';
+			chars[end++] = 'E';
 			byte sign = '+';
 			int exp = decPoint - 1;
 			if (exp < 0) {
