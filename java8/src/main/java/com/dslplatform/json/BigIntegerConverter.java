@@ -25,6 +25,9 @@ public abstract class BigIntegerConverter {
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
 		}
+		if (end > reader.maxNumberDigits) {
+			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
+		}
 		try {
 			return new BigInteger(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {

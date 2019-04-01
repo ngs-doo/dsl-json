@@ -923,7 +923,7 @@ class ConverterTemplate {
 
 	private void processPropertyValue(AttributeInfo attr, String alignment, boolean useInstance) throws IOException {
 		if (attr.notNull) {
-			code.append(alignment).append("\t\tif (reader.wasNull()) throw reader.newParseErrorAt(\"Property '").append(attr.name).append("' is not allowed to be null.\", 0);\n");
+			code.append(alignment).append("\t\tif (reader.wasNull()) throw reader.newParseErrorAt(\"Property '").append(attr.name).append("' is not allowed to be null\", 0);\n");
 		}
 		String typeName = attr.type.toString();
 		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
