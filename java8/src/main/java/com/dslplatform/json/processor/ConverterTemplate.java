@@ -113,9 +113,9 @@ class ConverterTemplate {
 
 		for (AttributeInfo attr : si.attributes.values()) {
 			String typeName = attr.type.toString();
-			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
+			OptimizedConverter converter = context.inlinedConverters.get(typeName);
 		    StructInfo target = context.structs.get(attr.typeName);
-			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
+			if (attr.converter == null && (target == null || target.converter == null) && converter == null && !isStaticEnum(attr) && !attr.isJsonObject) {
 				List<String> types = attr.collectionContent(context.typeSupport, context.structs);
 				if (target != null && attr.isEnum(context.structs)) {
 					code.append("\t\tprivate final ").append(findConverterName(target)).append(".EnumConverter converter_").append(attr.name).append(";\n");
@@ -147,6 +147,14 @@ class ConverterTemplate {
 					createLazyReaderAndWriter(attr, attr.type, "");
 				}
 				if (attr.isArray) {
+					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType());
+					code.append("\t\tprivate final ").append(content).append("[] emptyArray_").append(attr.name).append(";\n");
+				}
+			} else if (converter != null && attr.isArray && attr.notNull) {
+				if (converter.defaultValue != null) {
+					code.append("\t\tprivate static final ").append(attr.typeName).append(" emptyArray_").append(attr.name);
+					code.append(" = ").append(converter.defaultValue).append(";\n");
+				} else {
 					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType());
 					code.append("\t\tprivate final ").append(content).append("[] emptyArray_").append(attr.name).append(";\n");
 				}
@@ -450,14 +458,13 @@ class ConverterTemplate {
 		i = 0;
 		for (AttributeInfo attr : sortedAttributes) {
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
-			String defaultValue = context.getDefault(attr);
-			if (attr.mandatory || attr.notNull && nonPrimitive && (attr.isArray || !"null".equals(defaultValue))) {
+			if (attr.mandatory || attr.notNull && nonPrimitive) {
 				code.append("\t\t\tboolean __detected_").append(attr.name).append("__ = index > ").append(Integer.toString(i)).append(";\n");
-				i += 1;
 			}
+			i += 1;
 		}
 		code.append("\t\t\tswitch(reader.getLastHash()) {\n");
-		handleSwitch(si, "\t\t\t", false);
+		handleSwitch(si, "\t\t\t", true);
 		code.append("\t\t\t}\n");
 		if (sortedAttributes.isEmpty()) {
 			code.append("\t\t}\n");
@@ -467,37 +474,31 @@ class ConverterTemplate {
 		code.append("\t\t\twhile (reader.last() == ','){\n");
 		code.append("\t\t\t\treader.getNextToken();\n");
 		code.append("\t\t\t\tswitch(reader.fillName()) {\n");
-		handleSwitch(si, "\t\t\t\t", false);
+		handleSwitch(si, "\t\t\t\t", true);
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
 		for (AttributeInfo attr : sortedAttributes) {
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
-			if (attr.mandatory) {
-				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON\", 0);\n");
+			String defaultValue = context.getDefault(attr);
+			if (attr.isArray && attr.notNull) {
+				defaultValue = "emptyArray_" + attr.name;
+			}
+			if (attr.mandatory || attr.notNull && nonPrimitive && "null".equals(defaultValue)) {
+				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '");
+				code.append(attr.name).append("' is ");
+				if (attr.mandatory) code.append("mandatory");
+				else code.append("not-nullable and doesn't have a default");
+				code.append(" but was not found in JSON\", 0);\n");
 			} else if (attr.notNull && nonPrimitive) {
-				final String defaultValue;
-				if (attr.isArray) {
-					OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
-					if (converter != null && converter.defaultValue != null) {
-						defaultValue = converter.defaultValue;
-					} else {
-						defaultValue = "emptyArray_" + attr.name;
-					}
-				} else {
-					defaultValue = context.getDefault(attr);
-				}
-				if (!"null".equals(defaultValue)) {
-					code.append("\t\t\tif (!__detected_").append(attr.name).append("__ && instance.");
-					if (attr.field != null) code.append(attr.field.getSimpleName());
-					else code.append(attr.writeMethod.getSimpleName()).append("()");
-					code.append(" == null) {\n");
-					code.append("\t\t\t\tinstance.");
-					if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ").append(defaultValue).append(";\n");
-					else code.append(attr.writeMethod.getSimpleName()).append("(").append(defaultValue).append(");\n");
-					code.append("\t\t\t}\n");
-				}
+				code.append("\t\t\tif (!__detected_").append(attr.name).append("__ && instance.");
+				if (attr.field != null) code.append(attr.field.getSimpleName());
+				else code.append(attr.writeMethod.getSimpleName()).append("()");
+				code.append(" == null) {\n");
+				code.append("\t\t\t\tinstance.");
+				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ").append(defaultValue).append(";\n");
+				else code.append(attr.writeMethod.getSimpleName()).append("(").append(defaultValue).append(");\n");
+				code.append("\t\t\t}\n");
 			}
 		}
 		code.append("\t\t}\n");
@@ -518,37 +519,35 @@ class ConverterTemplate {
 		for (AttributeInfo attr : sortedAttributes) {
 			String typeName = attr.type.toString();
 			code.append("\t\t\t").append(typeName).append(" _").append(attr.name).append("_ = ");
+			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String defaultValue = context.getDefault(attr);
 			if (attr.isArray && attr.notNull) {
-				OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
-				if (converter != null && converter.defaultValue != null) {
-					code.append(converter.defaultValue);
-				} else {
-					code.append("emptyArray_").append(attr.name);
-				}
+				code.append("emptyArray_").append(attr.name);
+			} else if (context.isObjectInstance(attr)) {
+				code.append("null");
 			} else {
-				code.append(defaultValue);
+				code.append(context.getDefault(attr));
 			}
 			code.append(";\n");
-			if (attr.mandatory) {
+			if (attr.mandatory || attr.notNull && nonPrimitive && ("null".equals(defaultValue) || context.isObjectInstance(attr))) {
 				code.append("\t\t\tboolean __detected_").append(attr.name).append("__ = false;\n");
 			}
 		}
 		code.append("\t\t\tif (reader.last() == '}') {\n");
-		checkMandatory(sortedAttributes);
+		checkMandatory(sortedAttributes, "\t\t\t\t");
 		returnInstance("\t\t\t\t", si, className);
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tswitch(reader.fillName()) {\n");
-		handleSwitch(si, "\t\t\t", true);
+		handleSwitch(si, "\t\t\t", false);
 		code.append("\t\t\t}\n");
 		code.append("\t\t\twhile (reader.last() == ','){\n");
 		code.append("\t\t\t\treader.getNextToken();\n");
 		code.append("\t\t\t\tswitch(reader.fillName()) {\n");
-		handleSwitch(si, "\t\t\t\t", true);
+		handleSwitch(si, "\t\t\t\t", false);
 		code.append("\t\t\t\t}\n");
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
-		checkMandatory(sortedAttributes);
+		checkMandatory(sortedAttributes, "\t\t\t");
 		returnInstance("\t\t\t", si, className);
 		code.append("\t\t}\n");
 		code.append("\t}\n");
@@ -620,7 +619,12 @@ class ConverterTemplate {
 				} else if (attr.notNull && (attr.isList || attr.isSet || attr.isMap)) {
 					code.append(readValue).append(" != null && !").append(readValue).append(".isEmpty()");
 				} else {
-					code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+					StructInfo target = context.structs.get(attr.typeName);
+					if (target != null && (target.hasEmptyCtor() || target.hasKnownConversion() || target.annotatedFactory != null)) {
+						code.append(readValue).append(" != null)");
+					} else {
+						code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+					}
 				}
 				code.append(") {\n");
 			}
@@ -651,22 +655,25 @@ class ConverterTemplate {
 		for (int i = start; i < attributes.size(); i++) {
 			AttributeInfo attr = attributes.get(i);
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
-			if (attr.mandatory) {
-				sb.append(" throw reader.newParseErrorAt(\"Property '").append(attr.name);
-				sb.append("' is mandatory but was not found in JSON\", 0);\n");
-				code.append(sb.toString());
-				return;
+			String defaultValue = context.getDefault(attr);
+			if (attr.mandatory || attr.notNull && nonPrimitive && "null".equals(defaultValue)) {
+				int length = sb.length();
+				if (!attr.mandatory) {
+					sb.append("\t\t\t\tif (instance.").append(attr.readProperty).append(" == null)");
+				}
+				sb.append(" throw reader.newParseErrorAt(\"Property '").append(attr.name).append("' is ");
+				if (attr.mandatory) sb.append("mandatory");
+				else sb.append("not-nullable and doesn't have a default");
+				sb.append(" but was not found in JSON\", 0);\n");
+				if (attr.mandatory) {
+					if (length != 0) code.append(" { \n");
+					code.append(sb.toString());
+					if (length != 0) code.append(" } ");
+					return;
+				}
 			} else if (attr.notNull && nonPrimitive) {
-				final String defaultValue;
 				if (attr.isArray) {
-					OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
-					if (converter != null && converter.defaultValue != null) {
-						defaultValue = converter.defaultValue;
-					} else {
-						defaultValue = "emptyArray_" + attr.name;
-					}
-				} else {
-					defaultValue = context.getDefault(attr);
+					defaultValue = "emptyArray_" + attr.name;
 				}
 				if (!"null".equals(defaultValue)) {
 					sb.append(" if (instance.");
@@ -679,19 +686,24 @@ class ConverterTemplate {
 			}
 		}
 		if (sb.length() > 0) {
-			code.append(" { ");
+			code.append(" {\n");
 			code.append(sb.toString());
-			code.append(" return; }\n");
+			code.append("\t\t\t\treturn;\n\t\t\t}\n");
 		} else {
 			code.append(" return;\n");
 		}
 	}
 
-	private void checkMandatory(final List<AttributeInfo> attributes) throws IOException {
+	private void checkMandatory(final List<AttributeInfo> attributes, String padding) throws IOException {
 		for (AttributeInfo attr : attributes) {
-			if (attr.mandatory) {
-				code.append("\t\t\tif (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '").append(attr.name);
-				code.append("' is mandatory but was not found in JSON\", 0);\n");
+			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
+			String defaultValue = context.getDefault(attr);
+			if (attr.mandatory || attr.notNull && nonPrimitive && ("null".equals(defaultValue) || context.isObjectInstance(attr))) {
+				code.append(padding).append("if (!__detected_").append(attr.name).append("__) throw reader.newParseErrorAt(\"Property '");
+				code.append(attr.name).append("' is ");
+				if (attr.mandatory) code.append("mandatory");
+				else code.append("not-nullable and doesn't have a default");
+				code.append(" but was not found in JSON\", 0);\n");
 			}
 		}
 	}
@@ -870,7 +882,7 @@ class ConverterTemplate {
 		}
 	}
 
-	private void handleSwitch(StructInfo si, String alignment, boolean localNames) throws IOException {
+	private void handleSwitch(StructInfo si, String alignment, boolean useInstance) throws IOException {
 		for (AttributeInfo attr : si.attributes.values()) {
 			String mn = si.minifiedNames.get(attr.id);
 			code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(mn != null ? mn : attr.id))).append(":\n");
@@ -888,11 +900,11 @@ class ConverterTemplate {
 			}
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String defaultValue = context.getDefault(attr);
-			if (attr.mandatory || !localNames && attr.notNull && nonPrimitive && (attr.isArray || !"null".equals(defaultValue))) {
+			if (attr.mandatory || attr.notNull && nonPrimitive && (useInstance || "null".equals(defaultValue) || context.isObjectInstance(attr))) {
 				code.append(alignment).append("\t\t__detected_").append(attr.name).append("__ = true;\n");
 			}
 			code.append(alignment).append("\t\treader.getNextToken();\n");
-			processPropertyValue(attr, alignment, !localNames);
+			processPropertyValue(attr, alignment, useInstance);
 			code.append(alignment).append("\t\treader.getNextToken();\n");
 			code.append(alignment).append("\t\tbreak;\n");
 		}

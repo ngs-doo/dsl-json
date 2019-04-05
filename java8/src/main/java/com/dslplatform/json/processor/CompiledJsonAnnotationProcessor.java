@@ -114,7 +114,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		InlinedConverters.put("java.lang.String", new OptimizedConverter("com.dslplatform.json.StringConverter", "WRITER", "serialize", "READER", "deserialize", "\"\""));
 		InlinedConverters.put("java.util.UUID", new OptimizedConverter("com.dslplatform.json.UUIDConverter", "WRITER", "serialize", "READER", "deserialize", "com.dslplatform.json.UUIDConverter.MIN_UUID"));
 		InlinedConverters.put("java.time.LocalDate", new OptimizedConverter("com.dslplatform.json.JavaTimeConverter", "LOCAL_DATE_WRITER", "serialize", "LOCAL_DATE_READER", "deserializeLocalDate", null));
-		InlinedConverters.put("java.time.OffsetDateTime", new OptimizedConverter("com.dslplatform.json.JavaTimeConverter", "DATE_TIME_READER", "serialize", "DATE_TIME_WRITER", "deserializeDateTime", null));
+		InlinedConverters.put("java.time.OffsetDateTime", new OptimizedConverter("com.dslplatform.json.JavaTimeConverter", "DATE_TIME_WRITER", "serialize", "DATE_TIME_READER", "deserializeDateTime", null));
 		Defaults = new HashMap<>();
 		Defaults.put("byte", "(byte)0");
 		Defaults.put("boolean", "false");

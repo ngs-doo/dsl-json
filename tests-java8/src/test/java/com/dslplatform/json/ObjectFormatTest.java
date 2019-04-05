@@ -196,6 +196,21 @@ public class ObjectFormatTest {
 		public List<Response> codes;
 	}
 
+	@CompiledJson
+	public static class DefaultCode {
+		@JsonAttribute(nullable = false)
+		public Response code;
+	}
+
+	@CompiledJson
+	public static class DefaultCodeInCtor {
+		@JsonAttribute(nullable = false)
+		public Response code;
+		public DefaultCodeInCtor(Response code) {
+			this.code = code;
+		}
+	}
+
 	public enum Response { Ok, BadRequest }
 
 	@Test
@@ -214,5 +229,19 @@ public class ObjectFormatTest {
 		Assert.assertEquals(id1, deser.uuids[0]);
 		Assert.assertEquals(id2, deser.uuids[1]);
 		Assert.assertEquals(m.codes, deser.codes);
+	}
+
+	@Test
+	public void defaultForEnum() throws IOException {
+		byte[] bytes = "{}".getBytes("UTF-8");
+		DefaultCode deser = dslJsonFull.deserialize(DefaultCode.class, bytes, bytes.length);
+		Assert.assertEquals(Response.Ok, deser.code);
+	}
+
+	@Test
+	public void defaultForEnumWithCtor() throws IOException {
+		byte[] bytes = "{}".getBytes("UTF-8");
+		DefaultCodeInCtor deser = dslJsonFull.deserialize(DefaultCodeInCtor.class, bytes, bytes.length);
+		Assert.assertEquals(Response.Ok, deser.code);
 	}
 }

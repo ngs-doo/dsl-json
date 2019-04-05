@@ -182,7 +182,7 @@ public class StructInfo {
 
 	public boolean createFromEmptyInstance() {
 		return annotatedFactory != null && annotatedFactory.getParameters().size() == 0
-				|| selectedConstructor != null && selectedConstructor.getParameters().size() == 0;
+				|| annotatedFactory == null && selectedConstructor != null && selectedConstructor.getParameters().size() == 0;
 	}
 
 	public boolean hasAnnotation() {

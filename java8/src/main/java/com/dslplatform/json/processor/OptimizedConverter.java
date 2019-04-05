@@ -7,6 +7,7 @@ final class OptimizedConverter {
 	private final String nonNullableEncoderMethod;
 	public final String decoderField;
 	private final String nonNullableDecoderMethod;
+	@Nullable
 	final String defaultValue;
 
 	OptimizedConverter(String converter, String encoderField, String nonNullableEncoderMethod, String decoderField) {

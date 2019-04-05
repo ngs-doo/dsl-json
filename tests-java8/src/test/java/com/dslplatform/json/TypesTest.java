@@ -7,9 +7,11 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class TypesTest {
 
@@ -215,5 +217,133 @@ public class TypesTest {
 		Assert.assertEquals(0, z.i3.length);
 		Assert.assertEquals(0, z.i4.length);
 		Assert.assertEquals(0, z.i5.length);
+	}
+
+	@CompiledJson
+	public static class UUIDS {
+		@JsonAttribute(nullable = false)
+		public UUID u1;
+		public UUID u2;
+		public List<UUID> u3;
+		public java.util.ArrayList<UUID> u4;
+	}
+
+	@CompiledJson
+	public static class DateTimes {
+		@JsonAttribute(nullable = false)
+		public OffsetDateTime t1;
+		public OffsetDateTime t2;
+	}
+
+	@CompiledJson
+	public static class DateTimesWithCtor {
+		@JsonAttribute(nullable = false)
+		public OffsetDateTime t1;
+		public OffsetDateTime t2;
+		public DateTimesWithCtor(OffsetDateTime t1, OffsetDateTime t2) {
+			this.t1 = t1;
+			this.t2 = t2;
+		}
+	}
+
+	@CompiledJson
+	public static class DateTimesCollection {
+		@JsonAttribute(nullable = false)
+		public List<OffsetDateTime> t1;
+		@JsonAttribute(nullable = false)
+		public java.util.ArrayList<OffsetDateTime> t2;
+		public List<OffsetDateTime> t3;
+		public java.util.ArrayList<OffsetDateTime> t4;
+		public DateTimesCollection(List<OffsetDateTime> t1, java.util.ArrayList<OffsetDateTime> t2, List<OffsetDateTime> t3, java.util.ArrayList<OffsetDateTime> t4) {
+			this.t1 = t1;
+			this.t2 = t2;
+			this.t3 = t3;
+			this.t4 = t4;
+		}
+	}
+
+	@Test
+	public void nonnullableWithDefaultIsNotMandatory() throws IOException {
+		byte[] input = "{}".getBytes("UTF-8");
+		UUIDS u = dslJsonFull.deserialize(UUIDS.class, input, input.length);
+		Assert.assertEquals(new UUID(0L, 0L), u.u1);
+		Assert.assertEquals(null, u.u2);
+	}
+
+	@Test
+	public void nonnullableWithoutDefaultIsMandatoryWithEmptyCtor() throws IOException {
+		byte[] input = "{}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(DateTimes.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 't1' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void nonnullableWithoutDefaultIsMandatoryWithoutEmptyCtor() throws IOException {
+		byte[] input = "{}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(DateTimesWithCtor.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 't1' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void correctIndexOnSlowBindAtEndWithEmptyCtor() throws IOException {
+		byte[] input = "{\"t2\":null}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(DateTimes.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 't1' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void correctIndexOnSlowBindAtEndWithoutEmptyCtor() throws IOException {
+		byte[] input = "{\"t2\":null}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(DateTimesWithCtor.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 't1' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void correctIndexOnSlowBindWithExtraOnEmptyCtor() throws IOException {
+		byte[] input = "{\"t2\":null,\"a\":1}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(DateTimes.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 't1' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void correctIndexOnSlowBindWithExtraWithoutEmptyCtor() throws IOException {
+		byte[] input = "{\"t2\":null,\"a\":1}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(DateTimesWithCtor.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 't1' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void defaultOnUnsupportedCollections() throws IOException {
+		byte[] input = "{}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(DateTimesCollection.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 't2' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
 	}
 }

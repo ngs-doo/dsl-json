@@ -67,4 +67,20 @@ public class PrimitivesTest {
 		Assert.assertEquals(fp.f1, res.f1, 0);
 		Assert.assertEquals(fp.f2, res.f2, 0);
 	}
+
+	@CompiledJson
+	public static class PrimitiveWithNullable {
+		@JsonAttribute(nullable = false)
+		public int x1;
+		@JsonAttribute(nullable = true)
+		public int x2;
+	}
+
+	@Test
+	public void expectedPrimitiveDefaults() throws IOException {
+		byte[] input = "{}".getBytes("UTF-8");
+		PrimitiveWithNullable s = dslJson.deserialize(PrimitiveWithNullable.class, input, input.length);
+		Assert.assertEquals(0, s.x1);
+		Assert.assertEquals(0, s.x2);
+	}
 }

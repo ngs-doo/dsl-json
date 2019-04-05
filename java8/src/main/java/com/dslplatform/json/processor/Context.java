@@ -60,7 +60,16 @@ final class Context {
 		} else if (attr.isMap && type.startsWith("java.util.Map<")) {
 			return "java.util.Collections.emptyMap()";
 		}
-
+		StructInfo target = structs.get(attr.typeName);
+		if (target != null) {
+			if (target.annotatedFactory != null && target.annotatedFactory.getParameters().isEmpty()) {
+				return target.annotatedFactory.getEnclosingElement().toString() + "." + target.annotatedFactory.getSimpleName() + "()";
+			} else if (target.converter == null && target.hasEmptyCtor()) {
+				return "new " + attr.typeName + "()";
+			} else if (target.type == ObjectType.ENUM && !target.constants.isEmpty()) {
+				return attr.typeName + "." + target.constants.get(0);
+			}
+		}
 		return "null";
 	}
 
@@ -148,5 +157,12 @@ final class Context {
 	TypeMirror findType(String content) {
 		TypeElement element = environment.getElementUtils().getTypeElement(content);
 		return element != null ? element.asType() : null;
+	}
+
+	boolean isObjectInstance(AttributeInfo attr) {
+		OptimizedConverter converter = inlinedConverters.get(attr.typeName);
+		if (converter == null) return false;
+		StructInfo target = structs.get(attr.typeName);
+		return target != null && (target.annotatedFactory != null || target.hasEmptyCtor());
 	}
 }
