@@ -978,7 +978,12 @@ class ConverterTemplate {
 			} else if (target != null && target.converter != null) {
 				code.append(target.converter.fullName).append(".").append(target.converter.reader).append(".read(reader)");
 			} else if (optimizedConverter != null) {
-				code.append(optimizedConverter.nonNullableDecoder()).append("(reader)");
+				boolean isPrimitive = !typeName.equals(Analysis.objectName(typeName));
+				if (attr.notNull || isPrimitive) {
+					code.append(optimizedConverter.nonNullableDecoder()).append("(reader)");
+				} else {
+					code.append(optimizedConverter.decoderField).append(".read(reader)");
+				}
 			} else if (target != null && attr.isEnum(context.structs)) {
 				if (!attr.notNull) code.append("reader.wasNull() ? null : ");
 				if (enumTemplate.isStatic(target)) {
