@@ -79,6 +79,9 @@ object ScalaCollectionAnalyzer {
     } else if (classOf[scala.collection.immutable.IndexedSeq[_]].isAssignableFrom(collection)) {
       val empty = scala.collection.immutable.IndexedSeq.empty
       Some(CollectionConversion(() => empty, _.toIndexedSeq))
+    } else if (classOf[scala.collection.immutable.Seq[_]].isAssignableFrom(collection)) {
+      val empty = scala.collection.immutable.Seq.empty
+      Some(CollectionConversion(() => empty, _.toVector))
     } else if (classOf[mutable.Set[_]].isAssignableFrom(collection)) {
       Some(CollectionConversion(() => new mutable.HashSet(), ab => mutable.Set(ab:_*)))
     } else if (classOf[mutable.Stack[_]].isAssignableFrom(collection)) {
