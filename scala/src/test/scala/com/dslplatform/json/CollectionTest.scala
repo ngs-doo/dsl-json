@@ -66,10 +66,15 @@ class CollectionTest extends Specification with ScalaCheck {
       val value = dslJson.decode[Vector[Int]](input)
       Vector(1, 2, 3) === value
     }
-    "set deserialize" >> {
+    "set primitive deserialize" >> {
       val input = "[1,2,3]".getBytes("UTF-8")
       val value = dslJson.decode[Set[Long]](input)
       Set(1L, 2L, 3L) === value
+    }
+    "set object deserialize" >> {
+      val input = "[1,2,3]".getBytes("UTF-8")
+      val value = dslJson.decode[Set[BigDecimal]](input)
+      Set(BigDecimal(1), BigDecimal(2), BigDecimal(3)) === value
     }
     "mutable set deserialize" >> {
       val input = "[1,2,3]".getBytes("UTF-8")

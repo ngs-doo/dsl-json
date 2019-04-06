@@ -1,11 +1,11 @@
 lazy val root = (project in file(".")
   settings (commonSettings ++ publishSettings)
   settings(
-    version := "1.9.1",
+    version := "1.9.2",
     libraryDependencies ++= Seq(
-      "com.dslplatform" % "dsl-json-java8" % "1.9.1",
+      "com.dslplatform" % "dsl-json-java8" % "1.9.2",
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "org.specs2" %% "specs2-scalacheck" % "3.8.6" % Test
+      "org.specs2" %% "specs2-scalacheck" % "4.5.1" % Test
     ),
     name := "DSL-JSON Scala"
   )
@@ -20,7 +20,7 @@ lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
   name := baseDirectory.value.getName,
 
   scalaVersion := crossScalaVersions.value.head,
-  crossScalaVersions := Seq("2.11.12", "2.12.8"),
+  crossScalaVersions := Seq("2.11.12", "2.12.8"/*, "2.13.0-RC1"*/),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",

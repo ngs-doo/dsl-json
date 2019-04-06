@@ -5,6 +5,8 @@ import java.io.ByteArrayOutputStream
 import org.specs2.ScalaCheck
 import org.specs2.mutable.Specification
 
+import scala.collection.mutable.ArrayBuffer
+
 class CaseClassTest extends Specification with ScalaCheck {
 
   private lazy implicit val dslJson = new DslJson[Any]()
@@ -40,6 +42,11 @@ class CaseClassTest extends Specification with ScalaCheck {
       dslJson.encode(Examples.Example6("x", Some(Examples.Example6("", None))), os)
       "{\"str\":\"x\",\"self\":{\"str\":\"\",\"self\":null}}" === os.toString("UTF-8")
     }
+    "non empty collection" >> {
+      val os = new ByteArrayOutputStream()
+      dslJson.encode(DM(IndexedSeq.empty, IndexedSeq.empty, ArrayBuffer(RS(IndexedSeq(ES(V("abc",5),V("def",6),"status")))), "OK"), os)
+      "{\"destination_addresses\":[],\"origin_addresses\":[],\"rows\":[{\"elements\":[{\"distance\":{\"text\":\"abc\",\"value\":5},\"duration\":{\"text\":\"def\",\"value\":6},\"status\":\"status\"}]}],\"status\":\"OK\"}" === os.toString("UTF-8")
+    }
   }
   "decoding" >> {
     "example 1" >> {
@@ -72,6 +79,11 @@ class CaseClassTest extends Specification with ScalaCheck {
       val res = dslJson.decode[Examples.Example6](input)
       Examples.Example6("x", Some(Examples.Example6("", None))) === res
     }
+    "array buffer conversion" >> {
+      val input = "{\"destination_addresses\":[],\"origin_addresses\":[],\"rows\":[{\"elements\":[{\"distance\":{\"text\":\"abc\",\"value\":5},\"duration\":{\"text\":\"def\",\"value\":6},\"status\":\"status\"}]}],\"status\":\"OK\"}".getBytes("UTF-8")
+      val res = dslJson.decode[DM](input)
+      DM(IndexedSeq.empty, IndexedSeq.empty, ArrayBuffer(RS(IndexedSeq(ES(V("abc",5),V("def",6),"status")))), "OK") === res
+    }
   }
 }
 
@@ -84,5 +96,21 @@ object Examples {
   case class Example4(str: String = "", i: Int = 0, l: Option[Long])
   case class Example5(str1: Option[String] = None, str2: Option[String] = Some(""), str3: Option[String] = Some("x"))
   case class Example6(str: String = "", self: Option[Example6])
-
 }
+
+case class V(
+  text: String,
+  value: Int)
+
+case class ES(
+  distance: V,
+  duration: V,
+  status: String)
+
+case class RS(elements: IndexedSeq[ES])
+
+case class DM(
+  destination_addresses: IndexedSeq[String],
+  origin_addresses: IndexedSeq[String],
+  rows: IndexedSeq[RS],
+  status: String)

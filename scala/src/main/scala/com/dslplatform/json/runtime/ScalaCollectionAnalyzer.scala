@@ -4,6 +4,7 @@ package runtime
 import java.lang.reflect.{ParameterizedType, Type}
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object ScalaCollectionAnalyzer {
   val Reader: DslJson.ConverterFactory[JsonReader.ReadObject[_]] = (manifest: Type, dslJson: DslJson[_]) => {
@@ -46,9 +47,9 @@ object ScalaCollectionAnalyzer {
     else {
       Option(json.tryFindReader(element)) match {
         case Some(reader: JsonReader.ReadObject[Any @unchecked]) =>
-          finalizeConversion(collection) match {
-            case Some(fin) =>
-              val decoder = new ArrayBufferDecoder[Any](manifest, reader, fin)
+          collectionConversion(element, collection) match {
+            case Some(conversion) =>
+              val decoder = new ArrayBufferDecoder[Any](manifest, reader, conversion.emptyInstance, conversion.fromBuffer)
               json.registerReader(manifest, decoder)
               Some(decoder)
             case _ =>
@@ -59,25 +60,33 @@ object ScalaCollectionAnalyzer {
     }
   }
 
-  private def finalizeConversion(collection: Class[_]): Option[mutable.ArrayBuffer[Any] => scala.collection.Iterable[Any]] = {
+  private case class CollectionConversion(
+    emptyInstance: () => scala.collection.Iterable[Any],
+    fromBuffer: mutable.ArrayBuffer[Any] => scala.collection.Iterable[Any]
+  )
+
+  private def collectionConversion(element: Type, collection: Class[_]): Option[CollectionConversion] = {
     if (classOf[List[_]].isAssignableFrom(collection)) {
-      Some(_.toList)
+      Some(CollectionConversion(() => List.empty, _.toList))
     } else if (classOf[Vector[_]].isAssignableFrom(collection)) {
-      Some(_.toVector)
+      Some(CollectionConversion(() => Vector.empty, _.toVector))
     } else if (classOf[Set[_]].isAssignableFrom(collection)) {
-      Some(_.toSet)
-    } else if (classOf[IndexedSeq[_]].isAssignableFrom(collection)) {
-      Some(identity)
+      val empty = Set.empty
+      Some(CollectionConversion(() => empty, _.toSet))
     } else if (classOf[mutable.ArrayBuffer[_]].isAssignableFrom(collection)) {
-      Some(identity)
+      Some(CollectionConversion(() => new ArrayBuffer(0), identity))
     } else if (classOf[mutable.Set[_]].isAssignableFrom(collection)) {
-      Some(ab => mutable.Set(ab:_*))
+      Some(CollectionConversion(() => new mutable.HashSet(), ab => mutable.Set(ab:_*)))
     } else if (classOf[mutable.Stack[_]].isAssignableFrom(collection)) {
-      Some(ab => mutable.Stack(ab:_*))
+      Some(CollectionConversion(() => new mutable.Stack(), ab => mutable.Stack(ab:_*)))
     } else if (classOf[mutable.Queue[_]].isAssignableFrom(collection)) {
-      Some(ab => mutable.Queue(ab:_*))
+      Some(CollectionConversion(() => new mutable.Queue(), ab => mutable.Queue(ab:_*)))
+    } else if (classOf[IndexedSeq[_]].isAssignableFrom(collection)) {
+      val empty = IndexedSeq.empty
+      Some(CollectionConversion(() => empty, _.toIndexedSeq))
     } else if (classOf[Seq[_]].isAssignableFrom(collection)) {
-      Some(identity)
+      val empty = Seq.empty
+      Some(CollectionConversion(() => empty, identity))
     } else {
       None
     }
