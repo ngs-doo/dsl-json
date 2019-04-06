@@ -116,7 +116,11 @@ private[json] object TypeAnalysis {
         }
       case TypeRef(_, sym, args) if sym.fullName == "scala.Array" && args.lengthCompare(1) == 0 =>
         Try(convertType(args.head, genericsMap)) match {
-          case Success(typeArg) => Some(new GenArrType(typeArg))
+          case Success(typeArg) =>
+            typeArg match {
+              case cl: Class[_] => Some(java.lang.reflect.Array.newInstance(cl, 0).getClass)
+              case _ => Some(new GenArrType(typeArg))
+            }
           case _ => None
         }
       case TypeRef(_, sym, args) =>

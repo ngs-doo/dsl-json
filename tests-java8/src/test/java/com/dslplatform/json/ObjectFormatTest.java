@@ -213,6 +213,26 @@ public class ObjectFormatTest {
 
 	public enum Response { Ok, BadRequest }
 
+	@CompiledJson
+	public static class InstanceDefault {
+		@JsonAttribute(nullable = false)
+		public DefaultCode def1;
+		@JsonAttribute(nullable = false)
+		public DefaultCodeInCtor def2;
+	}
+
+	@CompiledJson
+	public static class InstanceDefaultWithCtor {
+		@JsonAttribute(nullable = false)
+		public DefaultCode def1;
+		@JsonAttribute(nullable = false)
+		public DefaultCodeInCtor def2;
+		public InstanceDefaultWithCtor(DefaultCode def1, DefaultCodeInCtor def2) {
+			this.def1 = def1;
+			this.def2 = def2;
+		}
+	}
+
 	@Test
 	public void withMandatory() throws IOException {
 		WithMandatory m = new WithMandatory();
@@ -243,5 +263,45 @@ public class ObjectFormatTest {
 		byte[] bytes = "{}".getBytes("UTF-8");
 		DefaultCodeInCtor deser = dslJsonFull.deserialize(DefaultCodeInCtor.class, bytes, bytes.length);
 		Assert.assertEquals(Response.Ok, deser.code);
+	}
+
+	@Test
+	public void requiredOnDefaultWithObjects() throws IOException {
+		byte[] bytes = "{}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(InstanceDefault.class, bytes, bytes.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 'def2' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void requiredOnDefaultWithObjectsInCtor() throws IOException {
+		byte[] bytes = "{}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(InstanceDefaultWithCtor .class, bytes, bytes.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 'def2' is not-nullable and doesn't have a default but was not found in JSON"));
+		}
+	}
+
+	@Test
+	public void defaultWithObjects() throws IOException {
+		byte[] bytes = "{\"def2\":{}}".getBytes("UTF-8");
+		InstanceDefault deser = dslJsonFull.deserialize(InstanceDefault.class, bytes, bytes.length);
+		//TODO: it would be nice if value was Response.Ok instead of null, but this is controlled by empty instance
+		Assert.assertEquals(null, deser.def1.code);
+		Assert.assertEquals(Response.Ok, deser.def2.code);
+	}
+
+	@Test
+	public void defaultWithObjectsInCtor() throws IOException {
+		byte[] bytes = "{\"def2\":{}}".getBytes("UTF-8");
+		InstanceDefaultWithCtor deser = dslJsonFull.deserialize(InstanceDefaultWithCtor.class, bytes, bytes.length);
+		//TODO: it would be nice if value was Response.Ok instead of null, but this is controlled by empty instance
+		Assert.assertEquals(null, deser.def1.code);
+		Assert.assertEquals(Response.Ok, deser.def2.code);
 	}
 }

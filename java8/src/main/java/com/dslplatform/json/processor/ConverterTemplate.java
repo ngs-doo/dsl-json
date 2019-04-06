@@ -621,7 +621,7 @@ class ConverterTemplate {
 				} else {
 					StructInfo target = context.structs.get(attr.typeName);
 					if (target != null && (target.hasEmptyCtor() || target.hasKnownConversion() || target.annotatedFactory != null)) {
-						code.append(readValue).append(" != null)");
+						code.append(readValue).append(" != null");
 					} else {
 						code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
 					}

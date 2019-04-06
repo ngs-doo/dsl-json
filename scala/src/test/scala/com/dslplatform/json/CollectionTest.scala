@@ -91,5 +91,10 @@ class CollectionTest extends Specification with ScalaCheck {
       val value = dslJson.decode[mutable.Queue[Long]](input)
       mutable.Queue(1L, 2L, 3L) === value
     }
+    "array boolean deserialize" >> {
+      val input = "[true,false,true]".getBytes("UTF-8")
+      val value = dslJson.decode[Array[Boolean]](input)
+      Array(true, false, true) === value
+    }
   }
 }
