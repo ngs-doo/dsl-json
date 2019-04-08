@@ -101,7 +101,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		InlinedConverters.put("java.lang.Integer", new OptimizedConverter("com.dslplatform.json.NumberConverter", "INT_WRITER", "serialize", "NULLABLE_INT_READER", "deserializeInt", "com.dslplatform.json.NumberConverter.INT_ZERO"));
 		InlinedConverters.put("long", new OptimizedConverter("com.dslplatform.json.NumberConverter", "LONG_WRITER", "serialize", "LONG_READER", "deserializeLong", "0L"));
 		InlinedConverters.put("long[]", new OptimizedConverter("com.dslplatform.json.NumberConverter", "LONG_ARRAY_WRITER", "serialize", "LONG_ARRAY_READER", null, "com.dslplatform.json.NumberConverter.LONG_EMPTY_ARRAY"));
-		InlinedConverters.put("java.lang.Long", new OptimizedConverter("com.dslplatform.json.NumberConverter", "LONG_WRITER", "serialize", "LONG_READER", "deserializeLong", "com.dslplatform.json.NumberConverter.LONG_ZERO"));
+		InlinedConverters.put("java.lang.Long", new OptimizedConverter("com.dslplatform.json.NumberConverter", "LONG_WRITER", "serialize", "NULLABLE_LONG_READER", "deserializeLong", "com.dslplatform.json.NumberConverter.LONG_ZERO"));
 		InlinedConverters.put("float", new OptimizedConverter("com.dslplatform.json.NumberConverter", "FLOAT_WRITER", "serialize", "FLOAT_READER", "deserializeFloat", "0f"));
 		InlinedConverters.put("float[]", new OptimizedConverter("com.dslplatform.json.NumberConverter", "FLOAT_ARRAY_WRITER", "serialize", "FLOAT_ARRAY_READER", null, "com.dslplatform.json.NumberConverter.FLOAT_EMPTY_ARRAY"));
 		InlinedConverters.put("java.lang.Float", new OptimizedConverter("com.dslplatform.json.NumberConverter", "FLOAT_WRITER", "serialize", "NULLABLE_FLOAT_READER", "deserializeFloat", "com.dslplatform.json.NumberConverter.FLOAT_ZERO"));

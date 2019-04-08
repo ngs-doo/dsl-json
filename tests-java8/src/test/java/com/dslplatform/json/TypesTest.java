@@ -198,9 +198,9 @@ public class TypesTest {
 		@JsonAttribute(nullable = false)
 		public List<int[]>[] i4;
 		@JsonAttribute(nullable = false)
-		public Map<Integer,List<int[]>>[] i5;
+		public Map<Integer, List<int[]>>[] i5;
 
-		public ComplexArrays(int[][] i1, Integer[][] i2, List<Integer>[] i3, List<int[]>[] i4, Map<Integer,List<int[]>>[] i5) {
+		public ComplexArrays(int[][] i1, Integer[][] i2, List<Integer>[] i3, List<int[]>[] i4, Map<Integer, List<int[]>>[] i5) {
 			this.i1 = i1;
 			this.i2 = i2;
 			this.i3 = i3;
@@ -240,6 +240,7 @@ public class TypesTest {
 		@JsonAttribute(nullable = false)
 		public OffsetDateTime t1;
 		public OffsetDateTime t2;
+
 		public DateTimesWithCtor(OffsetDateTime t1, OffsetDateTime t2) {
 			this.t1 = t1;
 			this.t2 = t2;
@@ -254,6 +255,7 @@ public class TypesTest {
 		public java.util.ArrayList<OffsetDateTime> t2;
 		public List<OffsetDateTime> t3;
 		public java.util.ArrayList<OffsetDateTime> t4;
+
 		public DateTimesCollection(List<OffsetDateTime> t1, java.util.ArrayList<OffsetDateTime> t2, List<OffsetDateTime> t3, java.util.ArrayList<OffsetDateTime> t4) {
 			this.t1 = t1;
 			this.t2 = t2;
@@ -345,5 +347,73 @@ public class TypesTest {
 		} catch (ParsingException ex) {
 			Assert.assertTrue(ex.getMessage().contains("Property 't2' is not-nullable and doesn't have a default but was not found in JSON"));
 		}
+	}
+
+	@CompiledJson
+	public static class Longs {
+		public Long l1;
+		@JsonAttribute(nullable = false)
+		public Long l2;
+
+		public Longs(Long l1, Long l2) {
+			this.l1 = l1;
+			this.l2 = l2;
+		}
+	}
+
+	@Test
+	public void emptyNullableLongs() throws IOException {
+		Longs z = dslJsonFull.deserialize(Longs.class, new byte[]{'{', '}'}, 2);
+		Assert.assertEquals(null, z.l1);
+		Assert.assertEquals(Long.valueOf(0L), z.l2);
+	}
+
+	@Test
+	public void actuallyNullableLongs() throws IOException {
+		byte[] input = "{\"l1\":null}".getBytes("UTF-8");
+		Longs z = dslJsonFull.deserialize(Longs.class, input, input.length);
+		Assert.assertEquals(null, z.l1);
+		Assert.assertEquals(Long.valueOf(0L), z.l2);
+	}
+
+	@Test
+	public void errorInNullInLongs() throws IOException {
+		byte[] input = "{\"l1\":null,\"l2\":null}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(Longs.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertTrue(ex.getMessage().contains("Property 'l2' is not allowed to be null at position: 20"));
+		}
+	}
+
+	@CompiledJson
+	public static class NonPrimitiveNulls {
+		public Boolean b;
+		public Short s;
+		public Integer i;
+		public Long l;
+		public Double d;
+		public Float f;
+
+		public NonPrimitiveNulls(Boolean b, Short s, Integer i, Long l, Double d, Float f) {
+			this.b = b;
+			this.s = s;
+			this.i = i;
+			this.l = l;
+			this.d = d;
+			this.f = f;
+		}
+	}
+
+	@Test
+	public void allNonPrimitiveNulls() throws IOException {
+		NonPrimitiveNulls z = dslJsonFull.deserialize(NonPrimitiveNulls.class, new byte[]{'{', '}'}, 2);
+		Assert.assertNull(z.b);
+		Assert.assertNull(z.s);
+		Assert.assertNull(z.i);
+		Assert.assertNull(z.l);
+		Assert.assertNull(z.d);
+		Assert.assertNull(z.f);
 	}
 }
