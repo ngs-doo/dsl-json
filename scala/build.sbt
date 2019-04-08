@@ -18,9 +18,8 @@ resolvers += Resolver.mavenLocal
 lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
   organization := "com.dslplatform",
   name := baseDirectory.value.getName,
-
   scalaVersion := crossScalaVersions.value.head,
-  crossScalaVersions := Seq("2.11.12", "2.12.8"/*, "2.13.0-RC1"*/),
+  crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.0-RC1"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",
@@ -28,24 +27,31 @@ lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
     "-language:_",
     "-target:jvm-1.8",
     "-unchecked",
-    "-Xexperimental",
-    "-Xfuture",
     "-Xlint:_",
     "-Xverify",
-    "-Yno-adapted-args",
     "-Yrangepos",
-    "-Yrepl-sync",
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
-    "-Ywarn-unused-import",
     "-Ywarn-unused"
   ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, 11)) => Seq(
       "-Yclosure-elim",
+      "-Yno-adapted-args",
+      "-Yrepl-sync",
       "-Yconst-opt",
       "-Ydead-code",
+      "-Ywarn-unused-import",
+      "-Xfuture",
+      "-Xexperimental",
       "-Yinline",
       "-Yinline-warnings:false"
+    )
+    case Some((2, 12)) => Seq(
+      "-Yno-adapted-args",
+      "-Yrepl-sync",
+      "-Ywarn-unused-import",
+      "-Xfuture",
+      "-Xexperimental"
     )
     case _ => Seq(
       "-opt:_"

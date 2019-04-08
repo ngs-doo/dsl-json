@@ -5,8 +5,6 @@ import java.io.ByteArrayOutputStream
 import org.specs2.ScalaCheck
 import org.specs2.mutable.Specification
 
-import scala.collection.mutable.ArrayBuffer
-
 class CaseClassTest extends Specification with ScalaCheck {
 
   private lazy implicit val dslJson = new DslJson[Any]()
@@ -44,7 +42,7 @@ class CaseClassTest extends Specification with ScalaCheck {
     }
     "non empty collection" >> {
       val os = new ByteArrayOutputStream()
-      dslJson.encode(DM(IndexedSeq.empty, IndexedSeq.empty, ArrayBuffer(RS(IndexedSeq(ES(V("abc",5),V("def",6),"status")))), "OK"), os)
+      dslJson.encode(DM(IndexedSeq.empty, IndexedSeq.empty, IndexedSeq(RS(IndexedSeq(ES(V("abc",5),V("def",6),"status")))), "OK"), os)
       "{\"destination_addresses\":[],\"origin_addresses\":[],\"rows\":[{\"elements\":[{\"distance\":{\"text\":\"abc\",\"value\":5},\"duration\":{\"text\":\"def\",\"value\":6},\"status\":\"status\"}]}],\"status\":\"OK\"}" === os.toString("UTF-8")
     }
   }
@@ -82,7 +80,7 @@ class CaseClassTest extends Specification with ScalaCheck {
     "array buffer conversion" >> {
       val input = "{\"destination_addresses\":[],\"origin_addresses\":[],\"rows\":[{\"elements\":[{\"distance\":{\"text\":\"abc\",\"value\":5},\"duration\":{\"text\":\"def\",\"value\":6},\"status\":\"status\"}]}],\"status\":\"OK\"}".getBytes("UTF-8")
       val res = dslJson.decode[DM](input)
-      DM(IndexedSeq.empty, IndexedSeq.empty, ArrayBuffer(RS(IndexedSeq(ES(V("abc",5),V("def",6),"status")))), "OK") === res
+      DM(IndexedSeq.empty, IndexedSeq.empty, IndexedSeq(RS(IndexedSeq(ES(V("abc",5),V("def",6),"status")))), "OK") === res
     }
   }
 }

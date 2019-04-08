@@ -1,7 +1,6 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
-import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -407,8 +406,20 @@ public class TypesTest {
 	}
 
 	@Test
-	public void allNonPrimitiveNulls() throws IOException {
+	public void allNonPrimitiveMissing() throws IOException {
 		NonPrimitiveNulls z = dslJsonFull.deserialize(NonPrimitiveNulls.class, new byte[]{'{', '}'}, 2);
+		Assert.assertNull(z.b);
+		Assert.assertNull(z.s);
+		Assert.assertNull(z.i);
+		Assert.assertNull(z.l);
+		Assert.assertNull(z.d);
+		Assert.assertNull(z.f);
+	}
+
+	@Test
+	public void allNonPrimitiveNulls() throws IOException {
+		byte[] input = "{\"b\":null,\"s\":null,\"i\":null,\"l\":null,\"d\":null,\"f\":null}".getBytes("UTF-8");
+		NonPrimitiveNulls z = dslJsonFull.deserialize(NonPrimitiveNulls.class, input, input.length);
 		Assert.assertNull(z.b);
 		Assert.assertNull(z.s);
 		Assert.assertNull(z.i);
