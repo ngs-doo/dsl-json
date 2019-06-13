@@ -20,7 +20,7 @@ final class IterableEncoder[E](
       writer.writeByte(JsonWriter.ARRAY_START)
       val enc = encoder.get
       value match {
-        case iseq: IndexedSeq[E] =>
+        case iseq: scala.collection.IndexedSeq[E] =>
           enc.write(writer, iseq.head)
           var i = 1
           val size = iseq.size
