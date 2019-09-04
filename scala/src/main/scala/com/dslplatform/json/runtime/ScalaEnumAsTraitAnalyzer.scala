@@ -54,10 +54,9 @@ object ScalaEnumAsTraitAnalyzer {
   ) extends JsonWriter.WriteObject[T] with JsonReader.ReadObject[T] {
 
     override def write(writer: JsonWriter, value: T): Unit = {
-      encoders.get(value) match {
-        case bytes => writer.writeAscii(bytes)
-        case _ => throw new SerializationException(s"Invalid value: $value provided for $signature")
-      }
+      val bytes = encoders.get(value)
+      if (bytes eq null) throw new SerializationException(s"Invalid value: $value provided for $signature")
+      writer.writeAscii(bytes)
     }
 
     override def read(reader: JsonReader[_]): T = {

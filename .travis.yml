@@ -1,6 +1,7 @@
 language: java
 
 sudo: required
+dist: trusty
 
 before_install:
   - sudo sh -c "echo 'deb http://download.mono-project.com/repo/debian wheezy main' > /etc/apt/sources.list.d/mono-xamarin.list"
@@ -9,7 +10,7 @@ before_install:
   - sudo apt-get install --force-yes mono-devel
 
 jdk:
-  - oraclejdk8
+  - openjdk8
 
 script:
   - mvn clean verify
