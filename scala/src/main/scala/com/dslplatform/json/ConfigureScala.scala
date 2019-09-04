@@ -14,6 +14,8 @@ class ConfigureScala extends Configuration {
     json.registerWriterFactory(ScalaTupleAnalyzer.Writer)
     json.registerReaderFactory(ScalaCollectionAnalyzer.Reader)
     json.registerWriterFactory(ScalaCollectionAnalyzer.Writer)
+    json.registerReaderFactory(ScalaEnumAsTraitAnalyzer.Reader)
+    json.registerWriterFactory(ScalaEnumAsTraitAnalyzer.Writer)
     json.registerReaderFactory(ScalaClassAnalyzer.Reader)
     json.registerWriterFactory(ScalaClassAnalyzer.Writer)
     json.registerBinderFactory(ScalaClassAnalyzer.Binder)
