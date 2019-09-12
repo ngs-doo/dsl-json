@@ -5,7 +5,7 @@ import java.lang.reflect.{Constructor, Method, Modifier, ParameterizedType, Type
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe
-import scala.util.Try
+import scala.util.{Success, Try}
 
 object ScalaClassAnalyzer {
 
@@ -223,10 +223,24 @@ object ScalaClassAnalyzer {
         }.toMap
         if (methods.nonEmpty) analyzeEmptyCtor(manifest, raw, json, methods, reading)
         else None
-      case Some(init) if init.info.paramLists.size == 1 && ctors.length == 1 =>
+      case Some(init) if init.isPublic && init.info.paramLists.size == 1 && ctors.length == 1 =>
         analyzeClassWithCtor(manifest, raw, json, ctors, tpe, init.info.paramLists.head, reading)
       case _ =>
-        None
+        val ctorParams = ctors(0).getParameterCount
+        tpe.companion.members.find(it => it.name.toString == "apply" && it.isPublic) match {
+          case Some(init) if init.info.paramLists.size == 1 && ctors.length == 1 && ctorParams == init.info.paramLists.head.size =>
+            val module = scala.reflect.runtime.currentMirror.staticModule(raw.getName)
+            val instance = scala.reflect.runtime.currentMirror.reflectModule(module).instance.asInstanceOf[AnyRef]
+            val objectClass = instance.getClass
+            val applies = objectClass.getMethods.filter(it => it.getName == "apply" && it.getReturnType == raw && it.getParameterCount == ctorParams)
+            if (applies.length == 1) {
+              analyzeClassWithApply(manifest, raw, json, tpe, init.asMethod, applies(0), instance, init.info.paramLists.head, reading)
+            } else {
+              None
+            }
+          case _ =>
+            None
+        }
     }
   }
 
@@ -300,7 +314,8 @@ object ScalaClassAnalyzer {
       val readProps = arguments.flatMap { ti =>
         if (ti.isUnknown || json.tryFindWriter(ti.concreteType) != null && json.tryFindReader(ti.concreteType) != null) {
           val isNullable = ti.rawType.getTypeName.startsWith("scala.Option<")
-          Some(new DecodePropertyInfo[JsonReader.ReadObject[_]](ti.name, false, ti.getDefault.isEmpty, ti.index, !isNullable, new WriteCtor(json, ti.concreteType, ctor)))
+          val writeProp = new WriteProperty(json, ti.concreteType, ctor)
+          Some(new DecodePropertyInfo[JsonReader.ReadObject[_]](ti.name, false, ti.getDefault.isEmpty, ti.index, !isNullable, writeProp))
         } else None
       }.toArray
       if (params.size == writeProps.length && (!reading || params.size == readProps.length)) {
@@ -316,6 +331,119 @@ object ScalaClassAnalyzer {
           defArgs,
           new Settings.Function[Array[AnyRef], AnyRef] {
             override def apply(args: Array[AnyRef]): AnyRef = ctor.newInstance(args:_*)
+          },
+          writeProps,
+          readProps,
+          !json.omitDefaults,
+          true)
+        tmp.resolved = Some(converter)
+        json.registerWriter(manifest, converter)
+        //TODO: since nested case classes have their type signatures broken allow encoding,
+        //TODO: but don't allow decoding if some types are erased
+        if (params.size == readProps.length) {
+          json.registerReader(manifest, converter)
+        } else {
+          json.registerReader(manifest, oldReader)
+        }
+        Some(Right(converter))
+      } else {
+        json.registerWriter(manifest, oldWriter)
+        json.registerReader(manifest, oldReader)
+        None
+      }
+    } else None
+  }
+
+  private def analyzeClassWithApply(
+    manifest: JavaType,
+    raw: Class[_],
+    json: DslJson[_],
+    tpe: universe.TypeApi,
+    init: universe.MethodSymbol,
+    applyMethod: Method,
+    companion: AnyRef,
+    params: List[universe.Symbol],
+    reading: Boolean
+  ) = {
+    import scala.collection.JavaConverters._
+    val genericMappings = Generics.analyze(manifest, raw)
+    val genericsByName = genericMappings.entrySet().asScala.map(kv => kv.getKey.getTypeName -> kv.getValue).toMap
+    val defaults = init.owner.info.members.filter(_.name.toString.startsWith("apply$default$"))
+    val types = params.map(_.typeSignature).toSet
+    val sameTypes = tpe.members.flatMap { it =>
+      if (it.isPublic && !it.name.toString.contains("$")) {
+        if (types.contains(it.typeSignature)) {
+          Some(it.name.toString.trim -> it.typeSignature)
+        } else if(types.contains(it.typeSignature.resultType)) {
+          Some(it.name.toString.trim -> it.typeSignature.resultType)
+        } else None
+      } else None
+    }.toMap
+    val names = Some(params.map(_.name.toString))
+    val arguments = params.zipWithIndex.flatMap { case (p, i) =>
+      val defMethod = defaults.find(_.name.toString.endsWith("$" + (i + 1))).flatMap { d =>
+        val name = d.name.toString
+        companion.getClass.getDeclaredMethods.find(_.getName == name).map { m =>
+          () => m.invoke(companion, Array():_*)
+        }
+      }
+      val pName = if (p.name.toString.contains("$")) names.map(it => it(i)) else Some(p.name.toString)
+      Try(TypeAnalysis.convertType(p.typeSignature, genericsByName)).toOption.flatMap { rt =>
+        val concreteType = Generics.makeConcrete(rt, genericMappings)
+        val isUnknown = Generics.isUnknownType(rt)
+        val matchingTypeAndName = {
+          if (pName.isEmpty) None
+          else if (sameTypes.get(pName.get).contains(p.typeSignature)) pName
+          else None
+        }
+        lazy val matchingTypeOnly = {
+          if (sameTypes.size != params.size) None
+          else sameTypes.find { case (_, ts) => ts == p.typeSignature }.map(_._1)
+        }
+        val name = matchingTypeAndName.orElse(matchingTypeOnly).orElse(pName)
+        if (name.isEmpty || name.get.contains("$")) None
+        Some(TypeInfo(name.get, rt, isUnknown, concreteType, i, defMethod))
+      }
+    }
+    if (arguments.size == params.size) {
+      val tmp = new LazyImmutableDescription(json, manifest)
+      val oldWriter = json.registerWriter(manifest, tmp)
+      val oldReader = json.registerReader(manifest, tmp)
+      val writeProps = arguments.flatMap { ti =>
+        raw.getMethods.find(it => it.getName == ti.name && it.getParameterCount == 0).map { m =>
+          Settings.createEncoder(
+            new Reflection.ReadMethod(m),
+            ti.name,
+            json,
+            if (ti.isUnknown) null else ti.concreteType)
+        }.orElse(raw.getFields.find(it => it.getName == ti.name).map { f =>
+          Settings.createEncoder(
+            new Reflection.ReadField(f),
+            ti.name,
+            json,
+            if (ti.isUnknown) null else ti.concreteType)
+        })
+      }.toArray
+      val readProps: Array[DecodePropertyInfo[JsonReader.ReadObject[_]]] = arguments.flatMap { ti =>
+        if (ti.isUnknown || json.tryFindWriter(ti.concreteType) != null && json.tryFindReader(ti.concreteType) != null) {
+          val isNullable = ti.rawType.getTypeName.startsWith("scala.Option<")
+          val writeProp = new WriteProperty(json, ti.concreteType, applyMethod)
+          Some(new DecodePropertyInfo[JsonReader.ReadObject[_]](ti.name, false, ti.getDefault.isEmpty, ti.index, !isNullable, writeProp))
+        } else None
+      }.toArray
+      if (params.size == writeProps.length && (!reading || params.size == readProps.length)) {
+        val defArgs = new Array[AnyRef](params.size)
+        arguments.zipWithIndex.foreach { case (a, i) =>
+          if (a.getDefault.isDefined) {
+            //TODO: it would be more correct to apply this on every invocation, but lets just use stable value instead
+            defArgs(i) = a.getDefault.get.apply()
+          }
+        }
+        val converter = new ImmutableDescription[AnyRef](
+          manifest,
+          defArgs,
+          new Settings.Function[Array[AnyRef], AnyRef] {
+            override def apply(args: Array[AnyRef]): AnyRef = applyMethod.invoke(companion, args:_*)
           },
           writeProps,
           readProps,
@@ -394,14 +522,14 @@ object ScalaClassAnalyzer {
     }
   }
 
-  private final class WriteCtor(json: DslJson[_], manifest: JavaType, ctor: Constructor[_]) extends JsonReader.ReadObject[Any] {
+  private final class WriteProperty(json: DslJson[_], manifest: JavaType, on: AnyRef) extends JsonReader.ReadObject[Any] {
     private var decoder: Option[JsonReader.ReadObject[Any]] = None
 
     override def read(reader: JsonReader[_]): Any = {
       if (decoder.isEmpty) {
         Option(json.tryFindReader(manifest)) match {
           case Some(f: JsonReader.ReadObject[Any @unchecked]) => decoder = Some(f)
-          case _ => throw new ConfigurationException(s"Unable to find reader for $manifest on $ctor")
+          case _ => throw new ConfigurationException(s"Unable to find reader for $manifest on $on")
         }
       }
       decoder.get.read(reader)
