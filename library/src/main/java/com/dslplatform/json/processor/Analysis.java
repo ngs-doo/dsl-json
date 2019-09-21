@@ -647,7 +647,7 @@ public class Analysis {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER or JSON_WRITER " + allowed + ". It must have public static JSON_READER/JSON_WRITER " + allowed + " for conversion.",
+					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER and a JSON_WRITER " + allowed + ". It must have both public static JSON_READER/JSON_WRITER " + allowed + " for conversion.",
 					converter,
 					getAnnotation(converter, converterType));
 		} else if (jsonReaderMethod == null && (!jsonReaderField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
