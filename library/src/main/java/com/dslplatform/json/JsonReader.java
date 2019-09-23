@@ -1522,7 +1522,7 @@ public final class JsonReader<TContext> {
 	public final <K, V> LinkedHashMap<K, V> readMap(final ReadObject<K> readKey, final ReadObject<V> readValue) throws IOException {
 		if (wasNull()) return null;
 		if (last != '{') throw newParseError("Expecting '{' as map start");
-		if (getNextToken() == ']') return new LinkedHashMap<K, V>(0);
+		if (getNextToken() == '}') return new LinkedHashMap<K, V>(0);
 		final LinkedHashMap<K, V> res = new LinkedHashMap<K, V>(4);
 		K key = readKey.read(this);
 		if (key == null) throw newParseErrorAt("Null detected as key", 0);

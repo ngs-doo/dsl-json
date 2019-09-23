@@ -411,4 +411,24 @@ public class EnumTest {
 		Assert.assertEquals(sni.map1, res.map1);
 		Assert.assertEquals(sni.list2, res.list2);
 	}
+
+	@Test
+	public void emptyMap() throws IOException {
+		Map emptyMap = new LinkedHashMap<>();
+		SingleImmutable si = new SingleImmutable(
+				MyEnum1.DEF,
+				MyEnum2.ZZ2,
+				MyEnum1.GHI,
+				emptyMap,
+				Arrays.asList(MyEnum2.ZZ2, MyEnum2.YY));
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(si, os);
+		SingleImmutable res = dslJson.deserialize(SingleImmutable.class, os.toByteArray(), os.size());
+		Assert.assertEquals(si.e1, res.e1);
+		Assert.assertEquals(si.e2, res.e2);
+		Assert.assertEquals(si.e3, res.e3);
+		Assert.assertEquals(si.map1, res.map1);
+		Assert.assertEquals(si.list2, res.list2);
+	}
+
 }
