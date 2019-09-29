@@ -413,16 +413,7 @@ public final class JsonWriter {
 	 * @param buf byte buffer to copy
 	 */
 	public final void writeAscii(final byte[] buf) {
-		final int len = buf.length;
-		if (position + len >= buffer.length) {
-			enlargeOrFlush(position, len);
-		}
-		final int p = position;
-		final byte[] _result = buffer;
-		for (int i = 0; i < buf.length; i++) {
-			_result[p + i] = buf[i];
-		}
-		position += len;
+		writeAscii(buf, 0, buf.length);
 	}
 
 	/**
@@ -433,14 +424,22 @@ public final class JsonWriter {
 	 * @param len part of buffer to copy
 	 */
 	public final void writeAscii(final byte[] buf, final int len) {
+		writeAscii(buf, 0, len);
+	}
+
+	/**
+	 * Copy part of byte buffer into JSON as is.
+	 * Provided buffer can't be null.
+	 *
+	 * @param buf byte buffer to copy
+	 * @param offset in buffer to start from
+	 * @param len part of buffer to copy
+	 */
+	public final void writeAscii(final byte[] buf, final int offset, final int len) {
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
 		}
-		final int p = position;
-		final byte[] _result = buffer;
-		for (int i = 0; i < len; i++) {
-			_result[p + i] = buf[i];
-		}
+		System.arraycopy(buf, offset, buffer, position, len);
 		position += len;
 	}
 
