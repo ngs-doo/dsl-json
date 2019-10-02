@@ -445,6 +445,22 @@ public final class JsonWriter {
 	}
 
 	/**
+	 * Copy part of byte buffer into JSON as is.
+	 * Provided buffer can't be null.
+	 *
+	 * @param buf byte buffer to copy
+	 * @param offset in buffer to start from
+	 * @param len part of buffer to copy
+	 */
+	public final void writeRaw(final byte[] buf, final int offset, final int len) {
+		if (position + len >= buffer.length) {
+			enlargeOrFlush(position, len);
+		}
+		System.arraycopy(buf, offset, buffer, position, len);
+		position += len;
+	}
+
+	/**
 	 * Encode bytes as Base 64.
 	 * Provided value can't be null.
 	 *
