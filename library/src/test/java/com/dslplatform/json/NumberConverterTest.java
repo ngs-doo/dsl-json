@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
@@ -1280,5 +1281,47 @@ public class NumberConverterTest {
 			final float fp2 = NumberConverter.deserializeFloat(jsr);
 			Assert.assertEquals(f, fp2, 0);
 		}
+	}
+
+	@Test
+	public void supportInvalidNan() throws IOException {
+		DslJson<Object> dslJson = new DslJson<Object>();
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		List<Double> values = Arrays.asList(1.2, Double.NaN, Double.POSITIVE_INFINITY);
+		dslJson.serialize(values, os);
+		Assert.assertEquals("[1.2,\"NaN\",\"Infinity\"]", os.toString("UTF-8"));
+		List<Double> resultQuoted = dslJson.deserializeList(Double.class, os.toByteArray(), os.size());
+		Assert.assertEquals(values, resultQuoted);
+		final JsonWriter.WriteObject<Double> doubleWriter = new JsonWriter.WriteObject<Double>() {
+			@Override
+			public void write(JsonWriter writer, Double value) {
+				if (value == null) writer.writeNull();
+				else writer.writeAscii(value.toString());
+			}
+		};
+		dslJson.registerWriter(double.class, doubleWriter);
+		dslJson.registerWriter(Double.class, doubleWriter);
+		//double[].class must be also handled otherwise it will fall back to default processing
+		final JsonReader.ReadObject<Double> doubleReader = new JsonReader.ReadObject<Double>() {
+			@Override
+			public Double read(JsonReader reader) throws IOException {
+				if (reader.last() == 'N') {
+					if (reader.read() == 'a' && reader.read() == 'N') return Double.NaN;
+					else throw ParsingException.create("Expecting NaN", false);
+				} else if (reader.last() == 'I') { //negative infinity is not handled
+					if (reader.read() == 'n' && reader.read() == 'f' && reader.read() == 'i' && reader.read() == 'n' && reader.read() == 'i' && reader.read() == 't' && reader.read() == 'y') return Double.POSITIVE_INFINITY;
+					else throw ParsingException.create("Expecting Infinity", false);
+				} else {
+					return NumberConverter.deserializeDouble(reader);
+				}
+			};
+		};
+		dslJson.registerReader(double.class, doubleReader);
+		dslJson.registerReader(Double.class, doubleReader);
+		os.reset();
+		dslJson.serialize(values, os);
+		Assert.assertEquals("[1.2,NaN,Infinity]", os.toString("UTF-8"));
+		List<Double> resultUnquoted = dslJson.deserializeList(double.class, os.toByteArray(), os.size());
+		Assert.assertEquals(values, resultUnquoted);
 	}
 }

@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 
 public class DateTest {
@@ -15,7 +16,7 @@ public class DateTest {
 		OffsetDateTime now = OffsetDateTime.now();
 		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(now, jw);
-		JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
+		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
 		jr.read();
 		OffsetDateTime value = JavaTimeConverter.deserializeDateTime(jr);
 		Assert.assertEquals(now, value);
@@ -26,9 +27,31 @@ public class DateTest {
 		OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(now, jw);
-		JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
+		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
 		jr.read();
 		OffsetDateTime value = JavaTimeConverter.deserializeDateTime(jr);
+		Assert.assertEquals(now, value);
+	}
+
+	@Test
+	public void timeOffsetConversion() throws IOException {
+		OffsetTime now = OffsetTime.now();
+		JsonWriter jw = new JsonWriter(null);
+		JavaTimeConverter.serialize(now, jw);
+		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
+		jr.read();
+		OffsetTime value = JavaTimeConverter.deserializeOffsetTime(jr);
+		Assert.assertEquals(now, value);
+	}
+
+	@Test
+	public void timeOffsetUtcConversion() throws IOException {
+		OffsetTime now = OffsetTime.now(ZoneOffset.UTC);
+		JsonWriter jw = new JsonWriter(null);
+		JavaTimeConverter.serialize(now, jw);
+		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
+		jr.read();
+		OffsetTime value = JavaTimeConverter.deserializeOffsetTime(jr);
 		Assert.assertEquals(now, value);
 	}
 
@@ -37,9 +60,20 @@ public class DateTest {
 		LocalDateTime now = LocalDateTime.now();
 		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(now, jw);
-		JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
+		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
 		jr.read();
 		LocalDateTime value = JavaTimeConverter.deserializeLocalDateTime(jr);
+		Assert.assertEquals(now, value);
+	}
+
+	@Test
+	public void localTimeConversion() throws IOException {
+		LocalTime now = LocalTime.now();
+		JsonWriter jw = new JsonWriter(null);
+		JavaTimeConverter.serialize(now, jw);
+		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
+		jr.read();
+		LocalTime value = JavaTimeConverter.deserializeLocalTime(jr);
 		Assert.assertEquals(now, value);
 	}
 
@@ -54,14 +88,19 @@ public class DateTest {
 	}
 
 	@Test
-	public void utcOffsetSpecificValues() throws IOException {
+	public void utcDateOffsetSpecificValues() throws IOException {
 		String n = "";
-		for(int i = 1; i <= 9; i++) {
-			n += (char)(48 + i);
-			OffsetDateTime value = OffsetDateTime.parse("1919-03-05T04:51:49." + n + "Z");
+		String[] values = new String[10];
+		values[0] = "1919-03-05T04:51:49Z";
+		for (int i = 1; i <= 9; i++) {
+			n += (char) (48 + i);
+			values[i] = "1919-03-05T04:51:49." + n + "Z";
+		}
+		for (String v : values) {
+			OffsetDateTime value = OffsetDateTime.parse(v);
 			JsonWriter jw = new JsonWriter(null);
 			JavaTimeConverter.serialize(value, jw);
-			JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
+			JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
 			jr.read();
 			OffsetDateTime deser = JavaTimeConverter.deserializeDateTime(jr);
 			Assert.assertEquals(value, deser);
@@ -69,14 +108,19 @@ public class DateTest {
 	}
 
 	@Test
-	public void timezoneOffsetSpecificValues() throws IOException {
+	public void timezoneDateOffsetSpecificValues() throws IOException {
 		String n = "";
+		String[] values = new String[10];
+		values[0] = "1919-03-05T04:51:49+01:00";
 		for(int i = 1; i <= 9; i++) {
-			n += (char)(48 + i);
-			OffsetDateTime value = OffsetDateTime.parse("1919-03-05T04:51:49." + n + "+01:00");
+			n += (char) (48 + i);
+			values[i] = "1919-03-05T04:51:49." + n + "+01:00";
+		}
+		for (String v : values) {
+			OffsetDateTime value = OffsetDateTime.parse(v);
 			JsonWriter jw = new JsonWriter(null);
 			JavaTimeConverter.serialize(value, jw);
-			JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
+			JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
 			jr.read();
 			OffsetDateTime deser = JavaTimeConverter.deserializeDateTime(jr);
 			Assert.assertEquals(value, deser);
@@ -84,14 +128,59 @@ public class DateTest {
 	}
 
 	@Test
-	public void localtimeSpecificValues() throws IOException {
+	public void utcTimeOffsetSpecificValues() throws IOException {
 		String n = "";
+		String[] values = new String[10];
+		values[0] = "04:51:49Z";
 		for(int i = 1; i <= 9; i++) {
-			n += (char)(48 + i);
-			LocalDateTime value = LocalDateTime.parse("1919-03-05T04:51:49." + n);
+			n += (char) (48 + i);
+			values[i] = "04:51:49." + n + "Z";
+		}
+		for (String v : values) {
+			OffsetTime value = OffsetTime.parse(v);
 			JsonWriter jw = new JsonWriter(null);
 			JavaTimeConverter.serialize(value, jw);
-			JsonReader jr = new JsonReader<>(jw.toString().getBytes("UTF-8"), null);
+			JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
+			jr.read();
+			OffsetTime deser = JavaTimeConverter.deserializeOffsetTime(jr);
+			Assert.assertEquals(value, deser);
+		}
+	}
+
+	@Test
+	public void timezoneTimeOffsetSpecificValues() throws IOException {
+		String n = "";
+		String[] values = new String[10];
+		values[0] = "04:51:49+01:00";
+		for(int i = 1; i <= 9; i++) {
+			n += (char)(48 + i);
+			values[i] = "04:51:49." + n + "+01:00";
+		}
+		for (String v : values) {
+			OffsetTime value = OffsetTime.parse(v);
+			JsonWriter jw = new JsonWriter(null);
+			JavaTimeConverter.serialize(value, jw);
+			JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
+			jr.read();
+			OffsetTime deser = JavaTimeConverter.deserializeOffsetTime(jr);
+			Assert.assertEquals(value, deser);
+		}
+	}
+
+	@Test
+	public void localDateTimeSpecificValues() throws IOException {
+		String n = "";
+		String[] values = new String[10];
+		values[0] = "1919-03-05T04:51:49";
+		for (int i = 1; i <= 9; i++) {
+			n += (char) (48 + i);
+			values[i] = "1919-03-05T04:51:49." + n;
+		}
+		for (String v : values) {
+			LocalDateTime value = LocalDateTime.parse(v);
+			JsonWriter jw = new JsonWriter(null);
+			JavaTimeConverter.serialize(value, jw);
+			JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
 			jr.read();
 			LocalDateTime deser = JavaTimeConverter.deserializeLocalDateTime(jr);
 			Assert.assertEquals(value, deser);
@@ -99,25 +188,75 @@ public class DateTest {
 	}
 
 	@Test
-	public void nineDigits() throws IOException {
+	public void localTimeSpecificValues() throws IOException {
+		String n = "";
+		String[] values = new String[10];
+		values[0] = "04:51:49";
+		for (int i = 1; i <= 9; i++) {
+			n += (char) (48 + i);
+			values[i] = "04:51:49." + n;
+		}
+		for (String v : values) {
+			LocalTime value = LocalTime.parse(v);
+			JsonWriter jw = new JsonWriter(null);
+			JavaTimeConverter.serialize(value, jw);
+			JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
+			jr.read();
+			LocalTime deser = JavaTimeConverter.deserializeLocalTime(jr);
+			Assert.assertEquals(value, deser);
+		}
+	}
+
+	@Test
+	public void nineDigitsODT() {
 		OffsetDateTime dt = OffsetDateTime.parse("1930-09-04T00:03:48.750431006Z");
 		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(dt, jw);
 		Assert.assertEquals("\"" + dt.toString() + "\"", jw.toString());
 	}
 
-	public static class Nine {
+	@Test
+	public void nineDigitsOT() {
+		OffsetTime dt = OffsetTime.parse("00:03:48.750431006Z");
+		JsonWriter jw = new JsonWriter(null);
+		JavaTimeConverter.serialize(dt, jw);
+		Assert.assertEquals("\"" + dt.toString() + "\"", jw.toString());
+	}
+
+	@Test
+	public void nineDigitsLT() {
+		LocalTime dt = LocalTime.parse("00:03:48.750431006");
+		JsonWriter jw = new JsonWriter(null);
+		JavaTimeConverter.serialize(dt, jw);
+		Assert.assertEquals("\"" + dt.toString() + "\"", jw.toString());
+	}
+
+	public static class NineODT {
 		public OffsetDateTime at;
 	}
 
 	@Test
-	public void nineDigitsInAClass() throws IOException {
-		Nine n = new Nine();
+	public void nineDigitsInAODTClass() throws IOException {
+		NineODT n = new NineODT();
 		n.at = OffsetDateTime.parse("1930-09-04T00:03:48.750431006Z");
 		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime());
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(n, os);;
 		Assert.assertEquals("{\"at\":\"1930-09-04T00:03:48.750431006Z\"}", os.toString());
+	}
+
+	public static class NineOT {
+		public OffsetTime at;
+	}
+
+	@Test
+	public void nineDigitsInAOTClass() throws IOException {
+		NineOT n = new NineOT();
+		n.at = OffsetTime.parse("01:33:08.750431006Z");
+		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime());
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(n, os);;
+		Assert.assertEquals("{\"at\":\"01:33:08.750431006Z\"}", os.toString());
 	}
 
 	public static class ModelLDT {
@@ -167,5 +306,4 @@ public class DateTest {
 			Assert.assertEquals(model.now, result.now);
 		}
 	}
-
 }

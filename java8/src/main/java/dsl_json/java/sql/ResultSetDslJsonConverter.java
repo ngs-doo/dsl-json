@@ -7,6 +7,6 @@ import java.sql.ResultSet;
 public class ResultSetDslJsonConverter implements Configuration {
 	@Override
 	public void configure(DslJson json) {
-		json.registerWriter(ResultSet.class, ResultSetConverter.WRITER);
+		json.registerWriter(ResultSet.class, new ResultSetConverter(json));
 	}
 }

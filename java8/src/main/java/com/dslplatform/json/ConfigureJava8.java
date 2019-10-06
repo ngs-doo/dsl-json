@@ -11,7 +11,9 @@ public class ConfigureJava8 implements Configuration {
 	public void configure(DslJson json) {
 		new LocalDateDslJsonConverter().configure(json);
 		new LocalDateTimeDslJsonConverter().configure(json);
+		new LocalTimeDslJsonConverter().configure(json);
 		new OffsetDateTimeDslJsonConverter().configure(json);
+		new OffsetTimeDslJsonConverter().configure(json);
 		new ZonedDateTimeDslJsonConverter().configure(json);
 		new dsl_json.java.sql.DateDslJsonConverter().configure(json);
 		new dsl_json.java.sql.TimestampDslJsonConverter().configure(json);
