@@ -21,6 +21,7 @@
         <module>DslSchema</module>
         <module>Jackson</module>
         <module>Jsonb</module>
+        <module>Lombok</module>
         <module>MavenJava6</module>
         <module>MavenJava8</module>
         <module>Polymorphism</module>
@@ -51,6 +52,11 @@
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>jsonb-example</artifactId>
+            <version>${lib-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dslplatform</groupId>
+            <artifactId>lombok-example</artifactId>
             <version>${lib-version}</version>
         </dependency>
         <dependency>
