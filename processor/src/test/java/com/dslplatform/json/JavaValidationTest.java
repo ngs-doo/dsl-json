@@ -728,4 +728,13 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(PrivateField.class),
 				"com.dslplatform.json.JsonAttribute detected on non accessible field which is ignored during processing. Put annotation on public field instead.");
 	}
+
+	@Test
+	public void classMustBePublicWhenInDifferentPackage() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				8,
+				compileTestCase(NamedPackageTest.class, com.dslplatform.json.models.subpackage.AbstractClass.class),
+				"Inheritance detected on non-public type: 'com.dslplatform.json.models.NamedPackageTest.ConcreteClass'.");
+	}
 }

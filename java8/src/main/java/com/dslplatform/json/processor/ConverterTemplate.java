@@ -160,7 +160,7 @@ class ConverterTemplate {
 				}
 			}
 		}
-		code.append("\t\t").append(name).append("(com.dslplatform.json.DslJson __dsljson");
+		code.append("\t\tpublic ").append(name).append("(com.dslplatform.json.DslJson __dsljson");
 		if (si.isParameterized) {
 			code.append(", java.lang.reflect.Type[] actualTypes");
 		}

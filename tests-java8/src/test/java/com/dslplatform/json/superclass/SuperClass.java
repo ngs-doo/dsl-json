@@ -1,16 +1,9 @@
-/**
- * 
- */
 package com.dslplatform.json.superclass;
 
 import java.util.Date;
 
 import com.dslplatform.json.CompiledJson;
 
-/**
- * @author Daniel Rusev
- *
- */
 @CompiledJson
 public abstract class SuperClass {
 

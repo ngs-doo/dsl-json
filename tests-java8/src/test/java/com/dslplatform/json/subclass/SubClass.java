@@ -1,15 +1,8 @@
-/**
- * 
- */
 package com.dslplatform.json.subclass;
 
 import com.dslplatform.json.CompiledJson;
 import com.dslplatform.json.superclass.SuperClass;
 
-/**
- * @author Daniel Rusev
- *
- */
 @CompiledJson
 public class SubClass extends SuperClass {
 

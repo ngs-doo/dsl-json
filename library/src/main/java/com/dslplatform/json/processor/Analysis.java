@@ -146,7 +146,7 @@ public class Analysis {
 			if (el instanceof TypeElement) {
 				classElement = el;
 			} else if (el instanceof ExecutableElement && el.getKind() == ElementKind.METHOD) {
-				ExecutableElement ee = (ExecutableElement)el;
+				ExecutableElement ee = (ExecutableElement) el;
 				Element returnClass = types.asElement(ee.getReturnType());
 				Element enclosing = ee.getEnclosingElement();
 				if (!el.getModifiers().contains(Modifier.STATIC)
@@ -163,6 +163,23 @@ public class Analysis {
 		}
 		findRelatedReferences();
 		findImplementations(structs.values());
+		for (StructInfo si : structs.values()) {
+			if (si.hasAnnotation() && si.type != ObjectType.CONVERTER && !requiresPublic(si.element) && !si.element.getModifiers().contains(Modifier.PUBLIC)) {
+				String siName = si.binaryName.substring(0, si.binaryName.length() - si.element.getSimpleName().length());
+				for(StructInfo parent : structs.values()) {
+					if (!parent.hasAnnotation() || !parent.implementations.contains(si)) continue;
+					String parentName = parent.binaryName.substring(0, parent.binaryName.length() - parent.element.getSimpleName().length());
+					if (!siName.equals(parentName)) {
+						messager.printMessage(
+								Diagnostic.Kind.ERROR,
+								"Inheritance detected on non-public type: '" + si.element.asType() + "'. Either make type public or remove @CompiledJson annotation from '" + si.element.asType() + "' or '" + parent.element.asType() + "'",
+								si.element,
+								si.annotation);
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	public Map<String, StructInfo> analyze() {
