@@ -6,6 +6,7 @@ import com.dslplatform.json.Nullable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 
 abstract class Reflection {
 
@@ -75,5 +76,24 @@ abstract class Reflection {
 				throw new ConfigurationException("Unable to call method " + method.getName() + " of " + method.getDeclaringClass(), e);
 			}
 		}
+	}
+
+	private static boolean canUseTypeName = true;
+
+	static String typeDescription(Type manifest) {
+		if (manifest instanceof Class<?>) {
+			return ((Class<?>)manifest).getName();
+		} else if (canUseTypeName) {
+			try {
+				return tryTypeName(manifest);
+			} catch (NoSuchMethodError ignore) {
+				canUseTypeName = false;
+			}
+		}
+		return manifest.toString();
+	}
+
+	private static String tryTypeName(Type manifest) {
+		return manifest.getTypeName();
 	}
 }

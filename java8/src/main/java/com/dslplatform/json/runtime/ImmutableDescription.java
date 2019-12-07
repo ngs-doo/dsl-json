@@ -50,8 +50,8 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		this.skipOnUnknown = skipOnUnknown;
 		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
 		hasMandatory = mandatoryFlag != 0;
-		this.startError = String.format("Expecting '{' to start decoding %s", manifest.getTypeName());
-		this.endError = String.format("Expecting '}' or ',' while decoding %s", manifest.getTypeName());
+		this.startError = String.format("Expecting '{' to start decoding %s", Reflection.typeDescription(manifest));
+		this.endError = String.format("Expecting '}' or ',' while decoding %s", Reflection.typeDescription(manifest));
 	}
 
 	@Nullable
@@ -150,7 +150,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private void skip(final JsonReader reader) throws IOException {
 		if (!skipOnUnknown) {
 			final String name = reader.getLastName();
-			throw reader.newParseErrorFormat("Unknown property detected", name.length() + 3, "Unknown property detected: '%s' while reading %s", name, manifest.getTypeName());
+			throw reader.newParseErrorFormat("Unknown property detected", name.length() + 3, "Unknown property detected: '%s' while reading %s", name, Reflection.typeDescription(manifest));
 		}
 		reader.getNextToken();
 		reader.skip();

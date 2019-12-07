@@ -69,7 +69,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		this.canObjectFormat = canObject;
 		this.canArrayFormat = canArray;
 		this.exactMatch = uniqueHashNames.size() != descriptions.length;
-		this.discriminatorError = String.format("Expecting \"%s\" attribute as first element of mixin %s", this.discriminator, manifest.getTypeName());
+		this.discriminatorError = String.format("Expecting \"%s\" attribute as first element of mixin %s", this.discriminator, Reflection.typeDescription(manifest));
 	}
 
 	@Nullable
@@ -96,7 +96,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		}
 		if (reader.fillName() != typeHash) {
 			String name = reader.getLastName();
-			throw reader.newParseErrorFormat(discriminatorError, name.length() + 2, "Expecting \"%s\" attribute as first element of mixin %s. Found: '%s'", discriminator, manifest.getTypeName(), name);
+			throw reader.newParseErrorFormat(discriminatorError, name.length() + 2, "Expecting \"%s\" attribute as first element of mixin %s. Found: '%s'", discriminator, Reflection.typeDescription(manifest), name);
 		}
 		reader.getNextToken();
 		final int hash = reader.calcHash();
@@ -109,7 +109,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			}
 			return ofd.readContent(reader);
 		}
-		throw new ConfigurationException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest.getTypeName() + " which supports object format. Add @CompiledJson to specified type to allow deserialization into it");
+		throw new ConfigurationException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + Reflection.typeDescription(manifest) + " which supports object format. Add @CompiledJson to specified type to allow deserialization into it");
 	}
 
 	@Nullable
@@ -128,7 +128,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			}
 			return afd.readContent(reader);
 		}
-		throw new ConfigurationException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + manifest.getTypeName() + " which supports array format. Add @CompiledJson to specified type to allow deserialization into it");
+		throw new ConfigurationException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + Reflection.typeDescription(manifest) + " which supports array format. Add @CompiledJson to specified type to allow deserialization into it");
 	}
 
 	@Override

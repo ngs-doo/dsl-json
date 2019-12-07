@@ -53,11 +53,11 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 		this.typeName = name.getBytes(utf8);
 		this.quotedTypeName = ("\"" + name + "\"").getBytes(utf8);
 		this.typeHash = DecodePropertyInfo.calcHash(name);
-		this.startErrorBoth = String.format("Expecting '{' or '[' to start decoding %s", manifest.getTypeName());
-		this.startErrorObject = String.format("Expecting '{' to start decoding %s", manifest.getTypeName());
-		this.startErrorArray = String.format("Expecting '[' to start decoding %s", manifest.getTypeName());
-		this.formatErrorObject = String.format("Object format for %s is not defined", manifest.getTypeName());
-		this.formatErrorArray = String.format("Array format for %s is not defined", manifest.getTypeName());
+		this.startErrorBoth = String.format("Expecting '{' or '[' to start decoding %s", Reflection.typeDescription(manifest));
+		this.startErrorObject = String.format("Expecting '{' to start decoding %s", Reflection.typeDescription(manifest));
+		this.startErrorArray = String.format("Expecting '[' to start decoding %s", Reflection.typeDescription(manifest));
+		this.formatErrorObject = String.format("Object format for %s is not defined", Reflection.typeDescription(manifest));
+		this.formatErrorArray = String.format("Array format for %s is not defined", Reflection.typeDescription(manifest));
 	}
 
 	public final void write(final JsonWriter writer, @Nullable final T instance) {
@@ -91,11 +91,11 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 	public T bind(final JsonReader reader, final T instance) throws IOException {
 		if (reader.last() == '{') {
 			if (objectFormat == null) throw reader.newParseError(formatErrorObject);
-			if (objectBinder == null) throw new ConfigurationException(manifest.getTypeName() + " does not support binding");
+			if (objectBinder == null) throw new ConfigurationException(Reflection.typeDescription(manifest) + " does not support binding");
 			return objectBinder.bind(reader, instance);
 		} else if (reader.last() == '[') {
 			if (arrayFormat == null) throw reader.newParseError(formatErrorArray);
-			if (arrayBinder == null) throw new ConfigurationException(manifest.getTypeName() + " does not support binding");
+			if (arrayBinder == null) throw new ConfigurationException(Reflection.typeDescription(manifest) + " does not support binding");
 			return arrayBinder.bind(reader, instance);
 		} else if (objectFormat != null && arrayFormat != null) {
 			throw reader.newParseError(startErrorBoth);

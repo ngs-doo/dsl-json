@@ -40,12 +40,12 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 		try {
 			instance = newInstance.call();
 		} catch (Exception e) {
-			throw new ConfigurationException("Unable to create a new instance of " + manifest.getTypeName(), e);
+			throw new ConfigurationException("Unable to create a new instance of " + Reflection.typeDescription(manifest), e);
 		}
 		if (reader.getNextToken() == '}') return instance;
 		K key = keyDecoder.read(reader);
 		if (key == null) {
-			throw reader.newParseErrorFormat("Null value detected for key element of map", 0, "Null value detected for key element of %s", manifest.getTypeName());
+			throw reader.newParseErrorFormat("Null value detected for key element of map", 0, "Null value detected for key element of %s", Reflection.typeDescription(manifest));
 		}
 		if (reader.getNextToken() != ':') throw reader.newParseError("Expecting ':' after key attribute");
 		reader.getNextToken();
@@ -54,7 +54,7 @@ public final class MapDecoder<K, V, T extends Map<K, V>> implements JsonReader.R
 		while (reader.getNextToken() == ','){
 			reader.getNextToken();
 			key = keyDecoder.read(reader);
-			if (key == null) throw reader.newParseErrorFormat("Null value detected for key element of map", 0, "Null value detected for key element of %s", manifest.getTypeName());
+			if (key == null) throw reader.newParseErrorFormat("Null value detected for key element of map", 0, "Null value detected for key element of %s", Reflection.typeDescription(manifest));
 			if (reader.getNextToken() != ':') throw reader.newParseError("Expecting ':' after key attribute");
 			reader.getNextToken();
 			value = valueDecoder.read(reader);

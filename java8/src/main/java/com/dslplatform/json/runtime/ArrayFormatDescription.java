@@ -52,9 +52,9 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 		this.isEmpty = encoders.length == 0;
 		this.encoders = encoders.clone();
 		this.decoders = decoders.clone();
-		this.startError = String.format("Expecting '[' to start decoding %s", manifest.getTypeName());
-		this.endError = String.format("Expecting ']' to end decoding %s", manifest.getTypeName());
-		this.countError = String.format("Expecting to read %d elements in the array while decoding %s", decoders.length, manifest.getTypeName());
+		this.startError = String.format("Expecting '[' to start decoding %s", Reflection.typeDescription(manifest));
+		this.endError = String.format("Expecting ']' to end decoding %s", Reflection.typeDescription(manifest));
+		this.countError = String.format("Expecting to read %d elements in the array while decoding %s", decoders.length, Reflection.typeDescription(manifest));
 	}
 
 	@Override

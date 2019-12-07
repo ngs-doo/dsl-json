@@ -44,6 +44,6 @@ public final class MixinWriter<T> implements JsonWriter.WriteObject<T> {
 			}
 			return;
 		}
-		throw new ConfigurationException("Unable to find encoder for '" + instance.getClass() + "' while encoding " + manifest.getTypeName() + ". Add @CompiledJson to specified type to allow serialization from it");
+		throw new ConfigurationException("Unable to find encoder for '" + instance.getClass() + "' while encoding " + Reflection.typeDescription(manifest) + ". Add @CompiledJson to specified type to allow serialization from it");
 	}
 }
