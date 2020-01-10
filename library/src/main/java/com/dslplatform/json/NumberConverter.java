@@ -305,7 +305,7 @@ public abstract class NumberConverter {
 		}
 	}
 
-	private static BigDecimal parseNumberGeneric(final char[] buf, final int len, final JsonReader reader) throws ParsingException {
+	private static BigDecimal parseNumberGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
@@ -313,10 +313,14 @@ public abstract class NumberConverter {
 		if (end > reader.maxNumberDigits) {
 			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
 		}
+		final int offset = buf[0] == '-' ? 1 : 0;
+		if (buf[offset] == '0' && end > offset + 1 && buf[offset + 1] >= '0' && buf[offset + 1] <= '9') {
+			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len + (withQuotes ? 2 : 0));
+		}
 		try {
 			return new BigDecimal(buf, 0, end);
 		} catch (NumberFormatException nfe) {
-			throw reader.newParseErrorAt("Error parsing number", len, nfe);
+			throw reader.newParseErrorAt("Error parsing number", len + (withQuotes ? 2 : 0), nfe);
 		}
 	}
 
@@ -374,7 +378,7 @@ public abstract class NumberConverter {
 		if (reader.last() == '"') {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
-			return parseDoubleGeneric(buf, reader.getCurrentIndex() - position - 1, reader);
+			return parseDoubleGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true);
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
@@ -390,24 +394,29 @@ public abstract class NumberConverter {
 		if (end - start - offset > reader.doubleLengthLimit) {
 			if (end == reader.length()) {
 				final NumberInfo tmp = readLongNumber(reader, start + offset);
-				return parseDoubleGeneric(tmp.buffer, tmp.length, reader);
+				return parseDoubleGeneric(tmp.buffer, tmp.length, reader, false);
 			}
-			return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader);
+			return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
 		}
 		long value = 0;
 		byte ch = ' ';
 		int i = start + offset;
+		final boolean leadingZero = buf[start + offset] == 48;
 		for (; i < end; i++) {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = buf[i] - 48;
 			if (ind < 0 || ind > 9) {
+				if (leadingZero && i > start + offset + 1) {
+					numberException(reader, start, end, "Leading zero is not allowed");
+				}
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
 				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}
 		if (i == start + offset) numberException(reader, start, end, "Digit not found");
+		else if (leadingZero && ch != '.' && i > start + offset + 1) numberException(reader, start, end, "Leading zero is not allowed");
 		else if (i == end) return value;
 		else if (ch == '.') {
 			i++;
@@ -421,7 +430,7 @@ public abstract class NumberConverter {
 				maxLen = i + 15;
 				ch = buf[i];
 				if (ch == '0' && end > maxLen) {
-					return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader);
+					return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
 				} else if (ch < '8') {
 					preciseDividor = 1e14;
 					expDiff = -1;
@@ -460,7 +469,7 @@ public abstract class NumberConverter {
 				return doubleExponent(reader, value, i - decPos,0, buf, start, end, offset, i);
 			}
 			if (reader.doublePrecision == JsonReader.DoublePrecision.HIGH) {
-				return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader);
+				return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
 			}
 			int decimals = 0;
 			final int decLimit = start + offset + 18 < end ? start + offset + 18 : end;
@@ -505,7 +514,7 @@ public abstract class NumberConverter {
 
 	private static double doubleExponent(JsonReader reader, final long whole, final int decimals, double fraction, byte[] buf, int start, int end, int offset, int i) throws IOException {
 		if (reader.doublePrecision == JsonReader.DoublePrecision.EXACT) {
-			return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader);
+			return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
 		}
 		byte ch;
 		ch = buf[++i];
@@ -534,10 +543,10 @@ public abstract class NumberConverter {
 				else if (exp > -300 && exp < 0) return whole / Math.pow(10, exp);
 			}
 		}
-		return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader);
+		return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
 	}
 
-	private static double parseDoubleGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
+	private static double parseDoubleGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws IOException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
@@ -545,10 +554,14 @@ public abstract class NumberConverter {
 		if (end > reader.maxNumberDigits) {
 			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
 		}
+		final int offset = buf[0] == '-' ? 1 : 0;
+		if (buf[offset] == '0' && end > offset + 1 && buf[offset + 1] >= '0' && buf[offset + 1] <= '9') {
+			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len + (withQuotes ? 2 : 0));
+		}
 		try {
 			return Double.parseDouble(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw reader.newParseErrorAt("Error parsing number", len, nfe);
+			throw reader.newParseErrorAt("Error parsing number", len + (withQuotes ? 2 : 0), nfe);
 		}
 	}
 
@@ -610,13 +623,13 @@ public abstract class NumberConverter {
 		if (reader.last() == '"') {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
-			return parseFloatGeneric(buf, reader.getCurrentIndex() - position - 1, reader);
+			return parseFloatGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true);
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
 		if (end == reader.length()) {
 			final NumberInfo tmp = readLongNumber(reader, start);
-			return parseFloatGeneric(tmp.buffer, tmp.length, reader);
+			return parseFloatGeneric(tmp.buffer, tmp.length, reader, false);
 		}
 		final byte[] buf = reader.buffer;
 		final byte ch = buf[start];
@@ -631,19 +644,25 @@ public abstract class NumberConverter {
 		byte ch = ' ';
 		int i = start + offset;
 		final int digitStart = i;
+		final boolean leadingZero = buf[start + offset] == 48;
 		for (; i < end; i++) {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
+				if (leadingZero && i > start + offset + 1) {
+					numberException(reader, start, end, "Leading zero is not allowed");
+				}
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
 				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}
 		if (i == digitStart) numberException(reader, start, end, "Digit not found");
-		else if (i > 18 + digitStart) {
-			return parseFloatGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader);
+		else if (leadingZero && ch != '.' && i > start + offset + 1) {
+			numberException(reader, start, end, "Leading zero is not allowed");
+		} else if (i > 18 + digitStart) {
+			return parseFloatGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
 		} else if (i == end) {
 			return value;
 		} else if (ch == '.') {
@@ -729,7 +748,7 @@ public abstract class NumberConverter {
 		else return exp > 0 ? Float.POSITIVE_INFINITY : 0f;
 	}
 
-	private static float parseFloatGeneric(final char[] buf, final int len, final JsonReader reader) throws ParsingException {
+	private static float parseFloatGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
@@ -737,10 +756,14 @@ public abstract class NumberConverter {
 		if (end > reader.maxNumberDigits) {
 			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", end, "");
 		}
+		final int offset = buf[0] == '-' ? 1 : 0;
+		if (buf[offset] == '0' && end > offset + 1 && buf[offset + 1] >= '0' && buf[offset + 1] <= '9') {
+			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len + (withQuotes ? 2 : 0));
+		}
 		try {
 			return Float.parseFloat(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw reader.newParseErrorAt("Error parsing number", len, nfe);
+			throw reader.newParseErrorAt("Error parsing number", len + (withQuotes ? 2 : 0), nfe);
 		}
 	}
 
@@ -865,7 +888,7 @@ public abstract class NumberConverter {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
 			try {
-				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).shortValueExact();
+				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).shortValueExact();
 			} catch (ArithmeticException ignore) {
 				throw reader.newParseErrorAt("Short overflow detected", reader.getCurrentIndex() - position);
 			}
@@ -888,7 +911,7 @@ public abstract class NumberConverter {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
 			try {
-				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).intValueExact();
+				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).intValueExact();
 			} catch (ArithmeticException ignore) {
 				throw reader.newParseErrorAt("Integer overflow detected", reader.getCurrentIndex() - position);
 			}
@@ -898,9 +921,16 @@ public abstract class NumberConverter {
 		final byte[] buf = reader.buffer;
 		final byte ch = buf[start];
 		if (ch == '-') {
+			if (end > start + 2 && buf[start + 1] == '0' && buf[start + 2] >= '0' && buf[start + 2] <= '9') {
+				numberException(reader, start, end, "Leading zero is not allowed");
+			}
 			return parseNegativeInt(buf, reader, start, end);
+		} else {
+			if (ch == '0' && end > start + 1 && buf[start + 1] >= '0' && buf[start + 1] <= '9') {
+				numberException(reader, start, end, "Leading zero is not allowed");
+			}
+			return parsePositiveInt(buf, reader, start, end, 0);
 		}
-		return parsePositiveInt(buf, reader, start, end, 0);
 	}
 
 	private static int parsePositiveInt(final byte[] buf, final JsonReader reader, final int start, final int end, final int offset) throws IOException {
@@ -912,7 +942,7 @@ public abstract class NumberConverter {
 			if (ind < 0 || ind > 9) {
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
 				else if (i == end - 1 && buf[i] == '.') numberException(reader, start, end, "Number ends with a dot");
-				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader);
+				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
 				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value", v);
 				return v.intValue();
 
@@ -934,7 +964,7 @@ public abstract class NumberConverter {
 			if (ind < 0 || ind > 9) {
 				if (i > start + 1 && reader.allWhitespace(i, end)) return value;
 				else if (i == end - 1 && buf[i] == '.') numberException(reader, start, end, "Number ends with a dot");
-				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader);
+				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
 				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value", v);
 				return v.intValue();
 			}
@@ -1216,7 +1246,7 @@ public abstract class NumberConverter {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
 			try {
-				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader).longValueExact();
+				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).longValueExact();
 			} catch (ArithmeticException ignore) {
 				throw reader.newParseErrorAt("Long overflow detected", reader.getCurrentIndex() - position);
 			}
@@ -1230,9 +1260,13 @@ public abstract class NumberConverter {
 		if (ch == '-') {
 			i = start + 1;
 			if (i == end) numberException(reader, start, end, "Digit not found");
+			final boolean leadingZero = buf[i] == 48;
 			for (; i < end; i++) {
 				final int ind = buf[i] - 48;
 				if (ind < 0 || ind > 9) {
+					if (leadingZero && i > start + 2) {
+						numberException(reader, start, end, "Leading zero is not allowed");
+					}
 					if (i > start + 1 && reader.allWhitespace(i, end)) return value;
 					return parseLongGeneric(reader, start, end);
 				}
@@ -1241,12 +1275,19 @@ public abstract class NumberConverter {
 					numberException(reader, start, end, "Long overflow detected");
 				}
 			}
+			if (leadingZero && i > start + 2) {
+				numberException(reader, start, end, "Leading zero is not allowed");
+			}
 			return value;
 		}
 		if (i == end) numberException(reader, start, end, "Digit not found");
+		final boolean leadingZero = buf[i] == 48;
 		for (; i < end; i++) {
 			final int ind = buf[i] - 48;
 			if (ind < 0 || ind > 9) {
+				if (leadingZero && i > start + 1) {
+					numberException(reader, start, end, "Leading zero is not allowed");
+				}
 				if (ch == '+' && i > start + 1 && reader.allWhitespace(i, end)) return value;
 				else if (ch != '+' && i > start && reader.allWhitespace(i, end)) return value;
 				return parseLongGeneric(reader, start, end);
@@ -1256,6 +1297,9 @@ public abstract class NumberConverter {
 				numberException(reader, start, end, "Long overflow detected");
 			}
 		}
+		if (leadingZero && i > start + 1) {
+			numberException(reader, start, end, "Leading zero is not allowed");
+		}
 		return value;
 	}
 
@@ -1263,7 +1307,7 @@ public abstract class NumberConverter {
 		final int len = end - start;
 		final char[] buf = reader.prepareBuffer(start, len);
 		if (len > 0 && buf[len - 1] == '.') numberException(reader, start, end, "Number ends with a dot");
-		final BigDecimal v = parseNumberGeneric(buf, len, reader);
+		final BigDecimal v = parseNumberGeneric(buf, len, reader, false);
 		if (v.scale() > 0) numberException(reader, start, end, "Expecting long, but found decimal value ", v);
 		return v.longValue();
 	}
@@ -1301,7 +1345,7 @@ public abstract class NumberConverter {
 	public static BigDecimal deserializeDecimal(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
 			final int len = reader.parseString();
-			return parseNumberGeneric(reader.chars, len, reader);
+			return parseNumberGeneric(reader.chars, len, reader, true);
 		}
 		final int start = reader.scanNumber();
 		int end = reader.getCurrentIndex();
@@ -1311,9 +1355,9 @@ public abstract class NumberConverter {
 			len = end - start;
 			if (end == reader.length()) {
 				final NumberInfo info = readLongNumber(reader, start);
-				return parseNumberGeneric(info.buffer, info.length, reader);
+				return parseNumberGeneric(info.buffer, info.length, reader, false);
 			} else if (len > 18) {
-				return parseNumberGeneric(reader.prepareBuffer(start, len), len, reader);
+				return parseNumberGeneric(reader.prepareBuffer(start, len), len, reader, false);
 			}
 		}
 		final byte[] buf = reader.buffer;
@@ -1321,24 +1365,29 @@ public abstract class NumberConverter {
 		if (ch == '-') {
 			return parseNegativeDecimal(buf, reader, start, end);
 		}
-		return parsePositiveDecimal(buf, reader, start, end, 0);
+		return parsePositiveDecimal(buf, reader, start, end);
 	}
 
-	private static BigDecimal parsePositiveDecimal(final byte[] buf, final JsonReader reader, final int start, final int end, final int offset) throws IOException {
+	private static BigDecimal parsePositiveDecimal(final byte[] buf, final JsonReader reader, final int start, final int end) throws IOException {
 		long value = 0;
 		byte ch = ' ';
-		int i = start + offset;
+		int i = start;
+		final boolean leadingZero = buf[start] == 48;
 		for (; i < end; i++) {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
-				if (i > start + offset && reader.allWhitespace(i, end)) return BigDecimal.valueOf(value);
+				if (leadingZero && i > start + 1) {
+					numberException(reader, start, end, "Leading zero is not allowed");
+				}
+				if (i > start && reader.allWhitespace(i, end)) return BigDecimal.valueOf(value);
 				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}
-		if (i == start + offset) numberException(reader, start, end, "Digit not found");
+		if (i == start) numberException(reader, start, end, "Digit not found");
+		else if (leadingZero && ch != '.' && i > start + 1) numberException(reader, start, end, "Leading zero is not allowed");
 		else if (i == end) return BigDecimal.valueOf(value);
 		else if (ch == '.') {
 			i++;
@@ -1390,17 +1439,22 @@ public abstract class NumberConverter {
 		long value = 0;
 		byte ch = ' ';
 		int i = start + 1;
+		final boolean leadingZero = buf[start + 1] == 48;
 		for (; i < end; i++) {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
+				if (leadingZero && i > start + 2) {
+					numberException(reader, start, end, "Leading zero is not allowed");
+				}
 				if (i > start + 1 && reader.allWhitespace(i, end)) return BigDecimal.valueOf(value);
 				numberException(reader, start, end, "Unknown digit", (char)ch);
 			}
 			value = (value << 3) + (value << 1) - ind;
 		}
 		if (i == start + 1) numberException(reader, start, end, "Digit not found");
+		else if (leadingZero && ch != '.' && i > start + 2) numberException(reader, start, end, "Leading zero is not allowed");
 		else if (i == end) return BigDecimal.valueOf(value);
 		else if (ch == '.') {
 			i++;
@@ -1458,7 +1512,7 @@ public abstract class NumberConverter {
 	}
 
 	private static Number tryLongFromBigDecimal(final char[] buf, final int len, JsonReader reader) throws IOException {
-		final BigDecimal num = parseNumberGeneric(buf, len, reader);
+		final BigDecimal num = parseNumberGeneric(buf, len, reader, false);
 		if (num.scale() == 0 && num.precision() <= 19) {
 			if (num.signum() == 1) {
 				if (num.compareTo(BD_MAX_LONG) <= 0) {
@@ -1499,17 +1553,22 @@ public abstract class NumberConverter {
 		long value = 0;
 		byte ch = ' ';
 		int i = start;
+		final boolean leadingZero = buf[start] == 48;
 		for (; i < end; i++) {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
+				if (leadingZero && i > start + 1) {
+					numberException(reader, start, end, "Leading zero is not allowed");
+				}
 				if (i > start && reader.allWhitespace(i, end)) return value;
 				return tryLongFromBigDecimal(reader.prepareBuffer(start, end - start), end - start, reader);
 			}
 			value = (value << 3) + (value << 1) + ind;
 		}
 		if (i == start) numberException(reader, start, end, "Digit not found");
+		else if (leadingZero && ch != '.' && i > start + 1) numberException(reader, start, end, "Leading zero is not allowed");
 		else if (i == end) return value;
 		else if (ch == '.') {
 			i++;
@@ -1561,17 +1620,22 @@ public abstract class NumberConverter {
 		long value = 0;
 		byte ch = ' ';
 		int i = start + 1;
+		final boolean leadingZero = buf[start + 1] == 48;
 		for (; i < end; i++) {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
+				if (leadingZero && i > start + 2) {
+					numberException(reader, start, end, "Leading zero is not allowed");
+				}
 				if (i > start + 1 && reader.allWhitespace(i, end)) return value;
 				return tryLongFromBigDecimal(reader.prepareBuffer(start, end - start), end - start, reader);
 			}
 			value = (value << 3) + (value << 1) - ind;
 		}
 		if (i == start + 1) numberException(reader, start, end, "Digit not found");
+		else if (leadingZero && ch != '.' && i > start + 2) numberException(reader, start, end, "Leading zero is not allowed");
 		else if (i == end) return value;
 		else if (ch == '.') {
 			i++;

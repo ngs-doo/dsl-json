@@ -5,7 +5,7 @@ import java.lang.reflect.{Constructor, Method, Modifier, ParameterizedType, Type
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe
-import scala.util.{Success, Try}
+import scala.util.Try
 
 object ScalaClassAnalyzer {
 
@@ -267,7 +267,7 @@ object ScalaClassAnalyzer {
       val defMethod = defaults.find(_.name.toString.endsWith("$" + (i + 1))).flatMap { d =>
         val name = d.name.toString
         raw.getDeclaredMethods.find(_.getName == name).map { m =>
-          () => m.invoke(null, Array():_*)
+          () => m.invoke(null)
         }
       }
       val pName = if (p.name.toString.contains("$")) names.map(it => it(i)) else Some(p.name.toString)
@@ -384,7 +384,7 @@ object ScalaClassAnalyzer {
       val defMethod = defaults.find(_.name.toString.endsWith("$" + (i + 1))).flatMap { d =>
         val name = d.name.toString
         companion.getClass.getDeclaredMethods.find(_.getName == name).map { m =>
-          () => m.invoke(companion, Array():_*)
+          () => m.invoke(companion)
         }
       }
       val pName = if (p.name.toString.contains("$")) names.map(it => it(i)) else Some(p.name.toString)

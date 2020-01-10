@@ -765,8 +765,21 @@ public class NumberConverterTest {
 		byte[] dot = "{\"x\":.}".getBytes("UTF-8");
 		byte[] doubleMinus = "{\"x\":--0}".getBytes("UTF-8");
 		byte[] doubleMinusSpace = "{\"x\":--0}".getBytes("UTF-8");
+		byte[] doubleZero = "{\"x\":00}".getBytes("UTF-8");
+		byte[] doubleNegativeZero = "{\"x\":-00}".getBytes("UTF-8");
+		byte[] doubleZeroAndSpace = "{\"x\":00 }".getBytes("UTF-8");
+		byte[] leadingZero = "{\"x\":01}".getBytes("UTF-8");
+		byte[] leadingNegativeZero = "{\"x\":-01}".getBytes("UTF-8");
+		byte[] leadingZeroAndSpace = "{\"x\":01 }".getBytes("UTF-8");
+		byte[] quotedLeadingZero = "{\"x\":\"01\"}".getBytes("UTF-8");
+		byte[] quotedLeadingNegativeZero = "{\"x\":\"-01\"}".getBytes("UTF-8");
+		byte[] quotedLeadingZeroAndSpace = "{\"x\":\"01\" }".getBytes("UTF-8");
 
-		byte[][] input = {empty, space, plus, minus, e, plusSpace, minusSpace, eSpace, dot, doubleMinus, doubleMinusSpace};
+		byte[][] input = {
+				empty, space, plus, minus, e, plusSpace, minusSpace, eSpace, dot, doubleMinus, doubleMinusSpace,
+				doubleZero, doubleNegativeZero, doubleZeroAndSpace, leadingZero, leadingNegativeZero, leadingZeroAndSpace,
+				quotedLeadingZero, quotedLeadingNegativeZero, quotedLeadingZeroAndSpace
+		};
 
 		for(byte[] it : input) {
 			prepareJson(jr, it);
@@ -788,12 +801,10 @@ public class NumberConverterTest {
 	public void zeroParsing() throws IOException {
 		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
 
-		byte[] doubleZero = "{\"x\":00}".getBytes("UTF-8");
-		byte[] negativeZero = "{\"x\":-00}".getBytes("UTF-8");
 		byte[] zeroWithSpace = "{\"x\":0 }".getBytes("UTF-8");
 		byte[] negativeZeroWithSpace = "{\"x\":-0 }".getBytes("UTF-8");
 
-		byte[][] input = {doubleZero, negativeZero, zeroWithSpace, negativeZeroWithSpace};
+		byte[][] input = {zeroWithSpace, negativeZeroWithSpace};
 
 		for(byte[] it : input) {
 			prepareJson(jr, it);
