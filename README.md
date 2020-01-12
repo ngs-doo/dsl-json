@@ -60,7 +60,7 @@ To use Java8 annotation processor its sufficient to just reference Java8 version
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-java8</artifactId>
-      <version>1.9.3</version>
+      <version>1.9.4</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -72,8 +72,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.9.3'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.3'
+      compile 'com.dslplatform:dsl-json-java8:1.9.4'
+      annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.4'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -96,15 +96,15 @@ DSL Platform annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.9.3</version>
+      <version>1.9.4</version>
       <scope>provided</scope>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.9.3'
-      annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.3'
+      compile 'com.dslplatform:dsl-json:1.9.4'
+      annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.4'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -257,7 +257,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.9.3</version>
+      <version>1.9.4</version>
     </dependency>
 
 ## Runtime analysis
@@ -350,7 +350,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.3"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.4"
 
 ### Kotlin support
 
@@ -359,8 +359,8 @@ When used with Gradle, configuration can be done via:
 
     apply plugin: 'kotlin-kapt'
     dependencies {
-      compile "com.dslplatform:dsl-json-java8:1.9.3"
-      kapt "com.dslplatform:dsl-json-java8:1.9.3"
+      compile "com.dslplatform:dsl-json-java8:1.9.4"
+      kapt "com.dslplatform:dsl-json-java8:1.9.4"
     }
 
 ## FAQ
@@ -384,4 +384,4 @@ When used with Gradle, configuration can be done via:
  ***A***: It's a known Android Studio problem. It's fixed in [version 3.3](https://androidstudio.googleblog.com/2018/06/android-studio-33-canary-1-available.html)
 
  ***Q***: What is this DSL Platform?  
- ***A***: DSL Platform is a proprietary compiler written in C#. Since v1.7.0 DSL Platform is no longer required to create compile-time databinding. Compiler is free to use, but access to source code is licensed. If you need access to the compiler or need performance consulting [let us know](https://dsl-platform.com)
+ ***A***: DSL Platform is a proprietary compiler written in C#. Since v1.7.0 DSL Platform is no longer required to create compile-time databinding. Compiler is free to use, but access to source code is licensed. If you want access to the compiler or need performance consulting [let us know](https://dsl-platform.com)

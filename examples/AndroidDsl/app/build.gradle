@@ -26,6 +26,6 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:27.1.1'
 
-    implementation 'com.dslplatform:dsl-json:1.9.3'
-    annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.3'
+    implementation 'com.dslplatform:dsl-json:1.9.4'
+    annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.4'
 }

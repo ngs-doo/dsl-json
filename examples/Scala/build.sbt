@@ -1,6 +1,6 @@
 name := "DSL-JSON Scala example"
-version := "1.9.3"
+version := "1.9.4"
 organization := "com.dslplatform.json.example"
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.10"
 
-libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.3"
+libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.4"
