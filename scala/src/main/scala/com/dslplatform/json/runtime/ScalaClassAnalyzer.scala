@@ -225,10 +225,10 @@ object ScalaClassAnalyzer {
         else None
       case Some(init) if init.isPublic && init.info.paramLists.size == 1 && ctors.length == 1 =>
         analyzeClassWithCtor(manifest, raw, json, ctors, tpe, init.info.paramLists.head, reading)
-      case _ =>
+      case _ if ctors.length == 1 =>
         val ctorParams = ctors(0).getParameterCount
         tpe.companion.members.find(it => it.name.toString == "apply" && it.isPublic) match {
-          case Some(init) if init.info.paramLists.size == 1 && ctors.length == 1 && ctorParams == init.info.paramLists.head.size =>
+          case Some(init) if init.info.paramLists.size == 1 && ctorParams == init.info.paramLists.head.size =>
             val module = scala.reflect.runtime.currentMirror.staticModule(raw.getName)
             val instance = scala.reflect.runtime.currentMirror.reflectModule(module).instance.asInstanceOf[AnyRef]
             val objectClass = instance.getClass
@@ -241,6 +241,8 @@ object ScalaClassAnalyzer {
           case _ =>
             None
         }
+      case _ =>
+        None
     }
   }
 

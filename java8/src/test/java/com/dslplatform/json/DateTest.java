@@ -8,6 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
+import java.util.Arrays;
 
 public class DateTest {
 
@@ -36,6 +37,17 @@ public class DateTest {
 	@Test
 	public void timeOffsetConversion() throws IOException {
 		OffsetTime now = OffsetTime.now();
+		JsonWriter jw = new JsonWriter(null);
+		JavaTimeConverter.serialize(now, jw);
+		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
+		jr.read();
+		OffsetTime value = JavaTimeConverter.deserializeOffsetTime(jr);
+		Assert.assertEquals(now, value);
+	}
+
+	@Test
+	public void negativeTimeOffsetConversion() throws IOException {
+		OffsetTime now = OffsetTime.parse("12:13:14.123456789-12:15");
 		JsonWriter jw = new JsonWriter(null);
 		JavaTimeConverter.serialize(now, jw);
 		JsonReader jr = new JsonReader<>(jw.toString().getBytes(StandardCharsets.UTF_8), null);
@@ -78,6 +90,18 @@ public class DateTest {
 	}
 
 	@Test
+	public void localTimeBoundary() throws IOException {
+		DslJson<Object> dslJson = new DslJson<>();
+		LocalTime now = LocalTime.parse("12:13:14.123456789");
+		JsonWriter jw = dslJson.newWriter(20);
+		LocalTime[] lts = new LocalTime[2];
+		Arrays.fill(lts, now);
+		dslJson.serialize(jw, lts);
+		LocalTime[] values = dslJson.deserialize(LocalTime[].class, jw.getByteBuffer(), jw.size());
+		Assert.assertArrayEquals(lts, values);
+	}
+
+	@Test
 	public void zonedDateTimeOffsetConversion() throws IOException {
 		DslJson<Object> dslJson = new DslJson<>();
 		ZonedDateTime now = ZonedDateTime.now();
@@ -85,6 +109,18 @@ public class DateTest {
 		dslJson.serialize(now, baos);
 		ZonedDateTime value = dslJson.deserialize(ZonedDateTime.class, baos.toByteArray(), baos.size());
 		Assert.assertTrue(now.isEqual(value));
+	}
+
+	@Test
+	public void zonedDateTimeBoundary() throws IOException {
+		DslJson<Object> dslJson = new DslJson<>();
+		ZonedDateTime now = ZonedDateTime.parse("2020-01-12T12:13:14.123456789-03:30");
+		JsonWriter jw = dslJson.newWriter(34);
+		ZonedDateTime[] lts = new ZonedDateTime[3];
+		Arrays.fill(lts, now);
+		dslJson.serialize(jw, lts);
+		ZonedDateTime[] values = dslJson.deserialize(ZonedDateTime[].class, jw.getByteBuffer(), jw.size());
+		Assert.assertArrayEquals(lts, values);
 	}
 
 	@Test

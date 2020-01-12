@@ -185,7 +185,7 @@ public abstract class JavaTimeConverter {
 	}
 
 	public static void serialize(final LocalTime value, final JsonWriter sw) {
-		final byte[] buf = sw.ensureCapacity(18);
+		final byte[] buf = sw.ensureCapacity(22);
 		final int pos = sw.size();
 		buf[pos] = '"';
 		NumberConverter.write2(value.getHour(), buf, pos + 1);
@@ -301,7 +301,8 @@ public abstract class JavaTimeConverter {
 			final int sec = NumberConverter.read2(tmp, 17);
 			final int offHour = NumberConverter.read2(tmp, len - 5);
 			final int offMin = NumberConverter.read2(tmp, len - 2);
-			final ZoneOffset offset = ZoneOffset.ofHoursMinutes(tmp[len - 6] == '+' ? offHour : -offHour, offMin);
+			final boolean isPositiveOffset = tmp[len - 6] == '+';
+			final ZoneOffset offset = ZoneOffset.ofHoursMinutes(isPositiveOffset ? offHour : -offHour, isPositiveOffset ? offMin : -offMin);
 			if (tmp[19] == '.') {
 				final int nanos = readNanos(tmp, len - 6, 20);
 				return OffsetDateTime.of(year, month, day, hour, min, sec, nanos, offset);
@@ -396,7 +397,8 @@ public abstract class JavaTimeConverter {
 			final int sec = NumberConverter.read2(tmp, 6);
 			final int offHour = NumberConverter.read2(tmp, len - 5);
 			final int offMin = NumberConverter.read2(tmp, len - 2);
-			final ZoneOffset offset = ZoneOffset.ofHoursMinutes(tmp[len - 6] == '+' ? offHour : -offHour, offMin);
+			final boolean isPositiveOffset = tmp[len - 6] == '+';
+			final ZoneOffset offset = ZoneOffset.ofHoursMinutes(isPositiveOffset ? offHour : -offHour, isPositiveOffset ? offMin : -offMin);
 			if (tmp[8] == '.') {
 				final int nanos = readNanos(tmp, len - 6, 9);
 				return OffsetTime.of(hour, min, sec, nanos, offset);
