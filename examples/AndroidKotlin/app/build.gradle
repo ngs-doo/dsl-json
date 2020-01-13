@@ -30,7 +30,7 @@ dependencies {
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation 'com.android.support.constraint:constraint-layout:1.1.0'
 
-    implementation 'com.dslplatform:dsl-json-java8:1.9.4'
-    kapt 'com.dslplatform:dsl-json-java8:1.9.4'
-    annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.4'
+    implementation 'com.dslplatform:dsl-json-java8:1.9.5'
+    kapt 'com.dslplatform:dsl-json-java8:1.9.5'
+    annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.5'
 }

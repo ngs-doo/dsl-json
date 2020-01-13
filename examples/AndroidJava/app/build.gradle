@@ -28,11 +28,11 @@ dependencies {
     implementation 'com.android.support:appcompat-v7:27.1.1'
 
     //java8 version can work via desugar
-    implementation 'com.dslplatform:dsl-json-java8:1.9.4'
+    implementation 'com.dslplatform:dsl-json-java8:1.9.5'
     //using alternative to java8 time api
-    implementation 'com.dslplatform:dsl-json-threetenbp:1.9.4'
+    implementation 'com.dslplatform:dsl-json-threetenbp:1.9.5'
     //invoke the compile time databinding
-    annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.4'
+    annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.5'
     //just satisfy Jsonb provided dependency
     api 'javax.json.bind:javax.json.bind-api:1.0'
 }
