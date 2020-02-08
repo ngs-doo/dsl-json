@@ -11,6 +11,7 @@ before_install:
 
 jdk:
   - openjdk8
+  - openjdk11
 
 script:
   - mvn clean verify
