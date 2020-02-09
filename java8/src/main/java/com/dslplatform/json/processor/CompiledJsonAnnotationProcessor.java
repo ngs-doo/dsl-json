@@ -393,8 +393,13 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			final String generatePackage = generateFullClassName.substring(0, dotIndex);
 			code.append("package ").append(generatePackage).append(";\n\n");
 		}
-		code.append("import javax.annotation.Generated;\n\n");
-		code.append("@Generated(\"dsl_json\")\n");
+		code.append("\n\n");
+		final String javaVersion = System.getProperty("java.specification.version");
+		if (javaVersion == null || "1.6".equals(javaVersion) || "1.7".equals(javaVersion) || "1.8".equals(javaVersion)) {
+			code.append("@javax.annotation.Generated(\"dsl_json\")\n");
+		} else {
+			code.append("@javax.annotation.processing.Generated(\"dsl_json\")\n");
+		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
 		code.append("\tprivate static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName(\"UTF-8\");\n");
 		code.append("\t@Override\n");
