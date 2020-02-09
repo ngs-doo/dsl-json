@@ -358,7 +358,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
 						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
 		//new Java versions perform analysis a bit differently
-		Assert.assertTrue(diagnostics.size() >= 4 && diagnostics.size() <= 5);
+		Assert.assertTrue(diagnostics.size() >= 4 && diagnostics.size() <= 6);
 		Diagnostic note = diagnostics.get(0);
 		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		String error = note.getMessage(Locale.ENGLISH);

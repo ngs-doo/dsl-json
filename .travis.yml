@@ -14,7 +14,7 @@ jdk:
   - openjdk11
 
 script:
-  - mvn clean verify
+  - mvn clean verify -Dmaven.javadoc.skip=true
 
 notifications:
   email:
