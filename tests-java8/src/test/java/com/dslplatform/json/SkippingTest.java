@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class SkippingTest {
 
@@ -22,7 +23,7 @@ public class SkippingTest {
 		}
 	}
 
-	private final DslJson<Object> dslJson = new DslJson<>();
+	private static final DslJson<Object> dslJson = new DslJson<>();
 
 	@Test
 	public void canSkipOverObject1() throws IOException {
@@ -106,5 +107,33 @@ public class SkippingTest {
 		byte[] input = "{\"x\":2,\"x\":4}".getBytes("UTF-8");
 		SingleImmutable s = dslJson.deserialize(SingleImmutable.class, input, input.length);
 		Assert.assertEquals(4, s.y);
+	}
+
+	private static JsonReader.BindObject<Unnesting> binder = dslJson.tryFindBinder(Unnesting.class);
+	private static ThreadLocal<JsonReader> unnestingReader = ThreadLocal.withInitial(dslJson::newReader);
+
+	@CompiledJson
+	public static class Unnesting {
+		public String a;
+		public String b;
+		@JsonAttribute(name = "c")
+		public String anUnknownFieldName;
+		public String getJsonString() { return null; }
+		public void setJsonString(String value) throws IOException {
+			JsonReader localReader = unnestingReader.get();
+			byte[] input = value.getBytes(StandardCharsets.UTF_8);
+			localReader.process(input, input.length);
+			localReader.read();
+			binder.bind(localReader, this);
+		}
+	}
+
+	@Test
+	public void nestedBinding() throws IOException {
+		byte[] input = "{\"jsonString\":\"{\\\"a\\\": \\\"value1\\\", \\\"b\\\": \\\"value2\\\"}\",\"c\":\"Some string\"}".getBytes("UTF-8");
+		Unnesting s = dslJson.deserialize(Unnesting.class, input, input.length);
+		Assert.assertEquals("value1", s.a);
+		Assert.assertEquals("value2", s.b);
+		Assert.assertEquals("Some string", s.anUnknownFieldName);
 	}
 }
