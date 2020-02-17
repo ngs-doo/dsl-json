@@ -286,11 +286,9 @@ public final class JsonReader<TContext> {
 		return length;
 	}
 
-	private final static Charset UTF_8 = Charset.forName("UTF-8");
-
 	@Override
 	public String toString() {
-		return new String(buffer, 0, length, UTF_8);
+		return new String(buffer, 0, length, utf8);
 	}
 
 	private static int readFully(final byte[] buffer, final InputStream stream, final int offset) throws IOException {
@@ -303,7 +301,13 @@ public final class JsonReader<TContext> {
 		return position;
 	}
 
-	private static final EOFException eof = new EOFException();
+	private static class EmptyEOFException extends EOFException {
+		@Override
+		public synchronized Throwable fillInStackTrace() {
+			return this;
+		}
+	}
+	private static final EOFException eof = new EmptyEOFException();
 
 	boolean withStackTrace() {
 		return errorInfo == ErrorInfo.WITH_STACK_TRACE;

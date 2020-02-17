@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Map;
 
@@ -269,5 +270,21 @@ public class ReaderTest {
 		reader.endObject();
 		reader.endArray();
 		reader.endObject();
+	}
+
+	@Test
+	public void emptyStackTraceForEOF() throws IOException {
+		String input = "1";
+		DslJson<Object> json = new DslJson<Object>();
+		JsonReader reader = json.newReader(input.getBytes("UTF-8"));
+		try {
+			reader.read();
+			reader.read();
+			reader.read();
+			Assert.fail();
+		} catch (ParsingException pe) {
+			EOFException eof = (EOFException) pe.getCause();
+			Assert.assertEquals(0, eof.getStackTrace().length);
+		}
 	}
 }
