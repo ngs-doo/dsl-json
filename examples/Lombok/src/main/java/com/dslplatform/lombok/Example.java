@@ -14,6 +14,7 @@ public class Example {
 	public static class Employee {
 		private String name;
 		private int id;
+		//private boolean active;
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -23,6 +24,7 @@ public class Example {
 		Employee employee = new Employee();
 		employee.name = "name";
 		employee.id = 1;
+		//employee.active = true;
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(employee, os);

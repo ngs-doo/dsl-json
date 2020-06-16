@@ -1646,6 +1646,15 @@ public class Analysis {
 	}
 
 	public static String beanOrActualName(String name) {
+
+		if (name.startsWith("is") && name.length() > 2) {
+			String after = name.substring(2);
+			if (name.length() == 3) return after.toLowerCase();
+			return after.toUpperCase().equals(after)
+					? after
+					: Character.toLowerCase(after.charAt(0)) + after.substring(1);
+		}
+
 		if ((name.startsWith("get") || name.startsWith("set")) && name.length() > 3) {
 			String after = name.substring(3);
 			if (name.length() == 4) return after.toLowerCase();
@@ -1666,7 +1675,7 @@ public class Analysis {
 					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
 			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
 				String name = method.getSimpleName().toString();
-				if (name.length() < 4) {
+				if (name.length() < 3) {
 					continue;
 				}
 				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
@@ -1678,7 +1687,21 @@ public class Analysis {
 				AnnotationMirror annotation = getAnnotation(method, attributeType);
 				boolean producesWarning = !isAccessible && annotation != null;
 				String property = beanOrActualName(name);
-				if (name.startsWith("get")
+
+				if(name.startsWith("is")
+						&& method.getParameters().size() == 0
+						&& method.getReturnType() != null
+						&& method.getReturnType().getKind() == TypeKind.BOOLEAN){
+					if (producesWarning) {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								attributeType.toString() + " detected on non accessible bean getter method which is ignored during processing. Put annotation on public method instead.",
+								method,
+								annotation);
+					} else if (!getters.containsKey(property)) {
+						getters.put(property, method);
+					}
+				} else if (name.startsWith("get")
 						&& method.getParameters().size() == 0
 						&& method.getReturnType() != null) {
 					if (producesWarning) {
@@ -1738,7 +1761,7 @@ public class Analysis {
 					&& inheritance.getModifiers().contains(Modifier.PUBLIC);
 			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
 				String name = method.getSimpleName().toString();
-				if (name.startsWith("get") || name.startsWith("set")) {
+				if (name.startsWith("get") || name.startsWith("is") || name.startsWith("set")) {
 					continue;
 				}
 				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
@@ -1838,7 +1861,9 @@ public class Analysis {
 				}
 				final String property = Analysis.beanOrActualName(name);
 				if (method.getParameters().size() == 0 && method.getReturnType() != null) {
-					boolean canAdd = withExact || withBeans && name.startsWith("get") && name.length() > 4;
+					boolean canAdd = withExact
+							|| withBeans && name.startsWith("get") && name.length() > 4
+							|| withBeans && name.startsWith("is") && name.length() > 3;
 					if (canAdd && !getters.containsKey(property)) {
 						getters.put(property, method);
 					}
