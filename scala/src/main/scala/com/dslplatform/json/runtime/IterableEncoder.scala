@@ -5,7 +5,8 @@ import scala.collection.Iterable
 
 final class IterableEncoder[E](
   json: DslJson[_],
-  encoder: Option[JsonWriter.WriteObject[E]]) extends JsonWriter.WriteObject[Iterable[E]] {
+  encoder: Option[JsonWriter.WriteObject[E]]
+) extends JsonWriter.WriteObject[Iterable[E]] {
 
   require(manifest ne null, "manifest can't be null")
   require(encoder ne null, "encoder can't be null")
@@ -13,8 +14,7 @@ final class IterableEncoder[E](
   private val EMPTY = Array[Byte]('[', ']')
 
   override def write(writer: JsonWriter, value: Iterable[E]): Unit = {
-    //TODO: remove null check
-    if (value == null) writer.writeNull()
+    if (value eq null) writer.writeNull()
     else if (value.isEmpty) writer.writeAscii(EMPTY)
     else if (encoder.isDefined) {
       writer.writeByte(JsonWriter.ARRAY_START)

@@ -14,7 +14,8 @@ final class ScalaMapEncoder[K, V](
   private val EMPTY = Array[Byte]('{', '}')
 
   override def write(writer: JsonWriter, value: scala.collection.Map[K, V]): Unit = {
-    if (value.isEmpty) writer.writeAscii(EMPTY)
+    if (value eq null) writer.writeNull()
+    else if (value.isEmpty) writer.writeAscii(EMPTY)
     else if (keyEncoder.isDefined && valueEncoder.isDefined) {
       val ke = keyEncoder.get
       val ve = valueEncoder.get

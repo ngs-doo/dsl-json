@@ -342,4 +342,19 @@ public class DateTest {
 			Assert.assertEquals(model.now, result.now);
 		}
 	}
+
+	public static class SqlDate {
+		public java.util.Date date;
+	}
+
+	@Test
+	public void sqlDateWillNotExplode() throws IOException {
+		java.util.Date ud = new java.util.Date(119, 2, 10);
+		SqlDate sql = new SqlDate();
+		sql.date = new java.sql.Date(ud.getTime());
+		DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime());
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(sql, os);
+		Assert.assertEquals("{\"date\":\"2019-03-10\"}", os.toString());
+	}
 }

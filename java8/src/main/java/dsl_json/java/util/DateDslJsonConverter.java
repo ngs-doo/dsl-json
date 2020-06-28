@@ -20,6 +20,7 @@ public class DateDslJsonConverter implements Configuration {
 			@Override
 			public void write(JsonWriter writer, @Nullable java.util.Date value) {
 				if (value == null) writer.writeNull();
+				else if (value instanceof java.sql.Date) JavaTimeConverter.serialize(((java.sql.Date)value).toLocalDate(), writer);
 				else JavaTimeConverter.serialize(OffsetDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()), writer);
 			}
 		});

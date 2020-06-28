@@ -105,4 +105,15 @@ public class SkippingTest {
 		SingleImmutable s = dslJson.deserialize(SingleImmutable.class, input, input.length);
 		Assert.assertEquals(4, s.x);
 	}
+
+	public static class S {
+		public String s;
+	}
+
+	@Test
+	public void whenSkippingOverAttributesCopeWithDoubleQuoteEscaping() throws IOException {
+		byte[] input = "{\"s\":\"s\",\"s\\\"xy\":3}".getBytes("UTF-8");
+		S s = dslJson.deserialize(S.class, input, input.length);
+		Assert.assertEquals("s", s.s);
+	}
 }

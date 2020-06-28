@@ -894,8 +894,15 @@ public final class JsonReader<TContext> {
 		long hash = 0x811c9dc5;
 		if (stream != null) {
 			while (ci < readLimit) {
-				final byte b = buffer[ci];
-				if (b == '"') break;
+				byte b = buffer[ci];
+				if (b == '\\') {
+					if (ci == readLimit - 1) {
+						return calcHashAndCopyName(hash, ci);
+					}
+					b = buffer[++ci];
+				} else if (b == '"') {
+					break;
+				}
 				ci++;
 				hash ^= b;
 				hash *= 0x1000193;
@@ -907,8 +914,13 @@ public final class JsonReader<TContext> {
 		} else {
 			//TODO: use length instead!? this will read data after used buffer size
 			while (ci < buffer.length) {
-				final byte b = buffer[ci++];
-				if (b == '"') break;
+				byte b = buffer[ci++];
+				if (b == '\\') {
+					if (ci == buffer.length) throw newParseError("Expecting '\"' for attribute name end");
+					b = buffer[ci++];
+				} else if (b == '"') {
+					break;
+				}
 				hash ^= b;
 				hash *= 0x1000193;
 			}
@@ -924,8 +936,15 @@ public final class JsonReader<TContext> {
 		int hash = 0;
 		if (stream != null) {
 			while (ci < readLimit) {
-				final byte b = buffer[ci];
-				if (b == '"') break;
+				byte b = buffer[ci];
+				if (b == '\\') {
+					if (ci == readLimit - 1) {
+						return calcWeakHashAndCopyName(hash, ci);
+					}
+					b = buffer[++ci];
+				} else if (b == '"') {
+					break;
+				}
 				ci++;
 				hash += b;
 			}
@@ -936,8 +955,13 @@ public final class JsonReader<TContext> {
 		} else {
 			//TODO: use length instead!? this will read data after used buffer size
 			while (ci < buffer.length) {
-				final byte b = buffer[ci++];
-				if (b == '"') break;
+				byte b = buffer[ci++];
+				if (b == '\\') {
+					if (ci == buffer.length) throw newParseError("Expecting '\"' for attribute name end");
+					b = buffer[ci++];
+				} else if (b == '"') {
+					break;
+				}
 				hash += b;
 			}
 			nameEnd = currentIndex = ci;
@@ -980,8 +1004,10 @@ public final class JsonReader<TContext> {
 		}
 		currentIndex = ci;
 		do {
-			final byte b = read();
-			if (b == '"') {
+			byte b = read();
+			if (b == '\\') {
+				b = read();
+			} else if (b == '"') {
 				nameEnd = -1;
 				lastNameLen = i;
 				return (int) hash;
@@ -1009,8 +1035,10 @@ public final class JsonReader<TContext> {
 		}
 		currentIndex = ci;
 		do {
-			final byte b = read();
-			if (b == '"') {
+			byte b = read();
+			if (b == '\\') {
+				b = read();
+			} else if (b == '"') {
 				nameEnd = -1;
 				lastNameLen = i;
 				return hash;
@@ -1040,6 +1068,7 @@ public final class JsonReader<TContext> {
 		if (name.length() != nameEnd - tokenStart - 1) {
 			return false;
 		}
+		//TODO: not correct with escaping
 		for (int i = 0; i < name.length(); i++) {
 			if (name.charAt(i) != buffer[tokenStart + i]) {
 				return false;

@@ -287,4 +287,130 @@ public class ReaderTest {
 			Assert.assertEquals(0, eof.getStackTrace().length);
 		}
 	}
+
+	@Test
+	public void mapNameEscapingDoubleQuote() throws IOException {
+		byte[] input = "{\"x\\\"y\":1}".getBytes("UTF-8");
+		Map map = dslJson.deserialize(Map.class, input, input.length);
+		Assert.assertTrue(map.containsKey("x\"y"));
+		Assert.assertEquals(1, map.size());
+	}
+
+	@Test
+	public void hashValueWithEscapingDoubleQuote() throws IOException {
+		byte[] bytes = "{\"x\\\"y\":1}".getBytes("UTF-8");
+		JsonReader<Object> reader = dslJson.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(275, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(-825900878, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(new ByteArrayInputStream(bytes));
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(275, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(new ByteArrayInputStream(bytes));
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(-825900878, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+	}
+
+	@Test
+	public void hashValueWithEscapingDoubleQuoteOutsideOfLimit() throws IOException {
+		byte[] bytes = "{\"                          x\\\"y\":1}".getBytes("UTF-8");
+		JsonReader<Object> reader = dslJson.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(1107, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(815827434, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(new ByteArrayInputStream(bytes));
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(1107, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(new ByteArrayInputStream(bytes));
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(815827434, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader(new ByteArrayInputStream(bytes), new byte[64]);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(1107, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader(new ByteArrayInputStream(bytes), new byte[64]);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(815827434, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+	}
+
+	@Test
+	public void hashValueWithEscapingDoubleQuoteAndSpecialLimitConsideration() throws IOException {
+		byte[] bytes = "{\"                      x\\\"y\":1}".getBytes("UTF-8");
+		JsonReader<Object> reader = dslJson.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(979, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(573602554, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(new ByteArrayInputStream(bytes));
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(979, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader().process(new ByteArrayInputStream(bytes));
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(573602554, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader(new ByteArrayInputStream(bytes), new byte[64]);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(979, reader.fillNameWeakHash());
+		Assert.assertEquals(':', reader.last());
+		reader = dslJson.newReader(new ByteArrayInputStream(bytes), new byte[64]);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		Assert.assertEquals(573602554, reader.fillName());
+		Assert.assertEquals(':', reader.last());
+	}
+
+	@Test
+	public void handleErrorsWithKeyQuoting() throws IOException {
+		byte[] bytes = "{\"x\\\"   ".getBytes("UTF-8");
+		JsonReader<Object> reader = dslJson.newReader().process(bytes, bytes.length);
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		try {
+			reader.fillNameWeakHash();
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertEquals("Unexpected end of JSON input", ex.getMessage());
+		}
+		reader = dslJson.newReader().process(new ByteArrayInputStream(bytes));
+		reader.startObject();
+		Assert.assertEquals('"', reader.getNextToken());
+		try {
+			reader.fillNameWeakHash();
+			Assert.fail("Expecting exception");
+		} catch (ParsingException ex) {
+			Assert.assertEquals("Unexpected end of JSON input", ex.getMessage());
+		}
+	}
 }
