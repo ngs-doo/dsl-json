@@ -45,6 +45,20 @@ class ObjectFactory(val text: String) {
     }
 }
 
+@CompiledJson
+data class KotlinClassWithIgnore(
+        val name: String = "Kotlin",
+        @JsonAttribute(ignore = true) val ignored: String = "IGNORED"
+)
+
+@CompiledJson
+abstract class A(val t: String)
+
+@CompiledJson
+class B(val r: String, t: String) : A(t) {
+    constructor(r: String) : this(r, "abc") {}
+}
+
 fun main(args: Array<String>) {
     //include service loader will load up classes created via annotation processor
     val dslJson = DslJson<Any>(Settings.withRuntime<Any>().includeServiceLoader())
@@ -55,14 +69,16 @@ fun main(args: Array<String>) {
             custom = CustomObject("abc"),
             factory = ObjectFactory.create("xyz"))
     val output = ByteArrayOutputStream()
-    dslJson.serialize(dc, output)
+    //dslJson.serialize(dc, output)
 
+    dslJson.serialize(B("UTF"), output)
     println(output.toString("UTF-8"))
+    println(B("UTF"))
 
     //val input = "{\"LANG\":\"Kotlin\",\"versions\":[170,171,172],\"library\":\"DSL-JSON\",\"custom\":{\"text\":\"abc\"},\"factory\":{\"text\":\"xyz\"}}".byteInputStream()
     val input = ByteArrayInputStream(output.toByteArray())
 
-    val deser = dslJson.deserialize(DataClass::class.java, input)
+    val deser = dslJson.deserialize(B::class.java, input)
 
     println(deser)
 
