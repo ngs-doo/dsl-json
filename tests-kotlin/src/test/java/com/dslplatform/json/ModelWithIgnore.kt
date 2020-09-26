@@ -2,8 +2,8 @@ package com.dslplatform.json
 
 @CompiledJson
 data class HasIgnoreWithDefault(
-        val someString: String = "some-string",
-        @JsonAttribute(ignore = true)val paramWithIgnoreFlag: Boolean = true) {
+    val someString: String = "some-string",
+    @JsonAttribute(ignore = true)val paramWithIgnoreFlag: Boolean = true) {
 
     @JsonAttribute(ignore = true)
     lateinit var stringFieldWithIgnoreFlag: String
@@ -13,8 +13,8 @@ data class HasIgnoreWithDefault(
 
 //@CompiledJson pending - fails to compile
 data class HasIgnoreNoDefault(
-        val someString: String,
-        @JsonAttribute(ignore = true)val paramWithIgnoreFlag: Boolean) {
+    val someString: String,
+    @JsonAttribute(ignore = true)val paramWithIgnoreFlag: Boolean) {
 
     @JsonAttribute(ignore = true)
     lateinit var stringFieldWithIgnoreFlag: String
