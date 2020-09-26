@@ -206,6 +206,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void checkAliasWithPrivate() {
+		checkValidCompilation(PropertyAliasWithPrivateAnnotation.class);
+	}
+
+	@Test
 	public void checkNonNull() {
 		checkValidCompilation(NonNullableReferenceProperty.class);
 	}
