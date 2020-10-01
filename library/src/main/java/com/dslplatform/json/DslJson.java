@@ -3,6 +3,7 @@ package com.dslplatform.json;
 import org.w3c.dom.Element;
 
 import java.io.*;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.net.InetAddress;
@@ -98,6 +99,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	protected final ThreadLocal<JsonWriter> localWriter;
 	protected final ThreadLocal<JsonReader> localReader;
 	private final ExternalConverterAnalyzer externalConverterAnalyzer;
+	private final Map<Class<? extends Annotation>, Boolean> creatorMarkers;
 
 	public interface Fallback<TContext> {
 		void serialize(@Nullable Object instance, OutputStream stream) throws IOException;
@@ -140,6 +142,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private final List<ConverterFactory<JsonReader.ReadObject>> readerFactories = new ArrayList<ConverterFactory<JsonReader.ReadObject>>();
 		private final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
 		private final Set<ClassLoader> classLoaders = new HashSet<ClassLoader>();
+		private final Map<Class<? extends Annotation>, Boolean> creatorMarkers = new HashMap<Class<? extends Annotation>, Boolean>();
 
 		/**
 		 * Pass in context for DslJson.
@@ -405,6 +408,20 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 
 		/**
+		 * When there are multiple constructors, pick the one marked with annotation.
+		 * When markers is allowed on non public targets, attempt at visibility change will be done in runtime.
+		 *
+		 * @param marker           annotation used for marking constructor or static method factory
+		 * @param expandVisibility should consider annotation declared on non public accessor
+		 * @return itself
+		 */
+		public Settings<TContext> creatorMarker(Class<? extends Annotation> marker, boolean expandVisibility) {
+			if (marker == null) throw new IllegalArgumentException("marker can't be null");
+			this.creatorMarkers.put(marker, expandVisibility);
+			return this;
+		}
+
+		/**
 		 * Configure DslJson with custom Configuration during startup.
 		 * Configurations are extension points for setting up readers/writers during DslJson initialization.
 		 *
@@ -506,6 +523,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.binderFactories.addAll(settings.binderFactories);
 		this.settingsBinders = settings.binderFactories.size();
 		this.externalConverterAnalyzer = new ExternalConverterAnalyzer(settings.classLoaders);
+		this.creatorMarkers = new HashMap<Class<? extends Annotation>, Boolean>(settings.creatorMarkers);
 
 		registerReader(byte[].class, BinaryConverter.Base64Reader);
 		registerWriter(byte[].class, BinaryConverter.Base64Writer);
@@ -873,6 +891,10 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	public final Set<Type> getRegisteredEncoders() {
 		return writers.keySet();
+	}
+
+	public final Map<Class<? extends Annotation>, Boolean> getRegisteredCreatorMarkers() {
+		return creatorMarkers;
 	}
 
 	/**

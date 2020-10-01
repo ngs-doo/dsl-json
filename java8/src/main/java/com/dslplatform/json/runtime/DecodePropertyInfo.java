@@ -59,7 +59,7 @@ public class DecodePropertyInfo<T> {
 		this.nameBytes = nameBytes;
 	}
 
-	static <T> DecodePropertyInfo<T>[] prepare(DecodePropertyInfo<T>[] initial) {
+	static <T> DecodePropertyInfo<T>[] prepare(DecodePropertyInfo<T>[] initial, int argumentCount) {
 		final DecodePropertyInfo<T>[] decoders = initial.clone();
 		final HashSet<Integer> hashes = new HashSet<Integer>();
 		int mandatoryIndex = 0;
@@ -84,6 +84,7 @@ public class DecodePropertyInfo<T> {
 			}
 			needsSorting = needsSorting || ri.index >= 0;
 		}
+		if (argumentCount != initial.length) return decoders;
 		if (needsSorting) {
 			Arrays.sort(decoders, new Comparator<DecodePropertyInfo<T>>() {
 				@Override

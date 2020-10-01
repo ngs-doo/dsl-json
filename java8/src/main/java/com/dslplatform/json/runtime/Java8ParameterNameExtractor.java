@@ -10,13 +10,13 @@ class Java8ParameterNameExtractor implements ParameterNameExtractor {
     @Nullable
     @Override
     public String[] extractNames(AccessibleObject ctorOrMethod) {
-        final Parameter[] ctorParams = ((Executable) ctorOrMethod).getParameters();
-        final String[] names = new String[ctorParams.length];
-        for (int i = 0; i < ctorParams.length; i++) {
-            if (!ctorParams[i].isNamePresent()) {
+        final Parameter[] params = ((Executable) ctorOrMethod).getParameters();
+        final String[] names = new String[params.length];
+        for (int i = 0; i < params.length; i++) {
+            if (!params[i].isNamePresent()) {
                 return null;
             }
-            names[i] = ctorParams[i].getName();
+            names[i] = params[i].getName();
         }
         return names;
     }

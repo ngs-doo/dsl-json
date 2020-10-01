@@ -5,12 +5,14 @@ lazy val root = (project in file(".")
     libraryDependencies ++= Seq(
       "com.dslplatform" % "dsl-json-java8" % "1.9.6",
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "org.specs2" %% "specs2-scalacheck" % "4.5.1" % Test
+      "org.specs2" %% "specs2-scalacheck" % "4.5.1" % Test,
+      "javax.json.bind" % "javax.json.bind-api" % "1.0" % Test
     ),
     name := "DSL-JSON Scala"
   )
 )
 
+ThisBuild / useCoursier := false
 resolvers += Resolver.mavenLocal
 
 // ### COMMON SETTINGS ###
@@ -19,7 +21,7 @@ lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
   organization := "com.dslplatform",
   name := baseDirectory.value.getName,
   scalaVersion := crossScalaVersions.value.head,
-  crossScalaVersions := Seq("2.11.12", "2.12.10", "2.13.1"),
+  crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",

@@ -22,7 +22,7 @@ public final class EnumDescription<T extends Enum<T>> implements JsonWriter.Writ
 			T value = values[i];
 			tmp[i] = new DecodePropertyInfo<>(value.name(), false, false, i, false, value);
 		}
-		this.decoders = DecodePropertyInfo.prepare(tmp);
+		this.decoders = DecodePropertyInfo.prepare(tmp, tmp.length);
 	}
 
 	@Override
