@@ -76,7 +76,12 @@ public @interface CompiledJson {
 		/**
 		 * Always serialize all properties regardless of DslJson omitDefaults setting
 		 */
-		FULL
+		FULL,
+		/**
+		 * Serialize only properties marked with annotations.
+		 * It will respect the omitDefault setting and serialize them accordingly.
+		 */
+		EXPLICIT
 	}
 
 	/**

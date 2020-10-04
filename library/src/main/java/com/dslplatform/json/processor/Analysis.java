@@ -328,7 +328,13 @@ public class Analysis {
 						}
 						if (!found) {
 							hasError = true;
-							if (!info.inheritedAttributes().isEmpty()) {
+							if (info.objectFormatPolicy == CompiledJson.ObjectFormatPolicy.EXPLICIT) {
+								messager.printMessage(
+										Diagnostic.Kind.ERROR,
+										"Unable to find matching property: '" + argName + "' used in constructor. Since EXPLICIT object format policy is used, please check if all relevant fields are marked with @JsonAttribute.",
+										info.selectedConstructor(),
+										info.annotation);
+							} else if (!info.inheritedAttributes().isEmpty()) {
 								messager.printMessage(
 										Diagnostic.Kind.ERROR,
 										"Unable to find matching property: '" + argName + "' used in constructor. Please use the same name as the property in the base class to let dsl-json match them.",
@@ -381,7 +387,13 @@ public class Analysis {
 					}
 					if (!found) {
 						hasError = true;
-						if (!info.inheritedAttributes().isEmpty()) {
+						if (info.objectFormatPolicy == CompiledJson.ObjectFormatPolicy.EXPLICIT) {
+							messager.printMessage(
+									Diagnostic.Kind.ERROR,
+									"Unable to find matching property: '" + argName + "' used in constructor. Since EXPLICIT object format policy is used, please check if all relevant fields are marked with @JsonAttribute.",
+									info.selectedConstructor(),
+									info.annotation);
+						} else if (!info.inheritedAttributes().isEmpty()) {
 							messager.printMessage(
 									Diagnostic.Kind.ERROR,
 									"Unable to find matching property: '" + argName + "' used in constructor. Please use the same name as the property in the base class to let dsl-json match them.",
@@ -884,7 +896,8 @@ public class Analysis {
 		Element element = access.field != null ? access.field : access.read;
 		path.push(name);
 		AnnotationMirror annotation = access.annotation;
-		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element, annotation)) {
+		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element, annotation)
+				&& (info.objectFormatPolicy != CompiledJson.ObjectFormatPolicy.EXPLICIT || annotation != null)) {
 			TypeMirror referenceType = access.field != null ? access.field.asType() : access.read.getReturnType();
 			TypeMirror type = originalType.getKind() == TypeKind.TYPEVAR && info.genericSignatures.containsKey(originalType.toString()) ? info.genericSignatures.get(originalType.toString()) : originalType;
 			Element referenceElement = types.asElement(referenceType);

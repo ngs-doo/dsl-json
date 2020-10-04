@@ -752,4 +752,13 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(NamedPackageTest.class, com.dslplatform.json.models.subpackage.AbstractClass.class),
 				"Inheritance detected on non-public type: 'com.dslplatform.json.models.NamedPackageTest.ConcreteClass'.");
 	}
+
+	@Test
+	public void missingArgumentForExplicitCtor() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				16,
+				compileTestCase(ExplicitWithMissingMarker.class),
+				"Unable to find matching property: 'identity' used in constructor. Since EXPLICIT object");
+	}
 }

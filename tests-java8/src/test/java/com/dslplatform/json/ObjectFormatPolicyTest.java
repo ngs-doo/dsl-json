@@ -8,9 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static com.dslplatform.json.CompiledJson.ObjectFormatPolicy.MINIMAL;
-import static com.dslplatform.json.CompiledJson.ObjectFormatPolicy.DEFAULT;
-import static com.dslplatform.json.CompiledJson.ObjectFormatPolicy.FULL;
+import static com.dslplatform.json.CompiledJson.ObjectFormatPolicy.*;
 import static com.dslplatform.json.JsonAttribute.IncludePolicy.ALWAYS;
 import static com.dslplatform.json.JsonAttribute.IncludePolicy.NON_DEFAULT;
 
@@ -103,6 +101,57 @@ public class ObjectFormatPolicyTest {
 		public String[] arr6 = new String[0];
 	}
 
+	@CompiledJson(objectFormatPolicy = EXPLICIT)
+	static class User5 {
+		public UUID id;
+
+		@JsonAttribute
+		public int age;
+
+		public String firstName;
+
+		@JsonAttribute(ignore = true)
+		public String lastName;
+	}
+
+	@CompiledJson(objectFormatPolicy = EXPLICIT, formats = CompiledJson.Format.ARRAY)
+	static class User6 {
+		public UUID id;
+
+		@JsonAttribute
+		public int age;
+
+		public String firstName;
+
+		@JsonAttribute(ignore = true)
+		public String lastName;
+	}
+
+	static abstract class BaseUser {
+
+		protected BaseUser() {}
+
+		public UUID id;
+
+		@JsonAttribute
+		public int age;
+
+		public String firstName;
+
+		@JsonAttribute(ignore = true)
+		public String lastName;
+	}
+
+	@CompiledJson(objectFormatPolicy = EXPLICIT)
+	static class User7 extends BaseUser {
+		public UUID identity;
+
+		@JsonAttribute
+		public int level;
+
+		public String description;
+	}
+
 	@Test
 	public void testDefaultObjectFormatPolicy() throws IOException {
 		User1 user = new User1();
@@ -141,6 +190,68 @@ public class ObjectFormatPolicyTest {
 
 		Assert.assertEquals("{\"col3\":[],\"col4\":[],\"col5\":null,\"col6\":[],\"arr3\":[],\"arr4\":[],\"arr5\":null,\"arr6\":[]}", serialize(dslJsonMinimal, col));
 		Assert.assertEquals("{\"col1\":[],\"col2\":null,\"col3\":[],\"col4\":[],\"col5\":null,\"col6\":[],\"arr1\":[],\"arr2\":null,\"arr3\":[],\"arr4\":[],\"arr5\":null,\"arr6\":[]}", serialize(dslJsonFull, col));
+	}
+
+	@Test
+	public void testExplicitObjectFormatPolicy() throws IOException {
+		User5 user = new User5();
+		user.id = UUID.randomUUID();
+		user.age = 42;
+		user.firstName = "John";
+		user.lastName = "Doe";
+
+		Assert.assertEquals("{\"age\":42}", serialize(dslJsonMinimal, user));
+		Assert.assertEquals("{\"age\":42}", serialize(dslJsonFull, user));
+
+		byte[] bytes = "{\"age\":42}".getBytes("UTF-8");
+		User5 res = dslJsonFull.deserialize(User5.class, bytes, bytes.length);
+		Assert.assertEquals(42, res.age);
+		Assert.assertNull(res.id);
+		Assert.assertNull(res.firstName);
+		Assert.assertNull(res.lastName);
+	}
+
+	@Test
+	public void testExplicitObjectFormatPolicyWithArray() throws IOException {
+		User6 user = new User6();
+		user.id = UUID.randomUUID();
+		user.age = 42;
+		user.firstName = "John";
+		user.lastName = "Doe";
+
+		Assert.assertEquals("[42]", serialize(dslJsonMinimal, user));
+		Assert.assertEquals("[42]", serialize(dslJsonFull, user));
+
+		byte[] bytes = "[42]".getBytes("UTF-8");
+		User6 res = dslJsonFull.deserialize(User6.class, bytes, bytes.length);
+		Assert.assertEquals(42, res.age);
+		Assert.assertNull(res.id);
+		Assert.assertNull(res.firstName);
+		Assert.assertNull(res.lastName);
+	}
+
+	@Test
+	public void testExplicitObjectFormatPolicyWithInheritance() throws IOException {
+		User7 user = new User7();
+		user.id = user.identity = UUID.randomUUID();
+		user.age = 42;
+		user.firstName = "John";
+		user.lastName = "Doe";
+		user.level = 9;
+		user.description = "description";
+
+		Assert.assertEquals("{\"age\":42,\"level\":9}", serialize(dslJsonMinimal, user));
+		Assert.assertEquals("{\"age\":42,\"level\":9}", serialize(dslJsonFull, user));
+
+		byte[] bytes = "{\"age\":42,\"level\":9}".getBytes("UTF-8");
+		User7 res = dslJsonFull.deserialize(User7.class, bytes, bytes.length);
+		Assert.assertEquals(42, res.age);
+		Assert.assertEquals(9, res.level);
+		Assert.assertNull(res.id);
+		Assert.assertNull(res.identity);
+		Assert.assertNull(res.firstName);
+		Assert.assertNull(res.lastName);
+		Assert.assertNull(res.description);
 	}
 
 	private static String serialize(DslJson<?> dslJson, Object instance) throws IOException {

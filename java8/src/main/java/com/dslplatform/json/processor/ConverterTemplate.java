@@ -168,6 +168,7 @@ class ConverterTemplate {
 
 		switch (si.objectFormatPolicy) {
 			case DEFAULT:
+			case EXPLICIT:
 				code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults;\n");
 				break;
 			case MINIMAL:
