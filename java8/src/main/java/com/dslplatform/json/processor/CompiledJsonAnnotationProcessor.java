@@ -516,28 +516,24 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t\t\tnew com.dslplatform.json.runtime.FormatDescription[] {\n");
 		int i = si.implementations.size();
 		for (StructInfo im : si.implementations) {
-			if (im.formats.contains(CompiledJson.Format.OBJECT) && im.formats.contains(CompiledJson.Format.ARRAY)) {
-				code.append("\t\t\t").append(im.name);
+			code.append("\t\t\t\tnew com.dslplatform.json.runtime.FormatDescription(");
+			code.append(im.element.getQualifiedName()).append(".class, ");
+			if (im.formats.contains(CompiledJson.Format.OBJECT)) {
+				code.append("new ").append(findConverterName(im)).append(".ObjectFormatConverter(__dsljson), ");
 			} else {
-				code.append("\t\t\t\tnew com.dslplatform.json.runtime.FormatDescription(");
-				code.append(im.element.getQualifiedName()).append(".class, ");
-				if (im.formats.contains(CompiledJson.Format.OBJECT)) {
-					code.append("new ").append(findConverterName(im)).append(".ObjectFormatConverter(__dsljson), ");
-				} else {
-					code.append("null, ");
-				}
-				if (im.formats.contains(CompiledJson.Format.ARRAY)) {
-					code.append("new ").append(findConverterName(im)).append(".ArrayFormatConverter(__dsljson), ");
-				} else {
-					code.append("null, ");
-				}
-				if (im.isObjectFormatFirst) code.append("true, ");
-				else code.append("false, ");
-				String typeAlias = im.deserializeName.isEmpty()
-						? im.element.getQualifiedName().toString()
-						: im.deserializeName;
-				code.append("\"").append(typeAlias).append("\", __dsljson)");
+				code.append("null, ");
 			}
+			if (im.formats.contains(CompiledJson.Format.ARRAY)) {
+				code.append("new ").append(findConverterName(im)).append(".ArrayFormatConverter(__dsljson), ");
+			} else {
+				code.append("null, ");
+			}
+			if (im.isObjectFormatFirst) code.append("true, ");
+			else code.append("false, ");
+			String typeAlias = im.deserializeName.isEmpty()
+					? im.element.getQualifiedName().toString()
+					: im.deserializeName;
+			code.append("\"").append(typeAlias).append("\", __dsljson)");
 			i--;
 			if (i > 0) code.append(",\n");
 		}

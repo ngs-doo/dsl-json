@@ -87,8 +87,14 @@ final class Context {
 		return "new com.dslplatform.json.runtime.TypeDefinition<" + typeName + ">(){}.type";
 	}
 
-	static List<AttributeInfo> sortedAttributes(StructInfo info) {
+	static List<AttributeInfo> sortedAttributes(StructInfo info, boolean includeInherited) {
 		ArrayList<AttributeInfo> result = new ArrayList<>(info.attributes.values());
+		if (includeInherited) {
+			for (AttributeInfo ai : info.inheritedAttributes()) {
+				if (info.attributes.containsKey(ai.id)) continue;
+				result.add(ai);
+			}
+		}
 		result.sort((a, b) -> {
 			if (b.index == -1) return -1;
 			else if (a.index == -1) return 1;

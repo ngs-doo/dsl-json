@@ -319,12 +319,28 @@ public class Analysis {
 							}
 						}
 						if (!found) {
+							for (AttributeInfo attr : info.inheritedAttributes()) {
+								if (attr.name.equals(argName)) {
+									found = true;
+									break;
+								}
+							}
+						}
+						if (!found) {
 							hasError = true;
-							messager.printMessage(
-									Diagnostic.Kind.ERROR,
-									"Unable to find matching property: '" + argName + "' used in method factory. Either use annotation processor on source code, on bytecode with -parameters flag (to enable parameter names) or manually create an instance via converter",
-									info.annotatedFactory,
-									info.annotation);
+							if (!info.inheritedAttributes().isEmpty()) {
+								messager.printMessage(
+										Diagnostic.Kind.ERROR,
+										"Unable to find matching property: '" + argName + "' used in constructor. Please use the same name as the property in the base class to let dsl-json match them.",
+										info.selectedConstructor(),
+										info.annotation);
+							} else {
+								messager.printMessage(
+										Diagnostic.Kind.ERROR,
+										"Unable to find matching property: '" + argName + "' used in method factory. Either use annotation processor on source code, on bytecode with -parameters flag (to enable parameter names) or manually create an instance via converter",
+										info.annotatedFactory,
+										info.annotation);
+							}
 						}
 					}
 				}
@@ -356,12 +372,28 @@ public class Analysis {
 						}
 					}
 					if (!found) {
+						for (AttributeInfo attr : info.inheritedAttributes()) {
+							if (attr.name.equals(argName)) {
+								found = true;
+								break;
+							}
+						}
+					}
+					if (!found) {
 						hasError = true;
-						messager.printMessage(
-								Diagnostic.Kind.ERROR,
-								"Unable to find matching property: '" + argName + "' used in constructor. Either use annotation processor on source code, on bytecode with -parameters flag (to enable parameter names) or manually create an instance via converter",
-								info.selectedConstructor(),
-								info.annotation);
+						if (!info.inheritedAttributes().isEmpty()) {
+							messager.printMessage(
+									Diagnostic.Kind.ERROR,
+									"Unable to find matching property: '" + argName + "' used in constructor. Please use the same name as the property in the base class to let dsl-json match them.",
+									info.selectedConstructor(),
+									info.annotation);
+						} else {
+							messager.printMessage(
+									Diagnostic.Kind.ERROR,
+									"Unable to find matching property: '" + argName + "' used in constructor. Either use annotation processor on source code, on bytecode with -parameters flag (to enable parameter names) or manually create an instance via converter",
+									info.selectedConstructor(),
+									info.annotation);
+						}
 					}
 				}
 			}
@@ -1116,7 +1148,7 @@ public class Analysis {
 							binaryName,
 							type,
 							jsonObjectReaderPath,
-							findMatchingConstructors(element),
+							findMatchingConstructors(element, isMixin),
 							findAnnotatedConstructor(element, discoveredBy),
 							factoryAnn,
 							builderInfo,
@@ -1166,17 +1198,18 @@ public class Analysis {
 	}
 
 	@Nullable
-	public List<ExecutableElement> findMatchingConstructors(Element element) {
+	public List<ExecutableElement> findMatchingConstructors(Element element, boolean isMixin) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM
-				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT)) {
+				|| !isMixin && element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT)) {
 			return null;
 		}
 		List<ExecutableElement> matchingCtors = new ArrayList<ExecutableElement>();
 		for (ExecutableElement constructor : ElementFilter.constructorsIn(element.getEnclosedElements())) {
 			if (!constructor.getModifiers().contains(Modifier.PRIVATE)
-					&& !constructor.getModifiers().contains(Modifier.PROTECTED)
-					&& (!requiresPublic(element) || constructor.getModifiers().contains(Modifier.PUBLIC))) {
+					&& (isMixin && constructor.getModifiers().contains(Modifier.PROTECTED)
+						|| !requiresPublic(element)
+						|| constructor.getModifiers().contains(Modifier.PUBLIC))) {
 				matchingCtors.add(constructor);
 			}
 		}
@@ -1326,7 +1359,7 @@ public class Analysis {
 			if (build == null) return null;
 		}
 		AnnotationMirror annotation = getAnnotation(build, discoveredBy);
-		List<ExecutableElement> ctors = findMatchingConstructors(builderType);
+		List<ExecutableElement> ctors = findMatchingConstructors(builderType, false);
 		ExecutableElement ctor = ctors != null && ctors.size() == 1 ? ctors.get(0) : null;
 		return new BuilderInfo(factory, ctor, builderType, build, annotation);
 	}
@@ -1988,6 +2021,8 @@ public class Analysis {
 			Element current = types.asElement(type);
 			if (current instanceof TypeElement) {
 				checkParentSignatures(info, (TypeElement) current, implementations, signature, processed);
+				StructInfo child = structs.get(signature);
+				info.supertype(child);
 			}
 		}
 	}

@@ -21,6 +21,7 @@ public class StructInfo {
 	public final ExecutableElement annotatedConstructor;
 	public final BuilderInfo builder;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
+	private StructInfo inheritsFrom;
 	public final Map<String, String> minifiedNames = new HashMap<String, String>();
 	public final AnnotationMirror annotation;
 	public final CompiledJson.Behavior onUnknown;
@@ -91,7 +92,7 @@ public class StructInfo {
 		this.createThroughConstructor = annotatedFactory == null && annotatedConstructor != null;
 		if (annotatedConstructor != null) this.annotatedConstructor = this.selectedConstructor = annotatedConstructor;
 		else if (matchingConstructors == null) this.annotatedConstructor = null;
-		else if (matchingConstructors.size() == 1) {
+		else if (matchingConstructors.size() == 1 && type == ObjectType.CLASS) {
 			this.selectedConstructor = matchingConstructors.get(0);
 			this.annotatedConstructor = null;
 		} else {
@@ -102,7 +103,7 @@ public class StructInfo {
 					break;
 				}
 			}
-			this.selectedConstructor = emptyCtor;
+			this.selectedConstructor = type == ObjectType.CLASS ? emptyCtor : null;
 			this.annotatedConstructor = null;
 		}
 		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
@@ -150,6 +151,18 @@ public class StructInfo {
 	@Nullable
 	public ExecutableElement selectedConstructor() {
 		return selectedConstructor;
+	}
+
+	public void supertype(@Nullable StructInfo parent) {
+		if (parent == null) return;
+		if (type == ObjectType.CLASS && parent.implementations.contains(this)) {
+			inheritsFrom = parent;
+		}
+	}
+
+	public Collection<AttributeInfo> inheritedAttributes() {
+		if (inheritsFrom == null) return Collections.emptyList();
+		return inheritsFrom.attributes.values();
 	}
 
 	public void useConstructor(ExecutableElement ctor) {

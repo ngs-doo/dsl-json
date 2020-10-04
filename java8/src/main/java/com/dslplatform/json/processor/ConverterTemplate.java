@@ -369,7 +369,7 @@ class ConverterTemplate {
 
 	void emptyObject(final StructInfo si, String className) throws IOException {
 		asFormatConverter(si, "ObjectFormatConverter", className, true);
-		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
+		List<AttributeInfo> sortedAttributes = sortedAttributes(si, true);
 		writeObject(si, className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" bind(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance) throws java.io.IOException {\n");
@@ -507,8 +507,8 @@ class ConverterTemplate {
 
 	void fromObject(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si, "ObjectFormatConverter", className, false);
-		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
-		writeObject(si, className, sortedAttributes);
+		writeObject(si, className, sortedAttributes(si, true));
+		List<AttributeInfo> sortedAttributes = sortedAttributes(si, false);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
 		code.append("\t\t\telse if (reader.last() != '{') throw reader.newParseError(\"Expecting '{' for object start\");\n");
@@ -710,7 +710,7 @@ class ConverterTemplate {
 
 	void emptyArray(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si, "ArrayFormatConverter", className, true);
-		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
+		List<AttributeInfo> sortedAttributes = sortedAttributes(si, true);
 		writeArray(className, sortedAttributes);
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\t").append(className).append(" instance = ");
@@ -742,8 +742,8 @@ class ConverterTemplate {
 
 	void fromArray(final StructInfo si, final String className) throws IOException {
 		asFormatConverter(si, "ArrayFormatConverter", className, false);
-		List<AttributeInfo> sortedAttributes = sortedAttributes(si);
-		writeArray(className, sortedAttributes);
+		writeArray(className, sortedAttributes(si, true));
+		List<AttributeInfo> sortedAttributes = sortedAttributes(si, false);
 		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
 		code.append("\t\t\telse if (reader.last() != '[') throw reader.newParseError(\"Expecting '[' for object start\");\n");

@@ -555,8 +555,18 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void immutableAndInheritance() {
+	public void immutableAndInheritanceWithoutNewFields() {
 		checkValidCompilation(ImmutableHierarchy.Father.class);
+	}
+
+	@Test
+	public void immutableAndInheritanceWithNewFieldsThroughConstant() {
+		checkValidCompilation(ImmutableInheritance.MainFieldsWithConstant.class);
+	}
+
+	@Test
+	public void immutableAndInheritanceWithNewFieldsPassedThrough() {
+		checkValidCompilation(ImmutableInheritance.MainFieldsWithPassThrough.class);
 	}
 
 	@Test
