@@ -48,7 +48,7 @@ public class AttributeInfo {
 			boolean isList,
 			boolean isSet,
 			boolean isMap,
-			AnnotationMirror annotation,
+			@Nullable AnnotationMirror annotation,
 			boolean notNull,
 			boolean mandatory,
 			final int index,

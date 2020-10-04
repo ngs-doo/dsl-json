@@ -5,10 +5,10 @@ import com.dslplatform.json.JsonAttribute;
 import com.google.gson.annotations.SerializedName;
 
 @CompiledJson(onUnknown = CompiledJson.Behavior.FAIL)
-public class PropertyAlias {
+public class PropertyAliasWithPrivateAnnotation {
+	@SerializedName("y")
 	private int num;
 
-	@SerializedName("y")
 	public int getNum() {
 		return num;
 	}
@@ -17,13 +17,13 @@ public class PropertyAlias {
 		num = value;
 	}
 
+	@JsonAttribute(name = "x", alternativeNames = {"X", "old_prop"})
 	private String prop;
 
 	public String getProp() {
 		return prop;
 	}
 
-	@JsonAttribute(name = "x", alternativeNames = {"X", "old_prop"})
 	public void setProp(String value) {
 		prop = value;
 	}

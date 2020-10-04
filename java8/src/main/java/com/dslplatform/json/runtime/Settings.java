@@ -197,11 +197,11 @@ public abstract class Settings {
 				.resolveWriter(MapAnalyzer.WRITER)
 				.resolveWriter(EnumAnalyzer.CONVERTER)
 				.resolveReader(EnumAnalyzer.CONVERTER)
+				.resolveWriter(ImmutableAnalyzer.CONVERTER)
+				.resolveReader(ImmutableAnalyzer.CONVERTER)
 				.resolveWriter(ObjectAnalyzer.CONVERTER)
 				.resolveBinder(ObjectAnalyzer.CONVERTER)
 				.resolveReader(ObjectAnalyzer.CONVERTER)
-				.resolveWriter(ImmutableAnalyzer.CONVERTER)
-				.resolveReader(ImmutableAnalyzer.CONVERTER)
 				.resolveWriter(MixinAnalyzer.WRITER);
 		if (unknownWriter) settings.resolveWriter(UNKNOWN_WRITER);
 		return settings;

@@ -4,6 +4,7 @@ import com.dslplatform.json.runtime.*;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.json.bind.annotation.JsonbCreator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -504,5 +505,199 @@ public class ReflectionTest {
 		byte[] bytes = baos.toByteArray();
 		UppercaseName deser = json.deserialize(UppercaseName.class, bytes, bytes.length);
 		Assert.assertEquals(val.getDOC(), deser.getDOC());
+	}
+
+	class Service {}
+
+	public static class CtorWithDepsFields {
+
+		private final Service service;
+		public final String s;
+		public final int x;
+
+		public CtorWithDepsFields(Service service, int x, String s) {
+			this.service = service;
+			this.x = x;
+			this.s = s;
+		}
+	}
+
+	public static class CtorWithDepsMethods {
+
+		private final Service service;
+		private final int x;
+		public int getX() { return x; }
+		private final String s;
+		public String getS() { return s; }
+
+		public CtorWithDepsMethods(int x, Service service, String s) {
+			this.service = service;
+			this.x = x;
+			this.s = s;
+		}
+	}
+
+	public static class MutableWithDeps {
+
+		private final Service service;
+		public int x;
+		public String s;
+
+		public MutableWithDeps(Service service) {
+			this.service = service;
+		}
+	}
+
+	public static class CtorWithMarker {
+
+		private final Service service;
+		public int x;
+		public String s;
+
+		public CtorWithMarker() {
+			this.service = null;
+		}
+
+		@JsonbCreator
+		public CtorWithMarker(Service service) {
+			this.service = service;
+		}
+	}
+
+	public static class FactoryWithMarker {
+
+		private final Service service;
+		public int x;
+		public String s;
+
+		public FactoryWithMarker() {
+			this(null);
+		}
+		private FactoryWithMarker(Service service) {
+			this.service = service;
+		}
+
+		@JsonbCreator
+		private static FactoryWithMarker factory(Service service) {
+			return new FactoryWithMarker(service);
+		}
+	}
+
+	public static class PrivateCtorWithDepsFields {
+
+		private final Service service;
+		public final String s;
+		public final int x;
+
+		private PrivateCtorWithDepsFields(Service service, int x, String s) {
+			this.service = service;
+			this.x = x;
+			this.s = s;
+		}
+
+		@JsonbCreator
+		private static PrivateCtorWithDepsFields create(int x, String s, Service service) {
+			return new PrivateCtorWithDepsFields(service, x, s);
+		}
+	}
+
+
+	public static class MultipleCtorWithDepsMethods {
+
+		private final Service service;
+		private final int x;
+		public int getX() { return x; }
+		private final String s;
+		public String getS() { return s; }
+
+		public MultipleCtorWithDepsMethods(Service service) {
+			this.service = service;
+			this.x = 1;
+			this.s = "a";
+		}
+
+		@JsonbCreator
+		private MultipleCtorWithDepsMethods(int x, Service service, String s) {
+			this.service = service;
+			this.x = x;
+			this.s = s;
+		}
+	}
+
+	@Test
+	public void canInjectDependencyWithImmutableFields() throws IOException {
+		Service s = new Service();
+		DslJson<Service> json = new DslJson<Service>(Settings.<Service>withRuntime().withContext(s).includeServiceLoader());
+		byte[] bytes = "{\"x\":5,\"s\":\"x\"}".getBytes("UTF-8");
+		CtorWithDepsFields deser = json.deserialize(CtorWithDepsFields.class, bytes, bytes.length);
+		Assert.assertEquals(5, deser.x);
+		Assert.assertEquals("x", deser.s);
+		Assert.assertEquals(s, deser.service);
+	}
+
+	@Test
+	public void canInjectDependencyWithImmutableMethods() throws IOException {
+		Service s = new Service();
+		DslJson<Service> json = new DslJson<Service>(Settings.<Service>withRuntime().withContext(s).includeServiceLoader());
+		byte[] bytes = "{\"x\":5,\"s\":\"x\"}".getBytes("UTF-8");
+		CtorWithDepsMethods deser = json.deserialize(CtorWithDepsMethods.class, bytes, bytes.length);
+		Assert.assertEquals(5, deser.x);
+		Assert.assertEquals("x", deser.s);
+		Assert.assertEquals(s, deser.service);
+	}
+
+	@Test
+	public void canInjectDependencyWithMutableFields() throws IOException {
+		Service s = new Service();
+		DslJson<Object> json = new DslJson<Object>(Settings.withRuntime().withContext(s).includeServiceLoader());
+		byte[] bytes = "{\"x\":5,\"s\":\"x\"}".getBytes("UTF-8");
+		MutableWithDeps deser = json.deserialize(MutableWithDeps.class, bytes, bytes.length);
+		Assert.assertEquals(5, deser.x);
+		Assert.assertEquals("x", deser.s);
+		Assert.assertEquals(s, deser.service);
+	}
+
+	@Test
+	public void willUseMarkedCtor() throws IOException {
+		Service s = new Service();
+		DslJson<Object> json = new DslJson<Object>(Settings.withRuntime().withContext(s).creatorMarker(JsonbCreator.class, true).includeServiceLoader());
+		byte[] bytes = "{\"x\":5,\"s\":\"x\"}".getBytes("UTF-8");
+		CtorWithMarker deser = json.deserialize(CtorWithMarker.class, bytes, bytes.length);
+		Assert.assertEquals(5, deser.x);
+		Assert.assertEquals("x", deser.s);
+		Assert.assertEquals(s, deser.service);
+	}
+
+	@Test
+	public void willUseMarkedFactory() throws IOException {
+		Service s = new Service();
+		DslJson<Object> json = new DslJson<Object>(Settings.withRuntime().withContext(s).creatorMarker(JsonbCreator.class, true).includeServiceLoader());
+		byte[] bytes = "{\"x\":5,\"s\":\"x\"}".getBytes("UTF-8");
+		FactoryWithMarker deser = json.deserialize(FactoryWithMarker.class, bytes, bytes.length);
+		Assert.assertEquals(5, deser.x);
+		Assert.assertEquals("x", deser.s);
+		Assert.assertEquals(s, deser.service);
+	}
+
+	@Test
+	public void canInjectDependencyWithImmutableAndFactory() throws IOException {
+		Service s = new Service();
+		DslJson<Object> json = new DslJson<Object>(Settings.withRuntime().withContext(s).creatorMarker(JsonbCreator.class, true).includeServiceLoader());
+		byte[] bytes = "{\"x\":5,\"s\":\"x\"}".getBytes("UTF-8");
+		PrivateCtorWithDepsFields deser = json.deserialize(PrivateCtorWithDepsFields.class, bytes, bytes.length);
+		Assert.assertEquals(5, deser.x);
+		Assert.assertEquals("x", deser.s);
+		Assert.assertEquals(s, deser.service);
+	}
+
+	@Test
+	public void willPickCorrectCtorWithImmutables() throws IOException {
+		Service s = new Service();
+		DslJson<Object> json = new DslJson<Object>(Settings.withRuntime().withContext(s).creatorMarker(JsonbCreator.class, true).includeServiceLoader());
+		byte[] bytes = "{\"x\":5,\"s\":\"x\"}".getBytes("UTF-8");
+		MultipleCtorWithDepsMethods deser = json.deserialize(MultipleCtorWithDepsMethods.class, bytes, bytes.length);
+		Assert.assertEquals(5, deser.x);
+		Assert.assertEquals("x", deser.s);
+		Assert.assertEquals(s, deser.service);
 	}
 }

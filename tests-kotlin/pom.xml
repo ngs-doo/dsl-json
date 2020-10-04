@@ -3,11 +3,8 @@
 		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>com.dslplatform</groupId>
-		<artifactId>json</artifactId>
-		<version>0.0.0</version>
-	</parent>
+
+	<groupId>com.dslplatform</groupId>
 	<artifactId>dsl-json-integration-tests-kotlin</artifactId>
 	<name>DSL-JSON integration tests (Kotlin)</name>
 	<description>DSL Platform compatible JSON (https://dsl-platform.com)</description>
@@ -41,7 +38,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
-			<artifactId>kotlin-stdlib</artifactId>
+			<artifactId>kotlin-stdlib-jdk8</artifactId>
 			<version>${kotlin.version}</version>
 		</dependency>
 		<dependency>
@@ -73,31 +70,23 @@
 
 		<plugins>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.20</version>
-				<configuration>
-					<testSourceDirectory>src/test/java</testSourceDirectory>
-					<testClassesDirectory>target/test-classes</testClassesDirectory>
-					<includes>
-						<include>**/*Test.java</include>
-					</includes>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
-			</plugin>
-			<plugin>
 				<groupId>org.jetbrains.kotlin</groupId>
 				<artifactId>kotlin-maven-plugin</artifactId>
 				<version>${kotlin.version}</version>
 				<executions>
+					<execution>
+						<id>test-compile</id>
+						<phase>process-test-sources</phase>
+						<goals>
+							<goal>test-compile</goal>
+						</goals>
+						<configuration>
+							<sourceDirs>
+								<source>src/test/kotlin</source>
+								<source>src/test/java</source>
+							</sourceDirs>
+						</configuration>
+					</execution>
 					<execution>
 						<id>test-kapt</id>
 						<goals>
@@ -106,7 +95,6 @@
 						<configuration>
 							<sourceDirs>
 								<sourceDir>src/test/kotlin</sourceDir>
-								<sourceDir>src/test/java</sourceDir>
 							</sourceDirs>
 
 							<annotationProcessorPaths>
@@ -120,15 +108,42 @@
 						</configuration>
 					</execution>
 					<execution>
-						<id>test-compile</id>
-						<phase>process-test-sources</phase>
+						<id>compile</id>
+						<phase>process-test-classes</phase>
 						<goals>
-							<goal>test-compile</goal>
+							<goal>compile</goal>
 						</goals>
+						<configuration>
+							<sourceDirs>
+								<source>target/generated-sources/kapt/test</source>
+								<source>target/generated-sources/kaptKotlin</source>
+							</sourceDirs>
+						</configuration>
 					</execution>
 				</executions>
 				<configuration>
 					<jvmTarget>1.8</jvmTarget>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.20</version>
+				<configuration>
+					<testSourceDirectory>src/test/java</testSourceDirectory>
+					<testClassesDirectory>target/test-classes</testClassesDirectory>
+					<includes>
+						<include>**/*Test.java</include>
+					</includes>
 				</configuration>
 			</plugin>
 		</plugins>

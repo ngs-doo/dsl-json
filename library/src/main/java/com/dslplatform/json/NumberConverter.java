@@ -355,23 +355,23 @@ public abstract class NumberConverter {
 	}
 
 	private static NumberInfo readLongNumber(final JsonReader reader, final int start) throws IOException {
-		int i = reader.length() - start;
-		char[] tmp = reader.prepareBuffer(start, i);
-		while (!reader.isEndOfStream()) {
-			while (i < tmp.length) {
-				final char ch = (char) reader.read();
-				tmp[i++] = ch;
-				if (reader.isEndOfStream() || !(ch >= '0' && ch <= '9' || ch == '-' || ch == '+' || ch == '.' || ch == 'e' || ch == 'E')) {
-					return new NumberInfo(tmp, i);
-				}
+		int len = reader.length() - start;
+		char[] result = reader.prepareBuffer(start, len);
+		while (reader.length() == reader.getCurrentIndex()) {
+			if (reader.isEndOfStream()) break;
+			reader.scanNumber(); // peek, do not read
+			int end = reader.getCurrentIndex();
+			int oldLen = len;
+			len += end;
+			if (len > reader.maxNumberDigits) {
+				throw reader.newParseErrorFormat("Too many digits detected in number", len, "Number of digits larger than %d. Unable to read number", reader.maxNumberDigits);
 			}
-			final int newSize = tmp.length * 2;
-			if (newSize > reader.maxNumberDigits) {
-				throw reader.newParseErrorFormat("Too many digits detected in number", tmp.length, "Number of digits larger than %d. Unable to read number", reader.maxNumberDigits);
-			}
-			tmp = Arrays.copyOf(tmp, newSize);
+			char[] tmp = result;
+			result = new char[len];
+			System.arraycopy(tmp, 0, result, 0, oldLen);
+			System.arraycopy(reader.prepareBuffer(0, end), 0, result, oldLen, end);
 		}
-		return new NumberInfo(tmp, i);
+		return new NumberInfo(result, len);
 	}
 
 	public static double deserializeDouble(final JsonReader reader) throws IOException {
@@ -1349,16 +1349,13 @@ public abstract class NumberConverter {
 		}
 		final int start = reader.scanNumber();
 		int end = reader.getCurrentIndex();
+		if (end == reader.length()) {
+			NumberInfo info = readLongNumber(reader, start);
+			return parseNumberGeneric(info.buffer, info.length, reader, false);
+		}
 		int len = end - start;
 		if (len > 18) {
-			end = reader.findNonWhitespace(end);
-			len = end - start;
-			if (end == reader.length()) {
-				final NumberInfo info = readLongNumber(reader, start);
-				return parseNumberGeneric(info.buffer, info.length, reader, false);
-			} else if (len > 18) {
-				return parseNumberGeneric(reader.prepareBuffer(start, len), len, reader, false);
-			}
+			return parseNumberGeneric(reader.prepareBuffer(start, len), len, reader, false);
 		}
 		final byte[] buf = reader.buffer;
 		final byte ch = buf[start];
@@ -1530,16 +1527,13 @@ public abstract class NumberConverter {
 		else if (reader.unknownNumbers == JsonReader.UnknownNumberParsing.DOUBLE) return deserializeDouble(reader);
 		final int start = reader.scanNumber();
 		int end = reader.getCurrentIndex();
+		if (end == reader.length()) {
+			NumberInfo info = readLongNumber(reader, start);
+			return tryLongFromBigDecimal(info.buffer, info.length, reader);
+		}
 		int len = end - start;
 		if (len > 18) {
-			end = reader.findNonWhitespace(end);
-			len = end - start;
-			if (end == reader.length()) {
-				final NumberInfo tmp = readLongNumber(reader, start);
-				return tryLongFromBigDecimal(tmp.buffer, tmp.length, reader);
-			} else if (len > 18) {
-				return tryLongFromBigDecimal(reader.prepareBuffer(start, len), len, reader);
-			}
+			return tryLongFromBigDecimal(reader.prepareBuffer(start, len), len, reader);
 		}
 		final byte[] buf = reader.buffer;
 		final byte ch = buf[start];

@@ -7,8 +7,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 public class IgnoreTest {
-    private DslJson dslJson = new DslJson();
-    public IgnoreTest(){}
+
+    private final DslJson dslJson = new DslJson();
+
+    public IgnoreTest() {
+    }
+
     @Test
     public void ignoresAreNotInOutput() throws IOException, InterruptedException {
         HasIgnoreWithDefault model = new HasIgnoreWithDefault();

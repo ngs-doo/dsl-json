@@ -50,7 +50,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 		this.manifest = manifest;
 		this.newInstance = newInstance;
 		this.finalize = finalize;
-		this.decoders = DecodePropertyInfo.prepare(decoders);
+		this.decoders = DecodePropertyInfo.prepare(decoders, decoders.length);
 		this.skipOnUnknown = skipOnUnknown;
 		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
 		this.hasMandatory = mandatoryFlag != 0;

@@ -4,11 +4,9 @@ import com.dslplatform.json.*;
 import com.dslplatform.json.processor.Analysis;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Set;
+import java.util.*;
 
 public abstract class ObjectAnalyzer {
 
@@ -138,21 +136,27 @@ public abstract class ObjectAnalyzer {
 		final boolean hasEncoder = currentEncoders.contains(manifest);
 		final boolean hasDecoder = currentDecoders.contains(manifest);
 		final boolean hasBinder = currentBinders.contains(manifest);
-		try {
-			raw.newInstance();
-		} catch (InstantiationException | IllegalAccessException ignore) {
-			return null;
+		InstanceFactory newInstance = pickMarkedFactory(raw, json);
+		if (json.context != null && newInstance == null) {
+			newInstance = pickCtorFactory(raw, json);
 		}
-		final InstanceFactory newInstance = new InstanceFactory() {
-			@Override
-			public Object create() {
-				try {
-					return raw.newInstance();
-				} catch (Exception ex) {
-					throw new ConfigurationException("Unable to create an instance of " + raw);
-				}
+		if (newInstance == null) {
+			try {
+				raw.newInstance();
+			} catch (InstantiationException | IllegalAccessException ignore) {
+				return null;
 			}
-		};
+			newInstance = new InstanceFactory() {
+				@Override
+				public Object create() {
+					try {
+						return raw.newInstance();
+					} catch (Exception ex) {
+						throw new ConfigurationException("Unable to create an instance of " + raw);
+					}
+				}
+			};
+		}
 		final LazyObjectDescription lazy = new LazyObjectDescription(json, manifest);
 		if (!hasEncoder) json.registerWriter(manifest, lazy);
 		if (!hasDecoder) json.registerReader(manifest, lazy);
@@ -175,6 +179,130 @@ public abstract class ObjectAnalyzer {
 		if (!hasBinder) json.registerBinder(manifest, converter);
 		lazy.resolved = converter;
 		return converter;
+	}
+
+	static boolean matchesContext(Type manifest, DslJson json) {
+		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
+		if (json == null) throw new IllegalArgumentException("json can't be null");
+		if (json.context == null) return false;
+		final Class<?> signature = json.context.getClass();
+		if (manifest.equals(signature)) return true;
+		if (manifest instanceof Class<?>) {
+			return ((Class<?>) manifest).isAssignableFrom(signature);
+		}
+		if (manifest instanceof ParameterizedType) {
+			final ParameterizedType pt = (ParameterizedType) manifest;
+			return ((Class<?>) pt.getRawType()).isAssignableFrom(signature);
+		}
+		return false;
+	}
+
+	private static @Nullable <T> InstanceFactory pickCtorFactory(Class<?> raw, DslJson<T> json) {
+		if (json.context == null) return null;
+		final Map<Class<? extends Annotation>, Boolean> creatorMarkers = json.getRegisteredCreatorMarkers();
+		ArrayList<Constructor<?>> matchedCtors = null;
+		for (Constructor<?> ctor : raw.getDeclaredConstructors()) {
+			//TODO: ignore generics for now
+			if (ctor.getParameterCount() != 1 || !matchesContext(ctor.getGenericParameterTypes()[0], json))
+				continue;
+			final boolean isPublic = (ctor.getModifiers() & Modifier.PUBLIC) == Modifier.PUBLIC;
+			boolean hasMarker = false;
+			if (!creatorMarkers.isEmpty()) {
+				for (Map.Entry<Class<? extends Annotation>, Boolean> kv : creatorMarkers.entrySet()) {
+					if (ctor.getAnnotation(kv.getKey()) != null && (isPublic || kv.getValue())) {
+						if (!isPublic) {
+							try {
+								ctor.setAccessible(true);
+							} catch (Exception ex) {
+								throw new ConfigurationException("Unable to promote access for private constructor " + ctor + ". Please check environment setup, or set marker on public constructor", ex);
+							}
+						}
+						hasMarker = true;
+						break;
+					}
+				}
+			}
+			try {
+				ctor.newInstance(json.context);
+				if (matchedCtors == null) matchedCtors = new ArrayList<>(1);
+				if (hasMarker) {
+					matchedCtors.add(0, ctor);
+				} else {
+					matchedCtors.add(ctor);
+				}
+			} catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+				if (hasMarker) {
+					throw new ConfigurationException("Unable to test marked constructor " + ctor + ". Please check environment setup or constructor implementation", ex);
+				}
+			}
+		}
+		if (matchedCtors == null) return null;
+		final Constructor<?> ctor = matchedCtors.get(0);
+		return new InstanceFactory() {
+			@Override
+			public Object create() {
+				try {
+					return ctor.newInstance(json.context);
+				} catch (Exception ex) {
+					throw new ConfigurationException("Unable to create an instance of " + raw);
+				}
+			}
+		};
+	}
+
+	private static @Nullable <T> InstanceFactory pickMarkedFactory(Class<?> raw, DslJson<T> json) {
+		final Map<Class<? extends Annotation>, Boolean> creatorMarkers = json.getRegisteredCreatorMarkers();
+		if (creatorMarkers.isEmpty()) return null;
+		for (final Method factory : raw.getDeclaredMethods()) {
+			final int modifiers = factory.getModifiers();
+			if ((modifiers & Modifier.STATIC) != Modifier.STATIC
+					|| factory.getParameterCount() > 1
+					|| !raw.isAssignableFrom(factory.getReturnType())
+					|| factory.getParameterCount() == 1 && !matchesContext(factory.getGenericParameterTypes()[0], json))
+				continue;
+			final boolean isPublic = (modifiers & Modifier.PUBLIC) == Modifier.PUBLIC;
+			for (Map.Entry<Class<? extends Annotation>, Boolean> kv : creatorMarkers.entrySet()) {
+				if (factory.getAnnotation(kv.getKey()) != null && (isPublic || kv.getValue())) {
+					if (!isPublic) {
+						try {
+							factory.setAccessible(true);
+						} catch (Exception ex) {
+							throw new ConfigurationException("Unable to promote access for private factory " + factory + ". Please check environment setup, or set marker on public method", ex);
+						}
+					}
+					try {
+						if (factory.getParameterCount() == 1) {
+							factory.invoke(null, json.context);
+							return new InstanceFactory() {
+								@Override
+								public Object create() {
+									try {
+										return factory.invoke(null, json.context);
+									} catch (Exception ex) {
+										throw new ConfigurationException("Unable to create an instance of " + raw);
+									}
+								}
+							};
+						} else {
+							factory.invoke(null);
+							return new InstanceFactory() {
+								@Override
+								public Object create() {
+									try {
+										return factory.invoke(null);
+									} catch (Exception ex) {
+										throw new ConfigurationException("Unable to create an instance of " + raw);
+									}
+								}
+							};
+						}
+					} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+						throw new ConfigurationException("Unable to test marked factory " + factory + ". Please check environment setup or factory implementation", ex);
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	private static boolean analyzeField(

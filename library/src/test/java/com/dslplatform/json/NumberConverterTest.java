@@ -1335,4 +1335,232 @@ public class NumberConverterTest {
 		List<Double> resultUnquoted = dslJson.deserializeList(double.class, os.toByteArray(), os.size());
 		Assert.assertEquals(values, resultUnquoted);
 	}
+
+	@Test
+	public void testBigDecimalDeserializationWithProcessStream() throws IOException {
+		final BigDecimal expected = new BigDecimal("0.112233445566778899001122334455667788993");
+		final byte[] input = "\"0.112233445566778899001122334455667788993\",[".getBytes("UTF-8");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(new ByteArrayInputStream(input));
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithProcessStreamWhenAtBoundary() throws IOException {
+		final byte[] input = "0.112233445566778899".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(new ByteArrayInputStream(input));
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithProcessStreamWhenAtBoundaryAndMore() throws IOException {
+		final byte[] input = "0.112233445566778899,1".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(new ByteArrayInputStream(input));
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithProcessBuffer() throws IOException {
+		final BigDecimal expected = new BigDecimal("0.112233445566778899001122334455667788993");
+		final byte[] input = "0.112233445566778899001122334455667788993".getBytes("UTF-8");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(input, input.length);
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithProcessBufferWhenAtBoundary() throws IOException {
+		final byte[] input = "0.112233445566778899".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(input, input.length);
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithProcessBufferWhenAtBoundaryAndMore() throws IOException {
+		final byte[] input = "0.112233445566778899,1".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(input, input.length);
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithNewStream() throws IOException {
+		final BigDecimal expected = new BigDecimal("0.112233445566778899001122334455667788993");
+		final byte[] input = "0.112233445566778899001122334455667788993".getBytes("UTF-8");
+		final JsonReader<Object> jr = dslJson.newReader(new ByteArrayInputStream(input), new byte[20]);
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithNewStreamWhenAtBoundary() throws IOException {
+		final byte[] input = "0.112233445566778899".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new ByteArrayInputStream(input), new byte[20]);
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testBigDecimalDeserializationWithNewStreamWhenAtBoundaryAndMore() throws IOException {
+		final byte[] input = "0.112233445566778899,1".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new ByteArrayInputStream(input), new byte[20]);
+		jr.read(); // init start pointer
+
+		final BigDecimal actual = NumberConverter.deserializeDecimal(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithProcessStream() throws IOException {
+		final Number expected = new BigDecimal("0.112233445566778899001122334455667788993");
+		final byte[] input = "0.112233445566778899001122334455667788993".getBytes("UTF-8");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(new ByteArrayInputStream(input));
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithProcessStreamWhenAtBoundary() throws IOException {
+		final byte[] input = "0.112233445566778899".getBytes("UTF-8");
+		final Number expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(new ByteArrayInputStream(input));
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithProcessStreamWhenAtBoundaryAndMore() throws IOException {
+		final byte[] input = "0.112233445566778899,1".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(new ByteArrayInputStream(input));
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithProcessBuffer() throws IOException {
+		final BigDecimal expected = new BigDecimal("0.112233445566778899001122334455667788993");
+		final byte[] input = "0.112233445566778899001122334455667788993".getBytes("UTF-8");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(input, input.length);
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithProcessBufferWhenAtBoundary() throws IOException {
+		final byte[] input = "0.112233445566778899".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(input, input.length);
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithProcessBufferWhenAtBoundaryAndMore() throws IOException {
+		final byte[] input = "0.112233445566778899,1".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new byte[20]);
+		jr.process(input, input.length);
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithNewStream() throws IOException {
+		final BigDecimal expected = new BigDecimal("0.112233445566778899001122334455667788993");
+		final byte[] input = "0.112233445566778899001122334455667788993".getBytes("UTF-8");
+		final JsonReader<Object> jr = dslJson.newReader(new ByteArrayInputStream(input), new byte[20]);
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithNewStreamWhenAtBoundary() throws IOException {
+		final byte[] input = "0.112233445566778899".getBytes("UTF-8");
+		final BigDecimal expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new ByteArrayInputStream(input), new byte[20]);
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testNumberDeserializationWithNewStreamWhenAtBoundaryAndMore() throws IOException {
+		final byte[] input = "0.112233445566778899,1".getBytes("UTF-8");
+		final Number expected = new BigDecimal("0.112233445566778899");
+		final JsonReader<Object> jr = dslJson.newReader(new ByteArrayInputStream(input), new byte[20]);
+		jr.read(); // init start pointer
+
+		final Number actual = NumberConverter.deserializeNumber(jr);
+
+		Assert.assertEquals(expected, actual);
+	}
 }

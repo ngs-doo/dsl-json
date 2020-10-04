@@ -46,7 +46,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		this.manifest = manifest;
 		this.defArgs = defArgs;
 		this.newInstance = newInstance;
-		this.decoders = DecodePropertyInfo.prepare(decoders);
+		this.decoders = DecodePropertyInfo.prepare(decoders, defArgs.length);
 		this.skipOnUnknown = skipOnUnknown;
 		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
 		hasMandatory = mandatoryFlag != 0;

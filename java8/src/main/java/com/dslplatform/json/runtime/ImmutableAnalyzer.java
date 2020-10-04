@@ -4,6 +4,7 @@ import com.dslplatform.json.*;
 import com.dslplatform.json.processor.Analysis;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -35,6 +36,12 @@ public abstract class ImmutableAnalyzer {
 		} catch (NoClassDefFoundError | ClassNotFoundException ignore) {
 			return false;
 		}
+	}
+
+	@Nullable
+	public static String[] extractNames(Method factory) {
+		if (factory == null) throw new IllegalArgumentException("factory can't be null");
+		return parameterNameExtractor.extractNames(factory);
 	}
 
 	@Nullable
@@ -132,26 +139,26 @@ public abstract class ImmutableAnalyzer {
 				|| (raw.getModifiers() & Modifier.PUBLIC) == 0) {
 			return null;
 		}
-		final ArrayList<Constructor<?>> ctors = new ArrayList<>();
-		for (Constructor<?> ctor : raw.getDeclaredConstructors()) {
-			if ((ctor.getModifiers() & Modifier.PUBLIC) == 1) {
-				ctors.add(ctor);
-			}
-		}
-		if (ctors.size() != 1) return null;
-		final Constructor<?> ctor = ctors.get(0);
-		final Type[] paramTypes = ctor.getGenericParameterTypes();
-		if (paramTypes.length == 0) {
+		final Constructor<?> ctor = findBestCtor(raw, json);
+		final Method factory = findBestFactory(raw, json);
+		if (ctor == null && factory == null) return null;
+		final Type[] paramTypes = factory != null ? factory.getGenericParameterTypes() : ctor.getGenericParameterTypes();
+		if (paramTypes.length == 0
+			|| paramTypes.length == 1 && ObjectAnalyzer.matchesContext(paramTypes[0], json)) {
 			return null;
 		}
-		String[] names = extractNames(ctor);
+		String[] names = factory != null ? extractNames(factory) : extractNames(ctor);
+		final Map<Type, Integer> typeIndex;
 		if (names == null) {
-			final Set<Type> types = new HashSet<>();
-			for(Type p : paramTypes) {
+			typeIndex = new HashMap<>();
+			for (Type p : paramTypes) {
 				//only allow registration without name when all types are different
 				//TODO: ideally we could allow some ad hoc heuristics to test which value goes to which parameter.... but meh
-				if (!types.add(p)) return null;
+				if (typeIndex.containsKey(p)) return null;
+				typeIndex.put(p, typeIndex.size());
 			}
+		} else {
+			typeIndex = null;
 		}
 		final LazyImmutableDescription lazy = new LazyImmutableDescription(json, manifest);
 		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, lazy);
@@ -160,6 +167,7 @@ public abstract class ImmutableAnalyzer {
 		final LinkedHashMap<String, JsonWriter.WriteObject> methods = new LinkedHashMap<>();
 		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
 		final Object[] defArgs = findDefaultArguments(paramTypes, genericMappings, json);
+		final int contextCount = json.context != null && Arrays.asList(defArgs).contains(json.context) ? 1 : 0;
 		final LinkedHashMap<String, Field> matchingFields = new LinkedHashMap<>();
 		for (final Field f : raw.getFields()) {
 			if (isPublicFinalNonStatic(f.getModifiers())) {
@@ -175,10 +183,15 @@ public abstract class ImmutableAnalyzer {
 			}
 		}
 		final JsonWriter.WriteObject[] writeProps;
+		final int attributesCount = paramTypes.length - contextCount;
+		if (contextCount == 1 && paramTypes.length == 1) {
+			return unregister(manifest, json, oldWriter, oldReader);
+		}
 		if (names != null) {
-			if (matchingFields.size() == paramTypes.length) {
+			if (matchingFields.size() == attributesCount) {
 				for (int i = 0; i < paramTypes.length; i++) {
 					final Field f = matchingFields.get(names[i]);
+					if (f == null && json.context != null && json.context == defArgs[i]) continue;
 					if (f == null || !analyzeField(json, paramTypes[i], fields, f, genericMappings)) {
 						return unregister(manifest, json, oldWriter, oldReader);
 					}
@@ -187,6 +200,7 @@ public abstract class ImmutableAnalyzer {
 			} else {
 				for (int i = 0; i < paramTypes.length; i++) {
 					final Method m = matchingMethods.get(names[i]);
+					if (m == null && json.context != null && json.context == defArgs[i]) continue;
 					if (m == null || !analyzeMethod(m, json, paramTypes[i], names[i], methods, genericMappings)) {
 						return unregister(manifest, json, oldWriter, oldReader);
 					}
@@ -194,15 +208,20 @@ public abstract class ImmutableAnalyzer {
 				writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
 			}
 		} else {
-			names = new String[paramTypes.length];
-			if (matchingFields.size() == paramTypes.length) {
-				List<Field> orderedFields = new ArrayList<>(matchingFields.values());
-				for (int i = 0; i < paramTypes.length; i++) {
-					final Field f = orderedFields.get(i);
-					if (!analyzeField(json, paramTypes[i], fields, f, genericMappings)) {
-						return unregister(manifest, json, oldWriter, oldReader);
+			names = new String[typeIndex.size()];
+			if (matchingFields.size() == attributesCount) {
+				for (Type p : paramTypes) {
+					for (Map.Entry<String, Field> kv : matchingFields.entrySet()) {
+						final Field f = kv.getValue();
+						if (analyzeField(json, p, fields, f, genericMappings)) {
+							matchingFields.remove(kv.getKey());
+							names[typeIndex.get(p)] = kv.getKey();
+							break;
+						}
 					}
-					names[i] = f.getName();
+				}
+				if (fields.size() != attributesCount) {
+					return unregister(manifest, json, oldWriter, oldReader);
 				}
 				writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
 			} else {
@@ -211,36 +230,49 @@ public abstract class ImmutableAnalyzer {
 						final Method m = kv.getValue();
 						if (analyzeMethod(m, json, p, kv.getKey(), methods, genericMappings)) {
 							matchingMethods.remove(kv.getKey());
+							names[typeIndex.get(p)] = kv.getKey();
 							break;
 						}
 					}
 				}
-				if (methods.size() == paramTypes.length) {
-					writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
-				} else {
+				if (methods.size() != attributesCount) {
 					return unregister(manifest, json, oldWriter, oldReader);
 				}
-				names = (fields.isEmpty() ? methods.keySet() : fields.keySet()).toArray(new String[0]);
+				writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
 			}
 		}
-		final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[paramTypes.length];
+		final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[attributesCount];
+		int idx = 0;
 		for (int i = 0; i < paramTypes.length; i++) {
 			final Type concreteType = Generics.makeConcrete(paramTypes[i], genericMappings);
-			readProps[i] = new DecodePropertyInfo<>(names[i], false, false, i, false, new WriteCtor(json, concreteType, ctor));
+			if (json.context != null && defArgs[i] == json.context) continue;
+			readProps[idx++] = new DecodePropertyInfo<>(names[i], false, false, i, false, new WriteMember(json, concreteType, factory != null ? factory : ctor));
 		}
-		final ImmutableDescription<T> converter = new ImmutableDescription<>(
-				manifest,
-				defArgs,
-				new Settings.Function<Object[], T>() {
+		final Settings.Function<Object[], T> instanceFactory = factory != null
+				? new Settings.Function<Object[], T>() {
+					@Override
+					public T apply(@Nullable Object[] args) {
+						try {
+							return (T) factory.invoke(null, args);
+						} catch (Exception ex) {
+							throw new ConfigurationException("Unable to create an instance of " + raw);
+						}
+					}
+				}
+				: new Settings.Function<Object[], T>() {
 					@Override
 					public T apply(@Nullable Object[] args) {
 						try {
 							return raw.cast(ctor.newInstance(args));
-						} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-							throw new RuntimeException(e);
+						} catch (Exception ex) {
+							throw new ConfigurationException("Unable to create an instance of " + raw);
 						}
 					}
-				},
+				};
+		final ImmutableDescription<T> converter = new ImmutableDescription<>(
+				manifest,
+				defArgs,
+				instanceFactory,
 				writeProps,
 				readProps,
 				!json.omitDefaults,
@@ -251,16 +283,71 @@ public abstract class ImmutableAnalyzer {
 		return converter;
 	}
 
-	private static class WriteCtor implements JsonReader.ReadObject {
+	static @Nullable <T> Constructor<?> findBestCtor(Class<?> raw, DslJson<T> json) {
+		final Map<Class<? extends Annotation>, Boolean> creatorMarkers = json.getRegisteredCreatorMarkers();
+		final ArrayList<Constructor<?>> ctors = new ArrayList<>();
+		boolean hasCtorWithMarker = false;
+		for (Constructor<?> ctor : raw.getDeclaredConstructors()) {
+			final boolean isPublic = (ctor.getModifiers() & Modifier.PUBLIC) == Modifier.PUBLIC;
+			boolean hasMarker = false;
+			if (!creatorMarkers.isEmpty()) {
+				for (Map.Entry<Class<? extends Annotation>, Boolean> kv : creatorMarkers.entrySet()) {
+					if (ctor.getAnnotation(kv.getKey()) != null && (isPublic || kv.getValue())) {
+						if (!isPublic) {
+							try {
+								ctor.setAccessible(true);
+							} catch (Exception ex) {
+								throw new ConfigurationException("Unable to promote access for private constructor " + ctor + ". Please check environment setup, or set marker on public constructor", ex);
+							}
+						}
+						hasMarker = true;
+						break;
+					}
+				}
+			}
+			if (hasMarker) {
+				hasCtorWithMarker = true;
+				ctors.add(0, ctor);
+			} else if (isPublic) {
+				ctors.add(ctor);
+			}
+		}
+		return !hasCtorWithMarker && ctors.size() != 1 ? null : ctors.get(0);
+	}
+
+	private static @Nullable <T> Method findBestFactory(Class<?> raw, DslJson<T> json) {
+		final Map<Class<? extends Annotation>, Boolean> creatorMarkers = json.getRegisteredCreatorMarkers();
+		if (creatorMarkers.isEmpty()) return null;
+		for (final Method factory : raw.getDeclaredMethods()) {
+			final int modifiers = factory.getModifiers();
+			if ((modifiers & Modifier.STATIC) != Modifier.STATIC || !raw.isAssignableFrom(factory.getReturnType())) continue;
+			final boolean isPublic = (modifiers & Modifier.PUBLIC) == Modifier.PUBLIC;
+			for (Map.Entry<Class<? extends Annotation>, Boolean> kv : creatorMarkers.entrySet()) {
+				if (factory.getAnnotation(kv.getKey()) != null && (isPublic || kv.getValue())) {
+					if (!isPublic) {
+						try {
+							factory.setAccessible(true);
+						} catch (Exception ex) {
+							throw new ConfigurationException("Unable to promote access for private factory " + factory + ". Please check environment setup, or set marker on public method", ex);
+						}
+					}
+					return factory;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static class WriteMember implements JsonReader.ReadObject {
 		private final DslJson json;
 		private final Type type;
-		private final Constructor<?> ctor;
+		private final AccessibleObject ctorOrMethod;
 		private JsonReader.ReadObject decoder;
 
-		WriteCtor(final DslJson json, final Type type, final Constructor<?> ctor) {
+		WriteMember(final DslJson json, final Type type, final AccessibleObject ctorOrMethod) {
 			this.json = json;
 			this.type = type;
-			this.ctor = ctor;
+			this.ctorOrMethod = ctorOrMethod;
 		}
 
 		@Override
@@ -268,7 +355,7 @@ public abstract class ImmutableAnalyzer {
 			if (decoder == null) {
 				decoder = json.tryFindReader(type);
 				if (decoder == null) {
-					throw new ConfigurationException("Unable to find reader for " + type + " on " + ctor);
+					throw new ConfigurationException("Unable to find reader for " + type + " on " + ctorOrMethod);
 				}
 			}
 			return decoder.read(reader);
@@ -289,7 +376,11 @@ public abstract class ImmutableAnalyzer {
 		final Object[] defArgs = new Object[paramTypes.length];
 		for (int i = 0; i < paramTypes.length; i++) {
 			final Type concreteType = Generics.makeConcrete(paramTypes[i], genericMappings);
-			defArgs[i] = json.getDefault(concreteType);
+			if (json.context != null && json.context.getClass().equals(concreteType)) {
+				defArgs[i] = json.context;
+			} else {
+				defArgs[i] = json.getDefault(concreteType);
+			}
 		}
 		return defArgs;
 	}

@@ -123,6 +123,17 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void checkAliasWithPrivate() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(PropertyAliasWithPrivateAnnotation.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("int num {  serialization name 'y';  }"));
+		Assert.assertTrue(dsl.contains("string? prop {  serialization name 'x';  deserialization alias 'X';  deserialization alias 'old_prop';  }"));
+		Assert.assertTrue(dsl.contains("external name Java 'com.dslplatform.json.models.PropertyAliasWithPrivateAnnotation';"));
+	}
+
+	@Test
 	public void checkNonNull() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(NonNullableReferenceProperty.class);
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
