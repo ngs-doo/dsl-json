@@ -28,4 +28,9 @@ public class IgnoredProperty {
 	public void setProp(char value) {
 		prop = value;
 	}
+
+	@JsonAttribute(ignore = true)
+	public String ignored;
+	public String getIgnored() { return ignored; }
+	public void setIgnored(String value) { ignored = value; }
 }

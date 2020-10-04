@@ -18,6 +18,7 @@
 		<module>android</module>
 		<module>tests-java8</module>
 		<module>tests-java8-external-models</module>
+		<module>tests-kotlin</module>
 	</modules>
 
 	<properties>

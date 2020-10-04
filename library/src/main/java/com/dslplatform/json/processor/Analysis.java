@@ -13,7 +13,6 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.lang.reflect.Type;
 import java.util.*;
 
 public class Analysis {
@@ -728,14 +727,13 @@ public class Analysis {
 		public final Map<String, AccessElements> beans;
 		public final Map<String, AccessElements> exact;
 		public final Map<String, AccessElements> fields;
-		public final Map<String, AnnotationMirror> privateFieldAnnotations;
 
 		public PropertyAnalysis(ExecutableElement creator, TypeElement element, Map<String, VariableElement> arguments) {
 			this.creator = creator;
-			this.beans = includeBeanMethods ? getBeanProperties(element, arguments) : Collections.<String, AccessElements>emptyMap();
-			this.exact = includeExactMethods ? getExactProperties(element, arguments) : Collections.<String, AccessElements>emptyMap();
+			Map<String, AnnotationMirror> allFieldsAnnotations = getAllAnnotatedFields(element);
+			this.beans = includeBeanMethods ? getBeanProperties(element, arguments, allFieldsAnnotations) : Collections.<String, AccessElements>emptyMap();
+			this.exact = includeExactMethods ? getExactProperties(element, arguments, allFieldsAnnotations) : Collections.<String, AccessElements>emptyMap();
 			this.fields = includeFields ? getPublicFields(element, arguments) : Collections.<String, AccessElements>emptyMap();
-			this.privateFieldAnnotations = getPrivateAnnotatedFields(element, arguments);
 			allKeys.addAll(beans.keySet());
 			allKeys.addAll(exact.keySet());
 			allKeys.addAll(fields.keySet());
@@ -754,7 +752,7 @@ public class Analysis {
 				if (!onlyBasicFeatures && info.builder != null && info.annotatedConstructor == null && info.annotatedFactory == null) {
 					for (Map.Entry<String, AccessElements> p : getBuilderProperties(info.element, info.builder, includeBeanMethods, includeExactMethods, includeFields).entrySet()) {
 						AccessElements ae = p.getValue();
-						analyzeAttribute(info, ae.field != null ? ae.field.asType() : ae.read.getReturnType(), p.getKey(), ae, "builder property", path, null);
+						analyzeAttribute(info, ae.field != null ? ae.field.asType() : ae.read.getReturnType(), p.getKey(), ae, "builder property", path);
 					}
 				} else {
 					Map<ExecutableElement, Map<String, VariableElement>> creatorArguments = new HashMap<ExecutableElement, Map<String, VariableElement>>();
@@ -791,19 +789,16 @@ public class Analysis {
 							info.useConstructor(bestAnalysis.creator);
 						}
 						for (Map.Entry<String, AccessElements> p : bestAnalysis.beans.entrySet()) {
-							AnnotationMirror privateAnnotation = bestAnalysis.privateFieldAnnotations.get(p.getKey());
-							AccessElements fieldAnalysis = bestAnalysis.fields.get(p.getKey());
-							AnnotationMirror alternativeAnnotation = privateAnnotation != null ? privateAnnotation : fieldAnalysis != null ? fieldAnalysis.annotation : null;
-							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "bean property", path, alternativeAnnotation);
+							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "bean property", path);
 						}
 						for (Map.Entry<String, AccessElements> p : bestAnalysis.exact.entrySet()) {
 							if (!info.attributes.containsKey(p.getKey()) || info.annotation != null) {
-								analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path, null);
+								analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path);
 							}
 						}
 						for (Map.Entry<String, AccessElements> f : bestAnalysis.fields.entrySet()) {
 							if (!info.attributes.containsKey(f.getKey()) || info.annotation != null) {
-								analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path, null);
+								analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path);
 							}
 						}
 					}
@@ -853,15 +848,14 @@ public class Analysis {
 			String name,
 			AccessElements access,
 			String target,
-			Stack<String> path,
-			@Nullable AnnotationMirror alternativeAnnotation) {
+			Stack<String> path) {
 		Element element = access.field != null ? access.field : access.read;
 		path.push(name);
-		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element)) {
+		AnnotationMirror annotation = access.annotation;
+		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element, annotation)) {
 			TypeMirror referenceType = access.field != null ? access.field.asType() : access.read.getReturnType();
 			TypeMirror type = originalType.getKind() == TypeKind.TYPEVAR && info.genericSignatures.containsKey(originalType.toString()) ? info.genericSignatures.get(originalType.toString()) : originalType;
 			Element referenceElement = types.asElement(referenceType);
-			AnnotationMirror annotation = access.annotation != null ? access.annotation : alternativeAnnotation;
 			TypeMirror converterMirror = findConverter(annotation);
 			final ConverterInfo converter;
 			if (converterMirror != null) {
@@ -1679,7 +1673,8 @@ public class Analysis {
 
 	public Map<String, AccessElements> getBeanProperties(
 			TypeElement element,
-			Map<String, VariableElement> arguments) {
+			Map<String, VariableElement> arguments,
+			Map<String, AnnotationMirror> fieldsAnnotations) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
@@ -1738,20 +1733,23 @@ public class Analysis {
 				}
 			}
 		}
-		return findMatchingResult(setters, getters, arguments);
+		return findMatchingResult(setters, getters, arguments, fieldsAnnotations);
 	}
 
 	private Map<String, AccessElements> findMatchingResult(
 			Map<String, ExecutableElement> setters,
 			Map<String, ExecutableElement> getters,
-			Map<String, VariableElement> arguments) {
+			Map<String, VariableElement> arguments,
+			Map<String, AnnotationMirror> fieldsAnnotations) {
 		Map<String, AccessElements> result = new HashMap<String, AccessElements>();
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setterArgument = setter == null ? null : setter.getParameters().get(0);
 			VariableElement arg = arguments.get(kv.getKey());
 			String returnType = kv.getValue().getReturnType().toString();
-			AnnotationMirror annotation = annotation(kv.getValue(), setter, null, arg);
+			AnnotationMirror actualAnnotation = annotation(kv.getValue(), setter, null, arg);
+			AnnotationMirror alternativeAnnotation = fieldsAnnotations.get(kv.getKey());
+			AnnotationMirror annotation = actualAnnotation != null ? actualAnnotation : alternativeAnnotation;
 			if (setterArgument != null && setterArgument.asType().toString().equals(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
@@ -1765,7 +1763,8 @@ public class Analysis {
 
 	public Map<String, AccessElements> getExactProperties(
 			TypeElement element,
-			Map<String, VariableElement> arguments) {
+			Map<String, VariableElement> arguments,
+			Map<String, AnnotationMirror> fieldsAnnotations) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
@@ -1807,7 +1806,7 @@ public class Analysis {
 				}
 			}
 		}
-		return findMatchingResult(setters, getters, arguments);
+		return findMatchingResult(setters, getters, arguments, fieldsAnnotations);
 	}
 
 	public Map<String, AccessElements> getPublicFields(
@@ -1842,22 +1841,15 @@ public class Analysis {
 		return result;
 	}
 
-	public Map<String, AnnotationMirror> getPrivateAnnotatedFields(
-			TypeElement element,
-			Map<String, VariableElement> arguments) {
+	public Map<String, AnnotationMirror> getAllAnnotatedFields(TypeElement element) {
 		Map<String, AnnotationMirror> result = new HashMap<String, AnnotationMirror>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
 				String name = field.getSimpleName().toString();
-				boolean isFinal = field.getModifiers().contains(Modifier.FINAL);
-				VariableElement arg = arguments.get(name);
-				boolean isPublic = field.getModifiers().contains(Modifier.PUBLIC);
-				boolean isRelevant = (!isFinal || arg != null)
-						&& !field.getModifiers().contains(Modifier.NATIVE)
-						&& !field.getModifiers().contains(Modifier.TRANSIENT)
-						&& !field.getModifiers().contains(Modifier.STATIC);
-				if (!isRelevant || isPublic) continue;
-				AnnotationMirror annotation = annotation(null, null, field, arg);
+				if (field.getModifiers().contains(Modifier.NATIVE)
+						|| field.getModifiers().contains(Modifier.TRANSIENT)
+						|| field.getModifiers().contains(Modifier.STATIC)) continue;
+				AnnotationMirror annotation = annotation(null, null, field, null);
 				if (annotation == null) continue;
 				result.put(name, annotation);
 			}
@@ -2063,8 +2055,7 @@ public class Analysis {
 		return arg == null ? null : getAnnotation(arg, attributeType);
 	}
 
-	public boolean hasIgnoredAnnotation(Element property) {
-		AnnotationMirror dslAnn = getAnnotation(property, attributeType);
+	public boolean hasIgnoredAnnotation(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			return booleanAnnotationValue(dslAnn, "ignore()", false);
 		}
@@ -2283,10 +2274,9 @@ public class Analysis {
 			for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
 				String name = field.getSimpleName().toString();
 				if (!member.equals(name)) continue;
-				boolean isRelevant = !field.getModifiers().contains(Modifier.NATIVE)
-						&& !field.getModifiers().contains(Modifier.TRANSIENT)
-						&& !field.getModifiers().contains(Modifier.STATIC);
-				if (!isRelevant) continue;
+				if (field.getModifiers().contains(Modifier.NATIVE)
+						|| field.getModifiers().contains(Modifier.TRANSIENT)
+						|| field.getModifiers().contains(Modifier.STATIC)) continue;
 				for (AnnotationMirror ann : field.getAnnotationMirrors()) {
 					String customName = matchCustomString(ann, alternativeAlias);
 					if (customName != null && !customName.isEmpty()) return customName;

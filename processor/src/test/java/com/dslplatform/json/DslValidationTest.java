@@ -109,6 +109,7 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertFalse(dsl.contains(" field1"));
 		Assert.assertFalse(dsl.contains(" field2"));
 		Assert.assertFalse(dsl.contains("string? name"));
+		Assert.assertFalse(dsl.contains("string? ignored"));
 	}
 
 	@Test
