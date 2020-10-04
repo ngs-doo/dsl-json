@@ -7,21 +7,36 @@ import org.specs2.mutable.Specification
 
 class ScalaEnumTest extends Specification with ScalaCheck {
 
-  private lazy implicit val dslJson = new DslJson[Any]()
+  private lazy val settings = runtime.Settings.basicSetup[Any]().`with`(new ConfigureScala)
+  private lazy implicit val dslJson = new DslJson[Any](settings)
 
   "encoding" >> {
-    "example 1" >> {
+    "example e1" >> {
       val os = new ByteArrayOutputStream()
-      //TODO: without type extra information is encoded and converter fails
       dslJson.encode(Seq[Status](Status.ACTIVE, Status.INACTIVE), os)
-      "[\"ACTIVE\",\"INACTIVE\"]" === os.toString("UTF-8")
+      os.toString("UTF-8") === "[\"ACTIVE\",\"INACTIVE\"]"
+    }
+    "example e2" >> {
+      val os = new ByteArrayOutputStream()
+      dslJson.encode(Seq(Status.ACTIVE, Status.INACTIVE), os)
+      os.toString("UTF-8") === "[\"ACTIVE\",\"INACTIVE\"]"
+    }
+    "example e3" >> {
+      val os = new ByteArrayOutputStream()
+      dslJson.encode(Array(Status.ACTIVE, Status.INACTIVE), os)
+      os.toString("UTF-8") === "[\"ACTIVE\",\"INACTIVE\"]"
     }
   }
   "decoding" >> {
-    "example 1" >> {
+    "example d1" >> {
       val input = "[\"ACTIVE\",\"INACTIVE\"]".getBytes("UTF-8")
       val res = dslJson.decode[Seq[Status]](input)
-      Seq(Status.ACTIVE, Status.INACTIVE) === res
+      res.toIndexedSeq === IndexedSeq(Status.ACTIVE, Status.INACTIVE)
+    }
+    "example d2" >> {
+      val input = "[\"ACTIVE\",\"INACTIVE\"]".getBytes("UTF-8")
+      val res = dslJson.decode[Array[Status]](input)
+      res.toIndexedSeq === IndexedSeq(Status.ACTIVE, Status.INACTIVE)
     }
   }
 }

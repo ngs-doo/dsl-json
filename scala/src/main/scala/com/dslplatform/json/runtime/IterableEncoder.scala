@@ -11,11 +11,12 @@ final class IterableEncoder[E](
   require(manifest ne null, "manifest can't be null")
   require(encoder ne null, "encoder can't be null")
 
-  private val EMPTY = Array[Byte]('[', ']')
+  private var lastCachedClass: Option[Class[_]] = None
+  private var lastCachedWriter: Option[JsonWriter.WriteObject[E]] = None
 
   override def write(writer: JsonWriter, value: Iterable[E]): Unit = {
     if (value eq null) writer.writeNull()
-    else if (value.isEmpty) writer.writeAscii(EMPTY)
+    else if (value.isEmpty) writer.writeAscii(IterableEncoder.EMPTY)
     else if (encoder.isDefined) {
       writer.writeByte(JsonWriter.ARRAY_START)
       val enc = encoder.get
@@ -52,10 +53,23 @@ final class IterableEncoder[E](
         if (v == null || v == None) writer.writeNull()
         else {
           val currentClass = v.getClass
-          if (lastClass.isEmpty || (currentClass ne lastClass.get)) {
+          if (lastCachedClass.contains(currentClass)) {
+            lastEncoder = lastCachedWriter
+            lastClass = lastCachedClass
+          } else if (!lastClass.contains(currentClass)) {
             lastClass = Some(currentClass)
             lastEncoder = Option(json.tryFindWriter(lastClass.get).asInstanceOf[JsonWriter.WriteObject[E]])
-            if (lastEncoder.isEmpty) throw new ConfigurationException(s"Unable to find writer for $lastClass")
+            if (lastEncoder.isEmpty) {
+              throw new ConfigurationException(s"Unable to find writer for $lastClass")
+            }
+            if (lastCachedClass.isEmpty) {
+              this.synchronized {
+                if (lastCachedClass.isEmpty) {
+                  lastCachedWriter = lastEncoder
+                  lastCachedClass = lastClass
+                }
+              }
+            }
           }
           lastEncoder.get.write(writer, v)
         }
@@ -63,4 +77,7 @@ final class IterableEncoder[E](
       writer.writeByte(JsonWriter.ARRAY_END)
     }
   }
+}
+object IterableEncoder {
+  private val EMPTY = Array[Byte]('[', ']')
 }

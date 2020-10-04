@@ -132,8 +132,17 @@ private[json] object TypeAnalysis {
             } else None
           case _ => None
         }
+      case rt: RefinedType if rt.parents.size > 1 =>
+        val without = rt.parents.filterNot(excludeTypes.contains)
+        if (without.lengthCompare(1) == 0) findUnknownType(without.head, mirror, genericsMap)
+        else None
       case _ =>
         None
     }
   }
+
+  private val productType = typeOf[Product]
+  private val scalaSerializeType = typeOf[Serializable]
+  private val javaSerializeType = typeOf[java.io.Serializable]
+  private val excludeTypes = Set(productType, scalaSerializeType, javaSerializeType)
 }

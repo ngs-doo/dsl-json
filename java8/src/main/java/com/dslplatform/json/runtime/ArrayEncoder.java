@@ -6,6 +6,8 @@ public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]> {
 
 	private final DslJson json;
 	private final JsonWriter.WriteObject<T> encoder;
+	private Class<?> lastCachedClass;
+	private JsonWriter.WriteObject lastCachedWriter;
 
 	public ArrayEncoder(
 			final DslJson json,
@@ -43,11 +45,22 @@ public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]> {
 				if (e == null) writer.writeNull();
 				else {
 					final Class<?> currentClass = e.getClass();
-					if (currentClass != lastClass) {
+					if (currentClass == lastCachedClass) {
+						lastEncoder = lastCachedWriter;
+						lastClass = lastCachedClass;
+					} else if (currentClass != lastClass) {
 						lastClass = currentClass;
 						lastEncoder = json.tryFindWriter(lastClass);
 						if (lastEncoder == null) {
 							throw new ConfigurationException("Unable to find writer for " + lastClass);
+						}
+						if (lastCachedClass == null) {
+							synchronized (this) {
+								if (lastCachedClass == null) {
+									lastCachedWriter = lastEncoder;
+									lastCachedClass = lastClass;
+								}
+							}
 						}
 					}
 					lastEncoder.write(writer, e);
