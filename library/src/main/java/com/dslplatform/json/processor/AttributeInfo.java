@@ -12,11 +12,12 @@ import java.util.*;
 public class AttributeInfo {
 	public final String id;
 	public final String name;
-	public final ExecutableElement readMethod;
-	public final ExecutableElement writeMethod;
-	public final VariableElement field;
+	@Nullable public final ExecutableElement readMethod;
+	@Nullable public final ExecutableElement writeMethod;
+	@Nullable public final VariableElement field;
+	@Nullable public final VariableElement argument;
 	public final TypeMirror type;
-	public final AnnotationMirror annotation;
+	@Nullable public final AnnotationMirror annotation;
 	public final Element element;
 	public final boolean notNull;
 	public final boolean mandatory;
@@ -41,9 +42,10 @@ public class AttributeInfo {
 
 	public AttributeInfo(
 			String name,
-			ExecutableElement readMethod,
-			ExecutableElement writeMethod,
+			@Nullable ExecutableElement readMethod,
+			@Nullable ExecutableElement writeMethod,
 			@Nullable VariableElement field,
+			@Nullable VariableElement argument,
 			TypeMirror type,
 			boolean isList,
 			boolean isSet,
@@ -66,6 +68,7 @@ public class AttributeInfo {
 		this.readMethod = readMethod;
 		this.writeMethod = writeMethod;
 		this.field = field;
+		this.argument = argument;
 		this.element = field != null ? field : readMethod;
 		this.type = type;
 		this.annotation = annotation;
@@ -99,6 +102,18 @@ public class AttributeInfo {
 		if (typeSupport.isSupported(content)) return true;
 		StructInfo target = structs.get(content);
 		return target != null && (target.hasKnownConversion() || !target.isParameterized && target.unknowns.isEmpty());
+	}
+
+	public boolean canReadInput() {
+		if (converter != null || isJsonObject) return true;
+		if (field != null || writeMethod != null || argument != null) return true;
+		if (readMethod != null && notNull) return isList || isSet;
+		return false;
+	}
+
+	public boolean canWriteOutput() {
+		if (converter != null || isJsonObject) return true;
+		return field != null || readMethod != null;
 	}
 
 	@Nullable

@@ -69,6 +69,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		NonNullable = new HashMap<>();
 		NonNullable.put("javax.validation.constraints.NotNull", null);
 		NonNullable.put("javax.annotation.Nonnull", null);
+		NonNullable.put("com.dslplatform.json.NonNull", null);
 		NonNullable.put("android.support.annotation.NonNull", null);
 		NonNullable.put("org.jetbrains.annotations.NotNull", null);
 		NonNullable.put(

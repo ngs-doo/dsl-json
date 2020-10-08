@@ -2,6 +2,7 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.*;
 
+import javax.annotation.Nonnull;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
@@ -748,7 +749,7 @@ public class Analysis {
 		);
 	}
 
-	public List<TypeElement> getTypeHierarchy(TypeElement element) {
+	private List<TypeElement> getTypeHierarchy(TypeElement element) {
 		List<TypeElement> result = new ArrayList<TypeElement>();
 		getAllTypes(element, result, new HashSet<TypeElement>());
 		return result;
@@ -767,6 +768,7 @@ public class Analysis {
 
 	private class PropertyAnalysis {
 		public final ExecutableElement creator;
+		public final Map<String, AccessElements> allFieldDetails;
 		public final Set<String> allKeys = new HashSet<String>();
 		public final Map<String, AccessElements> beans;
 		public final Map<String, AccessElements> exact;
@@ -774,17 +776,17 @@ public class Analysis {
 
 		public PropertyAnalysis(ExecutableElement creator, TypeElement element, Map<String, VariableElement> arguments) {
 			this.creator = creator;
-			Map<String, AnnotationMirror> allFieldsAnnotations = getAllAnnotatedFields(element);
-			this.beans = includeBeanMethods ? getBeanProperties(element, arguments, allFieldsAnnotations) : Collections.<String, AccessElements>emptyMap();
-			this.exact = includeExactMethods ? getExactProperties(element, arguments, allFieldsAnnotations) : Collections.<String, AccessElements>emptyMap();
-			this.fields = includeFields ? getPublicFields(element, arguments) : Collections.<String, AccessElements>emptyMap();
+			this.allFieldDetails = getFieldDetails(element);
+			this.beans = includeBeanMethods ? getBeanProperties(element, arguments, allFieldDetails) : Collections.<String, AccessElements>emptyMap();
+			this.exact = includeExactMethods ? getExactProperties(element, arguments, allFieldDetails) : Collections.<String, AccessElements>emptyMap();
 			allKeys.addAll(beans.keySet());
 			allKeys.addAll(exact.keySet());
+			this.fields = includeFields ? getPublicFields(element, arguments, allKeys) : Collections.<String, AccessElements>emptyMap();
 			allKeys.addAll(fields.keySet());
 		}
 	}
 
-	public void findRelatedReferences() {
+	private void findRelatedReferences() {
 		int total;
 		do {
 			total = structs.size();
@@ -796,7 +798,9 @@ public class Analysis {
 				if (!onlyBasicFeatures && info.builder != null && info.annotatedConstructor == null && info.annotatedFactory == null) {
 					for (Map.Entry<String, AccessElements> p : getBuilderProperties(info.element, info.builder, includeBeanMethods, includeExactMethods, includeFields).entrySet()) {
 						AccessElements ae = p.getValue();
-						analyzeAttribute(info, ae.field != null ? ae.field.asType() : ae.read.getReturnType(), p.getKey(), ae, "builder property", path);
+						if (ae.field != null || ae.read != null) {
+							analyzeAttribute(info, ae.field != null ? ae.field.asType() : ae.read.getReturnType(), p.getKey(), ae, "builder property", path, null);
+						}
 					}
 				} else {
 					Map<ExecutableElement, Map<String, VariableElement>> creatorArguments = new HashMap<ExecutableElement, Map<String, VariableElement>>();
@@ -833,16 +837,18 @@ public class Analysis {
 							info.useConstructor(bestAnalysis.creator);
 						}
 						for (Map.Entry<String, AccessElements> p : bestAnalysis.beans.entrySet()) {
-							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "bean property", path);
+							AccessElements field = bestAnalysis.allFieldDetails.get(p.getKey());
+							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "bean property", path, field != null ? field.field : null);
 						}
 						for (Map.Entry<String, AccessElements> p : bestAnalysis.exact.entrySet()) {
 							if (!info.attributes.containsKey(p.getKey()) || info.annotation != null) {
-								analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path);
+								AccessElements field = bestAnalysis.allFieldDetails.get(p.getKey());
+								analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path, field != null ? field.field : null);
 							}
 						}
 						for (Map.Entry<String, AccessElements> f : bestAnalysis.fields.entrySet()) {
 							if (!info.attributes.containsKey(f.getKey()) || info.annotation != null) {
-								analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path);
+								analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path, null);
 							}
 						}
 					}
@@ -892,8 +898,10 @@ public class Analysis {
 			String name,
 			AccessElements access,
 			String target,
-			Stack<String> path) {
+			Stack<String> path,
+			@Nullable VariableElement field) {
 		Element element = access.field != null ? access.field : access.read;
+		if (element == null) return;
 		path.push(name);
 		AnnotationMirror annotation = access.annotation;
 		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element, annotation)
@@ -947,16 +955,17 @@ public class Analysis {
 							access.read,
 							access.write,
 							access.field,
+							access.arg,
 							type,
 							isCompatibileCollection(type, baseListType),
 							isCompatibileCollection(type, baseSetType),
 							isCompatibileCollection(type, baseMapType),
 							annotation,
-							hasNonNullable(element, annotation),
-							hasMandatoryAnnotation(element, annotation),
+							hasNonNullable(element, field, annotation),
+							hasMandatoryAnnotation(element, annotation) || field != null && hasMandatoryAnnotation(field, null),
 							index(element, annotation),
-							findNameAlias(info.element, element, annotation, name),
-							isFullMatch(element, annotation),
+							findNameAlias(element, field, annotation, name),
+							isFullMatch(annotation),
 							typeSignature,
 							includeToMinimal,
 							converter,
@@ -1211,7 +1220,7 @@ public class Analysis {
 	}
 
 	@Nullable
-	public List<ExecutableElement> findMatchingConstructors(Element element, boolean isMixin) {
+	private List<ExecutableElement> findMatchingConstructors(Element element, boolean isMixin) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM
 				|| !isMixin && element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -1230,7 +1239,7 @@ public class Analysis {
 	}
 
 	@Nullable
-	public ExecutableElement findAnnotatedConstructor(Element element, DeclaredType discoveredBy) {
+	private ExecutableElement findAnnotatedConstructor(Element element, DeclaredType discoveredBy) {
 		if (element.getKind() == ElementKind.INTERFACE
 				|| element.getKind() == ElementKind.ENUM
 				|| element.getKind() == ElementKind.CLASS && element.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -1630,12 +1639,12 @@ public class Analysis {
 		return prefix + (jsonReaderMethod != null ? jsonReaderMethod.getSimpleName().toString() + "()" : "JSON_READER");
 	}
 
-	public static class AccessElements {
-		public final ExecutableElement read;
-		public final ExecutableElement write;
-		public final VariableElement field;
-		public final VariableElement arg;
-		public final AnnotationMirror annotation;
+	private static class AccessElements {
+		@Nullable public final ExecutableElement read;
+		@Nullable public final ExecutableElement write;
+		@Nullable public final VariableElement field;
+		@Nullable public final VariableElement arg;
+		@Nullable public final AnnotationMirror annotation;
 
 		private AccessElements(
 				@Nullable ExecutableElement read,
@@ -1664,6 +1673,10 @@ public class Analysis {
 
 		public static AccessElements readOnly(VariableElement field, ExecutableElement write, @Nullable AnnotationMirror annotation) {
 			return new AccessElements(null, write, null, field, annotation);
+		}
+
+		public static AccessElements collection(ExecutableElement read, @Nullable AnnotationMirror annotation) {
+			return new AccessElements(read, null, null, null, annotation);
 		}
 	}
 
@@ -1717,10 +1730,10 @@ public class Analysis {
 		return name;
 	}
 
-	public Map<String, AccessElements> getBeanProperties(
+	private Map<String, AccessElements> getBeanProperties(
 			TypeElement element,
 			Map<String, VariableElement> arguments,
-			Map<String, AnnotationMirror> fieldsAnnotations) {
+			Map<String, AccessElements> fieldDetails) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
@@ -1779,14 +1792,14 @@ public class Analysis {
 				}
 			}
 		}
-		return findMatchingResult(setters, getters, arguments, fieldsAnnotations);
+		return findMatchingResult(setters, getters, arguments, fieldDetails);
 	}
 
 	private Map<String, AccessElements> findMatchingResult(
 			Map<String, ExecutableElement> setters,
 			Map<String, ExecutableElement> getters,
 			Map<String, VariableElement> arguments,
-			Map<String, AnnotationMirror> fieldsAnnotations) {
+			Map<String, AccessElements> fieldDetails) {
 		Map<String, AccessElements> result = new HashMap<String, AccessElements>();
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
 			ExecutableElement setter = setters.get(kv.getKey());
@@ -1794,23 +1807,41 @@ public class Analysis {
 			VariableElement arg = arguments.get(kv.getKey());
 			String returnType = kv.getValue().getReturnType().toString();
 			AnnotationMirror actualAnnotation = annotation(kv.getValue(), setter, null, arg);
-			AnnotationMirror alternativeAnnotation = fieldsAnnotations.get(kv.getKey());
-			AnnotationMirror annotation = actualAnnotation != null ? actualAnnotation : alternativeAnnotation;
+			AccessElements field = fieldDetails.get(kv.getKey());
+			AnnotationMirror annotation = actualAnnotation != null ? actualAnnotation : field != null ? field.annotation : null;
 			if (setterArgument != null && setterArgument.asType().toString().equals(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (!onlyBasicFeatures && arg != null && isCompatibileType(arg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
+			} else if (arg == null && setterArgument == null && isAppendableCollection(kv.getValue())) {
+				boolean hasMarker = annotation != null || hasCustomMarker(kv.getValue()) || field != null && field.field != null && hasCustomMarker(field.field);
+				if (!hasMarker) continue;
+				if (hasNonNullable(kv.getValue(), field != null ? field.field : null, annotation)) {
+					result.put(kv.getKey(), AccessElements.collection(kv.getValue(), annotation));
+				} else {
+					messager.printMessage(
+							Diagnostic.Kind.WARNING,
+							attributeType.toString() + " detected on collection property, but non-nullable marker is missing. Property will be ignored.",
+							kv.getValue(),
+							annotation);
+				}
 			}
 		}
 		return result;
 	}
 
-	public Map<String, AccessElements> getExactProperties(
+	private boolean isAppendableCollection(final ExecutableElement getter) {
+		TypeMirror type = getter.getReturnType();
+		return isCompatibileCollection(type, baseListType)
+				|| isCompatibileCollection(type, baseSetType);
+	}
+
+	private Map<String, AccessElements> getExactProperties(
 			TypeElement element,
 			Map<String, VariableElement> arguments,
-			Map<String, AnnotationMirror> fieldsAnnotations) {
+			Map<String, AccessElements> fieldDetails) {
 		Map<String, ExecutableElement> setters = new HashMap<String, ExecutableElement>();
 		Map<String, ExecutableElement> getters = new HashMap<String, ExecutableElement>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
@@ -1852,12 +1883,13 @@ public class Analysis {
 				}
 			}
 		}
-		return findMatchingResult(setters, getters, arguments, fieldsAnnotations);
+		return findMatchingResult(setters, getters, arguments, fieldDetails);
 	}
 
-	public Map<String, AccessElements> getPublicFields(
+	private Map<String, AccessElements> getPublicFields(
 			TypeElement element,
-			Map<String, VariableElement> arguments) {
+			Map<String, VariableElement> arguments,
+			Set<String> processed) {
 		Map<String, AccessElements> result = new HashMap<String, AccessElements>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
@@ -1871,7 +1903,7 @@ public class Analysis {
 						&& !field.getModifiers().contains(Modifier.STATIC);
 				if (!isAccessible) {
 					AnnotationMirror fieldAnnotation = getAnnotation(field, attributeType);
-					if (fieldAnnotation != null) {
+					if (fieldAnnotation != null && !processed.contains(name)) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
 								attributeType.toString() + " detected on non accessible field which is ignored during processing. Put annotation on public field instead.",
@@ -1887,8 +1919,8 @@ public class Analysis {
 		return result;
 	}
 
-	public Map<String, AnnotationMirror> getAllAnnotatedFields(TypeElement element) {
-		Map<String, AnnotationMirror> result = new HashMap<String, AnnotationMirror>();
+	private Map<String, AccessElements> getFieldDetails(TypeElement element) {
+		Map<String, AccessElements> result = new HashMap<String, AccessElements>();
 		for (TypeElement inheritance : getTypeHierarchy(element)) {
 			for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
 				String name = field.getSimpleName().toString();
@@ -1896,14 +1928,13 @@ public class Analysis {
 						|| field.getModifiers().contains(Modifier.TRANSIENT)
 						|| field.getModifiers().contains(Modifier.STATIC)) continue;
 				AnnotationMirror annotation = annotation(null, null, field, null);
-				if (annotation == null) continue;
-				result.put(name, annotation);
+				result.put(name, AccessElements.field(field, field, annotation));
 			}
 		}
 		return result;
 	}
 
-	public Map<String, AccessElements> getBuilderProperties(
+	private Map<String, AccessElements> getBuilderProperties(
 			TypeElement element,
 			BuilderInfo builder,
 			boolean withBeans,
@@ -1951,7 +1982,7 @@ public class Analysis {
 							&& !field.getModifiers().contains(Modifier.TRANSIENT)
 							&& !field.getModifiers().contains(Modifier.STATIC);
 					if (!isAccessible || !isFinal) {
-						if (getAnnotation(field, attributeType) != null) {
+						if (getAnnotation(field, attributeType) != null && !getters.containsKey(name)) {
 							messager.printMessage(
 									Diagnostic.Kind.WARNING,
 									attributeType.toString() + " detected on non accessible builder field which is ignored during processing. Put annotation on public field instead.",
@@ -2012,7 +2043,7 @@ public class Analysis {
 		return result;
 	}
 
-	public void findImplementations(Collection<StructInfo> structs) {
+	private void findImplementations(Collection<StructInfo> structs) {
 		for (StructInfo current : structs) {
 			if (current.type == ObjectType.MIXIN) {
 				String signature = current.element.asType().toString();
@@ -2058,7 +2089,7 @@ public class Analysis {
 		return null;
 	}
 
-	public boolean isFullMatch(Element property, @Nullable AnnotationMirror dslAnn) {
+	private boolean isFullMatch(@Nullable AnnotationMirror dslAnn) {
 		if (dslAnn == null) return false;
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -2070,7 +2101,7 @@ public class Analysis {
 		return false;
 	}
 
-	public int index(Element property, @Nullable AnnotationMirror dslAnn) {
+	private int index(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 			for (ExecutableElement ee : values.keySet()) {
@@ -2103,7 +2134,7 @@ public class Analysis {
 		return arg == null ? null : getAnnotation(arg, attributeType);
 	}
 
-	public boolean hasIgnoredAnnotation(Element property, @Nullable AnnotationMirror dslAnn) {
+	private boolean hasIgnoredAnnotation(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			return booleanAnnotationValue(dslAnn, "ignore()", false);
 		}
@@ -2133,7 +2164,7 @@ public class Analysis {
 	}
 
 	@Nullable
-	public AnnotationMirror getAnnotation(Element element, DeclaredType annotationType) {
+	private AnnotationMirror getAnnotation(Element element, DeclaredType annotationType) {
 		for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
 			if (types.isSameType(mirror.getAnnotationType(), annotationType)) {
 				return mirror;
@@ -2142,7 +2173,7 @@ public class Analysis {
 		return null;
 	}
 
-	public boolean hasNonNullable(Element property, @Nullable AnnotationMirror dslAnn) {
+	private boolean hasNonNullable(Element property, @Nullable VariableElement field, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 			for (ExecutableElement ee : values.keySet()) {
@@ -2157,11 +2188,17 @@ public class Analysis {
 			Boolean match = matchCustomBoolean(ann, alternativeNonNullable);
 			if (match != null) return match;
 		}
+		if (field != null) {
+			for (AnnotationMirror ann : field.getAnnotationMirrors()) {
+				Boolean match = matchCustomBoolean(ann, alternativeNonNullable);
+				if (match != null) return match;
+			}
+		}
 		return false;
 	}
 
 	@Nullable
-	public static TypeElement deserializeAs(AnnotationMirror annotation) {
+	private static TypeElement deserializeAs(AnnotationMirror annotation) {
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
 			if (ee.toString().equals("deserializeAs()")) {
@@ -2172,7 +2209,7 @@ public class Analysis {
 		return null;
 	}
 
-	public static String classDiscriminator(@Nullable AnnotationMirror annotation) {
+	private static String classDiscriminator(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -2183,7 +2220,7 @@ public class Analysis {
 		return "";
 	}
 
-	public static String className(@Nullable AnnotationMirror annotation) {
+	private static String className(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -2194,7 +2231,7 @@ public class Analysis {
 		return "";
 	}
 
-	public boolean hasMandatoryAnnotation(Element property, @Nullable AnnotationMirror dslAnn) {
+	private boolean hasMandatoryAnnotation(Element property, @Nullable AnnotationMirror dslAnn) {
 		if (dslAnn != null) {
 			return booleanAnnotationValue(dslAnn, "mandatory()", false);
 		}
@@ -2205,7 +2242,7 @@ public class Analysis {
 		return false;
 	}
 
-	public static boolean booleanAnnotationValue(AnnotationMirror ann, String method, boolean defaultValue) {
+	private static boolean booleanAnnotationValue(AnnotationMirror ann, String method, boolean defaultValue) {
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = ann.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
 			if (ee.toString().equals(method)) {
@@ -2238,7 +2275,7 @@ public class Analysis {
 		return value != null ? value : JsonAttribute.IncludePolicy.NON_DEFAULT;
 	}
 
-	public CompiledJson.Format[] getFormats(@Nullable AnnotationMirror ann) {
+	private CompiledJson.Format[] getFormats(@Nullable AnnotationMirror ann) {
 		if (ann == null) return new CompiledJson.Format[]{CompiledJson.Format.OBJECT};
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = ann.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
@@ -2272,7 +2309,7 @@ public class Analysis {
 		return null;
 	}
 
-	public boolean isMinified(@Nullable AnnotationMirror ann) {
+	private boolean isMinified(@Nullable AnnotationMirror ann) {
 		if (ann == null) return false;
 		for (ExecutableElement ee : ann.getElementValues().keySet()) {
 			if ("minified()".equals(ee.toString())) {
@@ -2284,7 +2321,7 @@ public class Analysis {
 	}
 
 	@Nullable
-	public TypeMirror findConverter(Element property) {
+	private TypeMirror findConverter(Element property) {
 		return findConverter(getAnnotation(property, attributeType));
 	}
 
@@ -2302,7 +2339,7 @@ public class Analysis {
 	}
 
 	@Nullable
-	public String findNameAlias(TypeElement element, Element property, @Nullable AnnotationMirror dslAnn, String member) {
+	private String findNameAlias(Element property, @Nullable VariableElement field, @Nullable AnnotationMirror dslAnn, String member) {
 		if (dslAnn != null) {
 			Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 			for (ExecutableElement ee : values.keySet()) {
@@ -2318,21 +2355,23 @@ public class Analysis {
 			String name = matchCustomString(ann, alternativeAlias);
 			if (name != null && !name.isEmpty()) return name;
 		}
-		for (TypeElement inheritance : getTypeHierarchy(element)) {
-			for (VariableElement field : ElementFilter.fieldsIn(inheritance.getEnclosedElements())) {
-				String name = field.getSimpleName().toString();
-				if (!member.equals(name)) continue;
-				if (field.getModifiers().contains(Modifier.NATIVE)
-						|| field.getModifiers().contains(Modifier.TRANSIENT)
-						|| field.getModifiers().contains(Modifier.STATIC)) continue;
-				for (AnnotationMirror ann : field.getAnnotationMirrors()) {
-					String customName = matchCustomString(ann, alternativeAlias);
-					if (customName != null && !customName.isEmpty()) return customName;
-				}
-				return null;
+		if (field != null) {
+			if (field.getModifiers().contains(Modifier.NATIVE)
+					|| field.getModifiers().contains(Modifier.TRANSIENT)
+					|| field.getModifiers().contains(Modifier.STATIC)) return null;
+			for (AnnotationMirror ann : field.getAnnotationMirrors()) {
+				String customName = matchCustomString(ann, alternativeAlias);
+				if (customName != null && !customName.isEmpty()) return customName;
 			}
 		}
 		return null;
+	}
+
+	private boolean hasCustomMarker(Element property) {
+		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
+			if (alternativeAlias.containsKey(ann.getAnnotationType().toString())) return true;
+		}
+		return false;
 	}
 
 	@Nullable

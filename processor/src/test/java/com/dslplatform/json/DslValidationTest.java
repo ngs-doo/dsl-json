@@ -586,4 +586,29 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(PrivateField.class),
 				"com.dslplatform.json.JsonAttribute detected on non accessible field which is ignored during processing. Put annotation on public field instead");
 	}
+
+	@Test
+	public void annotationOnPrivateWithBeanWillNotCreateWarning() {
+		checkValidCompilation(PrivateFieldWithBeans.class);
+	}
+
+	@Test
+	public void collectionWithoutSetter() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(CollectionNoSetter.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("List<string?> s"));
+		Assert.assertTrue(dsl.contains("int x"));
+	}
+
+	@Test
+	public void collectionWithoutSetterAlternative() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(CollectionNoSetterAlternative.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("List<string?> s"));
+		Assert.assertTrue(dsl.contains("int x"));
+	}
 }

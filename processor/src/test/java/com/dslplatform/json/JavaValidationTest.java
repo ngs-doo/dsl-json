@@ -575,6 +575,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void customCtorNameWithGetter() {
+		checkValidCompilation(CustomCtorPropertyNameGetter.class);
+	}
+
+	@Test
 	public void simpleEnums() {
 		checkValidCompilation(WithEnums.class);
 	}
@@ -742,6 +747,30 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				9,
 				compileTestCase(PrivateField.class),
 				"com.dslplatform.json.JsonAttribute detected on non accessible field which is ignored during processing. Put annotation on public field instead.");
+	}
+
+	@Test
+	public void annotationOnPrivateWithBeanWillNotCreateWarning() {
+		checkValidCompilation(PrivateFieldWithBeans.class);
+	}
+
+	@Test
+	public void annotationWithCollectionMissingSetter() {
+		checkValidCompilation(CollectionNoSetter.class);
+	}
+
+	@Test
+	public void annotationWithCollectionMissingSetterNullable() {
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				24,
+				compileTestCase(CollectionNoSetterWarning.class),
+				"com.dslplatform.json.JsonAttribute detected on collection property, but non-nullable marker is missing.");
+	}
+
+	@Test
+	public void annotationWithCollectionMissingSetterAlternative() {
+		checkValidCompilation(CollectionNoSetterAlternative.class);
 	}
 
 	@Test

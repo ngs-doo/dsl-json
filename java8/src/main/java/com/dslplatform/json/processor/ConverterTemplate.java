@@ -393,8 +393,9 @@ class ConverterTemplate {
 		code.append(className).append(" instance) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.last() == '}')");
 		checkMandatory(sortedAttributes, 0);
-		int i = 0;
-		for (AttributeInfo attr : sortedAttributes) {
+		for (int i = 0; i < sortedAttributes.size(); i++) {
+			AttributeInfo attr = sortedAttributes.get(i);
+			if (!attr.canReadInput()) continue;
 			String mn = si.minifiedNames.get(attr.id);
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() == '}') ");
@@ -406,7 +407,6 @@ class ConverterTemplate {
 			code.append(Integer.toString(i)).append("); return; }\n");
 			code.append("\t\t\treader.getNextToken();\n");
 			processPropertyValue(attr, "\t", true);
-			i += 1;
 		}
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) {
 			if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
@@ -456,13 +456,13 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tprivate void bindSlow(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance, int index) throws java.io.IOException {\n");
-		i = 0;
-		for (AttributeInfo attr : sortedAttributes) {
+		for (int i = 0; i < sortedAttributes.size(); i++) {
+			AttributeInfo attr = sortedAttributes.get(i);
+			if (!attr.canReadInput()) continue;
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			if (attr.mandatory || attr.notNull && nonPrimitive) {
 				code.append("\t\t\tboolean __detected_").append(attr.name).append("__ = index > ").append(Integer.toString(i)).append(";\n");
 			}
-			i += 1;
 		}
 		code.append("\t\t\tswitch(reader.getLastHash()) {\n");
 		handleSwitch(si, "\t\t\t", true);
@@ -480,6 +480,7 @@ class ConverterTemplate {
 		code.append("\t\t\t}\n");
 		code.append("\t\t\tif (reader.last() != '}') throw reader.newParseError(\"Expecting '}' for object end\");\n");
 		for (AttributeInfo attr : sortedAttributes) {
+			if (!attr.canReadInput()) continue;
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String defaultValue = context.getDefault(attr);
 			if (attr.isArray && attr.notNull) {
@@ -491,7 +492,7 @@ class ConverterTemplate {
 				if (attr.mandatory) code.append("mandatory");
 				else code.append("not-nullable and doesn't have a default");
 				code.append(" but was not found in JSON\", 0);\n");
-			} else if (attr.notNull && nonPrimitive) {
+			} else if (attr.notNull && nonPrimitive && (attr.field != null || attr.writeMethod != null)) {
 				code.append("\t\t\tif (!__detected_").append(attr.name).append("__ && instance.");
 				if (attr.field != null) code.append(attr.field.getSimpleName());
 				else code.append(attr.writeMethod.getSimpleName()).append("()");
@@ -566,6 +567,7 @@ class ConverterTemplate {
 	private void writeObject(final StructInfo si, final String className, List<AttributeInfo> sortedAttributes) throws IOException {
 		boolean isFirst = true;
 		for (AttributeInfo attr : sortedAttributes) {
+			if (!attr.canWriteOutput()) continue;
 			String prefix = isFirst ? "" : ",";
 			isFirst = false;
 			code.append("\t\tprivate static final byte[] quoted_").append(attr.name).append(" = \"").append(prefix);
@@ -595,6 +597,7 @@ class ConverterTemplate {
 		code.append("\t\tpublic void writeContentFull(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
 		for (AttributeInfo attr : sortedAttributes) {
+			if (!attr.canWriteOutput()) continue;
 			code.append("\t\t\twriter.writeAscii(quoted_").append(attr.name).append(");\n");
 			writeProperty(attr, false, "\t\t\t");
 		}
@@ -604,6 +607,7 @@ class ConverterTemplate {
 		code.append(className).append(" instance) {\n");
 		code.append("\t\t\tboolean hasWritten = false;\n");
 		for (AttributeInfo attr : sortedAttributes) {
+			if (!attr.canWriteOutput()) continue;
 			String defaultValue = context.getDefault(attr);
 
 			boolean checkDefaults = attr.includeToMinimal != JsonAttribute.IncludePolicy.ALWAYS;
@@ -655,6 +659,7 @@ class ConverterTemplate {
 		StringBuilder sb = new StringBuilder();
 		for (int i = start; i < attributes.size(); i++) {
 			AttributeInfo attr = attributes.get(i);
+			if (!attr.canReadInput()) continue;
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String defaultValue = context.getDefault(attr);
 			if (attr.mandatory || attr.notNull && nonPrimitive && "null".equals(defaultValue)) {
@@ -676,7 +681,7 @@ class ConverterTemplate {
 				if (attr.isArray) {
 					defaultValue = "emptyArray_" + attr.name;
 				}
-				if (!"null".equals(defaultValue)) {
+				if (!"null".equals(defaultValue) && (attr.field != null || attr.writeMethod != null)) {
 					sb.append(" if (instance.");
 					if (attr.field != null) sb.append(attr.field.getSimpleName());
 					else sb.append(attr.writeMethod.getSimpleName()).append("()");
@@ -697,6 +702,7 @@ class ConverterTemplate {
 
 	private void checkMandatory(final List<AttributeInfo> attributes, String padding) throws IOException {
 		for (AttributeInfo attr : attributes) {
+			if (!attr.canReadInput()) continue;
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String defaultValue = context.getDefault(attr);
 			if (attr.mandatory || attr.notNull && nonPrimitive && ("null".equals(defaultValue) || context.isObjectInstance(attr))) {
@@ -885,6 +891,7 @@ class ConverterTemplate {
 
 	private void handleSwitch(StructInfo si, String alignment, boolean useInstance) throws IOException {
 		for (AttributeInfo attr : si.attributes.values()) {
+			if (!attr.canReadInput()) continue;
 			String mn = si.minifiedNames.get(attr.id);
 			code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(mn != null ? mn : attr.id))).append(":\n");
 			for (String an : attr.alternativeNames) {
@@ -943,6 +950,7 @@ class ConverterTemplate {
 		String assignmentEnding = useInstance && attr.field == null ? ");\n" : ";\n";
 		StructInfo target = context.structs.get(attr.typeName);
 		if (attr.isJsonObject && attr.converter == null && target != null) {
+			if (attr.field == null && attr.writeMethod == null) throw new RuntimeException("Unexpected code path. Please report this bug");
 			if (!attr.notNull) {
 				code.append(alignment).append("\t\tif (reader.wasNull()) ");
 				if (useInstance) {
@@ -966,6 +974,7 @@ class ConverterTemplate {
 			}
 			code.append(alignment).append("\t\t} else throw reader.newParseError(\"Expecting '{' as start for '").append(attr.name).append("'\");\n");
 		} else if ((target == null || target.converter == null) && attr.converter == null && optimizedConverter != null && optimizedConverter.defaultValue == null && !attr.notNull && optimizedConverter.hasNonNullableMethod()) {
+			if (attr.field == null && attr.writeMethod == null) throw new RuntimeException("Unexpected code path. Please report this bug");
 			if (useInstance) {
 				code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
 				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
@@ -981,7 +990,9 @@ class ConverterTemplate {
 			if (useInstance) {
 				code.append(alignment).append("\t\tinstance.");
 				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
-				else code.append(attr.writeMethod.getSimpleName()).append("(");
+				else if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(");
+				else if (attr.readMethod != null && (attr.isList || attr.isSet)) code.append(attr.readMethod.getSimpleName()).append("().addAll(");
+				else throw new RuntimeException("Unexpected code path. Please report this bug");
 			} else {
 				code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
 			}
