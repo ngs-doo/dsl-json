@@ -12,7 +12,6 @@ import java.time.LocalTime
 import java.math.BigDecimal
 import java.util.*
 
-
 class MainActivity : AppCompatActivity() {
 
     @CompiledJson(onUnknown = CompiledJson.Behavior.IGNORE) //ignore unknown properties (default for objects). to disallow unknown properties in JSON set it to FAIL which will result in exception instead

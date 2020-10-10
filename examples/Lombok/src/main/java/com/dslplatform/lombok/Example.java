@@ -13,6 +13,10 @@ public class Example {
 	@CompiledJson
 	public static class Employee {
 		private String name;
+		//it is supported to use annotation on private field, as long as
+		//there is corresponding public method. In this case, Lombok will
+		//create such a method
+		@JsonAttribute(name = "_id")
 		private int id;
 		//private boolean active;
 	}

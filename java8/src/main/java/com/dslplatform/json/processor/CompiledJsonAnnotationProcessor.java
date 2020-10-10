@@ -1,9 +1,6 @@
 package com.dslplatform.json.processor;
 
-import com.dslplatform.json.CompiledJson;
-import com.dslplatform.json.Configuration;
-import com.dslplatform.json.DslJson;
-import com.dslplatform.json.JsonConverter;
+import com.dslplatform.json.*;
 import com.dslplatform.json.runtime.*;
 
 import javax.annotation.processing.*;
@@ -11,7 +8,6 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
@@ -53,7 +49,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		UNKNOWN("dsljson.unknown"),
 		JACKSON("dsljson.jackson"),
 		JSONB("dsljson.jsonb"),
-		CONFIGURATION("dsljson.configuration");
+		CONFIGURATION("dsljson.configuration"),
+		GENERATED_MARKER("dsljson.generatedmarker");
 
 		final String value;
 
@@ -137,6 +134,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private boolean withJackson = false;
 	private boolean withJsonb = false;
 	private String configurationFileName = null;
+	private String generatedMarker = null;
 
 	private TypeElement jacksonCreatorElement;
 	private DeclaredType jacksonCreatorType;
@@ -170,6 +168,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		String con = options.get(Options.CONFIGURATION.value);
 		if (con != null && con.length() > 0) {
 			configurationFileName = con;
+		}
+		if (options.containsKey(Options.GENERATED_MARKER.value)) {
+			String gm = options.get(Options.GENERATED_MARKER.value);
+			generatedMarker = gm != null ? gm.trim() : "";
 		}
 		jacksonCreatorElement = processingEnv.getElementUtils().getTypeElement("com.fasterxml.jackson.annotation.JsonCreator");
 		jacksonCreatorType = jacksonCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jacksonCreatorElement) : null;
@@ -299,7 +301,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				try {
 					JavaFileObject converterFile = processingEnv.getFiler().createSourceFile(classNamePath, structInfo.element);
 					try (Writer writer = converterFile.openWriter()) {
-						buildCode(writer, processingEnv, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR);
+						buildCode(writer, processingEnv, entry.getKey(), structInfo, structs, typeSupport, unknownTypes != UnknownTypes.ERROR, generatedMarker);
 						generatedFiles.put(classNamePath, structInfo);
 						originatingElements.add(structInfo.element);
 					} catch (IOException e) {
@@ -382,7 +384,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			final StructInfo si,
 			final Map<String, StructInfo> structs,
 			final TypeSupport typeSupport,
-			final boolean allowUnknown) throws IOException {
+			final boolean allowUnknown,
+			@Nullable final String generatedMarker) throws IOException {
 		final Context context = new Context(code, environment, InlinedConverters, Defaults, structs, typeSupport, allowUnknown);
 		final EnumTemplate enumTemplate = new EnumTemplate(context);
 		final ConverterTemplate converterTemplate = new ConverterTemplate(context, enumTemplate);
@@ -396,10 +399,14 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 		code.append("\n\n");
 		final String javaVersion = System.getProperty("java.specification.version");
-		if (javaVersion == null || "1.6".equals(javaVersion) || "1.7".equals(javaVersion) || "1.8".equals(javaVersion)) {
-			code.append("@javax.annotation.Generated(\"dsl_json\")\n");
-		} else {
-			code.append("@javax.annotation.processing.Generated(\"dsl_json\")\n");
+		if (generatedMarker == null) {
+			if (javaVersion == null || "1.6".equals(javaVersion) || "1.7".equals(javaVersion) || "1.8".equals(javaVersion)) {
+				code.append("@javax.annotation.Generated(\"dsl_json\")\n");
+			} else {
+				code.append("@javax.annotation.processing.Generated(\"dsl_json\")\n");
+			}
+		} else if (!generatedMarker.isEmpty()) {
+			code.append(generatedMarker).append("\n");
 		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
 		code.append("\tprivate static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName(\"UTF-8\");\n");

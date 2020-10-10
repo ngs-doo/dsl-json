@@ -9,8 +9,11 @@ import org.specs2.mutable.Specification
 
 class ClassWithObjectTest extends Specification with ScalaCheck {
 
+  private val serv = new ServiceImpl
+
   "simple" >> {
-    implicit val dslJson = new DslJson[Any]()
+    val settings = new DslJson.Settings[Service]().withContext(serv).creatorMarker(classOf[JsonbCreator], false).includeServiceLoader()
+    implicit val dslJson = new DslJson[Service](settings)
     "example 1" >> {
       val os = new ByteArrayOutputStream()
       val m1 = PrivateCtor(1, "abc")
@@ -24,10 +27,33 @@ class ClassWithObjectTest extends Specification with ScalaCheck {
       m.s === "x"
       m.i === 5
     }
+    "will respect different via annotation factory" >> {
+      val os = new ByteArrayOutputStream()
+      val pmf = CreatorInstance(505, serv, "abc")
+      dslJson.encode(pmf, os)
+      os.toString("UTF-8") === """{"s":"abc"}"""
+    }
+    "factories will be propagated around" >> {
+      val os = new ByteArrayOutputStream()
+      val pmf = CreatorInstance(505, serv, "abc")
+      val report = Report("test", Nil, Some(pmf))
+      dslJson.encode(report, os)
+      os.toString("UTF-8") === """{"title":"test","users":[],"creator":{"s":"abc"}}"""
+    }
+  }
+  "annotations" >> {
+    val settings = new DslJson.Settings[Service]().withContext(serv).creatorMarker(classOf[JsonbCreator], true).includeServiceLoader()
+    implicit val dslJson = new DslJson[Service](settings)
+    "will respect same via annotation factory" >> {
+      val os = new ByteArrayOutputStream()
+      val pmf = PrivateMarkedFactoryWithDeps(505)
+      dslJson.encode(pmf, os)
+      os.toString("UTF-8") === """{"i":505,"s":"a"}"""
+    }
   }
   "dependency" >> {
-    val serv = new ServiceImpl
-    implicit val dslJson = new DslJson[Service](new DslJson.Settings[Service]().withContext(serv).creatorMarker(classOf[JsonbCreator], true).includeServiceLoader())
+    val settings = new DslJson.Settings[Service]().withContext(serv).creatorMarker(classOf[JsonbCreator], true).includeServiceLoader()
+    implicit val dslJson = new DslJson[Service](settings)
     "in public ctor" >> {
       val os = new ByteArrayOutputStream()
       val m1 = new CtorWithDeps(1, "abc", serv)
@@ -118,3 +144,11 @@ object PrivateMarkedFactoryWithDeps {
     new PrivateMarkedFactoryWithDeps(i, s, service)
   }
 }
+case class CreatorInstance(x: Int, private val service: Service, s: String) {
+  @JsonbCreator
+  def this(s: String, service: Service) = {
+    this(505, service, s)
+  }
+}
+case class Report(title: String, users: Seq[User] = Nil, creator: Option[CreatorInstance])
+case class User(name: String, age: Option[Int], metadata: Map[String, Int] = Map.empty)

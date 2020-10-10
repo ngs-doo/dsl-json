@@ -6,14 +6,17 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>array-format-example</artifactId>
-	<version>1.9.5</version>
+	<version>1.9.6</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-java8</artifactId>
-			<version>1.9.5</version>
+			<version>1.9.6</version>
 		</dependency>
 	</dependencies>
+	<properties>
+		<exec.mainClass>com.dslplatform.array.Example</exec.mainClass>
+	</properties>
 
 	<build>
 		<plugins>
@@ -25,6 +28,10 @@
 					<compilerVersion>1.8</compilerVersion>
 					<source>1.8</source>
 					<target>1.8</target>
+					<compilerArguments>
+						<!-- disable generated marker on Java 9+ to avoid extra dependency -->
+						<Adsljson.generatedmarker></Adsljson.generatedmarker>
+					</compilerArguments>
 				</configuration>
 			</plugin>
 		</plugins>

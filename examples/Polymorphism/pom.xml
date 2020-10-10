@@ -6,14 +6,17 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>polymorphic-example</artifactId>
-	<version>1.9.5</version>
+	<version>1.9.6</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-java8</artifactId>
-			<version>1.9.5</version>
+			<version>1.9.6</version>
 		</dependency>
 	</dependencies>
+	<properties>
+		<exec.mainClass>com.dslplatform.polymorphism.Example</exec.mainClass>
+	</properties>
 
 	<build>
 		<plugins>

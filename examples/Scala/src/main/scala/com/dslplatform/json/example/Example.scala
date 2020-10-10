@@ -1,22 +1,42 @@
 package com.dslplatform.json.example
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import javax.json.bind.annotation.JsonbCreator
 
 //import implicit conversion for DSL-JSON Scala pimps
 import com.dslplatform.json.DslJson
 
 //when defaults are defined properties can be omitted from JSON - and default value will be used for them
 //types without Option[_] can't be null in input JSON
-case class Report(title: String, users: Seq[User] = Nil)
+case class Report(title: String, users: Seq[User] = Nil, creator: Option[CreatorInstance])
 
 //Primitives in container are correctly analyzed and decoded
 case class User(name: String, age: Option[Int], metadata: Map[String, Int] = Map.empty)
 
+case class CreatorInstance(x: Int, private val service: Service, s: String) {
+
+  //can be included during initialization in which case it will be used
+  @JsonbCreator
+  def this(s: String, service: Service) = {
+    this(505, service, s)
+  }
+}
+
+trait Service
+class ServiceImpl extends Service
+
 object Example extends App {
 
+  val service: Service = new ServiceImpl
   //This configuration will not support unknown types (eg AnyRef,...) or Java8 specific types
   //To allow support for unknown types use new DslJson[Any](Settings.withRuntime())
-  implicit val dslJson = new DslJson[Any]()
+  //Using Service type to inject Service into target classes
+  val settings = new DslJson.Settings[Service]()
+    .withContext(service)
+    //expand visibility is required for allowing usage of private constructors and factories
+    .creatorMarker(classOf[JsonbCreator], false)
+    .includeServiceLoader()
+  implicit val dslJson = new DslJson[Service](settings)
 
   //we can either put encoders on implicit scope, pass them in to encode/decode methods
   //or put dslJson on implicit scope
@@ -30,7 +50,8 @@ object Example extends App {
       User("username1", Some(55)),
       User("username2", Some(-123), Map("abc" -> 123)),
       User("username3", Some(0), Map("x" -> -1, "y" -> 1))
-    )
+    ),
+    creator = Some(CreatorInstance(5, service, "test"))
   )
   //when using encode instead of serialize, types will be analyzed before conversion starts
   dslJson.encode(report, os)
@@ -47,5 +68,4 @@ object Example extends App {
   //val result = dslJson.decode[Report](is)(dslJson.decoder)
 
   println(os)
-  println(result == report)
 }

@@ -215,7 +215,7 @@ object ScalaClassAnalyzer {
     val emptyCtor = raw.getDeclaredConstructors.find(c => c.getParameterCount == 0 && (c.getModifiers & Modifier.PUBLIC) == 1)
     val matchedCtor = Option(ImmutableAnalyzer.findBestCtor(raw, json)).orElse(emptyCtor)
     val markers = json.getRegisteredCreatorMarkers
-    lazy val lookup = {
+    val lookup = {
       val res = new mutable.HashMap[String, Class[_ <: Annotation]]
       val iter = markers.entrySet().iterator()
       while (iter.hasNext) {
@@ -224,57 +224,62 @@ object ScalaClassAnalyzer {
       }
       res
     }
-    tpe.members.find(_.name.toString == "<init>") match {
-      case Some(init) if init.info.paramLists.size == 1 && emptyCtor.isDefined =>
-        val methods = tpe.members.flatMap { it =>
-          if (it.isPublic && it.isMethod) {
-            val eqName = it.name.toString + "_$eq"
-            val setter = tpe.members.find(m => m.isPublic && m.name.toString == eqName)
-            setter.map { s => it -> s }
-          } else None
-        }.toMap
-        if (methods.nonEmpty) analyzeEmptyCtor(manifest, raw, json, methods, reading)
-        else None
-      case Some(init) if init.info.paramLists.size == 1 && matchedCtor.isDefined && (init.isPublic || lookup.values.exists { a => markers.get(a) && matchedCtor.get.getAnnotation(a) != null }) =>
-        analyzeClassWithCtor(manifest, raw, json, matchedCtor.get.asInstanceOf[Constructor[AnyRef]], tpe, init.info.paramLists.head, reading)
-      case _ =>
-        lazy val module = scala.reflect.runtime.currentMirror.staticModule(raw.getName)
-        lazy val instance = scala.reflect.runtime.currentMirror.reflectModule(module).instance.asInstanceOf[AnyRef]
-        lazy val objectClass = instance.getClass
-        (tpe.companion.members.find(it => !markers.isEmpty && it.annotations.exists(a => lookup.contains(a.toString) && (it.isPublic || markers.get(lookup(a.toString))))) match {
-          case Some(init) =>
-            val factoryName = init.name.toString
-            val factories = objectClass.getDeclaredMethods.filter(it => it.getName == factoryName && it.getReturnType == raw && lookup.values.exists(a => it.getAnnotation(a) != null))
-            if (factories.length == 1) {
-              val method = factories(0)
-              if ((method.getModifiers & Modifier.PUBLIC) != Modifier.PUBLIC) {
-                try {
-                  method.setAccessible(true)
-                } catch {
-                  case ex: Exception =>
-                    throw new ConfigurationException("Unable to promote access for private factory " + method + ". Please check environment setup, or set marker on public method", ex)
-                }
-              }
-              analyzeClassWithFactory(manifest, raw, json, tpe, init.asMethod, method, instance, init.info.paramLists.head, reading)
-            } else {
-              None
-            }
-          case _ =>
+    val ctors = tpe.members.filter(_.isConstructor).toIndexedSeq
+    val annotation = matchedCtor.flatMap(ct => lookup.values.find(a => ct.getAnnotation(a) != null)).map(_.getName)
+    val className = raw.getName.replace('$', '.')
+    val mainCtor = ctors.filter(it => it.isPublic && it.owner.fullName == className).lastOption
+    val annotatedCtor = annotation.flatMap { ann =>
+      ctors.find(it => it.info.paramLists.size == 1 && it.annotations.exists(a => a.toString == ann && (it.isPublic || markers.get(lookup(ann)))))
+    }
+    lazy val setters = tpe.members.flatMap { it =>
+      if (it.isPublic && it.isMethod) {
+        val eqName = it.name.toString + "_$eq"
+        val setter = tpe.members.find(m => m.isPublic && m.name.toString == eqName)
+        setter.map { s => it -> s }
+      } else None
+    }.toMap
+    lazy val mainCtorProps = mainCtor.map(_.info.paramLists.head).getOrElse(Nil).toIndexedSeq
+    lazy val annotatedFactory = tpe.companion.members.find(it => !markers.isEmpty && it.annotations.exists(a => lookup.contains(a.toString) && (it.isPublic || markers.get(lookup(a.toString)))))
+    lazy val module = scala.reflect.runtime.currentMirror.staticModule(raw.getName)
+    lazy val instance = scala.reflect.runtime.currentMirror.reflectModule(module).instance.asInstanceOf[AnyRef]
+    lazy val objectClass = instance.getClass
+    if (annotatedCtor.isDefined) {
+      val arguments = annotatedCtor.get.info.paramLists.head.toIndexedSeq
+      analyzeClassWithCtor(manifest, raw, json, matchedCtor.get.asInstanceOf[Constructor[AnyRef]], tpe, arguments, reading)
+    } else if (annotatedFactory.isDefined) {
+      val factory = annotatedFactory.get
+      val factoryName = factory.name.toString
+      val method = objectClass.getDeclaredMethods
+        .find(it => it.getName == factoryName && it.getReturnType == raw && lookup.values.exists(a => it.getAnnotation(a) != null))
+        .getOrElse(throw new ConfigurationException(s"Unable to find factory: $factory in: $raw"))
+      if ((method.getModifiers & Modifier.PUBLIC) != Modifier.PUBLIC) {
+        try {
+          method.setAccessible(true)
+        } catch {
+          case ex: Exception =>
+            throw new ConfigurationException("Unable to promote access for private factory " + method + ". Please check environment setup, or set marker on public method", ex)
+        }
+      }
+      analyzeClassWithFactory(manifest, raw, json, tpe, factory.asMethod, method, instance, factory.info.paramLists.head, reading)
+    } else if (emptyCtor.isDefined && setters.nonEmpty) {
+      analyzeEmptyCtor(manifest, raw, json, setters, reading)
+    } else if (mainCtor.isDefined && matchedCtor.isDefined && matchedCtor.get.getParameterCount == mainCtorProps.size) { //TODO: better matching
+      analyzeClassWithCtor(manifest, raw, json, matchedCtor.get.asInstanceOf[Constructor[AnyRef]], tpe, mainCtorProps, reading)
+    } else if (emptyCtor.isDefined) {
+      analyzeEmptyCtor(manifest, raw, json, setters, reading)
+    } else {
+      val ctorParams = matchedCtor.map(_.getParameterCount).getOrElse(-1)
+      tpe.companion.members.find(it => it.isPublic && it.name.toString == "apply") match {
+        case Some(init) if init.info.paramLists.size == 1 && ctorParams == init.info.paramLists.head.size =>
+          val applies = objectClass.getMethods.filter(it => it.getName == "apply" && it.getReturnType == raw && it.getParameterCount == ctorParams)
+          if (applies.length == 1) {
+            analyzeClassWithFactory(manifest, raw, json, tpe, init.asMethod, applies(0), instance, init.info.paramLists.head, reading)
+          } else {
             None
-        }).orElse({
-          val ctorParams = matchedCtor.map(_.getParameterCount).getOrElse(-1)
-          tpe.companion.members.find(it => it.isPublic && it.name.toString == "apply") match {
-            case Some(init) if init.info.paramLists.size == 1 && ctorParams == init.info.paramLists.head.size =>
-              val applies = objectClass.getMethods.filter(it => it.getName == "apply" && it.getReturnType == raw && it.getParameterCount == ctorParams)
-              if (applies.length == 1) {
-                analyzeClassWithFactory(manifest, raw, json, tpe, init.asMethod, applies(0), instance, init.info.paramLists.head, reading)
-              } else {
-                None
-              }
-            case _ =>
-              None
           }
-        })
+        case _ =>
+          None
+      }
     }
   }
 
@@ -284,11 +289,10 @@ object ScalaClassAnalyzer {
     json: DslJson[_],
     ctor: Constructor[AnyRef],
     tpe: universe.TypeApi,
-    params: List[universe.Symbol],
+    params: scala.collection.Seq[universe.Symbol],
     reading: Boolean
   ) = {
     import scala.collection.JavaConverters._
-    val isProduct = classOf[Product].isAssignableFrom(raw)
     val genericMappings = Generics.analyze(manifest, raw)
     val genericsByName = genericMappings.entrySet().asScala.map(kv => kv.getKey.getTypeName -> kv.getValue).toMap
     val defaults = tpe.companion.members.filter(_.name.toString.startsWith("$lessinit$greater$default$"))
@@ -331,25 +335,15 @@ object ScalaClassAnalyzer {
       val tmp = new LazyImmutableDescription(json, manifest)
       val oldWriter = json.registerWriter(manifest, tmp)
       val oldReader = json.registerReader(manifest, tmp)
-      val writeProps = if (isProduct) {
-        arguments.filter(_.name.nonEmpty).map { ti =>
+      val writeProps = arguments.filter(_.name.nonEmpty).flatMap { ti =>
+        raw.getMethods.find(it => it.getName == ti.name && it.getParameterCount == 0).map { m =>
           Settings.createEncoder(
-            new GetProductIndex(ti.index),
+            new Reflection.ReadMethod(m),
             ti.name,
             json,
-            if (ti.isUnknown) null else ti.concreteType).asInstanceOf[JsonWriter.WriteObject[_]]
-        }.toArray
-      } else {
-        arguments.filter(_.name.nonEmpty).flatMap { ti =>
-          raw.getMethods.find(it => it.getName == ti.name && it.getParameterCount == 0).map { m =>
-            Settings.createEncoder(
-              new Reflection.ReadMethod(m),
-              ti.name,
-              json,
-              if (ti.isUnknown) null else ti.concreteType)
-          }
-        }.toArray
-      }
+            if (ti.isUnknown) null else ti.concreteType)
+        }
+      }.toArray
       val readProps = arguments.flatMap { ti =>
         if (ti.name.isEmpty) {
           None
@@ -390,7 +384,11 @@ object ScalaClassAnalyzer {
     } else None
   }
 
-  private def setupDefaults(params: List[universe.Symbol], arguments: List[TypeInfo], json: DslJson[_]): Array[AnyRef] = {
+  private def setupDefaults(
+    params: scala.collection.Seq[universe.Symbol],
+    arguments: scala.collection.Seq[TypeInfo],
+    json: DslJson[_]
+  ): Array[AnyRef] = {
     val defArgs = new Array[AnyRef](params.size)
     arguments.zipWithIndex.foreach { case (a, i) =>
       if (a.getDefault.isDefined) {
@@ -514,10 +512,6 @@ object ScalaClassAnalyzer {
         None
       }
     } else None
-  }
-
-  private class GetProductIndex(index: Int) extends Settings.Function[Product, Any] {
-    override def apply(t: Product): Any = t.productElement(index)
   }
 
   private def analyzeEmptyCtor(

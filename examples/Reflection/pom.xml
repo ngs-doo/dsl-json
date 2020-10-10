@@ -6,19 +6,24 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>reflection-example</artifactId>
-	<version>1.9.5</version>
+	<version>1.9.6</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-java8</artifactId>
-			<version>1.9.5</version>
+			<version>1.9.6</version>
 		</dependency>
 	</dependencies>
+	<properties>
+		<exec.mainClass>com.dslplatform.reflection.Example</exec.mainClass>
+	</properties>
+
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.0</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>

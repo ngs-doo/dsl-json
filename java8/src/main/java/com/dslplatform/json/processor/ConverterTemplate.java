@@ -950,13 +950,13 @@ class ConverterTemplate {
 		String assignmentEnding = useInstance && attr.field == null ? ");\n" : ";\n";
 		StructInfo target = context.structs.get(attr.typeName);
 		if (attr.isJsonObject && attr.converter == null && target != null) {
-			if (attr.field == null && attr.writeMethod == null) throw new RuntimeException("Unexpected code path. Please report this bug");
 			if (!attr.notNull) {
 				code.append(alignment).append("\t\tif (reader.wasNull()) ");
 				if (useInstance) {
 					code.append("instance.");
 					if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
-					else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
+					else if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(null);\n");
+					else throw new RuntimeException("Unexpected code path in JsonObject. Please report this bug");
 				} else {
 					code.append("_").append(attr.name).append("_ = null;\n");
 				}
@@ -966,7 +966,8 @@ class ConverterTemplate {
 			if (useInstance) {
 				code.append(alignment).append("\t\t\tinstance.");
 				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
-				else code.append(attr.writeMethod.getSimpleName()).append("(");
+				else if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(");
+				else throw new RuntimeException("Unexpected code path in JsonObject. Please report this bug");
 				code.append(attr.typeName).append(".").append(target.jsonObjectReaderPath).append(".deserialize(reader)").append(assignmentEnding);
 			} else {
 				code.append(alignment).append("\t\t\t_").append(attr.name).append("_ = ").append(attr.typeName);
@@ -974,8 +975,10 @@ class ConverterTemplate {
 			}
 			code.append(alignment).append("\t\t} else throw reader.newParseError(\"Expecting '{' as start for '").append(attr.name).append("'\");\n");
 		} else if ((target == null || target.converter == null) && attr.converter == null && optimizedConverter != null && optimizedConverter.defaultValue == null && !attr.notNull && optimizedConverter.hasNonNullableMethod()) {
-			if (attr.field == null && attr.writeMethod == null) throw new RuntimeException("Unexpected code path. Please report this bug");
 			if (useInstance) {
+				if (attr.field == null && attr.writeMethod == null) {
+					throw new RuntimeException("Unexpected code path for optimized converter. Please report this bug");
+				}
 				code.append(alignment).append("\t\tif (reader.wasNull()) instance.");
 				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = null;\n");
 				else code.append(attr.writeMethod.getSimpleName()).append("(null);\n");

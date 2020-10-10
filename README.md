@@ -38,10 +38,10 @@ More information about DSL can be found on [DSL Platform](https://dsl-platform.c
 
 ## @CompiledJson annotation
 
-Annotation processor works by analyzing Java classes and it's explicit or implicit references.
+Annotation processor works by analyzing Java classes and its explicit or implicit references.
 Processor outputs encoding/decoding code/descriptions at compile time.
 This avoids the need for reflection, provides compile time safety and allows for some advanced configurations.
-Processor will register optimized converters into `META-INF/services`.
+Processor can register optimized converters into `META-INF/services`.
 This will be loaded during `DslJson` initialization with `ServiceLoader`.
 Since v1.8.0 naming conventions will be used for Java8 converters (`package._NAME_DslJsonConverter`) which works even without loading services upfront.
 Converters will be created even for dependent objects which don't have `@CompiledJson` annotation.
@@ -60,7 +60,7 @@ To use Java8 annotation processor its sufficient to just reference Java8 version
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-java8</artifactId>
-      <version>1.9.5</version>
+      <version>1.9.6</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -72,8 +72,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.9.5'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.5'
+      compile 'com.dslplatform:dsl-json-java8:1.9.6'
+      annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.6'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -96,15 +96,15 @@ DSL Platform annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.9.5</version>
+      <version>1.9.6</version>
       <scope>provided</scope>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.9.5'
-      annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.5'
+      compile 'com.dslplatform:dsl-json:1.9.6'
+      annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.6'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -257,7 +257,7 @@ Library can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>1.9.5</version>
+      <version>1.9.6</version>
     </dependency>
 
 ## Runtime analysis
@@ -350,7 +350,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.5"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.6"
 
 ### Kotlin support
 
@@ -359,8 +359,8 @@ When used with Gradle, configuration can be done via:
 
     apply plugin: 'kotlin-kapt'
     dependencies {
-      compile "com.dslplatform:dsl-json-java8:1.9.5"
-      kapt "com.dslplatform:dsl-json-java8:1.9.5"
+      compile "com.dslplatform:dsl-json-java8:1.9.6"
+      kapt "com.dslplatform:dsl-json-java8:1.9.6"
     }
 
 ## FAQ
@@ -380,8 +380,8 @@ When used with Gradle, configuration can be done via:
  ***Q***: DSL Platform annotation processor checks for new DSL compiler version on every compilation. How can I disable that?  
  ***A***: If you specify custom `dsljson.compiler` processor option or put `dsl-compiler.exe` in project root it will use that one and will not check online for updates
 
- ***Q***: When using Android with desugaring I get: `Exception in thread "main" java.lang.IllegalArgumentException: Type without superclass: module-info`. How can I fix that?  
- ***A***: It's a known Android Studio problem. It's fixed in [version 3.3](https://androidstudio.googleblog.com/2018/06/android-studio-33-canary-1-available.html)
+ ***Q***: I get compilation error when annotation procesor runs. What can I do?  
+ ***A***: Common error is missing dependency on Java 9+ for annotation marker. You can add such dependency on configure compiler arguments to exclude it via `dsljson.generatedmarker`. Otherwise its best to inspect the generated code, look if there is some configuration error, like referencing class without sufficient visibility. If there is nothing wrong with the setup, there might be a bug with the DSL-JSON annotation processor in which case it would be helpful to provide a minimal reproducible
 
  ***Q***: What is this DSL Platform?  
  ***A***: DSL Platform is a proprietary compiler written in C#. Since v1.7.0 DSL Platform is no longer required to create compile-time databinding. Compiler is free to use, but access to source code is licensed. If you want access to the compiler or need performance consulting [let us know](https://dsl-platform.com)
