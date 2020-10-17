@@ -6,10 +6,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.*;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -622,20 +619,25 @@ public class Analysis {
 			return;
 		}
 		TypeElement converter = (TypeElement) el;
-		DeclaredType target = null;
+		TypeMirror target = null;
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = dslAnn.getElementValues();
 		for (ExecutableElement ee : values.keySet()) {
 			if (ee.toString().equals("target()")) {
-				target = (DeclaredType) values.get(ee).getValue();
+				target = (TypeMirror) values.get(ee).getValue();
 				break;
 			}
 		}
 		if (target == null) return;
-		ConverterInfo signature = validateConverter(converter, target.asElement(), target.toString());
+		String javaType = target.toString();
+		String objectType = objectName(javaType);
+		Element declaredType = objectType.equals(javaType)
+				? types.asElement(target)
+				: elements.getTypeElement(objectType);
+		ConverterInfo signature = validateConverter(converter, declaredType, objectType);
 		//TODO: throw an error if multiple non-compatible converters were found!?
 		if (!structs.containsKey(target.toString())) {
 			String name = "struct" + structs.size();
-			TypeElement element = (TypeElement) target.asElement();
+			TypeElement element = (TypeElement) declaredType;
 			String binaryName = elements.getBinaryName(element).toString();
 			StructInfo info = new StructInfo(signature, converterType, element, name, binaryName);
 			structs.put(target.toString(), info);

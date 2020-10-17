@@ -10,13 +10,13 @@
 	<description>Embedding compiled time JSON conversion for DSL Platform JSON library (https://dsl-platform.com)</description>
 	<url>https://github.com/ngs-doo/dsl-json</url>
 	<packaging>jar</packaging>
-	<version>1.9.6</version>
+	<version>1.9.7</version>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-clc</artifactId>
-			<version>1.9.8</version>
+			<version>1.9.9</version>
 		</dependency>
 		<dependency>
 			<groupId>com.dslplatform</groupId>

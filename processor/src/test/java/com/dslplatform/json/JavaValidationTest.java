@@ -790,4 +790,9 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(ExplicitWithMissingMarker.class),
 				"Unable to find matching property: 'identity' used in constructor. Since EXPLICIT object");
 	}
+
+	@Test
+	public void globalPrimitiveConverter() {
+		checkValidCompilation(PrimitiveIntConverter.class);
+	}
 }
