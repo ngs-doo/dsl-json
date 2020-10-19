@@ -635,12 +635,12 @@ public class Analysis {
 				: elements.getTypeElement(objectType);
 		ConverterInfo signature = validateConverter(converter, declaredType, objectType);
 		//TODO: throw an error if multiple non-compatible converters were found!?
-		if (!structs.containsKey(target.toString())) {
+		if (!structs.containsKey(javaType)) {
 			String name = "struct" + structs.size();
 			TypeElement element = (TypeElement) declaredType;
 			String binaryName = elements.getBinaryName(element).toString();
-			StructInfo info = new StructInfo(signature, converterType, element, name, binaryName);
-			structs.put(target.toString(), info);
+			StructInfo info = new StructInfo(signature, converterType, element, name, objectType.equals(javaType) ? binaryName : javaType);
+			structs.put(javaType, info);
 		}
 	}
 
