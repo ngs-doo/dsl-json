@@ -44,6 +44,14 @@ public class StringsTest {
 		}
 	}
 
+	@CompiledJson
+	public static class NonNullableStrings {
+		@NonNull
+		private String s;
+		public String getS() { return s; }
+		public void setS(String v) { this.s = v; }
+	}
+
 	private final DslJson<Object> dslJson = new DslJson<>();
 
 	@Test
@@ -147,5 +155,17 @@ public class StringsTest {
 				Assert.assertTrue(ex.getMessage().contains("Property 's3' is not allowed to be null"));
 			}
 		}
+	}
+
+	@Test
+	public void nonNullableMarker() throws IOException {
+		NonNullableStrings ns = new NonNullableStrings();
+		ns.setS("abc");
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(ns, os);
+		Assert.assertEquals("{\"s\":\"abc\"}", os.toString("UTF-8"));
+		byte[] input = os.toByteArray();
+		NonNullableStrings res = dslJson.deserialize(NonNullableStrings.class, input, input.length);
+		Assert.assertEquals("abc", res.getS());
 	}
 }

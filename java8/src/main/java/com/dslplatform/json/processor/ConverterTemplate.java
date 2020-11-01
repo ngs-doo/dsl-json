@@ -494,9 +494,7 @@ class ConverterTemplate {
 				code.append(" but was not found in JSON\", 0);\n");
 			} else if (attr.notNull && nonPrimitive && (attr.field != null || attr.writeMethod != null)) {
 				code.append("\t\t\tif (!__detected_").append(attr.name).append("__ && instance.");
-				if (attr.field != null) code.append(attr.field.getSimpleName());
-				else code.append(attr.writeMethod.getSimpleName()).append("()");
-				code.append(" == null) {\n");
+				code.append(attr.readProperty).append(" == null) {\n");
 				code.append("\t\t\t\tinstance.");
 				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ").append(defaultValue).append(";\n");
 				else code.append(attr.writeMethod.getSimpleName()).append("(").append(defaultValue).append(");\n");
@@ -682,12 +680,9 @@ class ConverterTemplate {
 					defaultValue = "emptyArray_" + attr.name;
 				}
 				if (!"null".equals(defaultValue) && (attr.field != null || attr.writeMethod != null)) {
-					sb.append(" if (instance.");
-					if (attr.field != null) sb.append(attr.field.getSimpleName());
-					else sb.append(attr.writeMethod.getSimpleName()).append("()");
-					sb.append(" == null) instance.");
-					if (attr.field != null) sb.append(attr.field.getSimpleName()).append(" = ").append(defaultValue).append("; ");
-					else sb.append(attr.writeMethod.getSimpleName()).append("(").append(defaultValue).append("); ");
+					sb.append("\t\t\t\tif (instance.").append(attr.readProperty).append(" == null) instance.");
+					if (attr.field != null) sb.append(attr.field.getSimpleName()).append(" = ").append(defaultValue).append(";\n");
+					else sb.append(attr.writeMethod.getSimpleName()).append("(").append(defaultValue).append(");\n");
 				}
 			}
 		}
@@ -783,7 +778,7 @@ class ConverterTemplate {
 			} else {
 				code.append("new ").append(info.builder.type.toString()).append("()");
 			}
-			for(AttributeInfo att : info.attributes.values()) {
+			for (AttributeInfo att : info.attributes.values()) {
 				code.append(".").append(att.writeMethod.getSimpleName()).append("(_").append(att.name).append("_)");
 			}
 			code.append(".").append(info.builder.build.getSimpleName()).append("();\n");
