@@ -1,6 +1,7 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
+import com.dslplatform.json.runtime.TypeDefinition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -146,5 +147,17 @@ public class InterfaceTest {
 		Assert.assertEquals(hi.i.getClass(), res.i.getClass());
 		Assert.assertEquals(hi.c.y(), res.c.y());
 		Assert.assertEquals(hi.c.getClass(), res.c.getClass());
+	}
+
+	@Test
+	public void usingInterfaceDirectly() throws IOException {
+		DslJson dslJsonRuntime = new DslJson(Settings.basicSetup());
+		List<Iface2> list = Arrays.asList(null, new IsIfaceCustom2(3, Collections.emptyList()));
+		JsonWriter writer = dslJsonRuntime.newWriter();
+		dslJsonRuntime.serialize(writer, new TypeDefinition<List<Iface2>>(){}.type, list);
+		Assert.assertEquals("[null,{\"@type\":\"custom\",\"y\":3,\"list\":[]}]", writer.toString());
+		List<Iface2> res = (List) dslJson.deserialize(new TypeDefinition<List<Iface2>>(){}.type, writer.getByteBuffer(), writer.size());
+		Assert.assertEquals(2, res.size());
+		Assert.assertEquals(IsIfaceCustom2.class, res.get(1).getClass());
 	}
 }
