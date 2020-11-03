@@ -96,5 +96,10 @@ class CollectionTest extends Specification with ScalaCheck {
       val value = dslJson.decode[Array[Boolean]](input)
       Array(true, false, true) === value
     }
+    "base indexed seq deserialize" >> {
+      val input = "[2,3]".getBytes("UTF-8")
+      val value = dslJson.decode[scala.collection.IndexedSeq[Long]](input)
+      IndexedSeq(2L, 3L) === value
+    }
   }
 }

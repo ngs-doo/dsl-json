@@ -27,11 +27,17 @@ object ScalaConversionMapping {
       Some(CollectionConversion(() => new mutable.Stack(), ab => new mutable.Stack(ab.size).addAll(ab)))
     } else if (classOf[mutable.Queue[_]].isAssignableFrom(collection)) {
       Some(CollectionConversion(() => new mutable.Queue(), ab => new mutable.Queue(ab.size).addAll(ab)))
-    } else if (classOf[IndexedSeq[_]].isAssignableFrom(collection)) {
-      val empty = IndexedSeq.empty
+    } else if (classOf[scala.collection.mutable.IndexedSeq[_]].isAssignableFrom(collection)) {
+      val empty = scala.collection.mutable.IndexedSeq.empty
       Some(CollectionConversion(() => empty, identity))
-    } else if (classOf[Seq[_]].isAssignableFrom(collection)) {
-      val empty = Seq.empty
+    } else if (classOf[scala.collection.mutable.Seq[_]].isAssignableFrom(collection)) {
+      val empty = scala.collection.mutable.Seq.empty
+      Some(CollectionConversion(() => empty, identity))
+    } else if (classOf[scala.collection.IndexedSeq[_]].isAssignableFrom(collection)) {
+      val empty = scala.collection.IndexedSeq.empty
+      Some(CollectionConversion(() => empty, identity))
+    } else if (classOf[scala.collection.Seq[_]].isAssignableFrom(collection)) {
+      val empty = scala.collection.Seq.empty
       Some(CollectionConversion(() => empty, identity))
     } else {
       None

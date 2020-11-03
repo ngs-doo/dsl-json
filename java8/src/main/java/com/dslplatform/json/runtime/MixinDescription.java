@@ -8,7 +8,7 @@ import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, JsonReader.ReadObject<T> {
+public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, JsonReader.ReadObject<T>, ExplicitDescription {
 
 	private static final Charset utf8 = Charset.forName("UTF-8");
 	private static final int defaultTypeHash = DecodePropertyInfo.calcHash("$type");

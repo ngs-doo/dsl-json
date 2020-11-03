@@ -51,7 +51,7 @@ object ScalaEnumAsTraitAnalyzer {
     signature: Class[T],
     encoders: util.HashMap[T, Array[Byte]],
     decoders: Array[DecodePropertyInfo[T]]
-  ) extends JsonWriter.WriteObject[T] with JsonReader.ReadObject[T] {
+  ) extends JsonWriter.WriteObject[T] with JsonReader.ReadObject[T] with ExplicitDescription {
 
     override def write(writer: JsonWriter, value: T): Unit = {
       val bytes = encoders.get(value)

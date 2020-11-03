@@ -4,7 +4,7 @@ import com.dslplatform.json.*;
 
 import java.lang.reflect.Type;
 
-public final class MixinWriter<T> implements JsonWriter.WriteObject<T> {
+public final class MixinWriter<T> implements JsonWriter.WriteObject<T>, ExplicitDescription {
 
 	private final Type manifest;
 	private final FormatDescription<T>[] descriptions;

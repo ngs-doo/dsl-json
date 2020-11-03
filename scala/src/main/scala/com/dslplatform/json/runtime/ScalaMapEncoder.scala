@@ -6,7 +6,7 @@ final class ScalaMapEncoder[K, V](
   checkForConversionToString: Boolean,
   keyEncoder: Option[JsonWriter.WriteObject[K]],
   valueEncoder: Option[JsonWriter.WriteObject[V]]
-) extends JsonWriter.WriteObject[scala.collection.Map[K, V]] {
+) extends JsonWriter.WriteObject[scala.collection.Map[K, V]] with ExplicitDescription {
   require(json ne null, "json can't be null")
   require(keyEncoder ne null, "keyEncoder can't be null")
   require(valueEncoder ne null, "valueEncoder can't be null")

@@ -4,7 +4,7 @@ import com.dslplatform.json.*;
 
 import java.util.Map;
 
-public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.WriteObject<T> {
+public final class MapEncoder<K, V, T extends Map<K, V>> implements JsonWriter.WriteObject<T>, ExplicitDescription {
 
 	private final DslJson json;
 	private final boolean checkForConversionToString;

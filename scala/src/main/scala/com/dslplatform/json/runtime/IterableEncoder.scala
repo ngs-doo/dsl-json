@@ -6,7 +6,7 @@ import scala.collection.Iterable
 final class IterableEncoder[E](
   json: DslJson[_],
   encoder: Option[JsonWriter.WriteObject[E]]
-) extends JsonWriter.WriteObject[Iterable[E]] {
+) extends JsonWriter.WriteObject[Iterable[E]] with ExplicitDescription {
 
   require(manifest ne null, "manifest can't be null")
   require(encoder ne null, "encoder can't be null")

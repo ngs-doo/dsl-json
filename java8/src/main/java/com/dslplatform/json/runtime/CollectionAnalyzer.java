@@ -137,7 +137,7 @@ public abstract class CollectionAnalyzer {
 		if (Object.class != element && writer == null) {
 			return null;
 		}
-		final JsonWriter.WriteObject<?> elementWriter = Settings.isKnownType(element) || writer instanceof MixinDescription
+		final JsonWriter.WriteObject<?> elementWriter = Settings.isKnownType(element) || writer instanceof ExplicitDescription
 				? writer
 				: null;
 		final CollectionEncoder encoder = new CollectionEncoder<>(json, elementWriter);

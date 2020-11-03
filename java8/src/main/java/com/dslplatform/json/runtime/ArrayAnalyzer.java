@@ -110,7 +110,7 @@ public abstract class ArrayAnalyzer {
 		if (Object.class != element && writer == null) {
 			return null;
 		}
-		final JsonWriter.WriteObject<?> elementWriter = Settings.isKnownType(element) || writer instanceof MixinDescription
+		final JsonWriter.WriteObject<?> elementWriter = Settings.isKnownType(element) || writer instanceof ExplicitDescription
 				? writer
 				: null;
 		final ArrayEncoder<T> encoder = new ArrayEncoder(json, elementWriter);

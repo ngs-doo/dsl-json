@@ -2,7 +2,7 @@ package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.*;
 
-public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]> {
+public final class ArrayEncoder<T> implements JsonWriter.WriteObject<T[]>, ExplicitDescription {
 
 	private final DslJson json;
 	private final JsonWriter.WriteObject<T> encoder;

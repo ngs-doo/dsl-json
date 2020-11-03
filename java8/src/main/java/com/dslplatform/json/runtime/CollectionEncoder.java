@@ -5,7 +5,7 @@ import com.dslplatform.json.*;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public final class CollectionEncoder<E, T extends Collection<E>> implements JsonWriter.WriteObject<T> {
+public final class CollectionEncoder<E, T extends Collection<E>> implements JsonWriter.WriteObject<T>, ExplicitDescription {
 
 	private final DslJson json;
 	private final JsonWriter.WriteObject<E> encoder;
