@@ -81,7 +81,7 @@ public class AttributeInfo {
 		this.includeToMinimal = includeToMinimal;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
-		this.typeName = type.toString();
+		this.typeName = stripAnnotations(type.toString());
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 		this.isArray = type.getKind() == TypeKind.ARRAY;
 		this.isList = isList;
@@ -135,5 +135,19 @@ public class AttributeInfo {
 					: null;
 		}
 		return null;
+	}
+
+	static String stripAnnotations(String typeName) {
+		if (typeName.startsWith("(@")) {
+			int separatorAt = typeName.lastIndexOf(" :: ");
+			int lastParenthesis = typeName.lastIndexOf(')');
+			if (separatorAt != -1 && lastParenthesis > separatorAt) {
+				String baseType = typeName.substring(separatorAt + 4, lastParenthesis);
+				return lastParenthesis == typeName.length() - 1
+						? baseType
+						: baseType + typeName.substring(lastParenthesis + 1);
+			}
+		}
+		return typeName;
 	}
 }

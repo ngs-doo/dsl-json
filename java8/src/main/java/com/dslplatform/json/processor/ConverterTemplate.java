@@ -112,8 +112,7 @@ class ConverterTemplate {
 		}
 
 		for (AttributeInfo attr : si.attributes.values()) {
-			String typeName = attr.type.toString();
-			OptimizedConverter converter = context.inlinedConverters.get(typeName);
+			OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
 		    StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && converter == null && !isStaticEnum(attr) && !attr.isJsonObject) {
 				List<String> types = attr.collectionContent(context.typeSupport, context.structs);
@@ -185,8 +184,7 @@ class ConverterTemplate {
 		}
 
 		for (AttributeInfo attr : si.attributes.values()) {
-			String typeName = attr.type.toString();
-			boolean hasConverter = context.inlinedConverters.containsKey(typeName);
+			boolean hasConverter = context.inlinedConverters.containsKey(attr.typeName);
 			List<String> types = attr.collectionContent(context.typeSupport, context.structs);
 			StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && !hasConverter && !isStaticEnum(attr) && !attr.isJsonObject) {
@@ -246,7 +244,7 @@ class ConverterTemplate {
 				if (attr.isArray) {
 					TypeMirror arrayComponentType = ((ArrayType) attr.type).getComponentType();
 					code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = ");
-					String content = arrayComponentType.toString();
+					String content = AttributeInfo.stripAnnotations(arrayComponentType.toString());
 					code.append("(").append(content).append("[]) java.lang.reflect.Array.newInstance((Class<?>) ");
 					buildArrayType(arrayComponentType, attr.typeVariablesIndex);
 					code.append(", 0);\n");
@@ -271,7 +269,7 @@ class ConverterTemplate {
 		if (attr.isGeneric) {
 			return createTypeSignature(type, attr.typeVariablesIndex);
 		}
-		String typeName = type.toString();
+		String typeName = AttributeInfo.stripAnnotations(type.toString());
 		return typeOrClass(nonGenericObject(typeName), typeName);
 	}
 
@@ -287,7 +285,7 @@ class ConverterTemplate {
 
 	private void createLazyReaderAndWriter(AttributeInfo attr, TypeMirror mirror, String namePrefix) throws IOException {
 		String type = extractTypeSignature(attr, mirror);
-		String typeName = mirror.toString();
+		String typeName = AttributeInfo.stripAnnotations(mirror.toString());
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append(";\n");
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append("() {\n");
 		code.append("\t\t\tif (").append(namePrefix).append("reader_").append(attr.name).append(" == null) {\n");
@@ -320,10 +318,11 @@ class ConverterTemplate {
 	}
 
 	private void createTypeSignature(TypeMirror type, Map<String, Integer> typeVariableIndexes, StringBuilder builder) {
+		String typeName = AttributeInfo.stripAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {
-				builder.append(type.toString()).append(".class");
+				builder.append(typeName).append(".class");
 			} else {
 				TypeElement typeElement = (TypeElement) declaredType.asElement();
 				builder.append("com.dslplatform.json.runtime.Generics.makeParameterizedType(").append(typeElement.getQualifiedName()).append(".class");
@@ -341,17 +340,17 @@ class ConverterTemplate {
 		} else if (typeVariableIndexes.containsKey(type.toString())) {
 			builder.append("actualTypes[").append(typeVariableIndexes.get(type.toString())).append("]");
 		} else {
-			builder.append(type.toString()).append(".class");
+			builder.append(typeName).append(".class");
 		}
 	}
 
 	private void buildArrayType(TypeMirror type, Map<String, Integer> typeVariableIndexes) throws IOException {
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
+			String fullName = AttributeInfo.stripAnnotations(type.toString());
 			if (declaredType.getTypeArguments().isEmpty()) {
-				code.append(type.toString());
+				code.append(fullName);
 			} else {
-				String fullName = type.toString();
 				int first = fullName.indexOf('<');
 				code.append(fullName, 0, first);
 			}
@@ -364,7 +363,7 @@ class ConverterTemplate {
 		} else if (typeVariableIndexes.containsKey(type.toString())) {
 			code.append("actualTypes[").append(Integer.toString(typeVariableIndexes.get(type.toString()))).append("]");
 		} else {
-			code.append(type.toString()).append(".class");
+			code.append(AttributeInfo.stripAnnotations(type.toString())).append(".class");
 		}
 	}
 
@@ -517,8 +516,7 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		for (AttributeInfo attr : sortedAttributes) {
-			String typeName = attr.type.toString();
-			code.append("\t\t\t").append(typeName).append(" _").append(attr.name).append("_ = ");
+			code.append("\t\t\t").append(attr.typeName).append(" _").append(attr.name).append("_ = ");
 			boolean nonPrimitive = attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String defaultValue = context.getDefault(attr);
 			if (attr.isArray && attr.notNull) {
@@ -609,8 +607,7 @@ class ConverterTemplate {
 			String defaultValue = context.getDefault(attr);
 
 			boolean checkDefaults = attr.includeToMinimal != JsonAttribute.IncludePolicy.ALWAYS;
-			String typeName = attr.type.toString();
-			boolean isPrimitive = !typeName.equals(Analysis.objectName(typeName));
+			boolean isPrimitive = !attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String readValue = "instance." + attr.readProperty;
 
 			if (checkDefaults) {
@@ -754,7 +751,7 @@ class ConverterTemplate {
 		code.append("\t\tpublic ").append(className).append(" readContent(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		int i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
-			code.append("\t\t\tfinal ").append(attr.type.toString()).append(" _").append(attr.name).append("_;\n");
+			code.append("\t\t\tfinal ").append(attr.typeName).append(" _").append(attr.name).append("_;\n");
 			code.append("\t\t\treader.getNextToken();\n");
 			processPropertyValue(attr, "\t", false);
 			i--;
@@ -833,11 +830,10 @@ class ConverterTemplate {
 	}
 
 	private void writeProperty(AttributeInfo attr, boolean checkedDefault, String alignment) throws IOException {
-		String typeName = attr.type.toString();
 		String readValue = "instance." + attr.readProperty;
 		StructInfo target = context.structs.get(attr.typeName);
-		String objectType = Analysis.objectName(typeName);
-		boolean canBeNull = !checkedDefault && objectType.equals(typeName);
+		String objectType = Analysis.objectName(attr.typeName);
+		boolean canBeNull = !checkedDefault && objectType.equals(attr.typeName);
 		if (attr.notNull && canBeNull) {
 			code.append(alignment).append("if (").append(readValue);
 			code.append(" == null) throw new com.dslplatform.json.ConfigurationException(\"Property '").append(attr.name).append("' is not allowed to be null\");\n");
@@ -855,7 +851,7 @@ class ConverterTemplate {
 		} else if (target != null && target.converter != null) {
 				code.append(target.converter.fullName).append(".").append(target.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
 		} else {
-			OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
+			OptimizedConverter optimizedConverter = context.inlinedConverters.get(attr.typeName);
 			List<String> types = attr.collectionContent(context.typeSupport, context.structs);
 			if (optimizedConverter != null) {
 				code.append(optimizedConverter.nonNullableEncoder("writer", readValue)).append(";\n");
@@ -940,8 +936,7 @@ class ConverterTemplate {
 		if (attr.notNull) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) throw reader.newParseErrorAt(\"Property '").append(attr.name).append("' is not allowed to be null\", 0);\n");
 		}
-		String typeName = attr.type.toString();
-		OptimizedConverter optimizedConverter = context.inlinedConverters.get(typeName);
+		OptimizedConverter optimizedConverter = context.inlinedConverters.get(attr.typeName);
 		String assignmentEnding = useInstance && attr.field == null ? ");\n" : ";\n";
 		StructInfo target = context.structs.get(attr.typeName);
 		if (attr.isJsonObject && attr.converter == null && target != null) {
@@ -1000,7 +995,7 @@ class ConverterTemplate {
 			} else if (target != null && target.converter != null) {
 				code.append(target.converter.fullName).append(".").append(target.converter.reader).append(".read(reader)");
 			} else if (optimizedConverter != null) {
-				boolean isPrimitive = !typeName.equals(Analysis.objectName(typeName));
+				boolean isPrimitive = !attr.typeName.equals(Analysis.objectName(attr.typeName));
 				if (attr.notNull || isPrimitive) {
 					code.append(optimizedConverter.nonNullableDecoder()).append("(reader)");
 				} else {

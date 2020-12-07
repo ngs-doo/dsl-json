@@ -5,6 +5,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import javax.validation.constraints.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
@@ -13,6 +14,7 @@ public class RecursiveTest {
 
 	@CompiledJson
 	public static class Recursive {
+		@NotNull
 		public int x;
 		public Recursive r;
 	}

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.validation.constraints.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ public class CollectionTest {
 	public static class AlternativeMarkers {
 		@JsonProperty
 		@NonNull
+		@NotNull
 		private final List<String> collection = new ArrayList<String>();
 		public List<String> getCollection() { return collection; }
 	}

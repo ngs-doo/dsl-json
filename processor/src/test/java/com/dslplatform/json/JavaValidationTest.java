@@ -744,7 +744,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void annotationOnPrivateWillCreateWarning() {
 		assertCompilationReturned(
 				Diagnostic.Kind.WARNING,
-				9,
+				8,
 				compileTestCase(PrivateField.class),
 				"com.dslplatform.json.JsonAttribute detected on non accessible field which is ignored during processing. Put annotation on public field instead.");
 	}

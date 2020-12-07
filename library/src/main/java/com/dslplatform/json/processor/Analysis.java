@@ -2,7 +2,6 @@ package com.dslplatform.json.processor;
 
 import com.dslplatform.json.*;
 
-import javax.annotation.Nonnull;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
@@ -894,6 +893,23 @@ public class Analysis {
 				: type;
 	}
 
+	private TypeMirror unpackType(TypeMirror type) {
+		String typeName = type.toString();
+		if (typeName.startsWith("(@")) {
+			//TODO: hacky fix for annotation removal from types
+			//To fix it nicely Java8 AnnotatedType signature is required ;(
+			if (type.getKind().isPrimitive()) {
+				return types.getPrimitiveType(type.getKind());
+			}
+			String actualType = AttributeInfo.stripAnnotations(typeName);
+			if (!actualType.contains("<") && !actualType.contains("[")) {
+				Element element = types.asElement(type);
+				return element.asType();
+			}
+		}
+		return type;
+	}
+
 	private void analyzeAttribute(
 			StructInfo info,
 			TypeMirror originalType,
@@ -908,8 +924,8 @@ public class Analysis {
 		AnnotationMirror annotation = access.annotation;
 		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element, annotation)
 				&& (info.objectFormatPolicy != CompiledJson.ObjectFormatPolicy.EXPLICIT || annotation != null)) {
-			TypeMirror referenceType = access.field != null ? access.field.asType() : access.read.getReturnType();
-			TypeMirror type = originalType.getKind() == TypeKind.TYPEVAR && info.genericSignatures.containsKey(originalType.toString()) ? info.genericSignatures.get(originalType.toString()) : originalType;
+			TypeMirror referenceType = unpackType(access.field != null ? access.field.asType() : access.read.getReturnType());
+			TypeMirror type = unpackType(originalType.getKind() == TypeKind.TYPEVAR && info.genericSignatures.containsKey(originalType.toString()) ? info.genericSignatures.get(originalType.toString()) : originalType);
 			Element referenceElement = types.asElement(referenceType);
 			TypeMirror converterMirror = findConverter(annotation);
 			final ConverterInfo converter;

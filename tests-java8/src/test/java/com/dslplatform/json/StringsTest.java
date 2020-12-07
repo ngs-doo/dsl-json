@@ -4,6 +4,7 @@ import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.validation.constraints.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -21,6 +22,7 @@ public class StringsTest {
 		public String s1;
 		public String s2;
 		@JsonAttribute(nullable = false)
+		@NotNull
 		public String[] s3;
 		public String[] s4;
 	}

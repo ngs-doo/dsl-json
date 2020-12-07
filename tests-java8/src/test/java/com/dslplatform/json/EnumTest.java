@@ -7,6 +7,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.validation.constraints.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -39,6 +40,7 @@ public class EnumTest {
 		public MyEnum1 e1;
 		private MyEnum2 e2;
 		@JsonAttribute(nullable = false)
+		@NotNull
 		public MyEnum1 e3;
 
 		public MyEnum2 e2() {

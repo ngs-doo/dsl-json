@@ -336,7 +336,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 	@Nullable
 	private String getDslType(AttributeInfo attr, Map<String, StructInfo> structs) {
-		String simpleType = SupportedTypes.get(attr.type.toString());
+		String simpleType = SupportedTypes.get(attr.typeName);
 		boolean hasNonNullable = attr.notNull;
 		if (simpleType != null) {
 			return simpleType.endsWith("?") && hasNonNullable
@@ -358,8 +358,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 		}
 		String collectionEnding = hasNonNullable ? ">" : ">?";
 		for (Map.Entry<String, String> kv : SupportedCollections.entrySet()) {
-			if (attr.type.toString().startsWith(kv.getKey())) {
-				String typeName = attr.type.toString().substring(kv.getKey().length(), attr.type.toString().length() - 1);
+			if (attr.typeName.startsWith(kv.getKey())) {
+				String typeName = attr.typeName.substring(kv.getKey().length(), attr.typeName.length() - 1);
 				simpleType = SupportedTypes.get(typeName);
 				if (simpleType != null) {
 					return kv.getValue() + "<" + simpleType + collectionEnding;
@@ -370,7 +370,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 				}
 			}
 		}
-		StructInfo info = structs.get(attr.type.toString());
+		StructInfo info = structs.get(attr.typeName);
 		if (info != null) {
 			return "json." + info.name + (hasNonNullable ? "" : "?");
 		}
@@ -385,7 +385,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			AttributeInfo attr,
 			@Nullable String dslType,
 			Map<String, StructInfo> structs) {
-		String javaType = attr.type.toString();
+		String javaType = attr.typeName;
 		boolean fieldAccess = attr.field != null;
 		for (int i = 0; i < CheckTypes.size(); i++) {
 			IncompatibleTypes it = CheckTypes.get(i);
@@ -417,7 +417,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			dsl.append(" ");
 			dsl.append(attr.name);
 
-			StructInfo target = findReferenced(attr.type, structs);
+			StructInfo target = findReferenced(attr.type, attr.typeName, structs);
 			String alias = attr.id;
 			if (info.minifiedNames.containsKey(attr.id)) {
 				alias = info.minifiedNames.get(attr.id);
@@ -471,18 +471,18 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 	}
 
 	@Nullable
-	private static StructInfo findReferenced(TypeMirror type, Map<String, StructInfo> structs) {
+	private static StructInfo findReferenced(TypeMirror type, String typeName, Map<String, StructInfo> structs) {
 		if (type instanceof ArrayType) {
 			ArrayType at = (ArrayType) type;
 			String elementType = at.getComponentType().toString();
 			return structs.get(elementType);
 		}
 		for (Map.Entry<String, String> kv : SupportedCollections.entrySet()) {
-			if (type.toString().startsWith(kv.getKey())) {
-				String typeName = type.toString().substring(kv.getKey().length(), type.toString().length() - 1);
-				return structs.get(typeName);
+			if (typeName.startsWith(kv.getKey())) {
+				String rawTypeName = typeName.substring(kv.getKey().length(), typeName.length() - 1);
+				return structs.get(rawTypeName);
 			}
 		}
-		return structs.get(type.toString());
+		return structs.get(typeName);
 	}
 }
