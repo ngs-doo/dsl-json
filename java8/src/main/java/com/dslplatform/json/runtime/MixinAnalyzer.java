@@ -93,12 +93,12 @@ public abstract class MixinAnalyzer {
 		final LazyMixinDescription lazy = new LazyMixinDescription(json, manifest);
 		if (!hasEncoder) json.registerWriter(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
-		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
+		final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
 		for (final Field f : raw.getDeclaredFields()) {
 			analyzeField(json, foundWrite, f, genericMappings);
 		}
 		for (final Method m : raw.getDeclaredMethods()) {
-			analyzeMethods(m, json, foundWrite, genericMappings);
+			analyzeMethods(m, json, foundWrite, m.getDeclaringClass(), genericMappings);
 		}
 		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
@@ -112,10 +112,10 @@ public abstract class MixinAnalyzer {
 			final DslJson json,
 			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
 			final Field field,
-			final HashMap<Type, Type> genericMappings) {
+			final GenericsMapper genericMappings) {
 		if (!canRead(field.getModifiers())) return;
 		final Type type = field.getGenericType();
-		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final Type concreteType = genericMappings.makeConcrete(type, field.getDeclaringClass());
 		final boolean isUnknown = Generics.isUnknownType(type);
 		if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
 			foundWrite.put(
@@ -132,13 +132,14 @@ public abstract class MixinAnalyzer {
 			final Method mget,
 			final DslJson json,
 			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
-			final HashMap<Type, Type> genericMappings) {
+			final Class<?> raw,
+			final GenericsMapper genericMappings) {
 		if (mget.getParameterTypes().length != 0) return;
 		if (!canRead(mget.getModifiers())) return;
 		final String name = Analysis.beanOrActualName(mget.getName());
 		if (foundWrite.containsKey(name)) return;
 		final Type type = mget.getGenericReturnType();
-		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final Type concreteType = genericMappings.makeConcrete(type, raw);
 		final boolean isUnknown = Generics.isUnknownType(type);
 		if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
 			foundWrite.put(
