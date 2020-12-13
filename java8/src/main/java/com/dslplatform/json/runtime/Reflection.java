@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.Objects;
 
 abstract class Reflection {
 
@@ -21,6 +22,8 @@ abstract class Reflection {
 		public Object apply(@Nullable Object instance) {
 			try {
 				return field.get(instance);
+			} catch (IllegalArgumentException e){
+				throw new ConfigurationException("Unable to find field " + field.getName() + " in " + field.getDeclaringClass() + " for object " + instance, e);
 			} catch (IllegalAccessException e) {
 				throw new ConfigurationException("Unable to read field " + field.getName() + " of " + field.getDeclaringClass(), e);
 			}
@@ -38,6 +41,8 @@ abstract class Reflection {
 		public Object apply(@Nullable Object instance) {
 			try {
 				return method.invoke(instance);
+			} catch (IllegalArgumentException e){
+				throw new ConfigurationException("Unable to invoke method " + method.getName() + " in class " + method.getDeclaringClass() + " for object " + instance, e);
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new ConfigurationException("Unable to call method " + method.getName() + " of " + method.getDeclaringClass(), e);
 			}
@@ -55,6 +60,8 @@ abstract class Reflection {
 		public void accept(Object instance, @Nullable Object value) {
 			try {
 				field.set(instance, value);
+			} catch (IllegalArgumentException e){
+				throw new ConfigurationException("Unable to set field " + field.getName() + " in " + field.getDeclaringClass() + " of object " + instance + " to value of type " + (value == null ? "Void" : value.getClass().getCanonicalName()), e);
 			} catch (IllegalAccessException e) {
 				throw new ConfigurationException("Unable to set field " + field.getName() + " of " + field.getDeclaringClass(), e);
 			}
@@ -72,6 +79,8 @@ abstract class Reflection {
 		public void accept(Object instance, @Nullable Object value) {
 			try {
 				method.invoke(instance, value);
+			} catch (IllegalArgumentException e){
+				throw new ConfigurationException("Unable to invoke method " + method.getName() + " in " + method.getDeclaringClass() + " on object " + instance + " with an argument of type " + (value == null ? "Void" : value.getClass().getCanonicalName()), e);
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new ConfigurationException("Unable to call method " + method.getName() + " of " + method.getDeclaringClass(), e);
 			}
