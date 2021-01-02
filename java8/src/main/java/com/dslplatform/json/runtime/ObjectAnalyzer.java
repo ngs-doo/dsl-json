@@ -162,13 +162,13 @@ public abstract class ObjectAnalyzer {
 		if (!hasDecoder) json.registerReader(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
 		final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
-		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
+		final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
 		int index = 0;
 		for (final Field f : raw.getFields()) {
-			if (analyzeField(json, foundWrite, foundRead, f, index, genericMappings)) index++;
+			if (analyzeField(json, foundWrite, foundRead, f, index, f.getDeclaringClass(), genericMappings)) index++;
 		}
 		for (final Method m : raw.getMethods()) {
-			if (analyzeMethods(m, raw, json, foundWrite, foundRead, index, genericMappings)) index++;
+			if (analyzeMethods(m, raw, json, foundWrite, foundRead, index, m.getDeclaringClass(), genericMappings)) index++;
 		}
 		//TODO: don't register bean if something can't be serialized
 		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
@@ -311,10 +311,11 @@ public abstract class ObjectAnalyzer {
 			final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead,
 			final Field field,
 			final int index,
-			final HashMap<Type, Type> genericMappings) {
+			final Class<?> raw,
+			final GenericsMapper genericMappings) {
 		if (!canRead(field.getModifiers()) || !canWrite(field.getModifiers())) return false;
 		final Type type = field.getGenericType();
-		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final Type concreteType = genericMappings.makeConcrete(type, raw);
 		final boolean isUnknown = Generics.isUnknownType(type);
 		if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
 			foundWrite.put(
@@ -347,7 +348,8 @@ public abstract class ObjectAnalyzer {
 			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite,
 			final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead,
 			final int index,
-			final HashMap<Type, Type> genericMappings) {
+			final Class<?> declaringClass,
+			final GenericsMapper genericMappings) {
 		if (mget.getParameterTypes().length != 0) return false;
 		final String setName = mget.getName().startsWith("get") ? "set" + mget.getName().substring(3) : mget.getName();
 		final Method mset;
@@ -360,7 +362,7 @@ public abstract class ObjectAnalyzer {
 		if (!canRead(mget.getModifiers()) || !canWrite(mset.getModifiers())) return false;
 		if (foundRead.containsKey(name) && foundWrite.containsKey(name)) return false;
 		final Type type = mget.getGenericReturnType();
-		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final Type concreteType = genericMappings.makeConcrete(type,declaringClass);
 		final boolean isUnknown = Generics.isUnknownType(type);
 		if (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null) {
 			foundWrite.put(

@@ -165,8 +165,8 @@ public abstract class ImmutableAnalyzer {
 		final JsonReader.ReadObject oldReader = json.registerReader(manifest, lazy);
 		final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();
 		final LinkedHashMap<String, JsonWriter.WriteObject> methods = new LinkedHashMap<>();
-		final HashMap<Type, Type> genericMappings = Generics.analyze(manifest, raw);
-		final Object[] defArgs = findDefaultArguments(paramTypes, genericMappings, json);
+		final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
+		final Object[] defArgs = findDefaultArguments(paramTypes, raw, genericMappings, json);
 		final int contextCount = json.context != null && Arrays.asList(defArgs).contains(json.context) ? 1 : 0;
 		final LinkedHashMap<String, Field> matchingFields = new LinkedHashMap<>();
 		for (final Field f : raw.getFields()) {
@@ -192,7 +192,7 @@ public abstract class ImmutableAnalyzer {
 				for (int i = 0; i < paramTypes.length; i++) {
 					final Field f = matchingFields.get(names[i]);
 					if (f == null && json.context != null && json.context == defArgs[i]) continue;
-					if (f == null || !analyzeField(json, paramTypes[i], fields, f, genericMappings)) {
+					if (f == null || !analyzeField(json, paramTypes[i], fields, f, raw, genericMappings)) {
 						return unregister(manifest, json, oldWriter, oldReader);
 					}
 				}
@@ -201,7 +201,7 @@ public abstract class ImmutableAnalyzer {
 				for (int i = 0; i < paramTypes.length; i++) {
 					final Method m = matchingMethods.get(names[i]);
 					if (m == null && json.context != null && json.context == defArgs[i]) continue;
-					if (m == null || !analyzeMethod(m, json, paramTypes[i], names[i], methods, genericMappings)) {
+					if (m == null || !analyzeMethod(m, json, paramTypes[i], names[i], methods, raw, genericMappings)) {
 						return unregister(manifest, json, oldWriter, oldReader);
 					}
 				}
@@ -213,7 +213,7 @@ public abstract class ImmutableAnalyzer {
 				for (Type p : paramTypes) {
 					for (Map.Entry<String, Field> kv : matchingFields.entrySet()) {
 						final Field f = kv.getValue();
-						if (analyzeField(json, p, fields, f, genericMappings)) {
+						if (analyzeField(json, p, fields, f, raw, genericMappings)) {
 							matchingFields.remove(kv.getKey());
 							names[typeIndex.get(p)] = kv.getKey();
 							break;
@@ -228,7 +228,7 @@ public abstract class ImmutableAnalyzer {
 				for (Type p : paramTypes) {
 					for (Map.Entry<String, Method> kv : matchingMethods.entrySet()) {
 						final Method m = kv.getValue();
-						if (analyzeMethod(m, json, p, kv.getKey(), methods, genericMappings)) {
+						if (analyzeMethod(m, json, p, kv.getKey(), methods, raw, genericMappings)) {
 							matchingMethods.remove(kv.getKey());
 							names[typeIndex.get(p)] = kv.getKey();
 							break;
@@ -244,7 +244,7 @@ public abstract class ImmutableAnalyzer {
 		final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[attributesCount];
 		int idx = 0;
 		for (int i = 0; i < paramTypes.length; i++) {
-			final Type concreteType = Generics.makeConcrete(paramTypes[i], genericMappings);
+			final Type concreteType = genericMappings.makeConcrete(paramTypes[i], raw);
 			if (json.context != null && defArgs[i] == json.context) continue;
 			readProps[idx++] = new DecodePropertyInfo<>(names[i], false, false, i, false, new WriteMember(json, concreteType, factory != null ? factory : ctor));
 		}
@@ -371,11 +371,12 @@ public abstract class ImmutableAnalyzer {
 
 	private static Object[] findDefaultArguments(
 			final Type[] paramTypes,
-			final HashMap<Type, Type> genericMappings,
+			final Class<?> raw,
+			final GenericsMapper genericMappings,
 			final DslJson json) {
 		final Object[] defArgs = new Object[paramTypes.length];
 		for (int i = 0; i < paramTypes.length; i++) {
-			final Type concreteType = Generics.makeConcrete(paramTypes[i], genericMappings);
+			final Type concreteType = genericMappings.makeConcrete(paramTypes[i], raw);
 			if (json.context != null && json.context.getClass().equals(concreteType)) {
 				defArgs[i] = json.context;
 			} else {
@@ -390,9 +391,10 @@ public abstract class ImmutableAnalyzer {
 			final Type paramType,
 			final LinkedHashMap<String, JsonWriter.WriteObject> found,
 			final Field field,
-			final HashMap<Type, Type> genericMappings) {
+			final Class<?> raw,
+			final GenericsMapper genericMappings) {
 		final Type type = field.getGenericType();
-		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final Type concreteType = genericMappings.makeConcrete(type, raw);
 		final boolean isUnknown = Generics.isUnknownType(type);
 		if (type.equals(paramType)
 				&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
@@ -413,10 +415,10 @@ public abstract class ImmutableAnalyzer {
 			final DslJson json,
 			final Type paramType,
 			final String name,
-			final HashMap<String, JsonWriter.WriteObject> found,
-			final HashMap<Type, Type> genericMappings) {
+			final HashMap<String, JsonWriter.WriteObject> found, Class<?> raw,
+			final GenericsMapper genericMappings) {
 		final Type type = mget.getGenericReturnType();
-		final Type concreteType = Generics.makeConcrete(type, genericMappings);
+		final Type concreteType = genericMappings.makeConcrete(type, raw);
 		final boolean isUnknown = Generics.isUnknownType(type);
 		if (type.equals(paramType)
 				&& (isUnknown || json.tryFindWriter(concreteType) != null && json.tryFindReader(concreteType) != null)) {
