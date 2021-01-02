@@ -123,7 +123,7 @@ public final class JsonWriter {
 	 * Optimized method for writing 'null' into the JSON.
 	 */
 	public final void writeNull() {
-		if ((position + 4)>= buffer.length) {
+		if ((position + 4) >= buffer.length) {
 			enlargeOrFlush(position, 0);
 		}
 		final int s = position;
@@ -395,7 +395,7 @@ public final class JsonWriter {
 	 * String will not be escaped according to JSON escaping rules.
 	 *
 	 * @param value ascii string
-	 * @param len part of the provided string to use
+	 * @param len   part of the provided string to use
 	 */
 	@SuppressWarnings("deprecation")
 	public final void writeAscii(final String value, final int len) {
@@ -448,9 +448,9 @@ public final class JsonWriter {
 	 * Copy part of byte buffer into JSON as is.
 	 * Provided buffer can't be null.
 	 *
-	 * @param buf byte buffer to copy
+	 * @param buf    byte buffer to copy
 	 * @param offset in buffer to start from
-	 * @param len part of buffer to copy
+	 * @param len    part of buffer to copy
 	 */
 	public final void writeRaw(final byte[] buf, final int offset, final int len) {
 		if (position + len >= buffer.length) {
@@ -586,7 +586,7 @@ public final class JsonWriter {
 	 * It will not reset the stream as target,
 	 * meaning new usages of the JsonWriter will try to use the already provided stream.
 	 * It will not do anything if stream was not used
-	 *
+	 * <p>
 	 * To reset the stream to null use reset() or reset(OutputStream) methods.
 	 */
 	public final void flush() {
@@ -630,7 +630,7 @@ public final class JsonWriter {
 	 * Array can't be null nor can't contain null values (it will result in NullPointerException).
 	 *
 	 * @param array input objects
-	 * @param <T> type of objects
+	 * @param <T>   type of objects
 	 */
 	public <T extends JsonObject> void serialize(final T[] array) {
 		writeByte(ARRAY_START);
@@ -650,8 +650,8 @@ public final class JsonWriter {
 	 * Array can't be null nor can't contain null values (it will result in NullPointerException).
 	 *
 	 * @param array input objects
-	 * @param len size of array which should be serialized
-	 * @param <T> type of objects
+	 * @param len   size of array which should be serialized
+	 * @param <T>   type of objects
 	 */
 	public <T extends JsonObject> void serialize(final T[] array, final int len) {
 		writeByte(ARRAY_START);
@@ -673,7 +673,7 @@ public final class JsonWriter {
 	 * it's better to call the serialize(Collection&lt;JsonObject&gt;) method instead.
 	 *
 	 * @param list input objects
-	 * @param <T> type of objects
+	 * @param <T>  type of objects
 	 */
 	public <T extends JsonObject> void serialize(final List<T> list) {
 		writeByte(ARRAY_START);
@@ -692,9 +692,9 @@ public final class JsonWriter {
 	 * Array can be null and can contain null values.
 	 * Instance serializer will not be invoked for null values
 	 *
-	 * @param array array to serialize
+	 * @param array   array to serialize
 	 * @param encoder instance serializer
-	 * @param <T> type of object
+	 * @param <T>     type of object
 	 */
 	public <T> void serialize(@Nullable final T[] array, final WriteObject<T> encoder) {
 		if (array == null) {
@@ -730,9 +730,9 @@ public final class JsonWriter {
 	 * When using .get(index) is not appropriate,
 	 * it's better to call the serialize(Collection&lt;JsonObject&gt;, WriteObject) method instead.
 	 *
-	 * @param list list to serialize
+	 * @param list    list to serialize
 	 * @param encoder instance serializer
-	 * @param <T> type of object
+	 * @param <T>     type of object
 	 */
 	public <T> void serialize(@Nullable final List<T> list, final WriteObject<T> encoder) {
 		if (list == null) {
@@ -779,6 +779,10 @@ public final class JsonWriter {
 		writeByte(ARRAY_END);
 	}
 
+	public void serializeRaw(@Nullable final List list, final WriteObject encoder) {
+		serialize(list, encoder);
+	}
+
 	/**
 	 * Convenience method for serializing collection through instance serializer (WriteObject).
 	 * Collection can be null and can contain null values.
@@ -815,6 +819,10 @@ public final class JsonWriter {
 		writeByte(ARRAY_END);
 	}
 
+	public void serializeRaw(@Nullable final Collection collection, final WriteObject encoder) {
+		serialize(collection, encoder);
+	}
+
 	public <K, V> void serialize(@Nullable final Map<K, V> map, final WriteObject<K> keyEncoder, final WriteObject<V> valueEncoder) {
 		if (map == null) {
 			writeNull();
@@ -837,6 +845,10 @@ public final class JsonWriter {
 			}
 		}
 		writeByte(OBJECT_END);
+	}
+
+	public void serializeRaw(@Nullable final Map map, final WriteObject keyEncoder, final WriteObject valueEncoder) {
+		serialize(map, keyEncoder, valueEncoder);
 	}
 
 	public <T> void writeQuoted(final JsonWriter.WriteObject<T> keyWriter, final T key) {

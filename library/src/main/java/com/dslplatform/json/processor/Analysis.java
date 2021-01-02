@@ -10,6 +10,7 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
+import java.io.Console;
 import java.util.*;
 
 public class Analysis {
@@ -957,7 +958,22 @@ public class Analysis {
 						hasUnknown = true;
 					}
 					if (partKind == PartKind.TYPE_VARIABLE) {
-						typeVariablesIndex.put(partTypeName, info.typeParametersNames.indexOf(partTypeName));
+						int typeIndex = info.typeParametersNames.indexOf(partTypeName);
+						if (typeIndex >= 0) {
+							typeVariablesIndex.put(partTypeName, typeIndex);
+						} else {
+							TypeMirror mirror = info.genericSignatures.get(partTypeName);
+							if (mirror == null) {
+								hasError = true;
+								messager.printMessage(
+										Diagnostic.Kind.ERROR,
+										"Unable to resolve generic signature on " + name + " in " + info.name,
+										element,
+										annotation);
+							} else {
+								partTypeName = mirror.toString();
+							}
+						}
 					}
 					if (partTypeName.equals(info.element.toString())) {
 						hasOwnerStructType = true;
@@ -990,6 +1006,7 @@ public class Analysis {
 							isJsonObject,
 							usedTypes,
 							typeVariablesIndex,
+							info.genericSignatures,
 							hasOwnerStructType);
 			String[] alternativeNames = attr.annotation == null ? null : getAlternativeNames(attr.annotation);
 			if (alternativeNames != null) {
@@ -1416,7 +1433,7 @@ public class Analysis {
 	}
 
 	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts, Set<TypeMirror> usedTypes) {
-		String typeName = target.toString();
+		String typeName = AttributeInfo.stripAnnotations(target.toString());
 		if (typeSupport.isSupported(typeName)) {
 			usedTypes.add(target);
 			if (isRawType(target)) {
@@ -1466,6 +1483,11 @@ public class Analysis {
 			case TYPEVAR:
 				usedTypes.add(target);
 				parts.put(typeName, PartKind.TYPE_VARIABLE);
+				break;
+
+			case WILDCARD:
+				WildcardType wt = (WildcardType)target;
+				analyzePartsRecursively(wt.getExtendsBound(), parts, usedTypes);
 				break;
 
 			default:

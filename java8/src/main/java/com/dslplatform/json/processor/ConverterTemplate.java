@@ -6,11 +6,9 @@ import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.*;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
@@ -98,7 +96,24 @@ class ConverterTemplate {
 	private void asFormatConverter(final StructInfo si, final String name, final String className, final boolean binding) throws IOException {
 		code.append("\tpublic final static class ").append(name);
 		if (si.isParameterized) {
-			code.append("<").append(String.join(", ", si.typeParametersNames)).append(">");
+			code.append('<');
+			final List<? extends TypeParameterElement> params = si.element.getTypeParameters();
+			for (int i = 0; i < params.size(); i++) {
+				if (i > 0) {
+					code.append(", ");
+				}
+				final TypeParameterElement tpe = params.get(i);
+				code.append(tpe.getSimpleName().toString());
+				if (!tpe.getBounds().isEmpty()) {
+					code.append(" extends ");
+					code.append(tpe.getBounds().get(0).toString());
+					for (int x = 1; x < tpe.getBounds().size(); x++) {
+						code.append(", ");
+						code.append(tpe.getBounds().get(x).toString());
+					}
+				}
+			}
+			code.append('>');
 		}
 		code.append(" implements com.dslplatform.json.runtime.FormatConverter<");
 		if (binding) {
@@ -122,7 +137,7 @@ class ConverterTemplate {
 					String content = extractSingleType(attr, types);
 					TypeMirror mirror = context.useLazyResolution(content) ? context.findType(content) : null;
 					if (mirror != null) {
-						createLazyReaderAndWriter(attr, mirror, "");
+						createLazyReaderAndWriter(attr, mirror, "", si);
 					} else {
 						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(content).append("> reader_").append(attr.name).append(";\n");
 						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(content).append("> writer_").append(attr.name).append(";\n");
@@ -130,23 +145,23 @@ class ConverterTemplate {
 				} else if (types != null && types.size() == 2) {
 					TypeMirror keyMirror = context.useLazyResolution(types.get(0)) ? context.findType(types.get(0)) : null;
 					if (keyMirror != null) {
-						createLazyReaderAndWriter(attr, keyMirror, "key_");
+						createLazyReaderAndWriter(attr, keyMirror, "key_", si);
 					} else {
 						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(types.get(0)).append("> key_reader_").append(attr.name).append(";\n");
 						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(types.get(0)).append("> key_writer_").append(attr.name).append(";\n");
 					}
 					TypeMirror valueMirror = context.useLazyResolution(types.get(1)) ? context.findType(types.get(1)) : null;
 					if (valueMirror != null) {
-						createLazyReaderAndWriter(attr, valueMirror, "value_");
+						createLazyReaderAndWriter(attr, valueMirror, "value_", si);
 					} else {
 						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(types.get(1)).append("> value_reader_").append(attr.name).append(";\n");
 						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(types.get(1)).append("> value_writer_").append(attr.name).append(";\n");
 					}
 				} else {
-					createLazyReaderAndWriter(attr, attr.type, "");
+					createLazyReaderAndWriter(attr, attr.type, "", si);
 				}
 				if (attr.isArray) {
-					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType());
+					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType(), si.genericSignatures);
 					code.append("\t\tprivate final ").append(content).append("[] emptyArray_").append(attr.name).append(";\n");
 				}
 			} else if (converter != null && attr.isArray && attr.notNull) {
@@ -154,7 +169,7 @@ class ConverterTemplate {
 					code.append("\t\tprivate static final ").append(attr.typeName).append(" emptyArray_").append(attr.name);
 					code.append(" = ").append(converter.defaultValue).append(";\n");
 				} else {
-					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType());
+					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType(), si.genericSignatures);
 					code.append("\t\tprivate final ").append(content).append("[] emptyArray_").append(attr.name).append(";\n");
 				}
 			}
@@ -223,9 +238,9 @@ class ConverterTemplate {
 				} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 					String type;
 					if (attr.isArray) {
-						type = createTypeSignature(((ArrayType) attr.type).getComponentType(), attr.typeVariablesIndex);
+						type = createTypeSignature(((ArrayType) attr.type).getComponentType(), attr.typeVariablesIndex, si.genericSignatures);
 					} else {
-						type = createTypeSignature(attr.type, attr.typeVariablesIndex);
+						type = createTypeSignature(attr.type, attr.typeVariablesIndex, si.genericSignatures);
 					}
 
 					code.append("\t\t\tjava.lang.reflect.Type manifest_").append(attr.name).append(" = ").append(type).append(";\n");
@@ -244,9 +259,9 @@ class ConverterTemplate {
 				if (attr.isArray) {
 					TypeMirror arrayComponentType = ((ArrayType) attr.type).getComponentType();
 					code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = ");
-					String content = AttributeInfo.stripAnnotations(arrayComponentType.toString());
+					String content = Context.extractRawType(arrayComponentType, si.genericSignatures);
 					code.append("(").append(content).append("[]) java.lang.reflect.Array.newInstance((Class<?>) ");
-					buildArrayType(arrayComponentType, attr.typeVariablesIndex);
+					buildArrayType(arrayComponentType, attr.typeVariablesIndex, si.genericSignatures);
 					code.append(", 0);\n");
 				}
 			}
@@ -265,9 +280,9 @@ class ConverterTemplate {
 		}
 	}
 
-	private String extractTypeSignature(AttributeInfo attr, TypeMirror type) {
-		if (attr.isGeneric) {
-			return createTypeSignature(type, attr.typeVariablesIndex);
+	private String extractTypeSignature(AttributeInfo attr, TypeMirror type, Map<String, TypeMirror> genericSignatures) {
+		if (attr.isGeneric || !attr.usedTypes.isEmpty()) {
+			return createTypeSignature(type, attr.typeVariablesIndex, genericSignatures);
 		}
 		String typeName = AttributeInfo.stripAnnotations(type.toString());
 		return typeOrClass(nonGenericObject(typeName), typeName);
@@ -283,9 +298,9 @@ class ConverterTemplate {
 		return types.get(0);
 	}
 
-	private void createLazyReaderAndWriter(AttributeInfo attr, TypeMirror mirror, String namePrefix) throws IOException {
-		String type = extractTypeSignature(attr, mirror);
-		String typeName = AttributeInfo.stripAnnotations(mirror.toString());
+	private void createLazyReaderAndWriter(AttributeInfo attr, TypeMirror mirror, String namePrefix, StructInfo si) throws IOException {
+		String type = extractTypeSignature(attr, mirror, si.genericSignatures);
+		String typeName = attr.buildTypeName(mirror, si.genericSignatures);
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append(";\n");
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append("() {\n");
 		code.append("\t\t\tif (").append(namePrefix).append("reader_").append(attr.name).append(" == null) {\n");
@@ -311,13 +326,20 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 	}
 
-	private String createTypeSignature(TypeMirror type, Map<String, Integer> typeVariableIndexes) {
+	private String createTypeSignature(
+			TypeMirror type,
+			Map<String, Integer> typeVariableIndexes,
+			Map<String, TypeMirror> genericSignatures) {
 		StringBuilder builder = new StringBuilder();
-		createTypeSignature(type, typeVariableIndexes, builder);
+		createTypeSignature(type, typeVariableIndexes, genericSignatures, builder);
 		return builder.toString();
 	}
 
-	private void createTypeSignature(TypeMirror type, Map<String, Integer> typeVariableIndexes, StringBuilder builder) {
+	private void createTypeSignature(
+			TypeMirror type,
+			Map<String, Integer> typeVariableIndexes,
+			Map<String, TypeMirror> genericSignatures,
+			StringBuilder builder) {
 		String typeName = AttributeInfo.stripAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
@@ -328,43 +350,94 @@ class ConverterTemplate {
 				builder.append("com.dslplatform.json.runtime.Generics.makeParameterizedType(").append(typeElement.getQualifiedName()).append(".class");
 				for (TypeMirror typeArgument : declaredType.getTypeArguments()) {
 					builder.append(", ");
-					createTypeSignature(typeArgument, typeVariableIndexes, builder);
+					createTypeSignature(typeArgument, typeVariableIndexes, genericSignatures, builder);
 				}
 				builder.append(")");
 			}
-		} else if (type.getKind() == TypeKind.ARRAY) {
+			return;
+		}
+		if (type.getKind() == TypeKind.ARRAY) {
 			ArrayType arrayType = (ArrayType) type;
 			builder.append("com.dslplatform.json.runtime.Generics.makeArrayType(");
-			createTypeSignature(arrayType.getComponentType(), typeVariableIndexes, builder);
+			createTypeSignature(arrayType.getComponentType(), typeVariableIndexes, genericSignatures, builder);
 			builder.append(")");
-		} else if (typeVariableIndexes.containsKey(type.toString())) {
-			builder.append("actualTypes[").append(typeVariableIndexes.get(type.toString())).append("]");
-		} else {
-			builder.append(typeName).append(".class");
+			return;
 		}
+		if (type instanceof WildcardType) {
+			WildcardType wt = (WildcardType) type;
+			createTypeSignature(wt.getExtendsBound(), typeVariableIndexes, genericSignatures, builder);
+			return;
+		}
+		//TODO: not sure if there are some shenanigans with type signatures, so try the original one first
+		if (typeVariableIndexes.containsKey(type.toString())) {
+			Integer index = typeVariableIndexes.get(type.toString());
+			if (index != null && index >= 0) {
+				builder.append("actualTypes[").append(index).append("]");
+				return;
+			}
+		}
+		if (type instanceof TypeVariable) {
+			if (typeVariableIndexes.containsKey(typeName)) {
+				Integer index = typeVariableIndexes.get(typeName);
+				if (index != null && index >= 0) {
+					builder.append("actualTypes[").append(index).append("]");
+					return;
+				}
+			}
+			TypeMirror mirror = genericSignatures.get(typeName);
+			if (mirror != null && mirror != type) {
+				createTypeSignature(mirror, typeVariableIndexes, genericSignatures, builder);
+				return;
+			}
+		}
+		builder.append(typeName).append(".class");
 	}
 
-	private void buildArrayType(TypeMirror type, Map<String, Integer> typeVariableIndexes) throws IOException {
+	private void buildArrayType(
+			TypeMirror type,
+			Map<String, Integer> typeVariableIndexes,
+			Map<String, TypeMirror> genericSignatures) throws IOException {
+		String typeName = AttributeInfo.stripAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
-			String fullName = AttributeInfo.stripAnnotations(type.toString());
 			if (declaredType.getTypeArguments().isEmpty()) {
-				code.append(fullName);
+				code.append(typeName);
 			} else {
-				int first = fullName.indexOf('<');
-				code.append(fullName, 0, first);
+				int first = typeName.indexOf('<');
+				code.append(typeName, 0, first);
 			}
 			code.append(".class");
-		} else if (type.getKind() == TypeKind.ARRAY) {
+			return;
+		}
+		if (type.getKind() == TypeKind.ARRAY) {
 			ArrayType arrayType = (ArrayType) type;
 			code.append("com.dslplatform.json.runtime.Generics.makeArrayType(");
-			buildArrayType(arrayType.getComponentType(), typeVariableIndexes);
+			buildArrayType(arrayType.getComponentType(), typeVariableIndexes, genericSignatures);
 			code.append(")");
-		} else if (typeVariableIndexes.containsKey(type.toString())) {
-			code.append("actualTypes[").append(Integer.toString(typeVariableIndexes.get(type.toString()))).append("]");
-		} else {
-			code.append(AttributeInfo.stripAnnotations(type.toString())).append(".class");
+			return;
 		}
+		if (typeVariableIndexes.containsKey(type.toString())) {
+			Integer index = typeVariableIndexes.get(type.toString());
+			if (index != null && index >= 0) {
+				code.append("actualTypes[").append(Integer.toString(index)).append("]");
+				return;
+			}
+		}
+		if (type instanceof TypeVariable) {
+			if (typeVariableIndexes.containsKey(typeName)) {
+				Integer index = typeVariableIndexes.get(typeName);
+				if (index != null && index >= 0) {
+					code.append("actualTypes[").append(Integer.toString(index)).append("]");
+					return;
+				}
+			}
+			TypeMirror mirror = genericSignatures.get(typeName);
+			if (mirror != null) {
+				buildArrayType(mirror, typeVariableIndexes, genericSignatures);
+				return;
+			}
+		}
+		code.append(typeName).append(".class");
 	}
 
 	void emptyObject(final StructInfo si, String className) throws IOException {
@@ -405,7 +478,7 @@ class ConverterTemplate {
 			code.append(" || !reader.wasLastName(name_").append(attr.name).append(")) { bindSlow(reader, instance, ");
 			code.append(Integer.toString(i)).append("); return; }\n");
 			code.append("\t\t\treader.getNextToken();\n");
-			processPropertyValue(attr, "\t", true);
+			processPropertyValue(attr, "\t", true, si.genericSignatures);
 		}
 		if (si.onUnknown == CompiledJson.Behavior.FAIL) {
 			if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
@@ -727,7 +800,7 @@ class ConverterTemplate {
 		int i = sortedAttributes.size();
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\treader.getNextToken();\n");
-			processPropertyValue(attr, "\t", true);
+			processPropertyValue(attr, "\t", true, si.genericSignatures);
 			i--;
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() != ',') throw reader.newParseError(\"Expecting ',' for other object elements\");\n");
@@ -753,7 +826,7 @@ class ConverterTemplate {
 		for (AttributeInfo attr : sortedAttributes) {
 			code.append("\t\t\tfinal ").append(attr.typeName).append(" _").append(attr.name).append("_;\n");
 			code.append("\t\t\treader.getNextToken();\n");
-			processPropertyValue(attr, "\t", false);
+			processPropertyValue(attr, "\t", false, si.genericSignatures);
 			i--;
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() != ',') throw reader.newParseError(\"Expecting ',' for other object elements\");\n");
@@ -858,7 +931,11 @@ class ConverterTemplate {
 			} else if (target != null && attr.isEnum(context.structs)) {
 				enumTemplate.writeName(code, target, readValue, "converter_" + attr.name);
 			} else if (types != null) {
-				code.append("writer.serialize(").append(readValue);
+				if (attr.type.toString().equals(attr.typeName) || attr.isArray) {
+					code.append("writer.serialize(").append(readValue);
+				} else {
+					code.append("writer.serializeRaw(").append(readValue);
+				}
 				if (attr.isMap) {
 					code.append(", key_writer_").append(attr.name).append(context.useLazyResolution(types.get(0)) ? "()" : "");
 					code.append(", value_writer_").append(attr.name).append(context.useLazyResolution(types.get(1)) ? "()" : "").append(");\n");
@@ -903,7 +980,7 @@ class ConverterTemplate {
 				code.append(alignment).append("\t\t__detected_").append(attr.name).append("__ = true;\n");
 			}
 			code.append(alignment).append("\t\treader.getNextToken();\n");
-			processPropertyValue(attr, alignment, useInstance);
+			processPropertyValue(attr, alignment, useInstance, si.genericSignatures);
 			code.append(alignment).append("\t\treader.getNextToken();\n");
 			code.append(alignment).append("\t\tbreak;\n");
 		}
@@ -932,7 +1009,11 @@ class ConverterTemplate {
 		}
 	}
 
-	private void processPropertyValue(AttributeInfo attr, String alignment, boolean useInstance) throws IOException {
+	private void processPropertyValue(
+			AttributeInfo attr,
+			String alignment,
+			boolean useInstance,
+			Map<String, TypeMirror> genericSignatures) throws IOException {
 		if (attr.notNull) {
 			code.append(alignment).append("\t\tif (reader.wasNull()) throw reader.newParseErrorAt(\"Property '").append(attr.name).append("' is not allowed to be null\", 0);\n");
 		}
@@ -1009,10 +1090,10 @@ class ConverterTemplate {
 					code.append("converter_").append(attr.name).append(".read(reader)");
 				}
 			} else if (types != null) {
-				context.serializeKnownCollection(attr, types);
+				context.serializeKnownCollection(attr, types, genericSignatures);
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 				if (attr.isArray) {
-					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType());
+					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType(), genericSignatures);
 					code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
 					code.append(", emptyArray_").append(attr.name).append(")");
 				} else {

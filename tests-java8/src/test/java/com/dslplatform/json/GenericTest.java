@@ -60,6 +60,31 @@ public class GenericTest {
 		public V value;
 	}
 
+	@CompiledJson
+	public static class ClassExtendingClassWithBoundTypeParameter extends ClassWithBoundTypeParameter<String> {
+	}
+
+	@CompiledJson
+	public static class ClassWithBoundTypeParameter<T extends String> {
+
+		private T[] property;
+
+		public T[] getProperty() {
+			return property;
+		}
+
+		public void setProperty(T[] property) {
+			this.property = property;
+		}
+	}
+
+	@Test
+	public void checkBoundTypeParameter() throws IOException {
+		byte[] bytes = "{\"property\":[\"abc\"]}".getBytes("UTF-8");
+		ClassExtendingClassWithBoundTypeParameter deser = dslJson.deserialize(ClassExtendingClassWithBoundTypeParameter.class, bytes, bytes.length);
+		Assert.assertArrayEquals(new String[]{"abc"}, deser.getProperty());
+	}
+
 	@Test
 	public void testSerializeAndDeserializeGeneric() throws IOException {
 		GenericModel<String, Double> model = generateModel();

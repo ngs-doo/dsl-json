@@ -126,12 +126,18 @@ final class Context {
 		return result;
 	}
 
-	static String extractRawType(TypeMirror type) {
+	static String extractRawType(TypeMirror type, Map<String, TypeMirror> genericSignatures) {
 		if (type.getKind() == TypeKind.DECLARED) {
 			return ((DeclaredType) type).asElement().toString();
-		} else {
-			return type.toString();
 		}
+		String typeName = AttributeInfo.stripAnnotations(type.toString());
+		if (type.getKind() == TypeKind.TYPEVAR) {
+			TypeMirror mirror = genericSignatures.get(typeName);
+			if (mirror != null && mirror != type) {
+				return extractRawType(mirror, genericSignatures);
+			}
+		}
+		return typeName;
 	}
 
 	boolean useLazyResolution(String type) {
@@ -141,9 +147,9 @@ final class Context {
 				&& (found.type == ObjectType.MIXIN && findType(type) != null || found.hasCycles(structs));
 	}
 
-	void serializeKnownCollection(AttributeInfo attr, List<String> types) throws IOException {
+	void serializeKnownCollection(AttributeInfo attr, List<String> types, Map<String, TypeMirror> genericSignatures) throws IOException {
 		if (attr.isArray) {
-			String content = extractRawType(((ArrayType) attr.type).getComponentType());
+			String content = extractRawType(((ArrayType) attr.type).getComponentType(), genericSignatures);
 			code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
 			code.append(useLazyResolution(content) ? "()" : "");
 			code.append(", emptyArray_").append(attr.name).append(")");

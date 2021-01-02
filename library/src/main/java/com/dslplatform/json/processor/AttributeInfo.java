@@ -5,8 +5,8 @@ import com.dslplatform.json.JsonAttribute;
 import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.*;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.*;
+import java.io.IOException;
 import java.util.*;
 
 public class AttributeInfo {
@@ -62,6 +62,7 @@ public class AttributeInfo {
 			boolean isJsonObject,
 			LinkedHashSet<TypeMirror> usedTypes,
 			Map<String, Integer> typeVariablesIndex,
+			Map<String, TypeMirror> genericSignatures,
 			boolean containsStructOwnerType) {
 		this.id = alias != null ? alias : name;
 		this.name = name;
@@ -81,7 +82,7 @@ public class AttributeInfo {
 		this.includeToMinimal = includeToMinimal;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
-		this.typeName = stripAnnotations(type.toString());
+		this.typeName = createTypeSignature(type, usedTypes, genericSignatures);
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 		this.isArray = type.getKind() == TypeKind.ARRAY;
 		this.isList = isList;
@@ -138,6 +139,7 @@ public class AttributeInfo {
 	}
 
 	static String stripAnnotations(String typeName) {
+		//Java6 does not have access to Java8 annotated types, so resort to hacks
 		if (typeName.startsWith("(@")) {
 			int separatorAt = typeName.lastIndexOf(" :: ");
 			int lastParenthesis = typeName.lastIndexOf(')');
@@ -149,5 +151,56 @@ public class AttributeInfo {
 			}
 		}
 		return typeName;
+	}
+
+	static String createTypeSignature(
+			TypeMirror type,
+			LinkedHashSet<TypeMirror> usedTypes,
+			Map<String, TypeMirror> genericSignatures) {
+		if (usedTypes.isEmpty()) return stripAnnotations(type.toString());
+		StringBuilder builder = new StringBuilder();
+		createTypeSignature(type, genericSignatures, builder);
+		return builder.toString();
+	}
+
+	String buildTypeName(TypeMirror type, Map<String, TypeMirror> genericSignatures) {
+		return createTypeSignature(type, usedTypes, genericSignatures);
+	}
+
+	private static void createTypeSignature(
+			TypeMirror type,
+			Map<String, TypeMirror> genericSignatures,
+			StringBuilder builder) {
+		String typeName = AttributeInfo.stripAnnotations(type.toString());
+		if (type.getKind() == TypeKind.DECLARED) {
+			DeclaredType declaredType = (DeclaredType) type;
+			if (declaredType.getTypeArguments().isEmpty()) {
+				builder.append(typeName);
+			} else {
+				TypeElement typeElement = (TypeElement) declaredType.asElement();
+				builder.append(typeElement.getQualifiedName()).append("<");
+				for (TypeMirror typeArgument : declaredType.getTypeArguments()) {
+					createTypeSignature(typeArgument, genericSignatures, builder);
+					builder.append(",");
+				}
+				builder.setCharAt(builder.length() - 1, '>');
+			}
+		} else if (type.getKind() == TypeKind.ARRAY) {
+			ArrayType arrayType = (ArrayType) type;
+			createTypeSignature(arrayType.getComponentType(), genericSignatures, builder);
+			builder.append("[]");
+		} else if (type instanceof WildcardType) {
+			WildcardType wt = (WildcardType)type;
+			createTypeSignature(wt.getExtendsBound(), genericSignatures, builder);
+		} else if (type instanceof TypeVariable) {
+			TypeMirror mirror = genericSignatures.get(typeName);
+			if (mirror != null && mirror != type) {
+				createTypeSignature(mirror, genericSignatures, builder);
+			} else {
+				builder.append(typeName);
+			}
+		} else {
+			builder.append(typeName);
+		}
 	}
 }

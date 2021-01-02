@@ -704,6 +704,16 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void usingGenericBase() {
+		checkValidCompilation(PassedDownGeneric.ClassExtendingClassWithBoundTypeParameter.class);
+	}
+
+	@Test
+	public void boundGeneric() {
+		checkValidCompilation(PassedDownGeneric.ClassWithBoundTypeParameter.class);
+	}
+
+	@Test
 	public void annotationInCtor() {
 		checkValidCompilation(MapRuntimeCtor.class);
 	}
