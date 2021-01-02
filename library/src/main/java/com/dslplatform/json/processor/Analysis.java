@@ -1750,9 +1750,14 @@ public class Analysis {
 		return types.isAssignable(rawCollection, leftRaw);
 	}
 
+	@Deprecated
 	public static String beanOrActualName(String name) {
+		return beanOrActualName(name, true);
+	}
 
-		if (name.startsWith("is") && name.length() > 2) {
+	public static String beanOrActualName(String name, boolean isBoolean) {
+
+		if (isBoolean && name.startsWith("is") && name.length() > 2) {
 			String after = name.substring(2);
 			if (name.length() == 3) return after.toLowerCase();
 			return after.toUpperCase().equals(after)
@@ -1792,7 +1797,8 @@ public class Analysis {
 						&& !method.getModifiers().contains(Modifier.ABSTRACT);
 				AnnotationMirror annotation = getAnnotation(method, attributeType);
 				boolean producesWarning = !isAccessible && annotation != null;
-				String property = beanOrActualName(name);
+				boolean isBoolean = method.getReturnType() != null && "boolean".equals(method.getReturnType().toString());
+				String property = beanOrActualName(name, isBoolean);
 
 				if(name.startsWith("is")
 						&& method.getParameters().size() == 0
@@ -2003,7 +2009,8 @@ public class Analysis {
 					}
 					continue;
 				}
-				final String property = Analysis.beanOrActualName(name);
+				final boolean isBoolean = method.getReturnType() != null && "boolean".equals(method.getReturnType().toString());
+				final String property = Analysis.beanOrActualName(name, isBoolean);
 				if (method.getParameters().size() == 0 && method.getReturnType() != null) {
 					boolean canAdd = withExact
 							|| withBeans && name.startsWith("get") && name.length() > 4
@@ -2051,7 +2058,8 @@ public class Analysis {
 					}
 					continue;
 				}
-				String property = beanOrActualName(name);
+				boolean isBoolean = method.getReturnType() != null && "boolean".equals(method.getReturnType().toString());
+				String property = beanOrActualName(name, isBoolean);
 				if (method.getParameters().size() == 1 && types.isSameType(method.getReturnType(), builderType)) {
 					boolean canAdd = withExact || withBeans && name.startsWith("set") && name.length() > 4;
 					if (canAdd && !setters.containsKey(property)) {

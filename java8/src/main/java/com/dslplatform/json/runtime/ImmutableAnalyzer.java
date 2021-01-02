@@ -177,9 +177,13 @@ public abstract class ImmutableAnalyzer {
 		final LinkedHashMap<String, Method> matchingMethods = new LinkedHashMap<>();
 		for (final Method mget : raw.getMethods()) {
 			if (mget.getParameterTypes().length != 0) continue;
-			final String name = Analysis.beanOrActualName(mget.getName());
+			final boolean isBoolean = boolean.class.equals(mget.getReturnType());
+			final String name = Analysis.beanOrActualName(mget.getName(), isBoolean);
 			if (isPublicNonStatic(mget.getModifiers()) && !name.contains("$") && !objectMethods.contains(name)) {
 				matchingMethods.put(name, mget);
+				if (isBoolean && !name.equals(mget.getName())) {
+					matchingMethods.put(mget.getName(), mget);
+				}
 			}
 		}
 		final JsonWriter.WriteObject[] writeProps;

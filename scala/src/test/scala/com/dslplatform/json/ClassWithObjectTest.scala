@@ -2,10 +2,12 @@ package com.dslplatform.json
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.charset.StandardCharsets
-
 import javax.json.bind.annotation.JsonbCreator
 import org.specs2.ScalaCheck
 import org.specs2.mutable.Specification
+
+import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.util
 
 class ClassWithObjectTest extends Specification with ScalaCheck {
 
@@ -82,6 +84,39 @@ class ClassWithObjectTest extends Specification with ScalaCheck {
       m.service === serv
     }
   }
+  "alternative name lookup" >> {
+    val ld = LocalDate.of(2020, 12, 29)
+    "serialize vals" >> {
+      val dslJsonRuntime = new DslJson[Any](com.dslplatform.json.runtime.Settings.withRuntime().includeServiceLoader())
+      val os = new ByteArrayOutputStream()
+      val result = new Rest.Info(
+        ld,
+        true,
+        new util.ArrayList(util.Arrays.asList(
+          new Rest.Detail(1, "x", "y", LocalDateTime.of(ld, LocalTime.NOON)),
+          new Rest.Detail(2, "x", "y", LocalDateTime.of(ld, LocalTime.MIDNIGHT).plusSeconds(10))
+        ))
+      )
+      val arg: AnyRef = result.asInstanceOf[AnyRef]
+      dslJsonRuntime.serialize(arg, os)
+      os.toString("UTF-8") === "{\"until\":\"2020-12-29\",\"isActive\":true,\"details\":[{\"kind\":1,\"user\":\"x\",\"server\":\"y\",\"used\":\"2020-12-29T12:00:00\"},{\"kind\":2,\"user\":\"x\",\"server\":\"y\",\"used\":\"2020-12-29T00:00:10\"}],\"date\":\"2020-12-29\"}"
+    }
+    "serialize vals and vars" >> {
+      val dslJsonRuntime = new DslJson[Any](com.dslplatform.json.runtime.Settings.withRuntime().includeServiceLoader())
+      val os = new ByteArrayOutputStream()
+      val result = new Rest.InfoWithVar(
+        ld,
+        true,
+        new util.ArrayList(util.Arrays.asList(
+          new Rest.Detail(1, "x", "y", LocalDateTime.of(ld, LocalTime.NOON)),
+          new Rest.Detail(2, "x", "y", LocalDateTime.of(ld, LocalTime.MIDNIGHT).plusSeconds(10))
+        )))
+      result.date = ld.plusDays(1)
+      val arg: AnyRef = result.asInstanceOf[AnyRef]
+      dslJsonRuntime.serialize(arg, os)
+      os.toString("UTF-8") === "{\"until\":\"2020-12-29\",\"isActive\":true,\"details\":[{\"kind\":1,\"user\":\"x\",\"server\":\"y\",\"used\":\"2020-12-29T12:00:00\"},{\"kind\":2,\"user\":\"x\",\"server\":\"y\",\"used\":\"2020-12-29T00:00:10\"}],\"date\":\"2020-12-30\"}"
+    }
+  }
 }
 
 class ServiceImpl extends Service {}
@@ -152,3 +187,26 @@ case class CreatorInstance(x: Int, private val service: Service, s: String) {
 }
 case class Report(title: String, users: Seq[User] = Nil, creator: Option[CreatorInstance])
 case class User(name: String, age: Option[Int], metadata: Map[String, Int] = Map.empty)
+
+object Rest {
+  class Info(
+    val until: LocalDate,
+    val isActive: Boolean,
+    val details: java.util.ArrayList[Detail],
+    val date: LocalDate = LocalDate.of(2020, 12, 29)
+  )
+
+  class Detail(
+    val kind: Int,
+    val user: String,
+    val server: String,
+    val used: LocalDateTime
+  )
+
+  class InfoWithVar(
+    val until: LocalDate,
+    var isActive: Boolean,
+    val details: java.util.ArrayList[Detail],
+    var date: LocalDate = LocalDate.now()
+  )
+}

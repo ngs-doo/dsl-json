@@ -23,6 +23,7 @@
 # DSL-JSON
 -keep class dsl_json.** { *; }
 -keep class com.dslplatform.androidkotlin.** { *; }
+-keep class **_DslJsonConverter { *; }
 -dontwarn com.dslplatform.json.**
 -dontwarn dsl_json.java.sql.**
 -keep @com.dslplatform.json.CompiledJson class *

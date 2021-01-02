@@ -128,7 +128,7 @@ class ConverterTemplate {
 
 		for (AttributeInfo attr : si.attributes.values()) {
 			OptimizedConverter converter = context.inlinedConverters.get(attr.typeName);
-		    StructInfo target = context.structs.get(attr.typeName);
+			StructInfo target = context.structs.get(attr.typeName);
 			if (attr.converter == null && (target == null || target.converter == null) && converter == null && !isStaticEnum(attr) && !attr.isJsonObject) {
 				List<String> types = attr.collectionContent(context.typeSupport, context.structs);
 				if (target != null && attr.isEnum(context.structs)) {

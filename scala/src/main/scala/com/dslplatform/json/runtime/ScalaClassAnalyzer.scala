@@ -197,7 +197,8 @@ object ScalaClassAnalyzer {
   }
 
   def isSupported(manifest: JavaType, raw: Class[_]): Boolean = {
-    !(classOf[scala.collection.Traversable[_]].isAssignableFrom(raw) ||
+    !(classOf[scala.collection.Iterable[_]].isAssignableFrom(raw) ||
+      classOf[java.lang.Iterable[_]].isAssignableFrom(raw) ||
       classOf[AnyRef] == manifest ||
       (raw.getModifiers & Modifier.ABSTRACT) != 0 ||
       raw.isInterface ||
@@ -216,13 +217,17 @@ object ScalaClassAnalyzer {
     val matchedCtor = Option(ImmutableAnalyzer.findBestCtor(raw, json)).orElse(emptyCtor)
     val markers = json.getRegisteredCreatorMarkers
     val lookup = {
-      val res = new mutable.HashMap[String, Class[_ <: Annotation]]
-      val iter = markers.entrySet().iterator()
-      while (iter.hasNext) {
-        val kv = iter.next()
-        res.put(kv.getKey.getName, kv.getKey)
+      if (markers.isEmpty) {
+        Map.empty[String, Class[_ <: Annotation]]
+      } else {
+        val res = new mutable.HashMap[String, Class[_ <: Annotation]]
+        val iter = markers.entrySet().iterator()
+        while (iter.hasNext) {
+          val kv = iter.next()
+          res.put(kv.getKey.getName, kv.getKey)
+        }
+        res
       }
-      res
     }
     val ctors = tpe.members.filter(_.isConstructor).toIndexedSeq
     val annotation = matchedCtor.flatMap(ct => lookup.values.find(a => ct.getAnnotation(a) != null)).map(_.getName)
@@ -283,6 +288,31 @@ object ScalaClassAnalyzer {
     }
   }
 
+  private def mappingByName(mapping: GenericsMapper): Map[String, JavaType] = {
+    val mbt = mapping.mappingByType()
+    if (mbt.isEmpty) {
+      Map.empty
+    } else {
+      import scala.collection.JavaConverters._
+      mbt.entrySet().asScala.map { kv =>
+        kv.getKey.getTypeName -> kv.getValue
+      }.toMap
+    }
+  }
+
+  private def classMemberNames(tpe: universe.TypeApi, ctor: Constructor[AnyRef]): Option[Array[String]] = {
+    val size = ctor.getParameterCount
+    val sorted = tpe.members.sorted
+    val values = sorted.filter { i =>
+      !i.isPublic && !i.isMethod && !i.isConstructor && !i.name.toString.contains("$")
+    }
+    if (values.length == size) {
+      Some(values.map(_.name.toString).toArray)
+    } else {
+      None
+    }
+  }
+
   private def analyzeClassWithCtor(
     manifest: JavaType,
     raw: Class[_],
@@ -292,16 +322,15 @@ object ScalaClassAnalyzer {
     params: scala.collection.Seq[universe.Symbol],
     reading: Boolean
   ) = {
-    import scala.collection.JavaConverters._
-    val genericMappings = Generics.analyze(manifest, raw)
-    val genericsByName = genericMappings.entrySet().asScala.map(kv => kv.getKey.getTypeName -> kv.getValue).toMap
+    val genericMappings = GenericsMapper.create(manifest, raw)
+    val genericsByName = mappingByName(genericMappings)
     val defaults = tpe.companion.members.filter(_.name.toString.startsWith("$lessinit$greater$default$"))
     val types = params.map(_.typeSignature).toSet
     val sameTypes = tpe.members.filter { it =>
       it.isPublic && !it.name.toString.contains("$") &&
         (types.contains(it.typeSignature) || types.contains(it.typeSignature.resultType))
     }
-    val names = Option(ImmutableAnalyzer.extractNames(ctor))
+    val names = Option(ImmutableAnalyzer.extractNames(ctor)).orElse(classMemberNames(tpe, ctor))
     val arguments = params.zipWithIndex.flatMap { case (p, i) =>
       val defMethod = defaults.find(_.name.toString.endsWith("$" + (i + 1))).flatMap { d =>
         val name = d.name.toString
@@ -312,7 +341,7 @@ object ScalaClassAnalyzer {
       val pType = p.typeSignature
       val pName = if (p.name.toString.contains("$")) names.map(it => it(i)) else Some(p.name.toString)
       Try(TypeAnalysis.convertType(pType, genericsByName)).toOption.flatMap { rt =>
-        val concreteType = Generics.makeConcrete(rt, genericMappings)
+        val concreteType = genericMappings.makeConcrete(rt, raw)
         if (json.context != null && ObjectAnalyzer.matchesContext(concreteType, json)) {
           Some(TypeInfo("", rt, false, concreteType, i, None))
         } else {
@@ -412,9 +441,8 @@ object ScalaClassAnalyzer {
     params: List[universe.Symbol],
     reading: Boolean
   ) = {
-    import scala.collection.JavaConverters._
-    val genericMappings = Generics.analyze(manifest, raw)
-    val genericsByName = genericMappings.entrySet().asScala.map(kv => kv.getKey.getTypeName -> kv.getValue).toMap
+    val genericMappings = GenericsMapper.create(manifest, raw)
+    val genericsByName = mappingByName(genericMappings)
     val defaults = init.owner.info.members.filter(_.name.toString.startsWith("apply$default$"))
     val types = params.map(_.typeSignature).toSet
     val sameTypes = tpe.members.flatMap { it =>
@@ -437,7 +465,7 @@ object ScalaClassAnalyzer {
       val pType = p.typeSignature
       val pName = if (p.name.toString.contains("$")) names.map(it => it(i)) else Some(p.name.toString)
       Try(TypeAnalysis.convertType(pType, genericsByName)).toOption.flatMap { rt =>
-        val concreteType = Generics.makeConcrete(rt, genericMappings)
+        val concreteType = genericMappings.makeConcrete(rt, raw)
         if (json.context != null && ObjectAnalyzer.matchesContext(concreteType, json)) {
           Some(TypeInfo("", rt, false, concreteType, i, None))
         } else {
@@ -521,14 +549,13 @@ object ScalaClassAnalyzer {
     methods: Map[universe.Symbol, universe.Symbol],
     reading: Boolean
   ) = {
-    import scala.collection.JavaConverters._
     val tmp = new LazyObjectDescription(json, manifest)
     val oldWriter = json.registerWriter(manifest, tmp)
     val oldReader = json.registerReader(manifest, tmp)
     val foundWrite = new mutable.LinkedHashMap[String, JsonWriter.WriteObject[_]]
     val foundRead = new mutable.LinkedHashMap[String, DecodePropertyInfo[JsonReader.BindObject[_]]]
-    val genericMappings = Generics.analyze(manifest, raw)
-    val genericsByName = genericMappings.entrySet().asScala.map(kv => kv.getKey.getTypeName -> kv.getValue).toMap
+    val genericMappings = GenericsMapper.create(manifest, raw)
+    val genericsByName = mappingByName(genericMappings)
     val rawAny = raw.asInstanceOf[Class[AnyRef]]
     val newInstance = new InstanceFactory[AnyRef] {
       override def create(): AnyRef = rawAny.newInstance()
@@ -587,7 +614,7 @@ object ScalaClassAnalyzer {
     foundWrite: mutable.LinkedHashMap[String, JsonWriter.WriteObject[_]],
     foundRead: mutable.LinkedHashMap[String, DecodePropertyInfo[JsonReader.BindObject[_]]],
     index: Int,
-    genericMappings: java.util.HashMap[JavaType, JavaType]
+    genericMappings: GenericsMapper
   ): Boolean = {
     if (mget.getParameterTypes.length != 0) false
     else {
@@ -599,7 +626,7 @@ object ScalaClassAnalyzer {
         case Some(_) if foundRead.contains(name) && foundWrite.contains(name) =>
           false
         case Some(mset) =>
-          val concreteType = Generics.makeConcrete(actualType, genericMappings)
+          val concreteType = genericMappings.makeConcrete(actualType, manifest)
           val isUnknown = Generics.isUnknownType(actualType)
           if (isUnknown || json.tryFindWriter(concreteType) != null) {
             foundWrite.put(

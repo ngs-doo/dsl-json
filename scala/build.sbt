@@ -1,9 +1,9 @@
 lazy val root = (project in file(".")
   settings (commonSettings ++ publishSettings)
   settings(
-    version := "1.9.7",
+    version := "1.9.8",
     libraryDependencies ++= Seq(
-      "com.dslplatform" % "dsl-json-java8" % "1.9.7",
+      "com.dslplatform" % "dsl-json-java8" % "1.9.8",
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.specs2" %% "specs2-scalacheck" % "4.5.1" % Test,
       "javax.json.bind" % "javax.json.bind-api" % "1.0" % Test
@@ -21,7 +21,7 @@ lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
   organization := "com.dslplatform",
   name := baseDirectory.value.getName,
   scalaVersion := crossScalaVersions.value.head,
-  crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
+  crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.4"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",

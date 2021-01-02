@@ -136,7 +136,8 @@ public abstract class MixinAnalyzer {
 			final GenericsMapper genericMappings) {
 		if (mget.getParameterTypes().length != 0) return;
 		if (!canRead(mget.getModifiers())) return;
-		final String name = Analysis.beanOrActualName(mget.getName());
+		final boolean isBoolean = boolean.class.equals(mget.getReturnType());
+		final String name = Analysis.beanOrActualName(mget.getName(), isBoolean);
 		if (foundWrite.containsKey(name)) return;
 		final Type type = mget.getGenericReturnType();
 		final Type concreteType = genericMappings.makeConcrete(type, raw);

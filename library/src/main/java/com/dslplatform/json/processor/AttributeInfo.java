@@ -150,6 +150,11 @@ public class AttributeInfo {
 						: baseType + typeName.substring(lastParenthesis + 1);
 			}
 		}
+		//Alternative naming scheme :(
+		while (typeName.startsWith("@")) {
+			int nextSpace = typeName.indexOf(' ');
+			typeName = typeName.substring(nextSpace + 1);
+		}
 		return typeName;
 	}
 

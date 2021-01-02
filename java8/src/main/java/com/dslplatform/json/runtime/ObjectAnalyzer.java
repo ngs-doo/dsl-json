@@ -358,7 +358,8 @@ public abstract class ObjectAnalyzer {
 		} catch (NoSuchMethodException ignore) {
 			return false;
 		}
-		final String name = Analysis.beanOrActualName(mget.getName());
+		final boolean isBoolean = boolean.class.equals(mget.getReturnType());
+		final String name = Analysis.beanOrActualName(mget.getName(), isBoolean);
 		if (!canRead(mget.getModifiers()) || !canWrite(mset.getModifiers())) return false;
 		if (foundRead.containsKey(name) && foundWrite.containsKey(name)) return false;
 		final Type type = mget.getGenericReturnType();
