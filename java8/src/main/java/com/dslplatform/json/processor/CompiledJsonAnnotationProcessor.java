@@ -400,9 +400,9 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\n\n");
 		final String javaVersion = System.getProperty("java.specification.version");
 		if (generatedMarker == null) {
-			if (javaVersion == null || "1.6".equals(javaVersion) || "1.7".equals(javaVersion) || "1.8".equals(javaVersion)) {
+			if ("1.6".equals(javaVersion) || "1.7".equals(javaVersion) || "1.8".equals(javaVersion)) {
 				code.append("@javax.annotation.Generated(\"dsl_json\")\n");
-			} else {
+			} else if (javaVersion != null) {
 				code.append("@javax.annotation.processing.Generated(\"dsl_json\")\n");
 			}
 		} else if (!generatedMarker.isEmpty()) {

@@ -11,10 +11,10 @@ import java.util.Arrays;
 
 public class BasicStuffTest {
 
-    private final DslJson dslJson = new DslJson(Settings.withRuntime().includeServiceLoader());
-
     @Test
     public void willPickUpPropertyFromBaseClass() throws IOException {
+        final DslJson dslJson = new DslJson(Settings.withRuntime().includeServiceLoader());
+
         DataClass dc = new DataClass(
                 "Kotlin",
                 Arrays.asList(170, 171, 172),
@@ -36,5 +36,20 @@ public class BasicStuffTest {
         Assert.assertEquals(dc.getVersions(), deser.getVersions());
         Assert.assertEquals(dc.getCustom(), deser.getCustom());
         Assert.assertEquals(dc.getFactory().getText(), deser.getFactory().getText());
+    }
+
+    @Test
+    public void classShouldNotBeEmpty() throws IOException {
+        final DslJson dslJson = new DslJson(Settings.basicSetup().allowArrayFormat(true).skipDefaultValues(false));
+
+        ClassWithNullDefault nd = new ClassWithNullDefault("Value");
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        dslJson.serialize(nd, output);
+
+        Assert.assertEquals("{\"field\":\"Value\"}", output.toString("UTF-8"));
+
+        ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
+        ClassWithNullDefault deser = (ClassWithNullDefault) dslJson.deserialize(ClassWithNullDefault.class, input);
+        Assert.assertEquals(nd.getField(), deser.getField());
     }
 }
