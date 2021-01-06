@@ -628,14 +628,12 @@ public class Analysis {
 			}
 		}
 		if (target == null) return;
-		String javaType = target.toString();
-		String objectType = objectName(javaType);
-		Element declaredType = objectType.equals(javaType)
-				? types.asElement(target)
-				: elements.getTypeElement(objectType);
-		ConverterInfo signature = validateConverter(converter, declaredType, objectType);
+		ConverterInfo signature = validateConverter(converter, target);
+		String javaType = signature.targetSignature;
 		//TODO: throw an error if multiple non-compatible converters were found!?
 		if (!structs.containsKey(javaType)) {
+			String objectType = objectName(javaType);
+			Element declaredType = signature.targetType;
 			String name = "struct" + structs.size();
 			TypeElement element = (TypeElement) declaredType;
 			String binaryName = elements.getBinaryName(element).toString();
@@ -644,7 +642,21 @@ public class Analysis {
 		}
 	}
 
-	private ConverterInfo validateConverter(TypeElement converter, Element target, String fullName) {
+	private @Nullable Element findElement(TypeMirror type) {
+		String javaType = AttributeInfo.stripAnnotations(type.toString());
+		String fullName = objectName(javaType);
+		return fullName.equals(javaType)
+				? types.asElement(type)
+				: elements.getTypeElement(fullName);
+	}
+
+	private ConverterInfo validateConverter(TypeElement converter, TypeMirror type) {
+		String javaType = AttributeInfo.stripAnnotations(type.toString());
+		String fullName = objectName(javaType);
+		Element declaredType = findElement(type);
+		Element baseType = declaredType == null && type instanceof ArrayType
+				? findElement(((ArrayType)type).getComponentType())
+				: declaredType;
 		VariableElement jsonReaderField = null;
 		VariableElement jsonWriterField = null;
 		ExecutableElement jsonReaderMethod = null;
@@ -682,7 +694,14 @@ public class Analysis {
 					"Specified converter: '" + converter.asType() + "' must be public",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (!target.getModifiers().contains(Modifier.PUBLIC)) {
+		} else if (declaredType == null && baseType == null) {
+			hasError = true;
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Unsupported target: '" + type + "'",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (baseType != null && !baseType.getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
@@ -747,7 +766,9 @@ public class Analysis {
 						?  jsonReaderField.getSimpleName().toString() : "",
 				jsonWriterMethod != null
 						? (hasInstance ? "INSTANCE." : "") + jsonWriterMethod.getSimpleName().toString() + "()" : jsonWriterField != null
-						? jsonWriterField.getSimpleName().toString() : ""
+						? jsonWriterField.getSimpleName().toString() : "",
+				javaType,
+				declaredType
 		);
 	}
 
@@ -896,7 +917,7 @@ public class Analysis {
 
 	private TypeMirror unpackType(TypeMirror type) {
 		String typeName = type.toString();
-		if (typeName.startsWith("(@")) {
+		if (typeName.startsWith("(@") || typeName.startsWith("@")) {
 			//TODO: hacky fix for annotation removal from types
 			//To fix it nicely Java8 AnnotatedType signature is required ;(
 			if (type.getKind().isPrimitive()) {
@@ -932,12 +953,7 @@ public class Analysis {
 			final ConverterInfo converter;
 			if (converterMirror != null) {
 				TypeElement typeConverter = elements.getTypeElement(converterMirror.toString());
-				String javaType = type.toString();
-				String objectType = objectName(javaType);
-				Element declaredType = objectType.equals(javaType)
-						? types.asElement(type)
-						: elements.getTypeElement(objectType);
-				converter = validateConverter(typeConverter, declaredType, objectType);
+				converter = validateConverter(typeConverter, type);
 			} else converter = null;
 			String referenceName = referenceType.toString();
 			boolean isJsonObject = jsonObjectReaderPath(referenceElement, false) != null;

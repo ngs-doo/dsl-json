@@ -805,4 +805,10 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void globalPrimitiveConverter() {
 		checkValidCompilation(PrimitiveIntConverter.class);
 	}
+
+	@Test
+	public void converterToArray() {
+		checkValidCompilation(ByteArrayConverter.class);
+	}
+
 }

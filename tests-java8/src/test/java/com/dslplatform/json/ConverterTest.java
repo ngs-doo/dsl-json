@@ -29,6 +29,33 @@ public class ConverterTest {
 		}
 	}
 
+	public static class ByteArrayConverter {
+		public static final JsonReader.ReadObject<byte[]> JSON_READER = new JsonReader.ReadObject<byte[]>() {
+			@Override
+			public byte[] read(JsonReader reader) throws IOException {
+				return null;
+			}
+		};
+		public static JsonWriter.WriteObject<byte[]> JSON_WRITER() {
+			return new JsonWriter.WriteObject<byte[]>() {
+				@Override
+				public void write(JsonWriter writer, @Nullable byte[] value) {
+					writer.writeNull();
+				}
+			};
+		}
+	}
+
+	@CompiledJson
+	public static class TestByteArrayCompilation {
+		@JsonAttribute(converter = ByteArrayConverter.class)
+		public final byte[] b;
+
+		public TestByteArrayCompilation(byte[] b) {
+			this.b = b;
+		}
+	}
+
 	public static class ClosedClass {
 		public final String value;
 		private ClosedClass(String value) {
