@@ -10,7 +10,6 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.io.Console;
 import java.util.*;
 
 public class Analysis {
@@ -650,13 +649,36 @@ public class Analysis {
 				: elements.getTypeElement(fullName);
 	}
 
+
+	private void findAllElements(TypeMirror type, Set<Element> usedTypes, Set<TypeMirror> processed) {
+		if (!processed.add(type)) return;
+		if (type instanceof ArrayType) {
+			findAllElements(((ArrayType) type).getComponentType(), usedTypes, processed);
+		} else if (type instanceof DeclaredType) {
+			DeclaredType dt = (DeclaredType) type;
+			usedTypes.add(dt.asElement());
+			for (TypeMirror tm : dt.getTypeArguments()) {
+				findAllElements(tm, usedTypes, processed);
+			}
+		} else if (type instanceof WildcardType) {
+			WildcardType wt = (WildcardType) type;
+			if (wt.getExtendsBound() != null) {
+				findAllElements(wt.getExtendsBound(), usedTypes, processed);
+			}
+		} else {
+			Element element = findElement(type);
+			if (element != null) {
+				usedTypes.add(element);
+			}
+		}
+	}
+
 	private ConverterInfo validateConverter(TypeElement converter, TypeMirror type) {
 		String javaType = AttributeInfo.stripAnnotations(type.toString());
 		String fullName = objectName(javaType);
 		Element declaredType = findElement(type);
-		Element baseType = declaredType == null && type instanceof ArrayType
-				? findElement(((ArrayType)type).getComponentType())
-				: declaredType;
+		Set<Element> usedTypes = new HashSet<Element>();
+		findAllElements(type, usedTypes, new HashSet<TypeMirror>());
 		VariableElement jsonReaderField = null;
 		VariableElement jsonWriterField = null;
 		ExecutableElement jsonReaderMethod = null;
@@ -686,26 +708,22 @@ public class Analysis {
 				}
 			}
 		}
+		for(Element used : usedTypes) {
+			if (used != null && !used.getModifiers().contains(Modifier.PUBLIC)) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"Specified target: '" + used + "' must be public",
+						converter,
+						getAnnotation(converter, converterType));
+			}
+		}
 		String allowed = onlyBasicFeatures ? "field" : "field/method";
 		if (!converter.getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
 					"Specified converter: '" + converter.asType() + "' must be public",
-					converter,
-					getAnnotation(converter, converterType));
-		} else if (declaredType == null && baseType == null) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"Unsupported target: '" + type + "'",
-					converter,
-					getAnnotation(converter, converterType));
-		} else if (baseType != null && !baseType.getModifiers().contains(Modifier.PUBLIC)) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"Specified converter target: '" + fullName + "' must be public",
 					converter,
 					getAnnotation(converter, converterType));
 		} else if (converter.getNestingKind().isNested() && !converter.getModifiers().contains(Modifier.STATIC)) {

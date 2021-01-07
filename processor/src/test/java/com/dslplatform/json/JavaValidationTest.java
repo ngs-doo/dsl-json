@@ -811,4 +811,24 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 		checkValidCompilation(ByteArrayConverter.class);
 	}
 
+	@Test
+	public void converterToPrivateWithArray() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				20,
+				compileTestCase(PrivateConverter.class),
+				"Specified target: 'com.dslplatform.json.models.PrivateConverter.Private' must be public");
+
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				32,
+				compileTestCase(PrivateConverter.class),
+				"Specified target: 'com.dslplatform.json.models.PrivateConverter.Private' must be public");
+
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				44,
+				compileTestCase(PrivateConverter.class),
+				"Specified target: 'com.dslplatform.json.models.PrivateConverter.Private' must be public");
+	}
 }
