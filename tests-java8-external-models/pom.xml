@@ -12,6 +12,11 @@
 	<packaging>jar</packaging>
 	<version>1.9.8</version>
 
+	<properties>
+		<maven.deploy.skip>true</maven.deploy.skip>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
@@ -33,8 +38,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	</properties>
 </project>

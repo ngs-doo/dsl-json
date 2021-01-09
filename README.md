@@ -60,7 +60,7 @@ To use Java8 annotation processor its sufficient to just reference Java8 version
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-java8</artifactId>
-      <version>1.9.7</version>
+      <version>1.9.8</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -72,8 +72,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.9.7'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.7'
+      compile 'com.dslplatform:dsl-json-java8:1.9.8'
+      annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.8'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -96,15 +96,15 @@ DSL Platform annotation processor can be added as Maven dependency with:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json-processor</artifactId>
-      <version>1.9.7</version>
+      <version>1.9.8</version>
       <scope>provided</scope>
     </dependency>
 
 For use in Android, Gradle can be configured with:
 
     dependencies {
-      compile 'com.dslplatform:dsl-json:1.9.7'
-      annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.7'
+      compile 'com.dslplatform:dsl-json:1.9.8'
+      annotationProcessor 'com.dslplatform:dsl-json-processor:1.9.8'
     }
 
 Project examples can be found in [examples folder](examples)
@@ -252,13 +252,7 @@ Core library (with analysis processor) and DSL Platform annotation processor tar
 Java8 library includes runtime analysis, reflection support, annotation processor and Java8 specific types. When Java8 annotation processor is used Mono/.NET doesn't need to be present on the system.
 Android can use Java8 version of the library even on older versions due to lazy loading of types which avoids loading types Android does not support. 
 
-Library can be added as Maven dependency with:
-
-    <dependency>
-      <groupId>com.dslplatform</groupId>
-      <artifactId>dsl-json</artifactId>
-      <version>1.9.7</version>
-    </dependency>
+If not sure which version to use, use Java8 version of the library with annotation processor.
 
 ## Runtime analysis
 
@@ -350,7 +344,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.7"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.8"
 
 ### Kotlin support
 
@@ -359,8 +353,8 @@ When used with Gradle, configuration can be done via:
 
     apply plugin: 'kotlin-kapt'
     dependencies {
-      compile "com.dslplatform:dsl-json-java8:1.9.7"
-      kapt "com.dslplatform:dsl-json-java8:1.9.7"
+      compile "com.dslplatform:dsl-json-java8:1.9.8"
+      kapt "com.dslplatform:dsl-json-java8:1.9.8"
     }
 
 ## FAQ

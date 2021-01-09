@@ -649,7 +649,6 @@ public class Analysis {
 				: elements.getTypeElement(fullName);
 	}
 
-
 	private void findAllElements(TypeMirror type, Set<Element> usedTypes, Set<TypeMirror> processed) {
 		if (!processed.add(type)) return;
 		if (type instanceof ArrayType) {
@@ -962,7 +961,7 @@ public class Analysis {
 		if (element == null) return;
 		path.push(name);
 		AnnotationMirror annotation = access.annotation;
-		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element, annotation)
+		if (!info.properties.contains(element) && !hasIgnoredAnnotation(element, annotation, field)
 				&& (info.objectFormatPolicy != CompiledJson.ObjectFormatPolicy.EXPLICIT || annotation != null)) {
 			TypeMirror referenceType = unpackType(access.field != null ? access.field.asType() : access.read.getReturnType());
 			TypeMirror type = unpackType(originalType.getKind() == TypeKind.TYPEVAR && info.genericSignatures.containsKey(originalType.toString()) ? info.genericSignatures.get(originalType.toString()) : originalType);
@@ -2216,13 +2215,20 @@ public class Analysis {
 		return arg == null ? null : getAnnotation(arg, attributeType);
 	}
 
-	private boolean hasIgnoredAnnotation(Element property, @Nullable AnnotationMirror dslAnn) {
+	private boolean hasIgnoredAnnotation(Element property, @Nullable AnnotationMirror dslAnn, @Nullable VariableElement field) {
 		if (dslAnn != null) {
 			return booleanAnnotationValue(dslAnn, "ignore()", false);
 		}
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (alternativeIgnore.contains(ann.getAnnotationType().toString())) {
 				return true;
+			}
+		}
+		if (field != null) {
+			for (AnnotationMirror ann : field.getAnnotationMirrors()) {
+				if (alternativeIgnore.contains(ann.getAnnotationType().toString())) {
+					return true;
+				}
 			}
 		}
 		return false;

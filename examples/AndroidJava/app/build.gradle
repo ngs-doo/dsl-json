@@ -28,6 +28,10 @@ android {
         sourceCompatibility 1.8
         targetCompatibility 1.8
     }
+    lintOptions {
+        //lib has awt and some Java specific dependencies which can be excluded during startup
+        abortOnError false
+    }
 }
 
 dependencies {
@@ -35,11 +39,11 @@ dependencies {
     implementation 'com.android.support:appcompat-v7:28.0.0'
 
     //java8 version can work via desugar
-    implementation 'com.dslplatform:dsl-json-java8:1.9.7'
+    implementation 'com.dslplatform:dsl-json-java8:1.9.8'
     //using alternative to java8 time api
-    implementation 'com.dslplatform:dsl-json-threetenbp:1.9.7'
+    implementation 'com.dslplatform:dsl-json-threetenbp:1.9.8'
     //invoke the compile time databinding
-    annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.7'
+    annotationProcessor 'com.dslplatform:dsl-json-java8:1.9.8'
     //just satisfy Jsonb provided dependency
     api 'javax.json.bind:javax.json.bind-api:1.0'
 }

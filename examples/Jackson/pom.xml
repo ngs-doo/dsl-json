@@ -6,12 +6,12 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>jackson-example</artifactId>
-	<version>1.9.7</version>
+	<version>1.9.8</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json-java8</artifactId>
-			<version>1.9.7</version>
+			<version>1.9.8</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>

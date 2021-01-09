@@ -33,4 +33,9 @@ public class IgnoredProperty {
 	public String ignored;
 	public String getIgnored() { return ignored; }
 	public void setIgnored(String value) { ignored = value; }
+
+	@JsonIgnore
+	private String privateIgnored;
+	public String getPrivateIgnored() { return privateIgnored; }
+	public void setPrivateIgnored(String value) { privateIgnored = value; }
 }
