@@ -1,5 +1,7 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.processor.NamingStrategy;
+
 import java.lang.annotation.*;
 
 /**
@@ -84,13 +86,18 @@ public @interface CompiledJson {
 		EXPLICIT
 	}
 
+	Class namingStrategy() default NamingStrategy.class;
+
 	/**
+	 * Deprecated: use namingStrategy = MinifiedNames.class instead
+	 *
 	 * JSON attribute names can be minified using builtin simplistic algorithm
 	 * which results in smaller JSON and faster processing.
 	 * This is useful when using JSON for persistence instead of public API or Javascript interoperability.
 	 *
 	 * @return should JSON properties use short names
 	 */
+	@Deprecated
 	boolean minified() default false;
 
 	/**

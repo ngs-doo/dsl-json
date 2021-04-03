@@ -468,13 +468,13 @@ class ConverterTemplate {
 		for (int i = 0; i < sortedAttributes.size(); i++) {
 			AttributeInfo attr = sortedAttributes.get(i);
 			if (!attr.canReadInput()) continue;
-			String mn = si.minifiedNames.get(attr.id);
+			String sn = si.serializedNames.get(attr.id);
 			if (i > 0) {
 				code.append("\t\t\tif (reader.getNextToken() == '}') ");
 				checkMandatory(sortedAttributes, i);
 				code.append("\t\t\tif (reader.last() != ',') throw reader.newParseError(\"Expecting ',' for other mandatory properties\"); else reader.getNextToken();\n");
 			}
-			code.append("\t\t\tif (reader.fillNameWeakHash() != ").append(Integer.toString(calcWeakHash(mn != null ? mn : attr.id)));
+			code.append("\t\t\tif (reader.fillNameWeakHash() != ").append(Integer.toString(calcWeakHash(sn != null ? sn : attr.id)));
 			code.append(" || !reader.wasLastName(name_").append(attr.name).append(")) { bindSlow(reader, instance, ");
 			code.append(Integer.toString(i)).append("); return; }\n");
 			code.append("\t\t\treader.getNextToken();\n");
@@ -960,8 +960,8 @@ class ConverterTemplate {
 	private void handleSwitch(StructInfo si, String alignment, boolean useInstance) throws IOException {
 		for (AttributeInfo attr : si.attributes.values()) {
 			if (!attr.canReadInput()) continue;
-			String mn = si.minifiedNames.get(attr.id);
-			code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(mn != null ? mn : attr.id))).append(":\n");
+			String sn = si.serializedNames.get(attr.id);
+			code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(sn != null ? sn : attr.id))).append(":\n");
 			for (String an : attr.alternativeNames) {
 				code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(an))).append(":\n");
 			}

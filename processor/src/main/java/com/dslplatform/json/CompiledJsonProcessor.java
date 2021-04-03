@@ -419,8 +419,8 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 
 			StructInfo target = findReferenced(attr.type, attr.typeName, structs);
 			String alias = attr.id;
-			if (info.minifiedNames.containsKey(attr.id)) {
-				alias = info.minifiedNames.get(attr.id);
+			if (info.serializedNames.containsKey(attr.id)) {
+				alias = info.serializedNames.get(attr.id);
 			}
 			boolean excludeTypeSignature = target != null
 					&& target.type == ObjectType.MIXIN

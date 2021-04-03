@@ -240,6 +240,15 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void badNamingStrategy() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				6,
+				compileTestCase(BadMinifiedProperties.class),
+				"Unable to create an instance of NamingStrategy from the provided class: 'com.dslplatform.json.CompiledJson'");
+	}
+
+	@Test
 	public void supportsInterfaces() {
 		checkValidCompilation(UsesInterfaceType.class, Implements1Type.class);
 	}
@@ -363,7 +372,7 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 						Collections.singletonList("-Adsljson.annotation=NON_JAVA"),
 						ReferenceToImplicitWithJavaType.class, ImplicitWithJavaType.class);
 		//new Java versions perform analysis a bit differently
-		Assert.assertTrue(diagnostics.size() >= 4 && diagnostics.size() <= 6);
+		Assert.assertTrue(diagnostics.size() >= 4 && diagnostics.size() <= 7);
 		Diagnostic note = diagnostics.get(0);
 		Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		String error = note.getMessage(Locale.ENGLISH);

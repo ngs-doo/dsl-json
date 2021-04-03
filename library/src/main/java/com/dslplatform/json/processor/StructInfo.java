@@ -22,7 +22,7 @@ public class StructInfo {
 	public final BuilderInfo builder;
 	public final Set<StructInfo> implementations = new HashSet<StructInfo>();
 	private StructInfo inheritsFrom;
-	public final Map<String, String> minifiedNames = new HashMap<String, String>();
+	public final Map<String, String> serializedNames = new HashMap<String, String>();
 	public final AnnotationMirror annotation;
 	public final CompiledJson.Behavior onUnknown;
 	public final CompiledJson.TypeSignature typeSignature;
@@ -30,7 +30,7 @@ public class StructInfo {
 	public final TypeElement deserializeAs;
 	public final String discriminator;
 	public final String deserializeName;
-	public final boolean isMinified;
+	public final @Nullable NamingStrategy namingStrategy;
 	public final EnumSet<CompiledJson.Format> formats;
 	public final boolean isObjectFormatFirst;
 	public final LinkedHashMap<String, AttributeInfo> attributes = new LinkedHashMap<String, AttributeInfo>();
@@ -65,7 +65,7 @@ public class StructInfo {
 			@Nullable String discriminator,
 			@Nullable String deserializeName,
 			@Nullable Element enumConstantNameSource,
-			boolean isMinified,
+			@Nullable NamingStrategy namingStrategy,
 			@Nullable CompiledJson.Format[] formats,
 			Map<String, TypeMirror> genericSignatures) {
 		this.element = element;
@@ -86,7 +86,7 @@ public class StructInfo {
 		this.discriminator = discriminator != null ? discriminator : "";
 		this.deserializeName = deserializeName != null ? deserializeName : "";
 		this.enumConstantNameSource = enumConstantNameSource;
-		this.isMinified = isMinified;
+		this.namingStrategy = namingStrategy;
 		this.formats = formats == null ? EnumSet.of(CompiledJson.Format.OBJECT) : EnumSet.copyOf(Arrays.asList(formats));
 		this.isObjectFormatFirst = formats == null || formats.length == 0 || formats[0] == CompiledJson.Format.OBJECT;
 		this.createThroughConstructor = annotatedFactory == null && annotatedConstructor != null;
@@ -131,7 +131,7 @@ public class StructInfo {
 		this.discriminator = "";
 		this.deserializeName = "";
 		this.enumConstantNameSource = null;
-		this.isMinified = false;
+		this.namingStrategy = null;
 		this.formats = EnumSet.of(CompiledJson.Format.OBJECT);
 		this.isObjectFormatFirst = true;
 		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
@@ -279,26 +279,6 @@ public class StructInfo {
 		return hasAliases && hasDuplicates;
 	}
 
-	public void prepareMinifiedNames() {
-		Map<Character, Integer> counters = new HashMap<Character, Integer>();
-		Set<String> processed = new HashSet<String>();
-		Set<String> names = new HashSet<String>();
-		for (AttributeInfo p : attributes.values()) {
-			if (p.alias != null) {
-				minifiedNames.put(p.id, p.alias);
-				processed.add(p.id);
-				names.add(p.alias);
-			}
-		}
-		for (AttributeInfo p : attributes.values()) {
-			if (processed.contains(p.id)) {
-				continue;
-			}
-			String shortName = buildShortName(p.id, names, counters);
-			minifiedNames.put(p.id, shortName);
-		}
-	}
-
 	public void sortAttributes() {
 		boolean needsSorting = false;
 		for (AttributeInfo attr : attributes.values()) {
@@ -319,26 +299,5 @@ public class StructInfo {
 				attributes.put(attr.id, attr);
 			}
 		}
-	}
-
-	private static String buildShortName(String name, Set<String> names, Map<Character, Integer> counters) {
-		String shortName = name.substring(0, 1);
-		Character first = name.charAt(0);
-		if (!names.contains(shortName)) {
-			names.add(shortName);
-			counters.put(first, 0);
-			return shortName;
-		}
-		Integer next = counters.get(first);
-		if (next == null) {
-			next = 0;
-		}
-		do {
-			shortName = first.toString() + next;
-			next++;
-		} while (names.contains(shortName));
-		counters.put(first, next);
-		names.add(shortName);
-		return shortName;
 	}
 }

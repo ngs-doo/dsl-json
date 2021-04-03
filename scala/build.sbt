@@ -1,9 +1,9 @@
 lazy val root = (project in file(".")
   settings (commonSettings ++ publishSettings)
   settings(
-    version := "1.9.8",
+    version := "1.9.9",
     libraryDependencies ++= Seq(
-      "com.dslplatform" % "dsl-json-java8" % "1.9.8",
+      "com.dslplatform" % "dsl-json-java8" % "1.9.9",
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.specs2" %% "specs2-scalacheck" % "4.5.1" % Test,
       "javax.json.bind" % "javax.json.bind-api" % "1.0" % Test

@@ -604,8 +604,11 @@ public class Analysis {
 					}
 				}
 			}
-			if (info.isMinified) {
-				info.prepareMinifiedNames();
+			if (info.namingStrategy != null) {
+				Map<String, String> customNames = info.namingStrategy.prepareNames(info.attributes);
+				if (customNames != null) {
+					info.serializedNames.putAll(customNames);
+				}
 			}
 			info.sortAttributes();
 		}
@@ -1250,7 +1253,7 @@ public class Analysis {
 							classDiscriminator(annotation),
 							className(annotation),
 							type == ObjectType.ENUM ? findEnumConstantNameSource(element) : null,
-							isMinified(annotation),
+							namingStrategy(element, annotation),
 							formats,
 							findGenericSignatures(element.asType()));
 			info.path.addAll(path);
@@ -2297,6 +2300,47 @@ public class Analysis {
 		return null;
 	}
 
+	private static final Map<String, NamingStrategy> namingCache = new HashMap<String, NamingStrategy>();
+
+	@Nullable
+	private NamingStrategy namingStrategy(TypeElement element, @Nullable AnnotationMirror annotation) {
+		if (annotation == null) return null;
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
+		String strategyName = null;
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("namingStrategy()")) {
+				DeclaredType target = (DeclaredType) values.get(ee).getValue();
+				Element targetElement = target.asElement();
+				if (targetElement instanceof TypeElement) {
+					strategyName = elements.getBinaryName((TypeElement) targetElement).toString();
+				} else {
+					strategyName = targetElement.toString();
+				}
+				break;
+			}
+		}
+		if (strategyName == null && isMinified(annotation)) {
+			strategyName = MinifiedNaming.class.getName();
+		}
+		if (strategyName == null || NamingStrategy.class.getName().equals(strategyName)) return null;
+		NamingStrategy strategy = namingCache.get(strategyName);
+		if (strategy != null) return strategy;
+		try {
+			Class<?> manifest = Thread.currentThread().getContextClassLoader().loadClass(strategyName);
+			strategy = (NamingStrategy) manifest.newInstance();
+			namingCache.put(strategyName, strategy);
+			return strategy;
+		} catch (Exception ex) {
+			hasError = true;
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Unable to create an instance of NamingStrategy from the provided class: '" + strategyName + "'. " + ex.getMessage(),
+					element,
+					annotation);
+			return null;
+		}
+	}
+
 	private static String classDiscriminator(@Nullable AnnotationMirror annotation) {
 		if (annotation == null) return "";
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
@@ -2397,7 +2441,7 @@ public class Analysis {
 		return null;
 	}
 
-	private boolean isMinified(@Nullable AnnotationMirror ann) {
+	private static boolean isMinified(@Nullable AnnotationMirror ann) {
 		if (ann == null) return false;
 		for (ExecutableElement ee : ann.getElementValues().keySet()) {
 			if ("minified()".equals(ee.toString())) {

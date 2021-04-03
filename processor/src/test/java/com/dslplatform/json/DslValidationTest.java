@@ -189,6 +189,18 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void checkLegacyMinifiedNames() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(LegacyMinifiedProperties.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("int width {  simple Java access;  serialization name 'w';  }"));
+		Assert.assertTrue(dsl.contains("int height {  simple Java access;  serialization name 'h';  }"));
+		Assert.assertTrue(dsl.contains("string? name {  simple Java access;  serialization name 'n0';  }"));
+		Assert.assertTrue(dsl.contains("int customNumber {  simple Java access;  serialization name 'n';  }"));
+	}
+
+	@Test
 	public void supportsInterfaces() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(UsesInterfaceType.class, Implements1Type.class);
 		Diagnostic note = diagnostics.get(diagnostics.size() - 1);

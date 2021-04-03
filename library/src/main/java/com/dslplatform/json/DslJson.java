@@ -1639,7 +1639,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	private Object deserializeWith(Type manifest, JsonReader json) throws IOException {
+	protected Object deserializeWith(Type manifest, JsonReader json) throws IOException {
 		final JsonReader.ReadObject<?> simpleReader = tryFindReader(manifest);
 		if (simpleReader != null) {
 			return simpleReader.read(json);
@@ -1712,7 +1712,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		return new Object[0];
 	}
 
-	private IOException createErrorMessage(final Class<?> manifest) {
+	protected IOException createErrorMessage(final Class<?> manifest) {
 		final ArrayList<Class<?>> signatures = new ArrayList<Class<?>>();
 		findAllSignatures(manifest, signatures);
 		for (final Class<?> sig : signatures) {
@@ -1871,7 +1871,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	private <TResult> List<TResult> deserializeList(
+	protected <TResult> List<TResult> deserializeList(
 			final Class<TResult> manifest,
 			JsonReader<TContext> json,
 			InputStream stream) throws IOException {
@@ -1990,7 +1990,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	private <TResult> TResult deserialize(
+	protected <TResult> TResult deserialize(
 			final Class<TResult> manifest,
 			final JsonReader json,
 			final InputStream stream) throws IOException {
@@ -2255,7 +2255,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	private <TResult> Iterator<TResult> iterateOver(
+	protected <TResult> Iterator<TResult> iterateOver(
 			final Class<TResult> manifest,
 			final JsonReader json,
 			final InputStream stream) throws IOException {
