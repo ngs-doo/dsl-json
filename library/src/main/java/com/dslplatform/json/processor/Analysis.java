@@ -884,15 +884,15 @@ public class Analysis {
 							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "bean property", path, field != null ? field.field : null);
 						}
 						for (Map.Entry<String, AccessElements> p : bestAnalysis.exact.entrySet()) {
-							if (!info.attributes.containsKey(p.getKey()) || info.annotation != null) {
-								AccessElements field = bestAnalysis.allFieldDetails.get(p.getKey());
-								analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path, field != null ? field.field : null);
-							}
+							if (info.attributes.containsKey(p.getKey()) && info.annotation == null) continue;
+							//TODO: check for conflict between getter and exact property name
+							AccessElements field = bestAnalysis.allFieldDetails.get(p.getKey());
+							analyzeAttribute(info, p.getValue().read.getReturnType(), p.getKey(), p.getValue(), "exact property", path, field != null ? field.field : null);
 						}
 						for (Map.Entry<String, AccessElements> f : bestAnalysis.fields.entrySet()) {
-							if (!info.attributes.containsKey(f.getKey()) || info.annotation != null) {
-								analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path, null);
-							}
+							if (info.attributes.containsKey(f.getKey()) && info.annotation == null
+								|| info.propertyNames.contains(f.getKey())) continue;
+							analyzeAttribute(info, f.getValue().field.asType(), f.getKey(), f.getValue(), "field", path, null);
 						}
 					}
 				}
@@ -1070,8 +1070,7 @@ public class Analysis {
 			if (!typeResolved && hasUnknown) {
 				info.unknowns.put(attr.id, referenceType);
 			}
-			info.attributes.put(attr.id, attr);
-			info.properties.add(attr.element);
+			info.add(attr);
 			checkRelatedProperty(type, info.discoveredBy, target, info.element, element, path);
 		}
 		path.pop();

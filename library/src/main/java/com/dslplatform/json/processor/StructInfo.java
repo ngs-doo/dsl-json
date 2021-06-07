@@ -34,6 +34,7 @@ public class StructInfo {
 	public final EnumSet<CompiledJson.Format> formats;
 	public final boolean isObjectFormatFirst;
 	public final LinkedHashMap<String, AttributeInfo> attributes = new LinkedHashMap<String, AttributeInfo>();
+	public final Set<String> propertyNames = new HashSet<String>();
 	public final Set<Element> properties = new HashSet<Element>();
 	public final List<String> constants = new ArrayList<String>();
 	public final Element enumConstantNameSource;
@@ -299,5 +300,11 @@ public class StructInfo {
 				attributes.put(attr.id, attr);
 			}
 		}
+	}
+
+	public void add(AttributeInfo attr) {
+		propertyNames.add(attr.name);
+		attributes.put(attr.id, attr);
+		properties.add(attr.element);
 	}
 }

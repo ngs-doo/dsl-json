@@ -840,4 +840,9 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(PrivateConverter.class),
 				"Specified target: 'com.dslplatform.json.models.PrivateConverter.Private' must be public");
 	}
+
+	@Test
+	public void sameFieldsInheritanceWithAlias() {
+		checkValidCompilation(InheritanceSameProperty.MasterClass.class, InheritanceSameProperty.BaseFields.class);
+	}
 }

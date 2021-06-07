@@ -93,6 +93,28 @@ public class InheritanceTest {
 		}
 	}
 
+	@CompiledJson
+	public static class SuperClass {
+		public String field;
+
+		public String getField() {
+			return field;
+		}
+
+		public void setField(String field) {
+			this.field = field;
+		}
+	}
+
+	@CompiledJson
+	public static class ChildClass extends SuperClass{
+		@JsonAttribute(name = "named_fields")
+		@Override
+		public String getField() {
+			return super.getField();
+		}
+	}
+
 	@Test
 	public void topLevel() throws IOException {
 		Father f = new Father("abc");
@@ -176,4 +198,21 @@ public class InheritanceTest {
 		Assert.assertEquals("name", res2.getString());
 	}
 
+	@Test
+	public void sameProperty() throws IOException {
+		SuperClass sc = new SuperClass();
+		sc.setField("abc");
+		JsonWriter jw = dslJson.newWriter();
+		dslJson.serialize(jw, SuperClass.class, sc);
+		Assert.assertEquals("{\"field\":\"abc\"}", jw.toString());
+		SuperClass res1 = dslJson.deserialize(SuperClass.class, jw.getByteBuffer(), jw.size());
+		Assert.assertEquals(sc.getField(), res1.getField());
+		ChildClass cc = new ChildClass();
+		cc.setField("cde");
+		jw.reset();
+		dslJson.serialize(jw, ChildClass.class, cc);
+		Assert.assertEquals("{\"named_fields\":\"cde\"}", jw.toString());
+		ChildClass res2 = dslJson.deserialize(ChildClass.class, jw.getByteBuffer(), jw.size());
+		Assert.assertEquals(cc.getField(), res2.getField());
+	}
 }

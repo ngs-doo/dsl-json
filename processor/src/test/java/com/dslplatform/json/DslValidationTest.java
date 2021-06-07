@@ -624,4 +624,14 @@ public class DslValidationTest extends AbstractAnnotationProcessorTest {
 		Assert.assertTrue(dsl.contains("List<string?> s"));
 		Assert.assertTrue(dsl.contains("int x"));
 	}
+
+	@Test
+	public void sameFieldsInheritanceWithAlias() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InheritanceSameProperty.MasterClass.class, InheritanceSameProperty.BaseFields.class);
+		Diagnostic note = diagnostics.get(diagnostics.size() - 1);
+		Assert.assertEquals(Diagnostic.Kind.NOTE, note.getKind());
+		String dsl = note.getMessage(Locale.ENGLISH);
+		Assert.assertTrue(dsl.contains("string? string {  serialization name 'named_fields';  }"));
+		Assert.assertTrue(dsl.contains("string? string;"));
+	}
 }
