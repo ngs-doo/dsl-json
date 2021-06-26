@@ -52,4 +52,19 @@ public class BasicStuffTest {
         ClassWithNullDefault deser = (ClassWithNullDefault) dslJson.deserialize(ClassWithNullDefault.class, input);
         Assert.assertEquals(nd.getField(), deser.getField());
     }
+
+    @Test
+    public void classCanBeEmpty() throws IOException {
+        final DslJson dslJson = new DslJson(Settings.basicSetup().allowArrayFormat(true).skipDefaultValues(false));
+
+        EmptyClass ec = new EmptyClass();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        dslJson.serialize(ec, output);
+
+        Assert.assertEquals("{}", output.toString("UTF-8"));
+
+        ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
+        EmptyClass deser = (EmptyClass) dslJson.deserialize(EmptyClass.class, input);
+        Assert.assertNotNull(deser);
+    }
 }
