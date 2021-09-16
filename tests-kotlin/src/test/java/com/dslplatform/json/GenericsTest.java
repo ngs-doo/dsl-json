@@ -1,5 +1,6 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.runtime.Settings;
 import com.dslplatform.json.runtime.TypeDefinition;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -10,13 +11,12 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 
 public class GenericsTest {
-    private DslJson<Object> dslJson = new DslJson<>();
+    private DslJson<Object> dslJson = new DslJson<>(Settings.withRuntime().includeServiceLoader());
 
     @Test
     public void testSerializeAndDeserializeGeneric() throws IOException {
         GenericModel<Double> model = generateModel();
-        Type type = new TypeDefinition<GenericModel<Double>>() {
-        }.type;
+        Type type = new TypeDefinition<GenericModel<Double>>() { }.type;
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         JsonWriter writer = dslJson.newWriter();
         writer.reset(os);

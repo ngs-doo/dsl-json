@@ -1908,6 +1908,9 @@ public class Analysis {
 							kv.getValue(),
 							annotation);
 				}
+			} else if (!onlyBasicFeatures && arg == null && field != null && setterArgument != null && field.field != null
+					&& setterArgument.asType().toString().equals(field.field.asType().toString()) && isCompatibileType(setterArgument.asType(), kv.getValue().getReturnType())) {
+				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			}
 		}
 		return result;
