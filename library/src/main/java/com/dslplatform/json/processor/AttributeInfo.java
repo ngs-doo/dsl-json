@@ -137,7 +137,7 @@ public class AttributeInfo {
 		return null;
 	}
 
-	static String stripAnnotations(String typeName) {
+	static String typeWithoutAnnotations(String typeName) {
 		//Java6 does not have access to Java8 annotated types, so resort to hacks
 		if (typeName.startsWith("(@")) {
 			int separatorAt = typeName.lastIndexOf(" :: ");
@@ -161,7 +161,7 @@ public class AttributeInfo {
 			TypeMirror type,
 			LinkedHashSet<TypeMirror> usedTypes,
 			Map<String, TypeMirror> genericSignatures) {
-		if (usedTypes.isEmpty()) return stripAnnotations(type.toString());
+		if (usedTypes.isEmpty()) return typeWithoutAnnotations(type.toString());
 		StringBuilder builder = new StringBuilder();
 		createTypeSignature(type, genericSignatures, builder);
 		return builder.toString();
@@ -175,7 +175,7 @@ public class AttributeInfo {
 			TypeMirror type,
 			Map<String, TypeMirror> genericSignatures,
 			StringBuilder builder) {
-		String typeName = AttributeInfo.stripAnnotations(type.toString());
+		String typeName = typeWithoutAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {

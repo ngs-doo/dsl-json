@@ -427,4 +427,28 @@ public class TypesTest {
 		Assert.assertNull(z.d);
 		Assert.assertNull(z.f);
 	}
+
+	@CompiledJson
+	public static class NonNullable {
+
+		private String s;
+
+		@NonNull
+		public String getS() { return s; }
+
+		public NonNullable(String s) {
+			this.s = s;
+		}
+	}
+
+	@Test
+	public void cantBeNull() throws IOException {
+		byte[] input = "{\"s\":null}".getBytes("UTF-8");
+		try {
+			dslJsonFull.deserialize(NonNullable.class, input, input.length);
+			Assert.fail("Expecting exception");
+		} catch (Exception ex) {
+			Assert.assertEquals("Property 's' is not allowed to be null at position: 9, following: `{\"s\":null`, before: `}`", ex.getMessage());
+		}
+	}
 }

@@ -130,7 +130,7 @@ final class Context {
 		if (type.getKind() == TypeKind.DECLARED) {
 			return ((DeclaredType) type).asElement().toString();
 		}
-		String typeName = AttributeInfo.stripAnnotations(type.toString());
+		String typeName = AttributeInfo.typeWithoutAnnotations(type.toString());
 		if (type.getKind() == TypeKind.TYPEVAR) {
 			TypeMirror mirror = genericSignatures.get(typeName);
 			if (mirror != null && mirror != type) {

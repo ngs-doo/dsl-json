@@ -284,7 +284,7 @@ class ConverterTemplate {
 		if (attr.isGeneric || !attr.usedTypes.isEmpty()) {
 			return createTypeSignature(type, attr.typeVariablesIndex, genericSignatures);
 		}
-		String typeName = AttributeInfo.stripAnnotations(type.toString());
+		String typeName = AttributeInfo.typeWithoutAnnotations(type.toString());
 		return typeOrClass(nonGenericObject(typeName), typeName);
 	}
 
@@ -340,7 +340,7 @@ class ConverterTemplate {
 			Map<String, Integer> typeVariableIndexes,
 			Map<String, TypeMirror> genericSignatures,
 			StringBuilder builder) {
-		String typeName = AttributeInfo.stripAnnotations(type.toString());
+		String typeName = AttributeInfo.typeWithoutAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {
@@ -397,7 +397,7 @@ class ConverterTemplate {
 			TypeMirror type,
 			Map<String, Integer> typeVariableIndexes,
 			Map<String, TypeMirror> genericSignatures) throws IOException {
-		String typeName = AttributeInfo.stripAnnotations(type.toString());
+		String typeName = AttributeInfo.typeWithoutAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {

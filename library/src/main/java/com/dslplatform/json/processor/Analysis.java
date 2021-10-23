@@ -645,7 +645,7 @@ public class Analysis {
 	}
 
 	private @Nullable Element findElement(TypeMirror type) {
-		String javaType = AttributeInfo.stripAnnotations(type.toString());
+		String javaType = AttributeInfo.typeWithoutAnnotations(type.toString());
 		String fullName = objectName(javaType);
 		return fullName.equals(javaType)
 				? types.asElement(type)
@@ -676,7 +676,7 @@ public class Analysis {
 	}
 
 	private ConverterInfo validateConverter(TypeElement converter, TypeMirror type) {
-		String javaType = AttributeInfo.stripAnnotations(type.toString());
+		String javaType = AttributeInfo.typeWithoutAnnotations(type.toString());
 		String fullName = objectName(javaType);
 		Element declaredType = findElement(type);
 		Set<Element> usedTypes = new HashSet<Element>();
@@ -943,7 +943,7 @@ public class Analysis {
 			if (type.getKind().isPrimitive()) {
 				return types.getPrimitiveType(type.getKind());
 			}
-			String actualType = AttributeInfo.stripAnnotations(typeName);
+			String actualType = AttributeInfo.typeWithoutAnnotations(typeName);
 			if (!actualType.contains("<") && !actualType.contains("[")) {
 				Element element = types.asElement(type);
 				return element.asType();
@@ -1468,7 +1468,7 @@ public class Analysis {
 	}
 
 	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts, Set<TypeMirror> usedTypes) {
-		String typeName = AttributeInfo.stripAnnotations(target.toString());
+		String typeName = AttributeInfo.typeWithoutAnnotations(target.toString());
 		if (typeSupport.isSupported(typeName)) {
 			usedTypes.add(target);
 			if (isRawType(target)) {
@@ -1591,7 +1591,7 @@ public class Analysis {
 		if (unknownTypes == UnknownTypes.WARNING) {
 			messager.printMessage(
 					Diagnostic.Kind.WARNING,
-					(element.getKind().isField() ? "Field '" : "Method '") + element.toString() +
+					(element.getKind().isField() ? "Field '" : "Method '") + element +
 							"' annotated with @JsonValue is of unknown type.",
 					element);
 			return true;
@@ -1842,7 +1842,7 @@ public class Analysis {
 					if (producesWarning) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible bean getter method which is ignored during processing. Put annotation on public method instead.",
+								attributeType + " detected on non accessible bean getter method which is ignored during processing. Put annotation on public method instead.",
 								method,
 								annotation);
 					} else if (!getters.containsKey(property)) {
@@ -1854,7 +1854,7 @@ public class Analysis {
 					if (producesWarning) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible bean getter method which is ignored during processing. Put annotation on public method instead.",
+								attributeType + " detected on non accessible bean getter method which is ignored during processing. Put annotation on public method instead.",
 								method,
 								annotation);
 					} else if (!getters.containsKey(property)) {
@@ -1864,7 +1864,7 @@ public class Analysis {
 					if (producesWarning) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible bean setter method which is ignored during processing. Put annotation on public method instead.",
+								attributeType + " detected on non accessible bean setter method which is ignored during processing. Put annotation on public method instead.",
 								method,
 								annotation);
 					} else {
@@ -1886,13 +1886,14 @@ public class Analysis {
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setterArgument = setter == null ? null : setter.getParameters().get(0);
 			VariableElement arg = arguments.get(kv.getKey());
-			String returnType = kv.getValue().getReturnType().toString();
+			String returnType = AttributeInfo.typeWithoutAnnotations(kv.getValue().getReturnType().toString());
+			String setterType = setterArgument != null ? AttributeInfo.typeWithoutAnnotations(setterArgument.asType().toString()) : null;
 			AnnotationMirror actualAnnotation = annotation(kv.getValue(), setter, null, arg);
 			AccessElements field = fieldDetails.get(kv.getKey());
 			AnnotationMirror annotation = actualAnnotation != null ? actualAnnotation : field != null ? field.annotation : null;
-			if (setterArgument != null && setterArgument.asType().toString().equals(returnType)) {
+			if (setterType != null && setterType.equals(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (setterArgument != null && (setterArgument.asType() + "<").startsWith(returnType)) {
+			} else if (setterArgument != null && (setterType + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (!onlyBasicFeatures && arg != null && isCompatibileType(arg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
@@ -1904,12 +1905,12 @@ public class Analysis {
 				} else {
 					messager.printMessage(
 							Diagnostic.Kind.WARNING,
-							attributeType.toString() + " detected on collection property, but non-nullable marker is missing. Property will be ignored.",
+							attributeType + " detected on collection property, but non-nullable marker is missing. Property will be ignored.",
 							kv.getValue(),
 							annotation);
 				}
-			} else if (!onlyBasicFeatures && arg == null && field != null && setterArgument != null && field.field != null
-					&& setterArgument.asType().toString().equals(field.field.asType().toString()) && isCompatibileType(setterArgument.asType(), kv.getValue().getReturnType())) {
+			} else if (!onlyBasicFeatures && arg == null && field != null && setterType != null && field.field != null
+					&& setterType.equals(AttributeInfo.typeWithoutAnnotations(field.field.asType().toString())) && isCompatibileType(setterArgument.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			}
 		}
@@ -1948,7 +1949,7 @@ public class Analysis {
 					if (producesWarning) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible setter method which is ignored during processing. Put annotation on public method instead.",
+								attributeType + " detected on non accessible setter method which is ignored during processing. Put annotation on public method instead.",
 								method,
 								annotation);
 					} else if (!getters.containsKey(name)) {
@@ -1958,7 +1959,7 @@ public class Analysis {
 					if (producesWarning) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible setter method which is ignored during processing. Put annotation on public method instead.",
+								attributeType + " detected on non accessible setter method which is ignored during processing. Put annotation on public method instead.",
 								method,
 								annotation);
 					} else {
@@ -1990,7 +1991,7 @@ public class Analysis {
 					if (fieldAnnotation != null && !processed.contains(name)) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible field which is ignored during processing. Put annotation on public field instead.",
+								attributeType + " detected on non accessible field which is ignored during processing. Put annotation on public field instead.",
 								field,
 								fieldAnnotation);
 					}
@@ -2042,7 +2043,7 @@ public class Analysis {
 					if (getAnnotation(method, attributeType) != null) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible builder method which is ignored during processing. Put annotation on public method instead.",
+								attributeType + " detected on non accessible builder method which is ignored during processing. Put annotation on public method instead.",
 								element);
 					}
 					continue;
@@ -2070,7 +2071,7 @@ public class Analysis {
 						if (getAnnotation(field, attributeType) != null && !getters.containsKey(name)) {
 							messager.printMessage(
 									Diagnostic.Kind.WARNING,
-									attributeType.toString() + " detected on non accessible builder field which is ignored during processing. Put annotation on public field instead.",
+									attributeType + " detected on non accessible builder field which is ignored during processing. Put annotation on public field instead.",
 									element);
 						}
 						continue;
@@ -2091,7 +2092,7 @@ public class Analysis {
 					if (getAnnotation(method, attributeType) != null) {
 						messager.printMessage(
 								Diagnostic.Kind.WARNING,
-								attributeType.toString() + " detected on non accessible builder method which is ignored during processing. Put annotation on public method instead.",
+								attributeType + " detected on non accessible builder method which is ignored during processing. Put annotation on public method instead.",
 								element);
 					}
 					continue;
