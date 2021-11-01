@@ -1,10 +1,10 @@
 name := "DSL-JSON Scala example"
-version := "1.9.8"
+version := "1.9.9"
 organization := "com.dslplatform.json.example"
 scalaVersion := "2.12.12"
 
 ThisBuild / useCoursier := false
 resolvers += Resolver.mavenLocal
 
-libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.8"
+libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.9.9"
 libraryDependencies += "javax.json.bind" % "javax.json.bind-api" % "1.0"

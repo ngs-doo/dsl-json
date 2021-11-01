@@ -845,4 +845,15 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	public void sameFieldsInheritanceWithAlias() {
 		checkValidCompilation(InheritanceSameProperty.MasterClass.class, InheritanceSameProperty.BaseFields.class);
 	}
+
+	@Test
+	public void warningOnWrongBuilderType() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(VoidOnBuilderReturn.class);
+		Assert.assertEquals(2, diagnostics.size());
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				20,
+				compileTestCase(VoidOnBuilderReturn.class),
+				"Skipping over method 'setS' because its return type is not the expected 'com.dslplatform.json.models.VoidOnBuilderReturn.Builder'");
+	}
 }

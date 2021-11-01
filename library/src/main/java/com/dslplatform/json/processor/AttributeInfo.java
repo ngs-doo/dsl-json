@@ -137,31 +137,11 @@ public class AttributeInfo {
 		return null;
 	}
 
-	static String typeWithoutAnnotations(String typeName) {
-		//Java6 does not have access to Java8 annotated types, so resort to hacks
-		if (typeName.startsWith("(@")) {
-			int separatorAt = typeName.lastIndexOf(" :: ");
-			int lastParenthesis = typeName.lastIndexOf(')');
-			if (separatorAt != -1 && lastParenthesis > separatorAt) {
-				String baseType = typeName.substring(separatorAt + 4, lastParenthesis);
-				return lastParenthesis == typeName.length() - 1
-						? baseType
-						: baseType + typeName.substring(lastParenthesis + 1);
-			}
-		}
-		//Alternative naming scheme :(
-		while (typeName.startsWith("@")) {
-			int nextSpace = typeName.indexOf(' ');
-			typeName = typeName.substring(nextSpace + 1);
-		}
-		return typeName;
-	}
-
 	static String createTypeSignature(
 			TypeMirror type,
 			LinkedHashSet<TypeMirror> usedTypes,
 			Map<String, TypeMirror> genericSignatures) {
-		if (usedTypes.isEmpty()) return typeWithoutAnnotations(type.toString());
+		if (usedTypes.isEmpty()) return Analysis.typeWithoutAnnotations(type.toString());
 		StringBuilder builder = new StringBuilder();
 		createTypeSignature(type, genericSignatures, builder);
 		return builder.toString();
@@ -175,7 +155,7 @@ public class AttributeInfo {
 			TypeMirror type,
 			Map<String, TypeMirror> genericSignatures,
 			StringBuilder builder) {
-		String typeName = typeWithoutAnnotations(type.toString());
+		String typeName = Analysis.typeWithoutAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {

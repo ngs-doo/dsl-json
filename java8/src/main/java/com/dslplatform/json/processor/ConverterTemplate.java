@@ -14,6 +14,7 @@ import java.io.Writer;
 import java.util.List;
 import java.util.Map;
 
+import static com.dslplatform.json.processor.Analysis.typeWithoutAnnotations;
 import static com.dslplatform.json.processor.CompiledJsonAnnotationProcessor.findConverterName;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.sortedAttributes;
@@ -284,7 +285,7 @@ class ConverterTemplate {
 		if (attr.isGeneric || !attr.usedTypes.isEmpty()) {
 			return createTypeSignature(type, attr.typeVariablesIndex, genericSignatures);
 		}
-		String typeName = AttributeInfo.typeWithoutAnnotations(type.toString());
+		String typeName = typeWithoutAnnotations(type.toString());
 		return typeOrClass(nonGenericObject(typeName), typeName);
 	}
 
@@ -340,7 +341,7 @@ class ConverterTemplate {
 			Map<String, Integer> typeVariableIndexes,
 			Map<String, TypeMirror> genericSignatures,
 			StringBuilder builder) {
-		String typeName = AttributeInfo.typeWithoutAnnotations(type.toString());
+		String typeName = typeWithoutAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {
@@ -397,7 +398,7 @@ class ConverterTemplate {
 			TypeMirror type,
 			Map<String, Integer> typeVariableIndexes,
 			Map<String, TypeMirror> genericSignatures) throws IOException {
-		String typeName = AttributeInfo.typeWithoutAnnotations(type.toString());
+		String typeName = typeWithoutAnnotations(type.toString());
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {

@@ -6,7 +6,7 @@
 
     <groupId>com.dslplatform</groupId>
     <artifactId>json-examples</artifactId>
-    <version>1.9.8</version>
+    <version>1.9.9</version>
     <packaging>pom</packaging>
     <url>https://github.com/ngs-doo/dsl-json</url>
 
@@ -31,52 +31,52 @@
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>array-format-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>autovalue-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>dsl-schema-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>jackson-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>jsonb-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>lombok-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>maven-java6-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>maven-java8-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>reflection-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>polymorphic-example</artifactId>
-            <version>1.9.8</version>
+            <version>1.9.9</version>
         </dependency>
     </dependencies>
 

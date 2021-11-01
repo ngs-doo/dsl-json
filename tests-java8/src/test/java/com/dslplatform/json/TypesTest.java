@@ -4,6 +4,7 @@ import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.validation.constraints.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -429,26 +430,132 @@ public class TypesTest {
 	}
 
 	@CompiledJson
-	public static class NonNullable {
+	public static class NonNullable1 {
 
 		private String s;
 
 		@NonNull
 		public String getS() { return s; }
 
-		public NonNullable(String s) {
+		public NonNullable1(String s) {
 			this.s = s;
+		}
+	}
+
+	@CompiledJson
+	public static class NonNullable2 {
+
+		@NonNull
+		private String s;
+
+		public String getS() { return s; }
+
+		public NonNullable2(String s) {
+			this.s = s;
+		}
+	}
+
+	@CompiledJson
+	public static class NonNullable3 {
+
+		private String s;
+
+		@NotNull
+		@JsonAttribute(converter = ConvertString.class, nullable = false)
+		public String getS() { return s; }
+
+		public NonNullable3(String s) {
+			this.s = s;
+		}
+
+		public static class ConvertString {
+
+			public static final JsonReader.ReadObject<String> JSON_READER = StringConverter.READER;
+			public static final JsonWriter.WriteObject<@NotNull String> JSON_WRITER = StringConverter.WRITER;
+		}
+	}
+
+	@CompiledJson
+	public static class NonNullable4 {
+
+		private String s;
+
+		@JsonAttribute(converter = ConvertString.class, nullable = false)
+		public String getS() { return s; }
+
+		public NonNullable4(@NotNull String s) {
+			this.s = s;
+		}
+
+		public static class ConvertString {
+
+			public static final JsonReader.ReadObject<@NotNull String> JSON_READER = StringConverter.READER;
+			public static final JsonWriter.WriteObject<String> JSON_WRITER = StringConverter.WRITER;
+		}
+	}
+
+	public static class NonNullable5 {
+
+		private String s;
+
+		@NotNull
+		public String getS() { return s; }
+
+		private NonNullable5() {
+		}
+
+		@CompiledJson
+		public static NonNullable5 factory(String s) {
+			NonNullable5 res = new NonNullable5();
+			res.s = s;
+			return res;
+		}
+	}
+
+	public static class NonNullable6 {
+
+		private String s;
+
+		@NonNull
+		public String getS() { return s; }
+
+		private NonNullable6() {
+		}
+
+		public static class Builder {
+
+			private String s;
+
+			public Builder setS(String s) {
+				this.s = s;
+				return this;
+			}
+
+			@CompiledJson
+			public NonNullable6 build() {
+				NonNullable6 res = new NonNullable6();
+				res.s = s;
+				return res;
+			}
+		}
+
+		public static Builder builder() {
+			return new Builder();
 		}
 	}
 
 	@Test
 	public void cantBeNull() throws IOException {
 		byte[] input = "{\"s\":null}".getBytes("UTF-8");
-		try {
-			dslJsonFull.deserialize(NonNullable.class, input, input.length);
-			Assert.fail("Expecting exception");
-		} catch (Exception ex) {
-			Assert.assertEquals("Property 's' is not allowed to be null at position: 9, following: `{\"s\":null`, before: `}`", ex.getMessage());
+		Class<?>[] nonNullable = {NonNullable1.class, NonNullable2.class, NonNullable3.class,
+				NonNullable4.class, NonNullable5.class, NonNullable6.class};
+		for(Class<?> signature : nonNullable) {
+			try {
+				dslJsonFull.deserialize(signature, input, input.length);
+				Assert.fail("Expecting exception for " + signature);
+			} catch (ParsingException ex) {
+				Assert.assertEquals("Property 's' is not allowed to be null at position: 9, following: `{\"s\":null`, before: `}`", ex.getMessage());
+			}
 		}
 	}
 }

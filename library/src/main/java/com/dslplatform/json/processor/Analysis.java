@@ -645,7 +645,7 @@ public class Analysis {
 	}
 
 	private @Nullable Element findElement(TypeMirror type) {
-		String javaType = AttributeInfo.typeWithoutAnnotations(type.toString());
+		String javaType = typeWithoutAnnotations(type.toString());
 		String fullName = objectName(javaType);
 		return fullName.equals(javaType)
 				? types.asElement(type)
@@ -676,7 +676,7 @@ public class Analysis {
 	}
 
 	private ConverterInfo validateConverter(TypeElement converter, TypeMirror type) {
-		String javaType = AttributeInfo.typeWithoutAnnotations(type.toString());
+		String javaType = typeWithoutAnnotations(type.toString());
 		String fullName = objectName(javaType);
 		Element declaredType = findElement(type);
 		Set<Element> usedTypes = new HashSet<Element>();
@@ -943,7 +943,7 @@ public class Analysis {
 			if (type.getKind().isPrimitive()) {
 				return types.getPrimitiveType(type.getKind());
 			}
-			String actualType = AttributeInfo.typeWithoutAnnotations(typeName);
+			String actualType = typeWithoutAnnotations(typeName);
 			if (!actualType.contains("<") && !actualType.contains("[")) {
 				Element element = types.asElement(type);
 				return element.asType();
@@ -1468,7 +1468,7 @@ public class Analysis {
 	}
 
 	private void analyzePartsRecursively(TypeMirror target, Map<String, PartKind> parts, Set<TypeMirror> usedTypes) {
-		String typeName = AttributeInfo.typeWithoutAnnotations(target.toString());
+		String typeName = typeWithoutAnnotations(target.toString());
 		if (typeSupport.isSupported(typeName)) {
 			usedTypes.add(target);
 			if (isRawType(target)) {
@@ -1764,10 +1764,30 @@ public class Analysis {
 		return arguments;
 	}
 
+	static String typeWithoutAnnotations(String typeName) {
+		//Java6 does not have access to Java8 annotated types, so resort to hacks
+		if (typeName.startsWith("(@")) {
+			int separatorAt = typeName.lastIndexOf(" :: ");
+			int lastParenthesis = typeName.lastIndexOf(')');
+			if (separatorAt != -1 && lastParenthesis > separatorAt) {
+				String baseType = typeName.substring(separatorAt + 4, lastParenthesis);
+				return lastParenthesis == typeName.length() - 1
+						? baseType
+						: baseType + typeName.substring(lastParenthesis + 1);
+			}
+		}
+		//Alternative naming scheme :(
+		while (typeName.startsWith("@")) {
+			int nextSpace = typeName.indexOf(' ');
+			typeName = typeName.substring(nextSpace + 1);
+		}
+		return typeName;
+	}
+
 	private boolean isCompatibileType(TypeMirror left, TypeMirror right) {
 		if (left.equals(right)) return true;
-		final String leftStr = left.toString();
-		final String rightStr = right.toString();
+		final String leftStr = typeWithoutAnnotations(left.toString());
+		final String rightStr = typeWithoutAnnotations(right.toString());
 		if (leftStr.equals(rightStr)) return true;
 		int ind = leftStr.indexOf('<');
 		if (ind == -1 || rightStr.indexOf('<') != ind) return false;
@@ -1886,14 +1906,14 @@ public class Analysis {
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setterArgument = setter == null ? null : setter.getParameters().get(0);
 			VariableElement arg = arguments.get(kv.getKey());
-			String returnType = AttributeInfo.typeWithoutAnnotations(kv.getValue().getReturnType().toString());
-			String setterType = setterArgument != null ? AttributeInfo.typeWithoutAnnotations(setterArgument.asType().toString()) : null;
+			String returnType = typeWithoutAnnotations(kv.getValue().getReturnType().toString());
+			String setterType = setterArgument != null ? typeWithoutAnnotations(setterArgument.asType().toString()) : null;
 			AnnotationMirror actualAnnotation = annotation(kv.getValue(), setter, null, arg);
 			AccessElements field = fieldDetails.get(kv.getKey());
 			AnnotationMirror annotation = actualAnnotation != null ? actualAnnotation : field != null ? field.annotation : null;
 			if (setterType != null && setterType.equals(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (setterArgument != null && (setterType + "<").startsWith(returnType)) {
+			} else if (setterType != null && (setterType + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (!onlyBasicFeatures && arg != null && isCompatibileType(arg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
@@ -1910,7 +1930,7 @@ public class Analysis {
 							annotation);
 				}
 			} else if (!onlyBasicFeatures && arg == null && field != null && setterType != null && field.field != null
-					&& setterType.equals(AttributeInfo.typeWithoutAnnotations(field.field.asType().toString())) && isCompatibileType(setterArgument.asType(), kv.getValue().getReturnType())) {
+					&& setterType.equals(typeWithoutAnnotations(field.field.asType().toString())) && isCompatibileType(setterArgument.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			}
 		}
@@ -2099,10 +2119,15 @@ public class Analysis {
 				}
 				boolean isBoolean = method.getReturnType() != null && "boolean".equals(method.getReturnType().toString());
 				String property = beanOrActualName(name, isBoolean);
-				if (method.getParameters().size() == 1 && types.isSameType(method.getReturnType(), builderType)) {
-					boolean canAdd = withExact || withBeans && name.startsWith("set") && name.length() > 4;
-					if (canAdd && !setters.containsKey(property)) {
+				boolean canAdd = withExact || withBeans && name.startsWith("set") && name.length() > 4;
+				if (method.getParameters().size() == 1 && canAdd && !setters.containsKey(property)) {
+					if (types.isSameType(method.getReturnType(), builderType)) {
 						setters.put(property, method);
+					} else {
+						messager.printMessage(
+								Diagnostic.Kind.WARNING,
+								"Skipping over method '" + method.getSimpleName() + "' because its return type is not the expected '" + builderType + "'",
+								method);
 					}
 				}
 			}
@@ -2111,9 +2136,10 @@ public class Analysis {
 		for (Map.Entry<String, ExecutableElement> kv : getters.entrySet()) {
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setArg = setter == null ? null : setter.getParameters().get(0);
-			String returnType = kv.getValue().getReturnType().toString();
+			String returnType = typeWithoutAnnotations(kv.getValue().getReturnType().toString());
 			AnnotationMirror annotation = annotation(kv.getValue(), setter, null, null);
-			if (setArg != null && (setArg.asType().toString().equals(returnType) || (setArg.asType() + "<").startsWith(returnType))) {
+			String setterType = setArg != null ? typeWithoutAnnotations(setArg.asType().toString()) : null;
+			if (setterType != null && (setterType.equals(returnType) || (setterType + "<").startsWith(returnType))) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			}
 		}
@@ -2121,9 +2147,10 @@ public class Analysis {
 			if (result.containsKey(kv.getKey())) continue;
 			ExecutableElement setter = setters.get(kv.getKey());
 			VariableElement setArg = setter == null ? null : setter.getParameters().get(0);
-			String returnType = kv.getValue().asType().toString();
+			String returnType = typeWithoutAnnotations(kv.getValue().asType().toString());
 			AnnotationMirror annotation = annotation(null, setter, kv.getValue(), null);
-			if (setArg != null && (setArg.asType().toString().equals(returnType) || (setArg.asType() + "<").startsWith(returnType))) {
+			String setterType = setArg != null ? typeWithoutAnnotations(setArg.asType().toString()) : null;
+			if (setterType != null && (setterType.equals(returnType) || (setterType + "<").startsWith(returnType))) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), setter, annotation));
 			}
 		}
