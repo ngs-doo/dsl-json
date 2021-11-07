@@ -7,6 +7,7 @@ import org.junit.Test;
 import javax.validation.constraints.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -557,5 +558,28 @@ public class TypesTest {
 				Assert.assertEquals("Property 's' is not allowed to be null at position: 9, following: `{\"s\":null`, before: `}`", ex.getMessage());
 			}
 		}
+	}
+
+	public static class Event {
+		@JsonAttribute(nullable = true)
+		public String nameNull;
+		@JsonAttribute(nullable = false)
+		public String nameNonNull;
+		@JsonAttribute(nullable = true)
+		public Source sourceNull;
+		@JsonAttribute(nullable = false)
+		public Source sourceNonNull;
+	}
+	public static class Source {
+		public String name;
+	}
+
+	@Test
+	public void nullableBehaviorWithMissing() throws IOException {
+		Event e = dslJsonFull.deserialize(Event.class, "{}".getBytes(StandardCharsets.UTF_8), 2);
+		Assert.assertNull(e.nameNull);
+		Assert.assertNotNull(e.nameNonNull);
+		Assert.assertNull(e.sourceNull);
+		Assert.assertNotNull(e.sourceNonNull);
 	}
 }
