@@ -560,6 +560,7 @@ public class TypesTest {
 		}
 	}
 
+	@CompiledJson
 	public static class Event {
 		@JsonAttribute(nullable = true)
 		public String nameNull;
