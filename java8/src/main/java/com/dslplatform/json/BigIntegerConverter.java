@@ -35,37 +35,6 @@ public abstract class BigIntegerConverter {
 		}
 	}
 
-	private static class NumberInfo {
-		final char[] buffer;
-		final int length;
-
-		NumberInfo(final char[] buffer, final int length) {
-			this.buffer = buffer;
-			this.length = length;
-		}
-	}
-
-	private static NumberInfo readLongNumber(final JsonReader reader, final int start) throws IOException {
-		int i = reader.length() - start;
-		char[] tmp = reader.prepareBuffer(start, i);
-		final long position = reader.positionInStream();
-		while (!reader.isEndOfStream()) {
-			while (i < tmp.length) {
-				final char ch = (char) reader.read();
-				tmp[i++] = ch;
-				if (reader.isEndOfStream() || !(ch >= '0' && ch <= '9' || ch == '-' || ch == '+' || ch == '.' || ch == 'e' || ch == 'E')) {
-					return new NumberInfo(tmp, i);
-				}
-			}
-			final int newSize = tmp.length * 2;
-			if (newSize > reader.maxNumberDigits) {
-				throw reader.newParseErrorFormat("Too many digits detected in number", tmp.length, "Number of digits larger than %d. Unable to read number", reader.maxNumberDigits);
-			}
-			tmp = Arrays.copyOf(tmp, newSize);
-		}
-		return new NumberInfo(tmp, i);
-	}
-
 	public static void serialize(@Nullable final BigInteger value, final JsonWriter sw) {
 		if (value == null) {
 			sw.writeNull();
@@ -86,7 +55,7 @@ public abstract class BigIntegerConverter {
 			end = reader.findNonWhitespace(end);
 			len = end - start;
 			if (end == reader.length()) {
-				final NumberInfo info = readLongNumber(reader, start);
+				final NumberConverter.NumberInfo info = NumberConverter.readLongNumber(reader, start);
 				return parseNumberGeneric(info.buffer, info.length, reader);
 			} else if (len > 18) {
 				return parseNumberGeneric(reader.prepareBuffer(start, len), len, reader);

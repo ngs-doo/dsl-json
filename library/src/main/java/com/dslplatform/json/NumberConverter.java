@@ -344,7 +344,7 @@ public abstract class NumberConverter {
 		}
 	}
 
-	private static class NumberInfo {
+	static class NumberInfo {
 		final char[] buffer;
 		final int length;
 
@@ -354,7 +354,7 @@ public abstract class NumberConverter {
 		}
 	}
 
-	private static NumberInfo readLongNumber(final JsonReader reader, final int start) throws IOException {
+	static NumberInfo readLongNumber(final JsonReader reader, final int start) throws IOException {
 		int len = reader.length() - start;
 		char[] result = reader.prepareBuffer(start, len);
 		while (reader.length() == reader.getCurrentIndex()) {
