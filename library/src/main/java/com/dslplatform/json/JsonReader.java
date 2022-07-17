@@ -1203,10 +1203,15 @@ public final class JsonReader<TContext> {
 		}
 		if (last != '"') throw newParseError("Expecting '\"' for base64 start");
 		final int start = currentIndex;
-		currentIndex = Base64.findEnd(buffer, start);
-		last = buffer[currentIndex++];
+		final int end = Base64.findEnd(buffer, start);
+		last = buffer[end];
 		if (last != '"') throw newParseError("Expecting '\"' for base64 end");
-		return Base64.decodeFast(buffer, start, currentIndex - 1);
+		final byte[] result = Base64.decodeFast(buffer, start, end);
+		if (result.length == 0 && end > start) {
+			throw newParseErrorAt("Invalid base64 detected", 0);
+		}
+		currentIndex = end + 1;
+		return result;
 	}
 
 	/**
