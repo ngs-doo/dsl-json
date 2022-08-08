@@ -6,10 +6,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JsonObjectTest {
 
@@ -157,5 +154,18 @@ public class JsonObjectTest {
 		Assert.assertEquals("{\"jsonObject\":{\"x\":\"test\"}}", os.toString());
 		KotlinObjectModel res = dslJson.deserialize(KotlinObjectModel.class, os.toByteArray(), os.size());
 		Assert.assertEquals(m.jsonObject, res.jsonObject);
+	}
+
+	@Test
+	public void specialCharactersTest() throws IOException {
+		Map<String,Object> root = new HashMap<>();
+		root.put("id","77abbb7c-cdee-4259-8828-f6681e2ea3b1");
+		root.put("displayName","early_atlético106");
+
+		JsonWriter jsonWriter = dslJson.newWriter();
+		dslJson.serialize(jsonWriter,root);
+		String data = jsonWriter.toString();
+
+		Assert.assertThrows(IOException.class,()-> dslJson.deserialize(Map.class, data.getBytes(), data.length()));
 	}
 }
