@@ -411,6 +411,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void validNamingConverter() {
+		checkValidCompilation(NamingPojo.class);
+	}
+
+	@Test
 	public void invalidConverterErrors() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InvalidConveterErrors.class);
 		Assert.assertEquals(3, diagnostics.size());

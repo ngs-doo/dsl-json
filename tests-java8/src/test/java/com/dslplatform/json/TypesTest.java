@@ -472,7 +472,7 @@ public class TypesTest {
 		public static class ConvertString {
 
 			public static final JsonReader.ReadObject<String> JSON_READER = StringConverter.READER;
-			public static final JsonWriter.WriteObject<@NotNull String> JSON_WRITER = StringConverter.WRITER;
+			public static final JsonWriter.WriteObject<String> JSON_WRITER = StringConverter.WRITER;
 		}
 	}
 
@@ -490,7 +490,7 @@ public class TypesTest {
 
 		public static class ConvertString {
 
-			public static final JsonReader.ReadObject<@NotNull String> JSON_READER = StringConverter.READER;
+			public static final JsonReader.ReadObject<String> JSON_READER = StringConverter.READER;
 			public static final JsonWriter.WriteObject<String> JSON_WRITER = StringConverter.WRITER;
 		}
 	}

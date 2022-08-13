@@ -1,7 +1,6 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.runtime.Settings;
-import jdk.nashorn.internal.ir.debug.JSONWriter;
 import org.junit.Assert;
 import org.junit.Test;
 

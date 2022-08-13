@@ -10,7 +10,7 @@
 	<description>DSL Platform compatible JSON (https://dsl-platform.com)</description>
 	<url>https://github.com/ngs-doo/dsl-json</url>
 	<packaging>jar</packaging>
-	<version>1.9.9</version>
+	<version>1.9.10</version>
 
 	<properties>
 		<maven.deploy.skip>true</maven.deploy.skip>

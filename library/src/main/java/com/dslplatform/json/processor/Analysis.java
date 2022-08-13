@@ -543,7 +543,7 @@ public class Analysis {
 				}
 				int hash = StructInfo.calcHash(info.discriminator);
 				for (AttributeInfo attr : info.attributes.values()) {
-					boolean sameHash = StructInfo.calcHash(attr.id) == hash;
+					boolean sameHash = StructInfo.calcHash(info.propertyName(attr)) == hash;
 					for (String name : attr.alternativeNames) {
 						sameHash = sameHash || StructInfo.calcHash(name) == hash;
 					}
@@ -2356,19 +2356,24 @@ public class Analysis {
 		NamingStrategy strategy = namingCache.get(strategyName);
 		if (strategy != null) return strategy;
 		try {
-			Class<?> manifest = Thread.currentThread().getContextClassLoader().loadClass(strategyName);
+			Class<?> manifest = NamingStrategy.class.getClassLoader().loadClass(strategyName);
 			strategy = (NamingStrategy) manifest.newInstance();
-			namingCache.put(strategyName, strategy);
-			return strategy;
-		} catch (Exception ex) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"Unable to create an instance of NamingStrategy from the provided class: '" + strategyName + "'. " + ex.getMessage(),
-					element,
-					annotation);
-			return null;
+		} catch (Exception ignore) {
+			try {
+				Class<?> manifest = Thread.currentThread().getContextClassLoader().loadClass(strategyName);
+				strategy = (NamingStrategy) manifest.newInstance();
+			} catch (Exception ex) {
+				hasError = true;
+				messager.printMessage(
+						Diagnostic.Kind.ERROR,
+						"Unable to create an instance of NamingStrategy from the provided class: '" + strategyName + "'. Try moving naming strategy to a different jar. Details: " + ex.getMessage(),
+						element,
+						annotation);
+				return null;
+			}
 		}
+		namingCache.put(strategyName, strategy);
+		return strategy;
 	}
 
 	private static String classDiscriminator(@Nullable AnnotationMirror annotation) {

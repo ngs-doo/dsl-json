@@ -398,14 +398,14 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			code.append("package ").append(generatePackage).append(";\n\n");
 		}
 		code.append("\n\n");
-		final String javaVersion = System.getProperty("java.specification.version");
-		if (generatedMarker == null) {
-			if ("1.6".equals(javaVersion) || "1.7".equals(javaVersion) || "1.8".equals(javaVersion)) {
+		SourceVersion javaVersion = environment.getSourceVersion();
+		if (generatedMarker == null && javaVersion != null) {
+			if ("RELEASE_6".equals(javaVersion.name()) || "RELEASE_7".equals(javaVersion.name()) || SourceVersion.RELEASE_8.equals(javaVersion)) {
 				code.append("@javax.annotation.Generated(\"dsl_json\")\n");
-			} else if (javaVersion != null) {
+			} else {
 				code.append("@javax.annotation.processing.Generated(\"dsl_json\")\n");
 			}
-		} else if (!generatedMarker.isEmpty()) {
+		} else if (generatedMarker != null && !generatedMarker.isEmpty()) {
 			code.append(generatedMarker).append("\n");
 		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");

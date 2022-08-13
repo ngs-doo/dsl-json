@@ -1,5 +1,6 @@
 package com.dslplatform.json;
 
+import com.dslplatform.json.test.CustomNamingStrategyExternal;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -261,5 +262,19 @@ public class ConverterTest {
 		} catch (ParsingException ex) {
 			Assert.assertTrue(ex.getMessage().contains("Property 'x' is not allowed to be null"));
 		}
+	}
+
+	@CompiledJson(namingStrategy = CustomNamingStrategyExternal.class)
+	public static class CustomNamingClass {
+		public String MyName;
+	}
+
+	@Test
+	public void checkSimpleCustomName() throws IOException {
+		CustomNamingClass cn = new CustomNamingClass();
+		cn.MyName = "test";
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(cn, os);
+		Assert.assertEquals("{\"myName\":\"test\"}", os.toString("UTF-8"));
 	}
 }

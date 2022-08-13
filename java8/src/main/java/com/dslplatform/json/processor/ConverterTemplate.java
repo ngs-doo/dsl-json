@@ -640,9 +640,10 @@ class ConverterTemplate {
 			if (!attr.canWriteOutput()) continue;
 			String prefix = isFirst ? "" : ",";
 			isFirst = false;
+			String name = si.propertyName(attr);
 			code.append("\t\tprivate static final byte[] quoted_").append(attr.name).append(" = \"").append(prefix);
-			code.append("\\\"").append(attr.id).append("\\\":\".getBytes(utf8);\n");
-			code.append("\t\tprivate static final byte[] name_").append(attr.name).append(" = \"").append(attr.id).append("\".getBytes(utf8);\n");
+			code.append("\\\"").append(name).append("\\\":\".getBytes(utf8);\n");
+			code.append("\t\tprivate static final byte[] name_").append(attr.name).append(" = \"").append(name).append("\".getBytes(utf8);\n");
 		}
 		code.append("\t\tpublic final void write(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
@@ -961,8 +962,8 @@ class ConverterTemplate {
 	private void handleSwitch(StructInfo si, String alignment, boolean useInstance) throws IOException {
 		for (AttributeInfo attr : si.attributes.values()) {
 			if (!attr.canReadInput()) continue;
-			String sn = si.serializedNames.get(attr.id);
-			code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(sn != null ? sn : attr.id))).append(":\n");
+			String name = si.propertyName(attr);
+			code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(name))).append(":\n");
 			for (String an : attr.alternativeNames) {
 				code.append(alignment).append("\tcase ").append(Integer.toString(StructInfo.calcHash(an))).append(":\n");
 			}

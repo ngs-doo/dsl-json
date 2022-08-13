@@ -223,6 +223,12 @@ public class StructInfo {
 		return false;
 	}
 
+	public String propertyName(AttributeInfo attribute) {
+		String custom = this.serializedNames.get(attribute.id);
+		if (custom != null) return custom;
+		return attribute.id;
+	}
+
 	public static int calcHash(String name) {
 		long hash = 0x811c9dc5;
 		for (int i = 0; i < name.length(); i++) {

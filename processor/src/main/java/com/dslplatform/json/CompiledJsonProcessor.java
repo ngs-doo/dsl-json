@@ -418,10 +418,7 @@ public class CompiledJsonProcessor extends AbstractProcessor {
 			dsl.append(attr.name);
 
 			StructInfo target = findReferenced(attr.type, attr.typeName, structs);
-			String alias = attr.id;
-			if (info.serializedNames.containsKey(attr.id)) {
-				alias = info.serializedNames.get(attr.id);
-			}
+			String alias = info.propertyName(attr);
 			boolean excludeTypeSignature = target != null
 					&& target.type == ObjectType.MIXIN
 					&& (CompiledJson.TypeSignature.EXCLUDE.equals(attr.typeSignature)
