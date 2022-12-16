@@ -683,8 +683,10 @@ public class Analysis {
 		findAllElements(type, usedTypes, new HashSet<TypeMirror>());
 		VariableElement jsonReaderField = null;
 		VariableElement jsonWriterField = null;
+		VariableElement jsonBinderField = null;
 		ExecutableElement jsonReaderMethod = null;
 		ExecutableElement jsonWriterMethod = null;
+		ExecutableElement jsonBinderMethod = null;
 		boolean hasInstance = false;
 		for (VariableElement field : ElementFilter.fieldsIn(converter.getEnclosedElements())) {
 			//Kotlin uses INSTANCE field with non static get methods
@@ -699,6 +701,8 @@ public class Analysis {
 				jsonReaderField = field;
 			} else if ("JSON_WRITER".equals(field.getSimpleName().toString())) {
 				jsonWriterField = field;
+			}  else if ("JSON_BINDER".equals(field.getSimpleName().toString())) {
+				jsonBinderField = field;
 			}
 		}
 		if (!onlyBasicFeatures) {
@@ -707,6 +711,8 @@ public class Analysis {
 					jsonReaderMethod = method;
 				} else if ("JSON_WRITER".equals(method.getSimpleName().toString()) || "getJSON_WRITER".equals(method.getSimpleName().toString())) {
 					jsonWriterMethod = method;
+				} else if ("JSON_BINDER".equals(method.getSimpleName().toString()) || "getJSON_BINDER".equals(method.getSimpleName().toString())) {
+					jsonBinderMethod = method;
 				}
 			}
 		}
@@ -787,6 +793,9 @@ public class Analysis {
 				jsonWriterMethod != null
 						? (hasInstance ? "INSTANCE." : "") + jsonWriterMethod.getSimpleName().toString() + "()" : jsonWriterField != null
 						? jsonWriterField.getSimpleName().toString() : "",
+				jsonBinderMethod != null
+						? (hasInstance ? "INSTANCE." : "") + jsonBinderMethod.getSimpleName().toString() + "()" : jsonBinderField != null
+						? jsonBinderField.getSimpleName().toString() : "",
 				javaType,
 				declaredType
 		);
@@ -1019,6 +1028,29 @@ public class Analysis {
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
 			JsonAttribute.IncludePolicy includeToMinimal = includeToMinimalValue(annotation);
 
+			boolean notNull = hasNonNullable(element, field, annotation);
+			boolean mandatory = hasMandatoryAnnotation(element, annotation) || field != null && hasMandatoryAnnotation(field, null);
+			if (converter != null && converter.binder != null) {
+				// if value is null, the binding value will be lost
+				if (!notNull) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Attribute with binder can not be nullable on " + name + " in " + info.name,
+							element,
+							annotation);
+				}
+				// if value is omitted, we will need to have `reset` method
+				if (!mandatory) {
+					hasError = true;
+					messager.printMessage(
+							Diagnostic.Kind.ERROR,
+							"Attribute with binder can not be omitted on " + name + " in " + info.name,
+							element,
+							annotation);
+				}
+			}
+
 			AttributeInfo attr =
 					new AttributeInfo(
 							name,
@@ -1031,8 +1063,8 @@ public class Analysis {
 							isCompatibileCollection(type, baseSetType),
 							isCompatibileCollection(type, baseMapType),
 							annotation,
-							hasNonNullable(element, field, annotation),
-							hasMandatoryAnnotation(element, annotation) || field != null && hasMandatoryAnnotation(field, null),
+							notNull,
+							mandatory,
 							index(element, annotation),
 							findNameAlias(element, field, annotation, name),
 							isFullMatch(annotation),

@@ -1073,7 +1073,10 @@ class ConverterTemplate {
 				code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
 			}
 			List<String> types = attr.collectionContent(context.typeSupport, context.structs);
-			if (attr.converter != null) {
+			if (useInstance && attr.converter != null && !attr.converter.binder.equals("") && attr.field != null) { //todo
+				code.append(attr.converter.fullName).append(".").append(attr.converter.binder);
+				code.append(".bind(reader, instance.").append(attr.field.getSimpleName()).append(")");
+			} else if (attr.converter != null) {
 				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader)");
 			} else if (target != null && target.converter != null) {
 				code.append(target.converter.fullName).append(".").append(target.converter.reader).append(".read(reader)");
