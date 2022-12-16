@@ -401,7 +401,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		SourceVersion javaVersion = environment.getSourceVersion();
 		if (generatedMarker == null && javaVersion != null) {
 			if ("RELEASE_6".equals(javaVersion.name()) || "RELEASE_7".equals(javaVersion.name()) || SourceVersion.RELEASE_8.equals(javaVersion)) {
-				code.append("@javax.annotation.Generated(\"dsl_json5\")\n");
+				code.append("@javax.annotation.Generated(\"dsl_json\")\n");
 			} else {
 				code.append("@javax.annotation.processing.Generated(\"dsl_json\")\n");
 			}
