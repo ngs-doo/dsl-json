@@ -866,7 +866,8 @@ class ConverterTemplate {
 		}
 		int i = params.size();
 		for (VariableElement p : params) {
-			code.append("_").append(p.getSimpleName()).append("_");
+			VariableElement n = info.argumentMapping.get(p);
+			code.append("_").append((n != null ? n : p).getSimpleName()).append("_");
 			i--;
 			if (i > 0) code.append(", ");
 		}

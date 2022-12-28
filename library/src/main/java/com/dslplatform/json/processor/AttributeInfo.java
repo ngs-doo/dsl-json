@@ -93,6 +93,36 @@ public class AttributeInfo {
 		this.containsStructOwnerType = containsStructOwnerType;
 	}
 
+	public AttributeInfo asConcreteType(LinkedHashMap<String, TypeMirror> genericSignatures) {
+		TypeMirror concreteType = genericSignatures.get(this.type.toString());
+		if (concreteType == null) return null;
+		return new AttributeInfo(
+				this.name,
+				this.readMethod,
+				this.writeMethod,
+				this.field,
+				this.argument,
+				concreteType,
+				this.isList,
+				this.isSet,
+				this.isMap,
+				this.annotation,
+				this.notNull,
+				this.mandatory,
+				this.index,
+				this.alias,
+				this.fullMatch,
+				this.typeSignature,
+				this.includeToMinimal,
+				this.converter,
+				this.isJsonObject,
+				this.usedTypes,
+				this.typeVariablesIndex,
+				genericSignatures,
+				this.containsStructOwnerType
+		);
+	}
+
 	public boolean isEnum(Map<String, StructInfo> structs) {
 		StructInfo struct = typeName == null ? null : structs.get(typeName);
 		return struct != null && struct.type == ObjectType.ENUM;
@@ -123,10 +153,12 @@ public class AttributeInfo {
 			return canResolveCollection(content, typeSupport, structs) ? Collections.singletonList(content) : null;
 		} else if (isList || isSet) {
 			int ind = typeName.indexOf('<');
+			if (ind == -1) return null;
 			String content = typeName.substring(ind + 1, typeName.length() - 1);
 			return canResolveCollection(content, typeSupport, structs) ? Collections.singletonList(content) : null;
 		} else if (isMap) {
 			int indGen = typeName.indexOf('<');
+			if (indGen == -1) return null;
 			int indComma = typeName.indexOf(',', indGen + 1);
 			String content1 = typeName.substring(indGen + 1, indComma);
 			String content2 = typeName.substring(indComma + 1, typeName.length() - 1);

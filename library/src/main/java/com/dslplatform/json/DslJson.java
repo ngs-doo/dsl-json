@@ -1055,7 +1055,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			}
 		}
 		writer = lookupFromFactories(manifest, actualType, writerFactories, writers);
-		if (writer != null) return writer;
+		if (writer != null) {
+			if (manifest instanceof Class<?> && actualType == manifest) {
+				writers.putIfAbsent(manifest, writer);
+			}
+			return writer;
+		}
 		if (!(actualType instanceof Class<?>)) return null;
 		Class<?> found = writerMap.get(actualType);
 		if (found != null) {
@@ -1112,9 +1117,13 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			final List<ConverterFactory<T>> factories,
 			final ConcurrentMap<Type, T> cache) {
 		if (manifest instanceof Class<?>) {
-			externalConverterAnalyzer.tryFindConverter((Class<?>) manifest, this);
+			Class<?> raw = (Class<?>) manifest;
+			externalConverterAnalyzer.tryFindConverter(raw, this);
 			T found = cache.get(manifest);
 			if (found != null) return found;
+			if (raw.getTypeParameters().length > 0) {
+				checkExternal(manifest, cache);
+			}
 		} else if (manifest instanceof ParameterizedType) {
 			checkExternal(manifest, cache);
 		}

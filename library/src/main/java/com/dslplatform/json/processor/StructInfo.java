@@ -43,6 +43,7 @@ public class StructInfo {
 	public final boolean isParameterized;
 	public final List<String> typeParametersNames;
 	public final Map<String, TypeMirror> genericSignatures;
+	public final Map<VariableElement, VariableElement> argumentMapping = new HashMap<VariableElement, VariableElement>();
 
 	private ExecutableElement selectedConstructor;
 	private boolean createThroughConstructor;
@@ -110,6 +111,9 @@ public class StructInfo {
 		this.typeParametersNames = extractParametersNames(element.getTypeParameters());
 		this.isParameterized = !typeParametersNames.isEmpty();
 		this.genericSignatures = genericSignatures;
+		for (String gt : typeParametersNames) {
+			genericSignatures.remove(gt);
+		}
 	}
 
 	public StructInfo(ConverterInfo converter, DeclaredType discoveredBy, TypeElement target, String name, String binaryName) {
@@ -156,13 +160,20 @@ public class StructInfo {
 
 	public void supertype(@Nullable StructInfo parent) {
 		if (parent == null) return;
-		if (type == ObjectType.CLASS && parent.implementations.contains(this)) {
+		if (type == ObjectType.CLASS) {
 			inheritsFrom = parent;
 		}
 	}
 
+	@Nullable
+	public StructInfo getParent() {
+		return inheritsFrom;
+	}
+
 	public Collection<AttributeInfo> inheritedAttributes() {
-		if (inheritsFrom == null) return Collections.emptyList();
+		if (inheritsFrom == null) {
+			return Collections.emptyList();
+		}
 		return inheritsFrom.attributes.values();
 	}
 

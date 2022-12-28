@@ -182,6 +182,40 @@ public class Analysis {
 		for (Map.Entry<String, StructInfo> it : structs.entrySet()) {
 			final StructInfo info = it.getValue();
 			final String className = it.getKey();
+			if (info.type == ObjectType.CLASS) {
+				TypeMirror parentType = info.element.getSuperclass();
+				String parentName = parentType.toString();
+				int genIndex = parentName.indexOf('<');
+				if (genIndex != -1) {
+					LinkedHashMap<String, TypeMirror> generics = new LinkedHashMap<String, TypeMirror>(info.genericSignatures);
+					String rawName = parentName.substring(0, genIndex);
+					StructInfo parentInfo = structs.get(rawName);
+					info.supertype(parentInfo);
+					while (parentInfo != null) {
+						for (String key : parentInfo.attributes.keySet()) {
+							if (info.attributes.containsKey(key)) continue;
+							AttributeInfo attr = parentInfo.attributes.get(key);
+							if (attr.isGeneric) {
+								AttributeInfo newAttr = attr.asConcreteType(generics);
+								if (newAttr != null) {
+									info.attributes.put(key, newAttr);
+								} else {
+									hasError = true;
+									messager.printMessage(
+											Diagnostic.Kind.ERROR,
+											"Unable to convert generic type to concrete type.",
+											attr.element,
+											attr.annotation);
+								}
+							} else {
+								info.attributes.put(key, attr);
+							}
+						}
+						parentType = parentInfo.element.getSuperclass();
+						parentInfo = structs.get(parentType.toString());
+					}
+				}
+			}
 			if (info.type == ObjectType.CLASS && info.selectedConstructor() == null && info.annotatedFactory == null
 					&& info.builder == null && !info.hasKnownConversion() && info.matchingConstructors != null) {
 				hasError = true;
@@ -306,8 +340,9 @@ public class Analysis {
 							info.annotatedFactory,
 							info.annotation);
 				} else {
-					for (VariableElement p : info.annotatedFactory.getParameters()) {
+					for (int i = 0; i < info.annotatedFactory.getParameters().size(); i++) {
 						boolean found = false;
+						VariableElement p = info.annotatedFactory.getParameters().get(i);
 						String argName = p.getSimpleName().toString();
 						for (AttributeInfo attr : info.attributes.values()) {
 							if (attr.name.equals(argName)) {
@@ -322,6 +357,12 @@ public class Analysis {
 									break;
 								}
 							}
+						}
+						ExecutableElement parentFactory = info.getParent() != null ? info.getParent().annotatedFactory : null;
+						if (!found && parentFactory != null && parentFactory.getParameters().size() == info.annotatedFactory.getParameters().size()) {
+							VariableElement pe = parentFactory.getParameters().get(i);
+							found = pe.asType().getKind() == TypeKind.TYPEVAR;
+							info.argumentMapping.put(p, pe);
 						}
 						if (!found) {
 							hasError = true;
@@ -365,7 +406,8 @@ public class Analysis {
 				}
 			}
 			if (info.type == ObjectType.CLASS && !info.hasKnownConversion() && info.usesCtorWithArguments()) {
-				for (VariableElement p : info.selectedConstructor().getParameters()) {
+				for (int i = 0; i < info.selectedConstructor().getParameters().size(); i++) {
+					VariableElement p = info.selectedConstructor().getParameters().get(i);
 					boolean found = false;
 					String argName = p.getSimpleName().toString();
 					for (AttributeInfo attr : info.attributes.values()) {
@@ -381,6 +423,12 @@ public class Analysis {
 								break;
 							}
 						}
+					}
+					ExecutableElement parentCtor = info.getParent() != null ? info.getParent().selectedConstructor() : null;
+					if (!found && parentCtor != null && parentCtor.getParameters().size() == info.selectedConstructor().getParameters().size()) {
+						VariableElement pe = parentCtor.getParameters().get(i);
+						found = pe.asType().getKind() == TypeKind.TYPEVAR;
+						info.argumentMapping.put(p, pe);
 					}
 					if (!found) {
 						hasError = true;
@@ -914,7 +962,9 @@ public class Analysis {
 					List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
 					List<? extends TypeParameterElement> typeParameters = ((TypeElement) element).getTypeParameters();
 					for (int i = 0; i < typeParameters.size(); i++) {
-						genericAttributes.put(typeParameters.get(i).toString(), typeArguments.get(i));
+						String genName = typeParameters.get(i).toString();
+						if (genericAttributes.containsKey(genName)) continue;
+						genericAttributes.put(genName, typeArguments.get(i));
 					}
 					queue.addAll(types.directSupertypes(mirror));
 				}

@@ -344,4 +344,71 @@ public class GenericTest {
 		Assert.assertEquals(0, z.i4.length);
 		Assert.assertEquals(0, z.i5.length);
 	}
+
+	@CompiledJson
+	public static class GenericSelfReference<T> implements Comparable<GenericSelfReference<T>> {
+
+		final T genericField;
+
+		public GenericSelfReference(T genericField) {
+			this.genericField = genericField;
+		}
+
+		public final T getGenericField() {
+			return genericField;
+		}
+
+		@Override
+		public int compareTo(GenericSelfReference<T> other) {
+			return 1;
+		}
+	}
+
+	@Test
+	public void canCopeWithSelfReferences() throws IOException {
+
+		byte[] bytes = "{\"genericField\":\"ABC\"}".getBytes("UTF-8");
+
+		Type type = new TypeDefinition<GenericSelfReference<String>>() {}.type;
+		GenericSelfReference<String> result = (GenericSelfReference<String>)dslJson.deserialize(type, bytes, bytes.length);
+
+		Assert.assertEquals("ABC", result.getGenericField());
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonRuntime.serialize(new GenericSelfReference<>("XYZ"), os);
+
+		Assert.assertEquals("{\"genericField\":\"XYZ\"}", os.toString("UTF-8"));
+
+		os.reset();
+		JsonWriter.WriteObject wo = dslJson.tryFindWriter(type);
+		JsonWriter w = dslJson.newWriter();
+		w.reset(os);
+		wo.write(w, new GenericSelfReference<>("XYZ"));
+		w.flush();
+
+		Assert.assertEquals("{\"genericField\":\"XYZ\"}", os.toString("UTF-8"));
+	}
+
+	@CompiledJson
+	public static class GenericSelfReferenceString extends GenericSelfReference<String> {
+
+		public GenericSelfReferenceString(String stringField) {
+			super(stringField);
+		}
+	}
+
+	@Test
+	public void canCopeWithBoundSelfReferences() throws IOException {
+
+		byte[] bytes = "{\"genericField\":\"ABC\"}".getBytes("UTF-8");
+
+		GenericSelfReferenceString result = dslJson.deserialize(GenericSelfReferenceString.class, bytes, bytes.length);
+
+		Assert.assertEquals("ABC", result.getGenericField());
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(new GenericSelfReferenceString("XYZ"), os);
+
+		Assert.assertEquals("{\"genericField\":\"XYZ\"}", os.toString("UTF-8"));
+	}
 }

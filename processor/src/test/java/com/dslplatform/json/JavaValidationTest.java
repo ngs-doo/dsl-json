@@ -756,6 +756,16 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void genericsWithSelfReference() {
+		checkValidCompilation(GenericSelfReference.class);
+	}
+
+	@Test
+	public void genericsBoundWithSelfReference() {
+		checkValidCompilation(GenericBoundSelfReferences.GenericBoundSelfReferenceString.class);
+	}
+
+	@Test
 	public void conflictingDiscriminator() {
 		assertCompilationReturned(
 				Diagnostic.Kind.WARNING,
