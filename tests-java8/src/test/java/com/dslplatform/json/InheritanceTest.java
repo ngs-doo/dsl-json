@@ -107,7 +107,7 @@ public class InheritanceTest {
 	}
 
 	@CompiledJson
-	public static class ChildClass extends SuperClass{
+	public static class ChildClass extends SuperClass {
 		@JsonAttribute(name = "named_fields")
 		@Override
 		public String getField() {

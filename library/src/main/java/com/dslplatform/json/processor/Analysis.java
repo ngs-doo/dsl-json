@@ -186,11 +186,11 @@ public class Analysis {
 				TypeMirror parentType = info.element.getSuperclass();
 				String parentName = parentType.toString();
 				int genIndex = parentName.indexOf('<');
+				String rawName = genIndex == -1 ? parentName : parentName.substring(0, genIndex);
+				StructInfo parentInfo = structs.get(rawName);
+				info.supertype(parentInfo);
 				if (genIndex != -1) {
 					LinkedHashMap<String, TypeMirror> generics = new LinkedHashMap<String, TypeMirror>(info.genericSignatures);
-					String rawName = parentName.substring(0, genIndex);
-					StructInfo parentInfo = structs.get(rawName);
-					info.supertype(parentInfo);
 					while (parentInfo != null) {
 						for (String key : parentInfo.attributes.keySet()) {
 							if (info.attributes.containsKey(key)) continue;
@@ -2229,8 +2229,6 @@ public class Analysis {
 			Element current = types.asElement(type);
 			if (current instanceof TypeElement) {
 				checkParentSignatures(info, (TypeElement) current, implementations, signature, processed);
-				StructInfo child = structs.get(signature);
-				info.supertype(child);
 			}
 		}
 	}

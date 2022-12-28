@@ -90,8 +90,13 @@ final class Context {
 	static List<AttributeInfo> sortedAttributes(StructInfo info, boolean includeInherited) {
 		ArrayList<AttributeInfo> result = new ArrayList<>(info.attributes.values());
 		if (includeInherited) {
+			HashSet<String> properties = new HashSet<>();
+			for (AttributeInfo ai : result) {
+				properties.add(ai.name);
+			}
 			for (AttributeInfo ai : info.inheritedAttributes()) {
-				if (info.attributes.containsKey(ai.id)) continue;
+				//we will take inherited attribute as long as there is no name conflict
+				if (info.attributes.containsKey(ai.id) || properties.contains(ai.name)) continue;
 				result.add(ai);
 			}
 		}
