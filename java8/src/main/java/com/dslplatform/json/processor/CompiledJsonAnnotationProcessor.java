@@ -177,6 +177,12 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		jacksonCreatorType = jacksonCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jacksonCreatorElement) : null;
 		jsonbCreatorElement = processingEnv.getElementUtils().getTypeElement("javax.json.bind.annotation.JsonbCreator");
 		jsonbCreatorType = jsonbCreatorElement != null ? processingEnv.getTypeUtils().getDeclaredType(jsonbCreatorElement) : null;
+		if (generatedMarker == null && processingEnv.getElementUtils().getTypeElement("javax.annotation.processing.Generated") != null) {
+			generatedMarker = "@javax.annotation.processing.Generated(\"dsl_json\")";
+		} else if (generatedMarker == null && processingEnv.getElementUtils().getTypeElement("javax.annotation.Generated") != null) {
+			generatedMarker = "@javax.annotation.Generated(\"dsl_json\")";
+		}
+
 	}
 
 	@Override
@@ -398,14 +404,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			code.append("package ").append(generatePackage).append(";\n\n");
 		}
 		code.append("\n\n");
-		SourceVersion javaVersion = environment.getSourceVersion();
-		if (generatedMarker == null && javaVersion != null) {
-			if ("RELEASE_6".equals(javaVersion.name()) || "RELEASE_7".equals(javaVersion.name()) || SourceVersion.RELEASE_8.equals(javaVersion)) {
-				code.append("@javax.annotation.Generated(\"dsl_json\")\n");
-			} else {
-				code.append("@javax.annotation.processing.Generated(\"dsl_json\")\n");
-			}
-		} else if (generatedMarker != null && !generatedMarker.isEmpty()) {
+		if (generatedMarker != null && !generatedMarker.isEmpty()) {
 			code.append(generatedMarker).append("\n");
 		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
