@@ -11,6 +11,10 @@ public class InvalidConveterErrors {
 	public Character c;
 	public Short s;
 
+	@JsonConverter(target = int.class)
+	public static abstract class IntConverter {
+	}
+
 	@JsonConverter(target = Character.class)
 	public static abstract class CharConverter {
 		public static final JsonReader.ReadObject<Character> JSON_READER = new JsonReader.ReadObject<Character>() {
@@ -45,5 +49,15 @@ public class InvalidConveterErrors {
 			public void write(JsonWriter writer, @Nullable Integer value) {
 			}
 		};
+	}
+
+	@JsonConverter(target = short.class)
+	public static abstract class ShortPrimitiveConverter {
+		public static short read(JsonReader reader) throws IOException {
+			return 0;
+		}
+
+		public static void write(JsonReader writer, Short value) {
+		}
 	}
 }

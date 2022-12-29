@@ -128,12 +128,24 @@ public class ConverterTest {
 		}
 	}
 
-	public static abstract class IntConverter {
-		public static JsonReader.ReadObject<Integer> getJSON_READER() {
-			return NumberConverter.INT_READER;
+	public static class IntConverter {
+		public static int read(JsonReader reader) throws IOException {
+			return NumberConverter.deserializeInt(reader);
 		}
-		public static JsonWriter.WriteObject<Integer> JSON_WRITER() {
-			return NumberConverter.INT_WRITER;
+
+		public static void write(JsonWriter writer, int value) {
+			NumberConverter.serialize(value, writer);
+		}
+	}
+
+	@JsonConverter(target = char.class)
+	public static class CharConverter {
+		public static char read(JsonReader reader) throws IOException {
+			return StringConverter.deserialize(reader).charAt(0);
+		}
+
+		public static void write(JsonWriter writer, char value) {
+			StringConverter.serialize(Character.toString(value), writer);
 		}
 	}
 

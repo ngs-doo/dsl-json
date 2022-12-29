@@ -418,17 +418,20 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	@Test
 	public void invalidConverterErrors() {
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(InvalidConveterErrors.class);
-		Assert.assertEquals(3, diagnostics.size());
+		Assert.assertEquals(5, diagnostics.size());
 		for (Diagnostic note : diagnostics) {
 			Assert.assertEquals(Diagnostic.Kind.ERROR, note.getKind());
 		}
 		String error1 = diagnostics.get(0).getMessage(Locale.ENGLISH);
 		String error2 = diagnostics.get(1).getMessage(Locale.ENGLISH);
 		String error3 = diagnostics.get(2).getMessage(Locale.ENGLISH);
-		Assert.assertTrue(error1.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.CharConverter' doesn't have a JSON_READER or JSON_WRITER field/method"));
-		Assert.assertTrue(error2.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.DateConverter' doesn't have public and static JSON_READER and JSON_WRITER field/method"));
-		Assert.assertTrue(error3.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.ShortConverter' has invalid type for JSON_WRITER field/method"));
-		Assert.assertTrue(error3.contains("must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<java.lang.Short>'"));
+		String error4 = diagnostics.get(3).getMessage(Locale.ENGLISH);
+		String error5 = diagnostics.get(4).getMessage(Locale.ENGLISH);
+		Assert.assertTrue(error1.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.IntConverter' doesn't have a read/write methods. It must have public static read and write methods for conversion"));
+		Assert.assertTrue(error2.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.CharConverter' only has JSON_READER defined. JSON_WRITER must also be defined for conversion."));
+		Assert.assertTrue(error3.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.DateConverter' doesn't have public and static JSON_READER and JSON_WRITER field/method. They must be public and static for converter to work properly."));
+		Assert.assertTrue(error4.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.ShortConverter' has invalid type for JSON_WRITER field/method. It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<java.lang.Short>'"));
+		Assert.assertTrue(error5.contains("Specified converter: 'com.dslplatform.json.models.InvalidConveterErrors.ShortPrimitiveConverter' has invalid type for write method. It must be of type: 'void write(com.dslplatform.json.JsonWriter, short)'. Wrong first argument defined. Expecting 'com.dslplatform.json.JsonWriter'. Detected: 'com.dslplatform.json.JsonReader'"));
 	}
 
 	@Test
@@ -826,8 +829,13 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void globalPrimitiveConverter() {
+	public void globalPrimitiveConverterLegacy() {
 		checkValidCompilation(PrimitiveIntConverter.class);
+	}
+
+	@Test
+	public void globalPrimitiveConverter() {
+		checkValidCompilation(PrimitiveLongConverter.class);
 	}
 
 	@Test
@@ -845,13 +853,13 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
-				32,
+				28,
 				compileTestCase(PrivateConverter.class),
 				"Specified target: 'com.dslplatform.json.models.PrivateConverter.Private' must be public");
 
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,
-				44,
+				40,
 				compileTestCase(PrivateConverter.class),
 				"Specified target: 'com.dslplatform.json.models.PrivateConverter.Private' must be public");
 	}

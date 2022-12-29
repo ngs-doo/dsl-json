@@ -734,6 +734,7 @@ public class Analysis {
 		ExecutableElement jsonReaderMethod = null;
 		ExecutableElement jsonWriterMethod = null;
 		boolean hasInstance = false;
+		boolean legacyDeclaration = true;
 		for (VariableElement field : ElementFilter.fieldsIn(converter.getEnclosedElements())) {
 			//Kotlin uses INSTANCE field with non static get methods
 			if ("INSTANCE".equals(field.getSimpleName().toString())) {
@@ -754,6 +755,12 @@ public class Analysis {
 				if ("JSON_READER".equals(method.getSimpleName().toString()) || "getJSON_READER".equals(method.getSimpleName().toString())) {
 					jsonReaderMethod = method;
 				} else if ("JSON_WRITER".equals(method.getSimpleName().toString()) || "getJSON_WRITER".equals(method.getSimpleName().toString())) {
+					jsonWriterMethod = method;
+				} else if ("read".equals(method.getSimpleName().toString())) {
+					legacyDeclaration = false;
+					jsonReaderMethod = method;
+				} else if ("write".equals(method.getSimpleName().toString())) {
+					legacyDeclaration = false;
 					jsonWriterMethod = method;
 				}
 			}
@@ -795,11 +802,21 @@ public class Analysis {
 					getAnnotation(converter, converterType));
 		} else if (jsonReaderField == null && jsonReaderMethod == null || jsonWriterField == null && jsonWriterMethod == null) {
 			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER or JSON_WRITER " + allowed + ". It must have public static JSON_READER/JSON_WRITER " + allowed + " for conversion.",
-					converter,
-					getAnnotation(converter, converterType));
+			String errorMessage;
+			if (jsonReaderField != null || jsonReaderMethod != null) {
+				String definedName = (jsonReaderField != null ? jsonReaderField.getSimpleName() : jsonReaderMethod.getSimpleName()).toString();
+				String otherName = "JSON_READER".equals(definedName) ? "JSON_WRITER" : "write method";
+				errorMessage = "Specified converter: '" + converter.getQualifiedName() + "' only has " + definedName + " defined. " + otherName + " must also be defined for conversion.";
+			} else if (jsonWriterField != null || jsonWriterMethod != null) {
+				String definedName = (jsonWriterField != null ? jsonWriterField.getSimpleName() : jsonWriterMethod.getSimpleName()).toString();
+				String otherName = "JSON_WRITER".equals(definedName) ? "JSON_READER" : "read method";
+				errorMessage = "Specified converter: '" + converter.getQualifiedName() + "' only has " + definedName + " defined. " + otherName + " must also be defined for conversion.";
+			} else if (onlyBasicFeatures) {
+				errorMessage = "Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER/JSON_WRITER " + allowed + ". It must have public static JSON_READER/JSON_WRITER " + allowed + " for conversion.";
+			} else {
+				errorMessage = "Specified converter: '" + converter.getQualifiedName() + "' doesn't have a read/write methods. It must have public static read and write methods for conversion.";
+			}
+			messager.printMessage(Diagnostic.Kind.ERROR, errorMessage, converter, getAnnotation(converter, converterType));
 		} else if (jsonReaderMethod == null && (!jsonReaderField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
 				|| jsonWriterMethod == null && (!jsonWriterField.getModifiers().contains(Modifier.PUBLIC) || !jsonWriterField.getModifiers().contains(Modifier.STATIC))
 				|| jsonReaderMethod != null && (!jsonReaderMethod.getModifiers().contains(Modifier.PUBLIC) || !hasInstance && !jsonReaderMethod.getModifiers().contains(Modifier.STATIC))
@@ -807,28 +824,73 @@ public class Analysis {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER " + allowed + ". They must be public and static for converter to work properly.",
+					legacyDeclaration
+						? "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER " + allowed + ". They must be public and static for converter to work properly."
+						: "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static read and write methods. They must be public and static for converter to work properly.",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (jsonReaderField != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderField.asType().toString())
-				|| jsonReaderMethod != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderMethod.getReturnType().toString())) {
+		} else if (legacyDeclaration &&
+				(jsonReaderField != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderField.asType().toString())
+						|| jsonReaderMethod != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderMethod.getReturnType().toString()))) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
 					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_READER field. It must be of type: 'com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">'",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (jsonWriterField != null && !("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriterField.asType().toString())
-				|| jsonWriterMethod != null && !("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriterMethod.getReturnType().toString())) {
+		} else if (legacyDeclaration &&
+				(jsonWriterField != null && !("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriterField.asType().toString())
+						|| jsonWriterMethod != null && !("com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">").equals(jsonWriterMethod.getReturnType().toString()))) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
 					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_WRITER " + allowed + ". It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">'",
 					converter,
 					getAnnotation(converter, converterType));
+		} else if (!legacyDeclaration && jsonReaderMethod != null
+				&& !(javaType.equals(jsonReaderMethod.getReturnType().toString()) && jsonReaderMethod.getParameters().size() == 1 && "com.dslplatform.json.JsonReader".equals(jsonReaderMethod.getParameters().get(0).asType().toString()))) {
+			hasError = true;
+			String additionalDescription = "";
+			if (!javaType.equals(jsonReaderMethod.getReturnType().toString())) {
+				additionalDescription += "Wrong return type defined. Expecting: " + javaType + ". Detected: " + jsonReaderMethod.getReturnType();
+			}
+			if (jsonReaderMethod.getParameters().size() != 1) {
+				additionalDescription += "Wrong number of arguments defined. Expecting one argument. Detected: " + jsonReaderMethod.getParameters().size();
+			} else if (!"com.dslplatform.json.JsonReader".equals(jsonReaderMethod.getParameters().get(0).asType().toString())) {
+				additionalDescription += "Wrong argument defined. Expecting 'com.dslplatform.json.JsonReader'. Detected: '" + jsonReaderMethod.getParameters().get(0).asType() + "'";
+			}
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for read method. It must be of type: '" + javaType + " read(com.dslplatform.json.JsonReader)'. " + additionalDescription,
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (!legacyDeclaration && jsonWriterMethod != null
+				&& !("void".equals(jsonWriterMethod.getReturnType().toString()) && jsonWriterMethod.getParameters().size() == 2
+				&& "com.dslplatform.json.JsonWriter".equals(jsonWriterMethod.getParameters().get(0).asType().toString()) && javaType.equals(jsonWriterMethod.getParameters().get(1).asType().toString()))) {
+			hasError = true;
+			String additionalDescription = "";
+			if (!"void".equals(jsonWriterMethod.getReturnType().toString())) {
+				additionalDescription += "Wrong return type defined. Expecting no return type. Detected: '" + jsonWriterMethod.getReturnType() + "'";
+			}
+			if (jsonWriterMethod.getParameters().size() != 2) {
+				additionalDescription += "Wrong number of arguments defined. Expecting two arguments. Detected: " + jsonWriterMethod.getParameters().size();
+			} else {
+				if (!"com.dslplatform.json.JsonWriter".equals(jsonWriterMethod.getParameters().get(0).asType().toString())) {
+					additionalDescription += "Wrong first argument defined. Expecting 'com.dslplatform.json.JsonWriter'. Detected: '" + jsonWriterMethod.getParameters().get(0).asType() + "'";
+				}
+				if ("com.dslplatform.json.JsonWriter".equals(jsonWriterMethod.getParameters().get(0).asType().toString()) && javaType.equals(jsonWriterMethod.getParameters().get(1).asType().toString())) {
+					additionalDescription += "Wrong second argument defined. Expecting '" + javaType + "'. Detected: '" + jsonWriterMethod.getParameters().get(1).asType() + "'";
+				}
+			}
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for write method. It must be of type: 'void write(com.dslplatform.json.JsonWriter, " + javaType + ")'. " + additionalDescription,
+					converter,
+					getAnnotation(converter, converterType));
 		}
 		return new ConverterInfo(
 				converter,
+				legacyDeclaration,
 				jsonReaderMethod != null
 						? (hasInstance ? "INSTANCE." : "") + jsonReaderMethod.getSimpleName().toString() + "()" : jsonReaderField != null
 						?  jsonReaderField.getSimpleName().toString() : "",

@@ -19,4 +19,5 @@ processor/com.dslplatform.json.Configuration
 processor/META-INF/services/com.dslplatform.json.Configuration
 processor/dsl_json
 processor/dsl_json_Annotation_Processor_External_Serialization.java
-processor/_int_DslJsonConverter.java
+processor/_*_DslJsonConverter.java
+

@@ -921,11 +921,13 @@ class ConverterTemplate {
 			code.append(alignment);
 		}
 		if (attr.converter != null) {
-			code.append(attr.converter.fullName).append(".").append(attr.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
+			attr.converter.write(code);
+			code.append(".write(writer, ").append(readValue).append(");\n");
 		} else if (attr.isJsonObject) {
 			code.append(readValue).append(".serialize(writer, !alwaysSerialize);\n");
 		} else if (target != null && target.converter != null) {
-				code.append(target.converter.fullName).append(".").append(target.converter.writer).append(".write(writer, ").append(readValue).append(");\n");
+			target.converter.write(code);
+			code.append(".write(writer, ").append(readValue).append(");\n");
 		} else {
 			OptimizedConverter optimizedConverter = context.inlinedConverters.get(attr.typeName);
 			List<String> types = attr.collectionContent(context.typeSupport, context.structs);
@@ -1075,9 +1077,11 @@ class ConverterTemplate {
 			}
 			List<String> types = attr.collectionContent(context.typeSupport, context.structs);
 			if (attr.converter != null) {
-				code.append(attr.converter.fullName).append(".").append(attr.converter.reader).append(".read(reader)");
+				attr.converter.read(code);
+				code.append(".read(reader)");
 			} else if (target != null && target.converter != null) {
-				code.append(target.converter.fullName).append(".").append(target.converter.reader).append(".read(reader)");
+				target.converter.read(code);
+				code.append(".read(reader)");
 			} else if (optimizedConverter != null) {
 				boolean isPrimitive = !attr.typeName.equals(Analysis.objectName(attr.typeName));
 				if (attr.notNull || isPrimitive) {

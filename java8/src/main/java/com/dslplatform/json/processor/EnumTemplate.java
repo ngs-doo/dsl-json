@@ -37,7 +37,8 @@ class EnumTemplate {
 			OptimizedConverter converter = context.inlinedConverters.get(constantNameType);
 			String value = readValue + "." + target.enumConstantNameSource;
 			if (info != null && info.converter != null) {
-				code.append(info.converter.fullName).append(".").append(info.converter.writer).append(".write(writer, ").append(value).append(");\n");
+				info.converter.write(code);
+				code.append(".write(writer, ").append(value).append(");\n");
 			} else if (converter != null) {
 				code.append(converter.nonNullableEncoder("writer", value)).append(";\n");
 			} else {
@@ -102,7 +103,9 @@ class EnumTemplate {
 		}
 		if (constantNameType != null) {
 			if (info != null && info.converter != null) {
-				code.append("\t\t\tfinal ").append(constantNameType).append(" input = ").append(info.converter.fullName).append(".").append(info.converter.reader).append(".read(reader);\n");
+				code.append("\t\t\tfinal ").append(constantNameType).append(" input = ");
+				info.converter.read(code);
+				code.append(".read(reader);\n");
 				code.append("\t\t\t").append(className).append(" value = ").append("values.get(input);\n");
 			} else if (optimizedConverter != null) {
 				code.append("\t\t\tfinal ").append(constantNameType).append(" input = ").append(optimizedConverter.nonNullableDecoder()).append("(reader);\n");

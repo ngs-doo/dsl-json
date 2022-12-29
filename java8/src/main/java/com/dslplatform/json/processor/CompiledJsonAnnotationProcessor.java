@@ -453,8 +453,26 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			}
 		} else if (si.type == ObjectType.CONVERTER) {
 			String type = typeOrClass(nonGenericObject(className), className);
-			code.append("\t\t__dsljson.registerWriter(").append(type).append(", ").append(si.converter.fullName).append(".").append(si.converter.writer).append(");\n");
-			code.append("\t\t__dsljson.registerReader(").append(type).append(", ").append(si.converter.fullName).append(".").append(si.converter.reader).append(");\n");
+			if (si.converter.legacyDeclaration) {
+				code.append("\t\t__dsljson.registerWriter(").append(type).append(", ").append(si.converter.fullName).append(".").append(si.converter.writer).append(");\n");
+				code.append("\t\t__dsljson.registerReader(").append(type).append(", ").append(si.converter.fullName).append(".").append(si.converter.reader).append(");\n");
+			} else {
+				String objectName = Analysis.objectName(className);
+				code.append("\t\t__dsljson.registerWriter(").append(type).append(", ");
+				code.append("new com.dslplatform.json.JsonWriter.WriteObject<").append(objectName).append(">() {\n");
+				code.append("\t\t\t@Override\n\t\t\tpublic void write(com.dslplatform.json.JsonWriter writer, ").append(objectName).append(" value) {\n");
+				code.append("\t\t\t\t");
+				si.converter.write(code);
+				code.append(".write(writer, value);\n");
+				code.append("\t\t\t};\n\t\t});\n");
+				code.append("\t\t__dsljson.registerReader(").append(type).append(", ");
+				code.append("new com.dslplatform.json.JsonReader.ReadObject<").append(objectName).append(">() {\n");
+				code.append("\t\t\t@Override\n\t\t\tpublic ").append(objectName).append(" read(com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
+				code.append("\t\t\t\treturn ");
+				si.converter.read(code);
+				code.append(".read(reader);\n");
+				code.append("\t\t\t};\n\t\t});\n");
+			}
 		} else if (si.type == ObjectType.ENUM) {
 			if (enumTemplate.isStatic(si)) {
 				code.append("\t\tEnumConverter enumConverter = new EnumConverter();\n");

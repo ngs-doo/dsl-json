@@ -18,15 +18,11 @@ public class PrivateConverter {
 	public Map<String, Private> privates3;
 
 	public static abstract class Privates {
-		public static final JsonReader.ReadObject<Private[]> JSON_READER = new JsonReader.ReadObject<Private[]>() {
-			public Private[] read(JsonReader reader) throws IOException {
-				return null;
-			}
-		};
-		public static final JsonWriter.WriteObject<Private[]> JSON_WRITER = new JsonWriter.WriteObject<Private[]>() {
-			public void write(JsonWriter writer, Private[] value) {
-			}
-		};
+		public static Private[] read(JsonReader reader) throws IOException {
+			return null;
+		}
+		public static void write(JsonWriter writer, Private[] value) {
+		}
 	}
 
 	public static abstract class Privates2 {
