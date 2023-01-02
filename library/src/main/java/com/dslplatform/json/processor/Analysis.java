@@ -848,7 +848,7 @@ public class Analysis {
 					converter,
 					getAnnotation(converter, converterType));
 		} else if (!legacyDeclaration && jsonReaderMethod != null
-				&& !(javaType.equals(jsonReaderMethod.getReturnType().toString()) && jsonReaderMethod.getParameters().size() == 1 && "com.dslplatform.json.JsonReader".equals(jsonReaderMethod.getParameters().get(0).asType().toString()))) {
+				&& !(javaType.equals(jsonReaderMethod.getReturnType().toString()) && jsonReaderMethod.getParameters().size() == 1 && jsonReaderMethod.getParameters().get(0).asType().toString().startsWith("com.dslplatform.json.JsonReader"))) {
 			hasError = true;
 			String additionalDescription = "";
 			if (!javaType.equals(jsonReaderMethod.getReturnType().toString())) {
@@ -856,7 +856,7 @@ public class Analysis {
 			}
 			if (jsonReaderMethod.getParameters().size() != 1) {
 				additionalDescription += "Wrong number of arguments defined. Expecting one argument. Detected: " + jsonReaderMethod.getParameters().size();
-			} else if (!"com.dslplatform.json.JsonReader".equals(jsonReaderMethod.getParameters().get(0).asType().toString())) {
+			} else if (!jsonReaderMethod.getParameters().get(0).asType().toString().startsWith("com.dslplatform.json.JsonReader")) {
 				additionalDescription += "Wrong argument defined. Expecting 'com.dslplatform.json.JsonReader'. Detected: '" + jsonReaderMethod.getParameters().get(0).asType() + "'";
 			}
 			messager.printMessage(

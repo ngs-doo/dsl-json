@@ -53,7 +53,7 @@ public class InvalidConveterErrors {
 
 	@JsonConverter(target = short.class)
 	public static abstract class ShortPrimitiveConverter {
-		public static short read(JsonReader reader) throws IOException {
+		public static short read(JsonReader<?> reader) throws IOException {
 			return 0;
 		}
 

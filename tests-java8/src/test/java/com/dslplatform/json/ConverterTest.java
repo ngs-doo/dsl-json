@@ -140,7 +140,7 @@ public class ConverterTest {
 
 	@JsonConverter(target = char.class)
 	public static class CharConverter {
-		public static char read(JsonReader reader) throws IOException {
+		public static char read(JsonReader<Object> reader) throws IOException {
 			return StringConverter.deserialize(reader).charAt(0);
 		}
 
