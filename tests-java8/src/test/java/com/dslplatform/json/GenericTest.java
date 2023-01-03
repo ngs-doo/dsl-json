@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.*;
@@ -410,5 +411,41 @@ public class GenericTest {
 		dslJson.serialize(new GenericSelfReferenceString("XYZ"), os);
 
 		Assert.assertEquals("{\"genericField\":\"XYZ\"}", os.toString("UTF-8"));
+	}
+
+	@CompiledJson
+	public static class FilterResponse<T extends Filter> {
+		private final List<T> list;
+
+		public FilterResponse(List<T> list) {
+			this.list = list;
+		}
+
+		public List<T> getList() {
+			return list;
+		}
+	}
+
+	public static abstract class Filter implements Serializable {}
+	@CompiledJson
+	public static class FoodFilter extends Filter {
+		public int x;
+	}
+
+	@Test
+	public void boundListArgument() throws IOException {
+
+		byte[] bytes = "{\"list\":[{\"x\":2}]}".getBytes("UTF-8");
+
+		Type type = new TypeDefinition<FilterResponse<FoodFilter>>() {}.type;
+		FilterResponse<FoodFilter> result = (FilterResponse<FoodFilter>)dslJsonRuntime.deserialize(type, bytes, bytes.length);
+
+		Assert.assertEquals(1, result.getList().size());
+		Assert.assertEquals(2, result.getList().get(0).x);
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonRuntime.serialize(result, os);
+
+		Assert.assertEquals("{\"list\":[{\"x\":2}]}", os.toString("UTF-8"));
 	}
 }
