@@ -50,6 +50,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		JACKSON("dsljson.jackson"),
 		JSONB("dsljson.jsonb"),
 		CONFIGURATION("dsljson.configuration"),
+		NULLABLE("dsljson.nullable"),
 		GENERATED_MARKER("dsljson.generatedmarker");
 
 		final String value;
@@ -133,6 +134,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private UnknownTypes unknownTypes = UnknownTypes.ERROR;
 	private boolean withJackson = false;
 	private boolean withJsonb = false;
+	private boolean withNullable = true;
 	private String configurationFileName = null;
 	private String generatedMarker = null;
 
@@ -168,6 +170,10 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		String con = options.get(Options.CONFIGURATION.value);
 		if (con != null && con.length() > 0) {
 			configurationFileName = con;
+		}
+		String nul = options.get(Options.NULLABLE.value);
+		if (nul != null && nul.length() > 0) {
+			withNullable = Boolean.parseBoolean(nul);
 		}
 		if (options.containsKey(Options.GENERATED_MARKER.value)) {
 			String gm = options.get(Options.GENERATED_MARKER.value);
@@ -255,7 +261,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				logLevel,
 				typeSupport,
 				JsonIgnore,
-				NonNullable,
+				withNullable ? NonNullable : new HashMap<>(),
 				PropertyAlias,
 				JsonRequired,
 				Creators,
