@@ -567,6 +567,14 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void jacksonFactorySecondaryReference() {
+		assertCompilationSuccessful(
+				compileTestCase(
+						Collections.singletonList("-Adsljson.jackson=true"),
+						JacksonFactory.Reference.class));
+	}
+
+	@Test
 	public void immutableAndGetter() {
 		checkValidCompilation(ImmutableClassWithGetter.class);
 	}

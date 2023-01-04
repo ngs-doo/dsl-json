@@ -157,6 +157,9 @@ public class Analysis {
 			}
 			findStructs(classElement, currentAnnotationType, currentAnnotationType + " requires accessible public constructor", path, factory, builder);
 		}
+	}
+
+	public Map<String, StructInfo> analyze() {
 		findRelatedReferences();
 		findImplementations(structs.values());
 		for (StructInfo si : structs.values()) {
@@ -176,9 +179,6 @@ public class Analysis {
 				}
 			}
 		}
-	}
-
-	public Map<String, StructInfo> analyze() {
 		for (Map.Entry<String, StructInfo> it : structs.entrySet()) {
 			final StructInfo info = it.getValue();
 			final String className = it.getKey();
@@ -1232,7 +1232,7 @@ public class Analysis {
 	private void findStructs(
 			Element el,
 			DeclaredType discoveredBy,
-			String errorMessge,
+			String errorMessage,
 			Stack<String> path,
 			@Nullable ExecutableElement factory,
 			@Nullable ExecutableElement builder) {
@@ -1249,21 +1249,21 @@ public class Analysis {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore '" + element.asType() + "' can't be private ",
+					errorMessage + ", therefore '" + element.asType() + "' can't be private ",
 					element,
 					annotation);
 		} else if (requiresPublic(element) && !element.getModifiers().contains(Modifier.PUBLIC)) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
-						errorMessge + ", therefore '" + element.asType() + "' must be public ",
+						errorMessage + ", therefore '" + element.asType() + "' must be public ",
 						element,
 						annotation);
 		} else if (element.getNestingKind().isNested() && !element.getModifiers().contains(Modifier.STATIC)) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore '" + element.asType() + "' can't be a nested member. Only static nested classes are supported.",
+					errorMessage + ", therefore '" + element.asType() + "' can't be a nested member. Only static nested classes are supported.",
 					element,
 					annotation);
 		} else if (onlyBasicFeatures && (element.getQualifiedName().contentEquals(element.getSimpleName())
@@ -1273,14 +1273,14 @@ public class Analysis {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", but class '" + element.getQualifiedName() + "' is defined without a package name and cannot be accessed.",
+					errorMessage + ", but class '" + element.getQualifiedName() + "' is defined without a package name and cannot be accessed.",
 					element,
 					annotation);
 		} else if (element.getNestingKind().isNested() && requiresPublic(element.getEnclosingElement()) && !element.getEnclosingElement().getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					errorMessge + ", therefore '" + element.getEnclosingElement().asType() + "' must be public ",
+					errorMessage + ", therefore '" + element.getEnclosingElement().asType() + "' must be public ",
 					element,
 					annotation);
 		} else {
@@ -1299,7 +1299,7 @@ public class Analysis {
 							hasError = true;
 							messager.printMessage(
 									Diagnostic.Kind.ERROR,
-									errorMessge + ", but specified deserializeAs target: '" + deserializeAs.getQualifiedName() + "' " + error,
+									errorMessage + ", but specified deserializeAs target: '" + deserializeAs.getQualifiedName() + "' " + error,
 									element,
 									annotation);
 							deserializeAs = null;//reset it so that later lookup don't add another error message
@@ -1307,7 +1307,7 @@ public class Analysis {
 							if (deserializeAs.asType().toString().equals(element.asType().toString())) {
 								deserializeAs = null;
 							} else {
-								findStructs(deserializeAs, discoveredBy, errorMessge, path, null, null);
+								findStructs(deserializeAs, discoveredBy, errorMessage, path, null, null);
 							}
 						}
 					}
@@ -1317,7 +1317,7 @@ public class Analysis {
 						messager.printMessage(
 								Diagnostic.Kind.ERROR,
 								"Annotation usage is set to explicit, but '" + element.getQualifiedName() + "' is used implicitly through references. " +
-										"Either change usage to implicit, use @Ignore on property referencing this type or register custom converter for problematic type. " + errorMessge,
+										"Either change usage to implicit, use @Ignore on property referencing this type or register custom converter for problematic type. " + errorMessage,
 								element);
 					} else if (element.getQualifiedName().toString().startsWith("java.")) {
 						hasError = true;
@@ -1325,7 +1325,7 @@ public class Analysis {
 								Diagnostic.Kind.ERROR,
 								"Annotation usage is set to non-java, but '" + element.getQualifiedName() + "' is found in java package. " +
 										"Either change usage to implicit, use @Ignore on property referencing this type, register custom converter for problematic type or add annotation to this type. " +
-										errorMessge,
+										errorMessage,
 								element);
 					}
 				}
