@@ -1978,7 +1978,8 @@ public class Analysis {
 								method,
 								annotation);
 					} else if (!getters.containsKey(property)) {
-						getters.put(property, method);
+						String nameToUse = arguments.containsKey(name) ? name : property;
+						getters.put(nameToUse, method);
 					}
 				} else if (name.startsWith("get")
 						&& method.getParameters().size() == 0

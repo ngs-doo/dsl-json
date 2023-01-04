@@ -11,9 +11,12 @@ public class ImmutableClassWithGetter {
 	public final String getE() { return e; }
 	private final List<Integer> list;
 	public final List<Integer> getList() { return list; }
+	private final boolean isLocked;
+	public final boolean isLocked() { return isLocked; }
 
-	public ImmutableClassWithGetter(String e, List<Integer> list) {
+	public ImmutableClassWithGetter(String e, List<Integer> list, boolean isLocked) {
 		this.e = e;
 		this.list = list;
+		this.isLocked = isLocked;
 	}
 }

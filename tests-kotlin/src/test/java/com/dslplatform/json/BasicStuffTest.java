@@ -67,4 +67,20 @@ public class BasicStuffTest {
         EmptyClass deser = (EmptyClass) dslJson.deserialize(EmptyClass.class, input);
         Assert.assertNotNull(deser);
     }
+
+    @Test
+    public void isNamingWithoutDefault() throws IOException {
+        final DslJson dslJson = new DslJson(Settings.basicSetup());
+
+        WithIs wi = new WithIs(true, null, null);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        dslJson.serialize(wi, output);
+
+        Assert.assertEquals("{\"isLocked\":true,\"id\":null,\"token\":null}", output.toString("UTF-8"));
+
+        ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
+        WithIs deser = (WithIs) dslJson.deserialize(WithIs.class, input);
+        Assert.assertNotNull(deser);
+        Assert.assertTrue(deser.isLocked());
+    }
 }
