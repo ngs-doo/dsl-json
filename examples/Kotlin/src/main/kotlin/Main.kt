@@ -10,11 +10,11 @@ import java.io.ByteArrayOutputStream
 //class will be analyzed at runtime
 @CompiledJson
 data class DataClass(
-        @JsonAttribute(name = "lang", alternativeNames = ["Lang", "LANG"]) val language: String,
-        val versions: List<Int>,
-        val library: String,
-        val custom: CustomObject,
-        val factory: ObjectFactory
+    @JsonAttribute(name = "lang", alternativeNames = ["Lang", "LANG"]) val language: String,
+    val versions: List<Int>,
+    val library: String,
+    val custom: CustomObject,
+    val factory: ObjectFactory
 )
 
 data class CustomObject(val text: String) : JsonObject {
@@ -49,11 +49,11 @@ fun main(args: Array<String>) {
     //include service loader will load up classes created via annotation processor
     val dslJson = DslJson<Any>(Settings.withRuntime<Any>().includeServiceLoader())
     val dc = DataClass(
-            language = "Kotlin",
-            versions = listOf(170, 171, 172),
-            library = "DSL-JSON",
-            custom = CustomObject("abc"),
-            factory = ObjectFactory.create("xyz"))
+        language = "Kotlin",
+        versions = listOf(170, 171, 172),
+        library = "DSL-JSON",
+        custom = CustomObject("abc"),
+        factory = ObjectFactory.create("xyz"))
     val output = ByteArrayOutputStream()
     dslJson.serialize(dc, output)
 

@@ -21,7 +21,7 @@ lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
   organization := "com.dslplatform",
   name := baseDirectory.value.getName,
   scalaVersion := crossScalaVersions.value.head,
-  crossScalaVersions := Seq("2.11.12", "2.12.16", "2.13.8"),
+  crossScalaVersions := Seq("2.11.12", "2.12.17", "2.13.10"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",

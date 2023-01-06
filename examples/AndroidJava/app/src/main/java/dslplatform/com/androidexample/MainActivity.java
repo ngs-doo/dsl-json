@@ -189,33 +189,33 @@ public class MainActivity extends AppCompatActivity {
             };
         }
         public static abstract class FormatDecimal2 {
-            public static final JsonReader.ReadObject<BigDecimal> JSON_READER = reader -> {
+            public static BigDecimal read(JsonReader reader) throws IOException {
                 if (reader.wasNull()) return null;
                 return NumberConverter.deserializeDecimal(reader).setScale(2);
-            };
-            public static final JsonWriter.WriteObject<BigDecimal> JSON_WRITER = (writer, value) -> {
+            }
+            public static void write(JsonWriter writer, BigDecimal value) {
                 if (value == null) {
                     writer.writeNull();
                 } else {
                     NumberConverter.serializeNullable(value.setScale(2), writer);
                 }
-            };
+            }
         }
     }
 
     @JsonConverter(target = LocalTime.class)
     public static abstract class LocalTimeConverter {
-        public static final JsonReader.ReadObject<LocalTime> JSON_READER = reader -> {
+        public static LocalTime read(JsonReader reader) throws IOException {
             if (reader.wasNull()) return null;
             return LocalTime.parse(reader.readSimpleString());
-        };
-        public static final JsonWriter.WriteObject<LocalTime> JSON_WRITER = (writer, value) -> {
+        }
+        public static void write(JsonWriter writer, LocalTime value) {
             if (value == null) {
                 writer.writeNull();
             } else {
                 writer.writeString(value.toString());
             }
-        };
+        }
     }
 
     @Override
