@@ -1130,6 +1130,18 @@ public class Analysis {
 			}
 			CompiledJson.TypeSignature typeSignature = typeSignatureValue(annotation);
 			JsonAttribute.IncludePolicy includeToMinimal = includeToMinimalValue(annotation);
+			//for now only check for setters
+			if (annotation != null && access.read != null && access.write != null) {
+				AnnotationMirror read = getAnnotation(access.read, attributeType);
+				AnnotationMirror write = getAnnotation(access.write, attributeType);
+				if (read != null && write != null && read != write) {
+					messager.printMessage(
+							Diagnostic.Kind.WARNING,
+							"Annotation detected on both getter and setter. Specify annotation only on getter as annotation arguments are only used from a single definition.",
+							access.write,
+							write);
+				}
+			}
 
 			AttributeInfo attr =
 					new AttributeInfo(
@@ -1344,6 +1356,17 @@ public class Analysis {
 			String binaryName = elements.getBinaryName(element).toString();
 			BuilderInfo builderInfo = findBuilder(element, discoveredBy, builder);
 			ExecutableElement factoryAnn = findAnnotatedFactory(element, discoveredBy, factory, builderInfo);
+			ExecutableElement ctorAnn = findAnnotatedConstructor(element, discoveredBy);
+			if (annotation != null) {
+				if (ctorAnn != null && annotation != getAnnotation(ctorAnn, discoveredBy)
+						|| factoryAnn != null && annotation != getAnnotation(factoryAnn, discoveredBy)) {
+					messager.printMessage(
+							Diagnostic.Kind.WARNING,
+							"Multiple annotation detected on '" + element.getQualifiedName() + "'. Remove class annotation in favor of more specialized one as annotation arguments are only used for a single definition.",
+							element,
+							annotation);
+				}
+			}
 			StructInfo info =
 					new StructInfo(
 							element,
@@ -1353,7 +1376,7 @@ public class Analysis {
 							type,
 							jsonObjectReaderPath,
 							findMatchingConstructors(element, isMixin),
-							findAnnotatedConstructor(element, discoveredBy),
+							ctorAnn,
 							factoryAnn,
 							builderInfo,
 							annotation,

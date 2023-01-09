@@ -786,6 +786,24 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void duplicateAnnotation() {
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				6,
+				compileTestCase(MultipleAnnotations.class),
+				"Multiple annotation detected on 'com.dslplatform.json.models.MultipleAnnotations'. Remove class annotation in favor of more specialized one as annotation arguments are only used for a single definition.");
+	}
+
+	@Test
+	public void getterAndSetterAnnotation() {
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				16,
+				compileTestCase(GetterAndSetterAnnotation.class),
+				"Annotation detected on both getter and setter. Specify annotation only on getter as annotation arguments are only used from a single definition.");
+	}
+
+	@Test
 	public void annotationOnPrivateWillCreateWarning() {
 		assertCompilationReturned(
 				Diagnostic.Kind.WARNING,
