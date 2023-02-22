@@ -38,6 +38,8 @@ public class StructInfo {
 	public final Set<Element> properties = new HashSet<Element>();
 	public final List<String> constants = new ArrayList<String>();
 	public final Element enumConstantNameSource;
+	public final Element enumConstantDefaultValue;
+
 	public final Stack<String> path = new Stack<String>();
 	public final Map<String, TypeMirror> unknowns = new LinkedHashMap<String, TypeMirror>();
 	public final boolean isParameterized;
@@ -67,6 +69,7 @@ public class StructInfo {
 			@Nullable String discriminator,
 			@Nullable String deserializeName,
 			@Nullable Element enumConstantNameSource,
+			@Nullable Element enumConstantDefaultValue,
 			@Nullable NamingStrategy namingStrategy,
 			@Nullable CompiledJson.Format[] formats,
 			Map<String, TypeMirror> genericSignatures) {
@@ -88,6 +91,7 @@ public class StructInfo {
 		this.discriminator = discriminator != null ? discriminator : "";
 		this.deserializeName = deserializeName != null ? deserializeName : "";
 		this.enumConstantNameSource = enumConstantNameSource;
+		this.enumConstantDefaultValue = enumConstantDefaultValue;
 		this.namingStrategy = namingStrategy;
 		this.formats = formats == null ? EnumSet.of(CompiledJson.Format.OBJECT) : EnumSet.copyOf(Arrays.asList(formats));
 		this.isObjectFormatFirst = formats == null || formats.length == 0 || formats[0] == CompiledJson.Format.OBJECT;
@@ -136,6 +140,7 @@ public class StructInfo {
 		this.discriminator = "";
 		this.deserializeName = "";
 		this.enumConstantNameSource = null;
+		this.enumConstantDefaultValue = null;
 		this.namingStrategy = null;
 		this.formats = EnumSet.of(CompiledJson.Format.OBJECT);
 		this.isObjectFormatFirst = true;

@@ -122,6 +122,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void testEnumWithJsonValueAnnotationWithDefaultConstant() {
+		checkValidCompilation(EnumWithDefaultConstant.class);
+	}
+
+	@Test
 	public void testEnumWithJsonValueObjectAndConverter() {
 		checkValidCompilation(EnumWithObjectAndConverter.class);
 	}
@@ -169,6 +174,24 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				8,
 				compileTestCase(EnumWithInvalidCustomConstantName4.class),
 				"Unexpected @JsonValue annotation found. It must be placed on enum field or getter.");
+	}
+
+	@Test
+	public void testEnumWithTwoJsonDefaultConstantAnnotation() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				12,
+				compileTestCase(EnumWithInvalidDefaultConstant.class),
+				"Duplicate @JsonEnumDefaultValue annotation found. Only one enum field can be annotated.");
+	}
+
+	@Test
+	public void testEnumWithPlaceAnnotationOnNonConstantField() {
+		assertCompilationReturned(
+				Diagnostic.Kind.ERROR,
+				14,
+				compileTestCase(EnumWithInvalidFieldDefaultConstant.class),
+				"@JsonEnumDefaultValue annotation can place only on enum constant.");
 	}
 
 	@Test

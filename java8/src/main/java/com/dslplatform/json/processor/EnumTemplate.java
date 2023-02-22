@@ -140,14 +140,28 @@ class EnumTemplate {
 					code.append("\t\t\t\t\treturn ").append(className).append(".").append(c).append(";\n");
 				}
 				code.append("\t\t\t\tdefault:\n");
-				if (si.onUnknown == CompiledJson.Behavior.IGNORE) {
-					code.append("\t\t\t\t\treturn ").append(className).append(".").append(si.constants.get(0)).append(";\n");
+				if (si.enumConstantDefaultValue != null) {
+					code.append("\t\t\t\t\treturn ").append(className).append(".").append(si.enumConstantDefaultValue.getSimpleName().toString()).append(";\n");
 				} else {
-					code.append("\t\t\t\t\treturn ").append(className).append(".valueOf(reader.getLastName());\n");
+					if (si.onUnknown == CompiledJson.Behavior.IGNORE) {
+						code.append("\t\t\t\t\treturn ").append(className).append(".").append(si.constants.get(0)).append(";\n");
+					} else {
+						code.append("\t\t\t\t\treturn ").append(className).append(".valueOf(reader.getLastName());\n");
+					}
 				}
 				code.append("\t\t\t}\n");
 				//TODO: better handle for collision
-			} else code.append("\t\t\treturn ").append(className).append(".valueOf(reader.getLastName());\n");
+			} else  {
+				if (si.enumConstantDefaultValue != null) {
+					code.append("\t\t\ttry {\n")
+							.append("\t\t\t\treturn ").append(className).append(".valueOf(reader.getLastName());\n")
+							.append("\t\t\t} catch (").append(EnumConstantNotPresentException.class.getSimpleName()).append(" ").append("e").append(") {\n")
+							.append("\t\t\t\treturn ").append(className).append(".").append(si.enumConstantDefaultValue.getSimpleName().toString()).append(";\n")
+							.append("\t\t\t}\n");
+				} else {
+					code.append("\t\t\treturn ").append(className).append(".valueOf(reader.getLastName());\n");
+				}
+			}
 		}
 		code.append("\t\t}\n");
 		code.append("\t}\n");

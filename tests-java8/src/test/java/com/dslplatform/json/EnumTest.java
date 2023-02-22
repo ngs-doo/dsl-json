@@ -433,4 +433,59 @@ public class EnumTest {
 		Assert.assertEquals(si.list2, res.list2);
 	}
 
+	public enum EnumWithDefaultConst {
+		FIRST,
+
+		@JsonEnumDefaultValue
+        SECOND
+	}
+
+	@CompiledJson
+	public static class EnumDefaultConstHolder {
+		private EnumWithDefaultConst enumValue;
+
+		@JsonAttribute(hashMatch = false)
+		private EnumWithDefaultConst enumValueNoHash;
+
+		public EnumDefaultConstHolder(EnumWithDefaultConst enumValue, EnumWithDefaultConst enumValueNoHash) {
+			this.enumValue = enumValue;
+			this.enumValueNoHash = enumValueNoHash;
+		}
+
+		public EnumWithDefaultConst getEnumValue() {
+            return enumValue;
+        }
+
+        public void setEnumValue(EnumWithDefaultConst enumValue) {
+            this.enumValue = enumValue;
+        }
+
+		public EnumWithDefaultConst getEnumValueNoHash() {
+			return enumValueNoHash;
+		}
+
+		public void setEnumValueNoHash(EnumWithDefaultConst enumValueNoHash) {
+			this.enumValueNoHash = enumValueNoHash;
+		}
+	}
+
+	@Test
+	public void testDeserializeEnumWithUnknownConstant() throws IOException {
+		byte[] json = "{\"enumValue\":\"UNKNOWN\",\"enumValueNoHash\":\"UNKNOWN\"}".getBytes(StandardCharsets.UTF_8);
+		EnumDefaultConstHolder deserialized = dslJson.deserialize(EnumDefaultConstHolder.class, json, json.length);
+
+		Assert.assertNotNull(deserialized);
+        Assert.assertEquals(deserialized.getEnumValue(), EnumWithDefaultConst.SECOND);
+        Assert.assertEquals(deserialized.getEnumValueNoHash(), EnumWithDefaultConst.SECOND);
+	}
+
+	@Test
+	public void testDeserializeEnumWithKnownConstant() throws IOException {
+		byte[] json = "{\"enumValue\":\"FIRST\",\"enumValueNoHash\":\"FIRST\"}".getBytes(StandardCharsets.UTF_8);
+		EnumDefaultConstHolder deserialized = dslJson.deserialize(EnumDefaultConstHolder.class, json, json.length);
+
+		Assert.assertNotNull(deserialized);
+		Assert.assertEquals(deserialized.getEnumValue(), EnumWithDefaultConst.FIRST);
+		Assert.assertEquals(deserialized.getEnumValueNoHash(), EnumWithDefaultConst.FIRST);
+	}
 }

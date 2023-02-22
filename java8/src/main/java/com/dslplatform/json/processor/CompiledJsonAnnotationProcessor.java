@@ -32,6 +32,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 	private static final Set<String> JsonIgnore;
 	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> NonNullable;
 	private static final Map<String, String> PropertyAlias;
+	private static final Map<String, String> EnumDefaultValue;
 	private static final Map<String, List<Analysis.AnnotationMapping<Boolean>>> JsonRequired;
 	private static final Set<String> Creators;
 	private static final Map<String, String> Indexes;
@@ -82,6 +83,9 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		PropertyAlias.put("com.fasterxml.jackson.annotation.JsonProperty", "value()");
 		PropertyAlias.put("com.google.gson.annotations.SerializedName", "value()");
 		PropertyAlias.put("javax.json.bind.annotation.JsonbProperty", "value()");
+		EnumDefaultValue = new HashMap<>();
+		EnumDefaultValue.put("com.dslplatform.json.JsonEnumDefaultValue", null);
+		EnumDefaultValue.put("com.fasterxml.jackson.annotation.JsonEnumDefaultValue", null);
 		JsonRequired = new HashMap<>();
 		JsonRequired.put(
 				"com.fasterxml.jackson.annotation.JsonProperty",
@@ -263,6 +267,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				JsonIgnore,
 				withNullable ? NonNullable : new HashMap<>(),
 				PropertyAlias,
+				EnumDefaultValue,
 				JsonRequired,
 				Creators,
 				Indexes,

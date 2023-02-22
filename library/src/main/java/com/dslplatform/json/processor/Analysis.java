@@ -12,6 +12,8 @@ import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.util.*;
 
+import static javax.lang.model.element.ElementKind.ENUM_CONSTANT;
+
 public class Analysis {
 
 	private final AnnotationUsage annotationUsage;
@@ -37,6 +39,8 @@ public class Analysis {
 	private final Set<String> alternativeIgnore;
 	private final Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable;
 	private final Map<String, String> alternativeAlias;
+
+	private final Map<String, String> alternativeEnumDefaultValue;
 	private final Map<String, List<AnnotationMapping<Boolean>>> alternativeMandatory;
 	private final Set<String> alternativeCreators;
 	private final Map<String, String> alternativeIndex;
@@ -63,7 +67,7 @@ public class Analysis {
 	}
 
 	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, TypeSupport typeSupport) {
-		this(processingEnv, annotationUsage, logLevel, typeSupport, null, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
+		this(processingEnv, annotationUsage, logLevel, typeSupport, null, null, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
 	}
 
 	public Analysis(
@@ -74,6 +78,7 @@ public class Analysis {
 			@Nullable Set<String> alternativeIgnore,
 			@Nullable Map<String, List<AnnotationMapping<Boolean>>> alternativeNonNullable,
 			@Nullable Map<String, String> alternativeAlias,
+			@Nullable Map<String, String> alternativeEnumDefaultValue,
 			@Nullable Map<String, List<AnnotationMapping<Boolean>>> alternativeMandatory,
 			@Nullable Set<String> alternativeCreators,
 			@Nullable Map<String, String> alternativeIndex,
@@ -97,6 +102,7 @@ public class Analysis {
 		this.alternativeIgnore = alternativeIgnore == null ? new HashSet<String>() : alternativeIgnore;
 		this.alternativeNonNullable = alternativeNonNullable == null ? new HashMap<String, List<AnnotationMapping<Boolean>>>() : alternativeNonNullable;
 		this.alternativeAlias = alternativeAlias == null ? new HashMap<String, String>() : alternativeAlias;
+		this.alternativeEnumDefaultValue = alternativeEnumDefaultValue == null ? new HashMap<String, String>() : alternativeEnumDefaultValue;
 		this.alternativeMandatory = alternativeMandatory == null ? new HashMap<String, List<AnnotationMapping<Boolean>>>() : alternativeMandatory;
 		this.alternativeCreators = alternativeCreators == null ? new HashSet<String>() : alternativeCreators;
 		this.alternativeIndex = alternativeIndex == null ? new HashMap<String, String>() : alternativeIndex;
@@ -1387,6 +1393,7 @@ public class Analysis {
 							classDiscriminator(annotation),
 							className(annotation),
 							type == ObjectType.ENUM ? findEnumConstantNameSource(element) : null,
+							type == ObjectType.ENUM ? findEnumDefaultConstant(element) : null,
 							namingStrategy(element, annotation),
 							formats,
 							findGenericSignatures(element.asType()));
@@ -1679,7 +1686,7 @@ public class Analysis {
 	private static List<String> getEnumConstants(TypeElement element) {
 		List<String> result = new ArrayList<String>();
 		for (Element enclosedElement : element.getEnclosedElements()) {
-			if (enclosedElement.getKind() == ElementKind.ENUM_CONSTANT) {
+			if (enclosedElement.getKind() == ENUM_CONSTANT) {
 				result.add(enclosedElement.getSimpleName().toString());
 			}
 		}
@@ -1715,6 +1722,23 @@ public class Analysis {
 			}
 		}
 		return nameSource;
+	}
+
+	@Nullable
+	private Element findEnumDefaultConstant(TypeElement typeElement) {
+		Element defaultEnumConstant = null;
+		for (Element enclosedElement : typeElement.getEnclosedElements()) {
+			if (hasCustomEnumDefaultValue(enclosedElement)) {
+				if (enclosedElement.getKind() != ENUM_CONSTANT) {
+					printError("@JsonEnumDefaultValue annotation can place only on enum constant.", enclosedElement);
+				} else if (defaultEnumConstant == null) {
+					defaultEnumConstant = enclosedElement;
+				} else {
+					printError("Duplicate @JsonEnumDefaultValue annotation found. Only one enum field can be annotated.", enclosedElement);
+				}
+			}
+		}
+		return defaultEnumConstant;
 	}
 
 	private boolean isSupportedEnumNameType(Element element) {
@@ -2671,6 +2695,13 @@ public class Analysis {
 	private boolean hasCustomMarker(Element property) {
 		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
 			if (alternativeAlias.containsKey(ann.getAnnotationType().toString())) return true;
+		}
+		return false;
+	}
+
+	private boolean hasCustomEnumDefaultValue(Element property) {
+		for (AnnotationMirror ann : property.getAnnotationMirrors()) {
+			if (alternativeEnumDefaultValue.containsKey(ann.getAnnotationType().toString())) return true;
 		}
 		return false;
 	}
