@@ -117,16 +117,19 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 		if (reader.getNextToken() != JsonWriter.QUOTE) {
 			throw reader.newParseError(discriminatorError);
 		}
-		reader.getNextToken();
 		final int hash = reader.calcHash();
 		for (final FormatDescription<T> od : descriptions) {
 			if (od.arrayFormat == null || od.typeHash != hash) continue;
 			if (exactMatch && !reader.wasLastName(od.typeName)) continue;
 			final FormatConverter<T> afd = od.arrayFormat;
 			if (reader.getNextToken() == JsonWriter.COMMA) {
-				reader.getNextToken();
+				return afd.readContent(reader);
+			} else if (reader.last() != JsonWriter.ARRAY_END) {
+				throw reader.newParseError("Expecting ']' for array format end");
+			} else {
+				//TODO: return new instance
+				return afd.readContent(reader);
 			}
-			return afd.readContent(reader);
 		}
 		throw new ConfigurationException("Unable to find decoder for '" + reader.getLastName() + "' for mixin: " + Reflection.typeDescription(manifest) + " which supports array format. Add @CompiledJson to specified type to allow deserialization into it");
 	}
@@ -162,8 +165,15 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			} else {
 				writer.writeByte(JsonWriter.ARRAY_START);
 				writer.writeAscii(od.quotedTypeName);
+				writer.writeByte(JsonWriter.COMMA);
+				final int pos = writer.size();
+				final long flushed = writer.flushed();
 				od.arrayFormat.writeContentFull(writer, instance);
-				writer.writeByte(JsonWriter.ARRAY_END);
+				if (pos != writer.size() || flushed != writer.flushed()) {
+					writer.writeByte(JsonWriter.ARRAY_END);
+				} else {
+					writer.getByteBuffer()[writer.size() - 1] = JsonWriter.ARRAY_END;
+				}
 			}
 			return;
 		}

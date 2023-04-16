@@ -11,6 +11,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static com.dslplatform.json.CompiledJson.Format.ARRAY;
+import static com.dslplatform.json.CompiledJson.Format.OBJECT;
+
 public class InterfaceTest {
 
 	@CompiledJson
@@ -30,7 +33,7 @@ public class InterfaceTest {
 		void y(int y);
 	}
 
-	@CompiledJson(discriminator = "@type")
+	@CompiledJson(discriminator = "@type", formats = {ARRAY, OBJECT})
 	public interface Iface2 {
 		int y();
 		void y(int y);
@@ -87,7 +90,7 @@ public class InterfaceTest {
 		}
 	}
 
-	@CompiledJson(name = "custom")
+	@CompiledJson(name = "custom",formats = {ARRAY,OBJECT})
 	public static class IsIfaceCustom2 implements Iface2 {
 		private int y;
 
@@ -156,6 +159,18 @@ public class InterfaceTest {
 		JsonWriter writer = dslJsonRuntime.newWriter();
 		dslJsonRuntime.serialize(writer, new TypeDefinition<List<Iface2>>(){}.type, list);
 		Assert.assertEquals("[null,{\"@type\":\"custom\",\"y\":3,\"list\":[]}]", writer.toString());
+		List<Iface2> res = (List) dslJson.deserialize(new TypeDefinition<List<Iface2>>(){}.type, writer.getByteBuffer(), writer.size());
+		Assert.assertEquals(2, res.size());
+		Assert.assertEquals(IsIfaceCustom2.class, res.get(1).getClass());
+	}
+
+	@Test
+	public void withArrayFormat() throws IOException {
+		DslJson dslJsonRuntime = new DslJson(Settings.basicSetup().allowArrayFormat(true));
+		List<Iface2> list = Arrays.asList(null, new IsIfaceCustom2(3, Collections.emptyList()));
+		JsonWriter writer = dslJsonRuntime.newWriter();
+		dslJsonRuntime.serialize(writer, new TypeDefinition<List<Iface2>>(){}.type, list);
+		Assert.assertEquals("[null,[\"custom\",3,[]]]", writer.toString());
 		List<Iface2> res = (List) dslJson.deserialize(new TypeDefinition<List<Iface2>>(){}.type, writer.getByteBuffer(), writer.size());
 		Assert.assertEquals(2, res.size());
 		Assert.assertEquals(IsIfaceCustom2.class, res.get(1).getClass());
