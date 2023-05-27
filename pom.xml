@@ -11,11 +11,8 @@
 
 	<modules>
 		<module>library</module>
-		<module>processor</module>
-		<module>java8</module>
-		<module>joda</module>
-		<module>threetenbp</module>
 		<module>android</module>
+		<module>tests-processor</module>
 		<module>tests-java8</module>
 		<module>tests-java8-external-models</module>
 		<module>tests-kotlin</module>

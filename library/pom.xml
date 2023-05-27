@@ -9,9 +9,28 @@
 	<description>DSL Platform compatible Java JSON library (https://dsl-platform.com)</description>
 	<url>https://github.com/ngs-doo/dsl-json</url>
 	<packaging>jar</packaging>
-	<version>1.10.0</version>
+	<version>2.0.0</version>
 
 	<dependencies>
+
+		<dependency>
+			<groupId>javax.json.bind</groupId>
+			<artifactId>javax.json.bind-api</artifactId>
+			<version>1.0</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.json</groupId>
+			<artifactId>javax.json-api</artifactId>
+			<version>1.1.2</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.thoughtworks.paranamer</groupId>
+			<artifactId>paranamer</artifactId>
+			<version>2.8</version>
+			<scope>provided</scope>
+		</dependency>
 		<dependency>
 			<groupId>com.google.code.findbugs</groupId>
 			<artifactId>jsr305</artifactId>
@@ -22,6 +41,12 @@
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.13.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.hsqldb</groupId>
+			<artifactId>hsqldb</artifactId>
+			<version>2.3.4</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -39,12 +64,6 @@
 			<email>rikard@ngs.hr</email>
 			<organization>NGS</organization>
 			<organizationUrl>https://github.com/ngs-doo</organizationUrl>
-		</developer>
-		<developer>
-			<name>Marko Elezović</name>
-			<email>marko@mentat-labs.com</email>
-			<organization>Mentat Labs</organization>
-			<organizationUrl>http://mentat-labs.com/</organizationUrl>
 		</developer>
 	</developers>
 	
@@ -76,8 +95,10 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.3</version>
 				<configuration>
-					<source>1.6</source>
-					<target>1.6</target>
+					<compilerVersion>1.8</compilerVersion>
+					<source>1.8</source>
+					<target>1.8</target>
+					<compilerArgument>-proc:none</compilerArgument>
 				</configuration>
 			</plugin>
 			<plugin>

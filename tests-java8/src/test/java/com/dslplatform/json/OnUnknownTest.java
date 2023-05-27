@@ -1,14 +1,11 @@
 package com.dslplatform.json;
 
-import com.dslplatform.json.runtime.CollectionAnalyzer;
-import com.dslplatform.json.runtime.ObjectAnalyzer;
 import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
 
 public class OnUnknownTest {
 

@@ -5,30 +5,23 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.dslplatform</groupId>
-	<artifactId>dsl-json-integration-tests-java8</artifactId>
-	<name>DSL-JSON integration tests (Java 8)</name>
-	<description>DSL Platform compatible JSON (https://dsl-platform.com)</description>
+	<artifactId>dsl-json-integration-tests-processor</artifactId>
+	<name>DSL-JSON integration tests (Annotation processor)</name>
+	<description>Embedding compiled time JSON conversion for DSL Platform JSON library (https://dsl-platform.com)</description>
 	<url>https://github.com/ngs-doo/dsl-json</url>
 	<packaging>jar</packaging>
 	<version>2.0.0</version>
 
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.deploy.skip>true</maven.deploy.skip>
-	</properties>
-
 	<dependencies>
+		<dependency>
+			<groupId>com.dslplatform</groupId>
+			<artifactId>dsl-clc</artifactId>
+			<version>2.0.0</version>
+		</dependency>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
 			<artifactId>dsl-json</artifactId>
 			<version>${project.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.dslplatform</groupId>
-			<artifactId>dsl-json-integration-tests-java8-external-models</artifactId>
-			<version>${project.version}</version>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -49,12 +42,24 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.google.code.findbugs</groupId>
+			<artifactId>jsr305</artifactId>
+			<version>2.0.1</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.5</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>javax.validation</groupId>
 			<artifactId>validation-api</artifactId>
 			<version>2.0.1.Final</version>
 			<scope>test</scope>
 		</dependency>
-	</dependencies>
+    </dependencies>
 
 	<licenses>
 		<license>
@@ -72,6 +77,27 @@
 		</developer>
 	</developers>
 
+	<scm>
+		<connection>scm:git:git@github.com:ngs-doo/dsl-json.git</connection>
+		<developerConnection>scm:git:git@github.com:ngs-doo/dsl-json.git</developerConnection>
+		<url>git@github.com:ngs-doo/dsl-json.git</url>
+	</scm>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+	</distributionManagement>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -82,10 +108,7 @@
 					<compilerVersion>1.8</compilerVersion>
 					<source>1.8</source>
 					<target>1.8</target>
-					<useIncrementalCompilation>false</useIncrementalCompilation>
-					<compilerArguments>
-						<Adsljson.unknown>WARNING</Adsljson.unknown>
-					</compilerArguments>
+					<compilerArgument>-proc:none</compilerArgument>
 				</configuration>
 			</plugin>
 		</plugins>

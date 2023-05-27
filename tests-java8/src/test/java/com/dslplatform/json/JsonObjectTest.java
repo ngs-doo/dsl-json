@@ -1,6 +1,5 @@
 package com.dslplatform.json;
 
-import com.dslplatform.json.runtime.Settings;
 import org.junit.Assert;
 import org.junit.Test;
 
