@@ -16,12 +16,7 @@ public abstract class AndroidGeomConverter {
 			return reader.wasNull() ? null : deserializeLocation(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<PointF> LOCATION_WRITER = new JsonWriter.WriteObject<PointF>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable PointF value) {
-			serializeLocationNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<PointF> LOCATION_WRITER = (writer, value) -> serializeLocationNullable(value, writer);
 	public static final JsonReader.ReadObject<Point> POINT_READER = new JsonReader.ReadObject<Point>() {
 		@Nullable
 		@Override
@@ -29,12 +24,7 @@ public abstract class AndroidGeomConverter {
 			return reader.wasNull() ? null : deserializePoint(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Point> POINT_WRITER = new JsonWriter.WriteObject<Point>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Point value) {
-			serializePointNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Point> POINT_WRITER = (writer, value) -> serializePointNullable(value, writer);
 	public static final JsonReader.ReadObject<Rect> RECTANGLE_READER = new JsonReader.ReadObject<Rect>() {
 		@Nullable
 		@Override
@@ -42,12 +32,7 @@ public abstract class AndroidGeomConverter {
 			return reader.wasNull() ? null : deserializeRectangle(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Rect> RECTANGLE_WRITER = new JsonWriter.WriteObject<Rect>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Rect value) {
-			serializeRectangleNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Rect> RECTANGLE_WRITER = (writer, value) -> serializeRectangleNullable(value, writer);
 	public static final JsonReader.ReadObject<Bitmap> IMAGE_READER = new JsonReader.ReadObject<Bitmap>() {
 		@Nullable
 		@Override
@@ -55,12 +40,7 @@ public abstract class AndroidGeomConverter {
 			return reader.wasNull() ? null : deserializeImage(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Bitmap> IMAGE_WRITER = new JsonWriter.WriteObject<Bitmap>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Bitmap value) {
-			serialize(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Bitmap> IMAGE_WRITER = (writer, value) -> serialize(value, writer);
 
 	public static void serializeLocationNullable(@Nullable final PointF value, final JsonWriter sw) {
 		if (value == null) {

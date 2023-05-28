@@ -22,14 +22,15 @@ public class BigIntegerTest {
 				BigInteger.valueOf(12345678901234567L),
 				BigInteger.valueOf(Long.MAX_VALUE)
 		};
-		JsonWriter jw = new JsonWriter(null);
-		JsonReader jr = new JsonReader<>(new byte[0], null);
+		DslJson dslJson = new DslJson();
+		JsonWriter jw = dslJson.newWriter();
+		JsonReader jr = dslJson.newReader();
 		for (BigInteger v : values) {
 			jw.reset();
-			BigIntegerConverter.serialize(v, jw);
+			NumberConverter.serialize(v, jw);
 			jr.process(jw.getByteBuffer(), jw.size());
 			jr.read();
-			BigInteger d = BigIntegerConverter.deserialize(jr);
+			BigInteger d = NumberConverter.deserializeBigInteger(jr);
 			Assert.assertEquals(v, d);
 		}
 	}
@@ -37,15 +38,16 @@ public class BigIntegerTest {
 	@Test
 	public void testRandomValues() throws IOException {
 		Random rnd = new Random();
-		JsonWriter jw = new JsonWriter(null);
-		JsonReader jr = new JsonReader<>(new byte[0], null);
+		DslJson dslJson = new DslJson();
+		JsonWriter jw = dslJson.newWriter();
+		JsonReader jr = dslJson.newReader();
 		for(int i = 1;i < 500; i++) {
 			BigInteger v = new BigInteger(i, rnd);
 			jw.reset();
-			BigIntegerConverter.serialize(v, jw);
+			NumberConverter.serialize(v, jw);
 			jr.process(jw.getByteBuffer(), jw.size());
 			jr.read();
-			BigInteger d = BigIntegerConverter.deserialize(jr);
+			BigInteger d = NumberConverter.deserializeBigInteger(jr);
 			Assert.assertEquals(v, d);
 		}
 	}
@@ -62,7 +64,7 @@ public class BigIntegerTest {
 	private BigInteger checkError(JsonReader<Object> reader, String error) {
 		BigInteger res = BigInteger.ZERO;
 		try {
-			res = BigIntegerConverter.deserialize(reader);
+			res = NumberConverter.deserializeBigInteger(reader);
 			if (error != null) Assert.fail("Expecting " + error);
 		} catch (Exception ex) {
 			Assert.assertTrue(ex.getMessage().contains(error));

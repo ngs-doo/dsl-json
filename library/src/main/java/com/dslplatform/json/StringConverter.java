@@ -15,18 +15,10 @@ public abstract class StringConverter {
 			return reader.readString();
 		}
 	};
-	public static final JsonWriter.WriteObject<String> WRITER = new JsonWriter.WriteObject<String>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable String value) {
-			serializeNullable(value, writer);
-		}
-	};
-	public static final JsonWriter.WriteObject<CharSequence> WRITER_CHARS = new JsonWriter.WriteObject<CharSequence>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable CharSequence value) {
-			if (value == null) writer.writeNull();
-			else writer.writeString(value);
-		}
+	public static final JsonWriter.WriteObject<String> WRITER = (writer, value) -> serializeNullable(value, writer);
+	public static final JsonWriter.WriteObject<CharSequence> WRITER_CHARS = (writer, value) -> {
+		if (value == null) writer.writeNull();
+		else writer.writeString(value);
 	};
 	public static final JsonReader.ReadObject<StringBuilder> READER_BUILDER = new JsonReader.ReadObject<StringBuilder>() {
 		@Nullable
@@ -46,6 +38,14 @@ public abstract class StringConverter {
 			return reader.appendString(builder);
 		}
 	};
+
+	static <T> void registerDefault(DslJson<T> json) {
+		json.registerReader(String.class, READER);
+		json.registerWriter(String.class, WRITER);
+		json.registerWriter(CharSequence.class, WRITER_CHARS);
+		json.registerReader(StringBuilder.class, READER_BUILDER);
+		json.registerReader(StringBuffer.class, READER_BUFFER);
+	}
 
 	public static void serializeShortNullable(@Nullable final String value, final JsonWriter sw) {
 		if (value == null) {

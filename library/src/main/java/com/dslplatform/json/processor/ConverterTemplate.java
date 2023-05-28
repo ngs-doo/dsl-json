@@ -642,8 +642,8 @@ class ConverterTemplate {
 			isFirst = false;
 			String name = si.propertyName(attr);
 			code.append("\t\tprivate static final byte[] quoted_").append(attr.name).append(" = \"").append(prefix);
-			code.append("\\\"").append(name).append("\\\":\".getBytes(utf8);\n");
-			code.append("\t\tprivate static final byte[] name_").append(attr.name).append(" = \"").append(name).append("\".getBytes(utf8);\n");
+			code.append("\\\"").append(name).append("\\\":\".getBytes(java.nio.charset.StandardCharsets.UTF_8);\n");
+			code.append("\t\tprivate static final byte[] name_").append(attr.name).append(" = \"").append(name).append("\".getBytes(java.nio.charset.StandardCharsets.UTF_8);\n");
 		}
 		code.append("\t\tpublic final void write(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");

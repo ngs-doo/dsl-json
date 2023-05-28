@@ -5,10 +5,9 @@ import com.dslplatform.json.*;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, JsonReader.ReadObject<T>, JsonReader.BindObject<T> {
-
-	private static final Charset utf8 = Charset.forName("UTF-8");
 
 	final Type manifest;
 	final boolean isObjectFormatFirst;
@@ -50,8 +49,8 @@ public final class FormatDescription<T> implements JsonWriter.WriteObject<T>, Js
 		this.arrayBinder = arrayFormat instanceof JsonReader.BindObject ? (JsonReader.BindObject)arrayFormat : null;
 		this.isObjectFormatFirst = isObjectFormatFirst || !json.allowArrayFormat;
 		String name = typeName.replace("$", ".");
-		this.typeName = name.getBytes(utf8);
-		this.quotedTypeName = ("\"" + name + "\"").getBytes(utf8);
+		this.typeName = name.getBytes(StandardCharsets.UTF_8);
+		this.quotedTypeName = ("\"" + name + "\"").getBytes(StandardCharsets.UTF_8);
 		this.typeHash = DecodePropertyInfo.calcHash(name);
 		this.startErrorBoth = String.format("Expecting '{' or '[' to start decoding %s", Reflection.typeDescription(manifest));
 		this.startErrorObject = String.format("Expecting '{' to start decoding %s", Reflection.typeDescription(manifest));

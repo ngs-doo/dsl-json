@@ -4,6 +4,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -18,7 +19,6 @@ import java.util.*;
 public final class JsonReader<TContext> {
 
 	private static final boolean[] WHITESPACE = new boolean[256];
-	private static final Charset utf8 = Charset.forName("UTF-8");
 
 	static {
 		WHITESPACE[9 + 128] = true;
@@ -122,56 +122,6 @@ public final class JsonReader<TContext> {
 		this.doubleLengthLimit = 15 + doublePrecision.level;
 		this.originalBuffer = buffer;
 		this.originalBufferLenWithExtraSpace = bufferLenWithExtraSpace;
-	}
-
-	/**
-	 * Prefer creating reader through DslJson#newReader since it will pass several arguments (such as key/string value cache)
-	 * First byte will not be read.
-	 * It will allocate new char[64] for string buffer.
-	 * Key and string vales cache will be null.
-	 *
-	 * @param buffer input JSON
-	 * @param context context
-	 */
-	@Deprecated
-	public JsonReader(final byte[] buffer, @Nullable final TContext context) {
-		this(buffer, context, null, null);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, @Nullable final TContext context, @Nullable StringCache keyCache, @Nullable StringCache valuesCache) {
-		this(buffer, buffer.length, context, new char[64], keyCache, valuesCache);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final TContext context, final char[] tmp) {
-		this(buffer, buffer.length, context, tmp);
-		if (tmp == null) {
-			throw new IllegalArgumentException("tmp buffer provided as null.");
-		}
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final int length, final TContext context) {
-		this(buffer, length, context, new char[64]);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final int length, final TContext context, final char[] tmp) {
-		this(buffer, length, context, tmp, null, null);
-	}
-
-	@Deprecated
-	public JsonReader(final byte[] buffer, final int length, @Nullable final TContext context, final char[] tmp, @Nullable final StringCache keyCache, @Nullable final StringCache valuesCache) {
-		this(tmp, buffer, length, context, keyCache, valuesCache, null, ErrorInfo.WITH_STACK_TRACE, DoublePrecision.DEFAULT, UnknownNumberParsing.LONG_AND_BIGDECIMAL, 512, 256 * 1024 * 1024);
-		if (tmp == null) {
-			throw new IllegalArgumentException("tmp buffer provided as null.");
-		}
-		if (length > buffer.length) {
-			throw new IllegalArgumentException("length can't be longer than buffer.length");
-		} else if (length < buffer.length) {
-			buffer[length] = '\0';
-		}
 	}
 
 	JsonReader(
@@ -288,7 +238,7 @@ public final class JsonReader<TContext> {
 
 	@Override
 	public String toString() {
-		return new String(buffer, 0, length, utf8);
+		return new String(buffer, 0, length, StandardCharsets.UTF_8);
 	}
 
 	private static int readFully(final byte[] buffer, final InputStream stream, final int offset) throws IOException {
@@ -382,7 +332,7 @@ public final class JsonReader<TContext> {
 		if (currentIndex > offset) {
 			try {
 				int maxLen = Math.min(currentIndex - offset, 20);
-				String prefix = new String(buffer, currentIndex - offset - maxLen, maxLen, utf8);
+				String prefix = new String(buffer, currentIndex - offset - maxLen, maxLen, StandardCharsets.UTF_8);
 				error.append(", following: `");
 				error.append(prefix);
 				error.append('`');
@@ -392,7 +342,7 @@ public final class JsonReader<TContext> {
 		if (currentIndex - offset < readLimit) {
 			try {
 				int maxLen = Math.min(readLimit - currentIndex + offset, 20);
-				String suffix = new String(buffer, currentIndex - offset, maxLen, utf8);
+				String suffix = new String(buffer, currentIndex - offset, maxLen, StandardCharsets.UTF_8);
 				error.append(", before: `");
 				error.append(suffix);
 				error.append('`');

@@ -2,9 +2,8 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+import java.math.BigInteger;
+import java.util.*;
 
 public abstract class NumberConverter {
 
@@ -32,6 +31,7 @@ public abstract class NumberConverter {
 			1e50, 1e51, 1e52, 1e53, 1e54, 1e55, 1e56, 1e57, 1e58, 1e59,
 			1e60, 1e61, 1e62, 1e63, 1e64, 1e65
 	};
+
 	public static final JsonReader.ReadObject<Double> DOUBLE_READER = new JsonReader.ReadObject<Double>() {
 		@Nullable
 		@Override
@@ -46,12 +46,7 @@ public abstract class NumberConverter {
 			return reader.wasNull() ? null : deserializeDouble(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Double> DOUBLE_WRITER = new JsonWriter.WriteObject<Double>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Double value) {
-			serializeNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Double> DOUBLE_WRITER = (writer, value) -> serializeNullable(value, writer);
 	public static final JsonReader.ReadObject<double[]> DOUBLE_ARRAY_READER = new JsonReader.ReadObject<double[]>() {
 		@Nullable
 		@Override
@@ -62,19 +57,9 @@ public abstract class NumberConverter {
 			return deserializeDoubleArray(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<double[]> DOUBLE_ARRAY_WRITER = new JsonWriter.WriteObject<double[]>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable double[] value) {
-			serialize(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<double[]> DOUBLE_ARRAY_WRITER = (writer, value) -> serialize(value, writer);
 
-	public static final JsonReader.ReadObject<Float> FLOAT_READER = new JsonReader.ReadObject<Float>() {
-		@Override
-		public Float read(JsonReader reader) throws IOException {
-			return deserializeFloat(reader);
-		}
-	};
+	public static final JsonReader.ReadObject<Float> FLOAT_READER = reader -> deserializeFloat(reader);
 	public static final JsonReader.ReadObject<Float> NULLABLE_FLOAT_READER = new JsonReader.ReadObject<Float>() {
 		@Nullable
 		@Override
@@ -82,12 +67,7 @@ public abstract class NumberConverter {
 			return reader.wasNull() ? null : deserializeFloat(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Float> FLOAT_WRITER = new JsonWriter.WriteObject<Float>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Float value) {
-			serializeNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Float> FLOAT_WRITER = (writer, value) -> serializeNullable(value, writer);
 	public static final JsonReader.ReadObject<float[]> FLOAT_ARRAY_READER = new JsonReader.ReadObject<float[]>() {
 		@Nullable
 		@Override
@@ -98,18 +78,8 @@ public abstract class NumberConverter {
 			return deserializeFloatArray(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<float[]> FLOAT_ARRAY_WRITER = new JsonWriter.WriteObject<float[]>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable float[] value) {
-			serialize(value, writer);
-		}
-	};
-	public static final JsonReader.ReadObject<Integer> INT_READER = new JsonReader.ReadObject<Integer>() {
-		@Override
-		public Integer read(JsonReader reader) throws IOException {
-			return deserializeInt(reader);
-		}
-	};
+	public static final JsonWriter.WriteObject<float[]> FLOAT_ARRAY_WRITER = (writer, value) -> serialize(value, writer);
+	public static final JsonReader.ReadObject<Integer> INT_READER = reader -> deserializeInt(reader);
 	public static final JsonReader.ReadObject<Integer> NULLABLE_INT_READER = new JsonReader.ReadObject<Integer>() {
 		@Nullable
 		@Override
@@ -117,12 +87,7 @@ public abstract class NumberConverter {
 			return reader.wasNull() ? null : deserializeInt(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Integer> INT_WRITER = new JsonWriter.WriteObject<Integer>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Integer value) {
-			serializeNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Integer> INT_WRITER = (writer, value) -> serializeNullable(value, writer);
 	public static final JsonReader.ReadObject<int[]> INT_ARRAY_READER = new JsonReader.ReadObject<int[]>() {
 		@Nullable
 		@Override
@@ -133,18 +98,8 @@ public abstract class NumberConverter {
 			return deserializeIntArray(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<int[]> INT_ARRAY_WRITER = new JsonWriter.WriteObject<int[]>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable int[] value) {
-			serialize(value, writer);
-		}
-	};
-	public static final JsonReader.ReadObject<Short> SHORT_READER = new JsonReader.ReadObject<Short>() {
-		@Override
-		public Short read(JsonReader reader) throws IOException {
-			return deserializeShort(reader);
-		}
-	};
+	public static final JsonWriter.WriteObject<int[]> INT_ARRAY_WRITER = (writer, value) -> serialize(value, writer);
+	public static final JsonReader.ReadObject<Short> SHORT_READER = reader -> deserializeShort(reader);
 	public static final JsonReader.ReadObject<Short> NULLABLE_SHORT_READER = new JsonReader.ReadObject<Short>() {
 		@Nullable
 		@Override
@@ -152,12 +107,9 @@ public abstract class NumberConverter {
 			return reader.wasNull() ? null : deserializeShort(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Short> SHORT_WRITER = new JsonWriter.WriteObject<Short>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Short value) {
-			if (value == null) writer.writeNull();
-			else serialize(value.intValue(), writer);
-		}
+	public static final JsonWriter.WriteObject<Short> SHORT_WRITER = (writer, value) -> {
+		if (value == null) writer.writeNull();
+		else serialize(value.intValue(), writer);
 	};
 	public static final JsonReader.ReadObject<short[]> SHORT_ARRAY_READER = new JsonReader.ReadObject<short[]>() {
 		@Nullable
@@ -169,19 +121,9 @@ public abstract class NumberConverter {
 			return deserializeShortArray(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<short[]> SHORT_ARRAY_WRITER = new JsonWriter.WriteObject<short[]>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable short[] value) {
-			serialize(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<short[]> SHORT_ARRAY_WRITER = (writer, value) -> serialize(value, writer);
 
-	public static final JsonReader.ReadObject<Long> LONG_READER = new JsonReader.ReadObject<Long>() {
-		@Override
-		public Long read(JsonReader reader) throws IOException {
-			return deserializeLong(reader);
-		}
-	};
+	public static final JsonReader.ReadObject<Long> LONG_READER = reader -> deserializeLong(reader);
 	public static final JsonReader.ReadObject<Long> NULLABLE_LONG_READER = new JsonReader.ReadObject<Long>() {
 		@Nullable
 		@Override
@@ -189,12 +131,7 @@ public abstract class NumberConverter {
 			return reader.wasNull() ? null : deserializeLong(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Long> LONG_WRITER = new JsonWriter.WriteObject<Long>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Long value) {
-			serializeNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Long> LONG_WRITER = (writer, value) -> serializeNullable(value, writer);
 	public static final JsonReader.ReadObject<long[]> LONG_ARRAY_READER = new JsonReader.ReadObject<long[]>() {
 		@Nullable
 		@Override
@@ -205,33 +142,15 @@ public abstract class NumberConverter {
 			return deserializeLongArray(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<long[]> LONG_ARRAY_WRITER = new JsonWriter.WriteObject<long[]>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable long[] value) {
-			serialize(value, writer);
-		}
-	};
-
-	public static final JsonReader.ReadObject<BigDecimal> DecimalReader = new JsonReader.ReadObject<BigDecimal>() {
+	public static final JsonWriter.WriteObject<long[]> LONG_ARRAY_WRITER = (writer, value) -> serialize(value, writer);
+	public static final JsonReader.ReadObject<BigDecimal> DECIMAL_READER = new JsonReader.ReadObject<BigDecimal>() {
 		@Nullable
 		@Override
 		public BigDecimal read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeDecimal(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<BigDecimal> DecimalWriter = new JsonWriter.WriteObject<BigDecimal>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable BigDecimal value) {
-			serializeNullable(value, writer);
-		}
-	};
-	static final JsonReader.ReadObject<Number> NumberReader = new JsonReader.ReadObject<Number>() {
-		@Nullable
-		@Override
-		public Number read(JsonReader reader) throws IOException {
-			return reader.wasNull() ? null : deserializeNumber(reader);
-		}
-	};
+	public static final JsonWriter.WriteObject<BigDecimal> DECIMAL_WRITER = (writer, value) -> serializeNullable(value, writer);
 
 	static {
 		for (int i = 0; i < DIGITS.length; i++) {
@@ -240,6 +159,81 @@ public abstract class NumberConverter {
 					+ ((((i / 10) % 10) + '0') << 8)
 					+ i % 10 + '0';
 		}
+	}
+
+	static <T> void registerDefault(DslJson<T> json) {
+		json.registerWriter(byte.class, (writer, value) -> serialize(value, writer));
+		json.registerReader(byte.class, reader -> (byte)deserializeInt(reader));
+		json.registerWriter(Byte.class, (writer, value) -> {
+			if (value == null) writer.writeNull();
+			else serialize(value, writer);
+		});
+		json.registerReader(Byte.class, reader -> reader.wasNull() ? null : (byte)deserializeInt(reader));
+		json.registerDefault(byte.class, (byte)0);
+		json.registerReader(double.class, DOUBLE_READER);
+		json.registerWriter(double.class, DOUBLE_WRITER);
+		json.registerDefault(double.class, 0.0);
+		json.registerReader(double[].class, DOUBLE_ARRAY_READER);
+		json.registerWriter(double[].class, DOUBLE_ARRAY_WRITER);
+		json.registerReader(Double.class, NULLABLE_DOUBLE_READER);
+		json.registerWriter(Double.class, DOUBLE_WRITER);
+		json.registerReader(float.class, FLOAT_READER);
+		json.registerWriter(float.class, FLOAT_WRITER);
+		json.registerDefault(float.class, 0.0f);
+		json.registerReader(float[].class, FLOAT_ARRAY_READER);
+		json.registerWriter(float[].class, FLOAT_ARRAY_WRITER);
+		json.registerReader(Float.class, NULLABLE_FLOAT_READER);
+		json.registerWriter(Float.class, FLOAT_WRITER);
+		json.registerReader(int.class, INT_READER);
+		json.registerWriter(int.class, INT_WRITER);
+		json.registerDefault(int.class, 0);
+		json.registerReader(int[].class, INT_ARRAY_READER);
+		json.registerWriter(int[].class, INT_ARRAY_WRITER);
+		json.registerReader(Integer.class, NULLABLE_INT_READER);
+		json.registerWriter(Integer.class, INT_WRITER);
+		json.registerReader(short.class, SHORT_READER);
+		json.registerWriter(short.class, SHORT_WRITER);
+		json.registerDefault(short.class, (short)0);
+		json.registerReader(short[].class, SHORT_ARRAY_READER);
+		json.registerWriter(short[].class, SHORT_ARRAY_WRITER);
+		json.registerReader(Short.class, NULLABLE_SHORT_READER);
+		json.registerWriter(Short.class, SHORT_WRITER);
+		json.registerReader(long.class, LONG_READER);
+		json.registerWriter(long.class, LONG_WRITER);
+		json.registerDefault(long.class, 0L);
+		json.registerReader(long[].class, LONG_ARRAY_READER);
+		json.registerWriter(long[].class, LONG_ARRAY_WRITER);
+		json.registerReader(Long.class, NULLABLE_LONG_READER);
+		json.registerWriter(Long.class, LONG_WRITER);
+		json.registerReader(BigDecimal.class, DECIMAL_READER);
+		json.registerWriter(BigDecimal.class, DECIMAL_WRITER);
+		json.registerWriter(BigInteger.class, (writer, value) -> serialize(value, writer));
+		json.registerReader(BigInteger.class, reader -> reader.wasNull() ? null : deserializeBigInteger(reader));
+		json.registerReader(Number.class, reader -> reader.wasNull() ? null : deserializeNumber(reader));
+		json.registerWriter(OptionalDouble.class, (writer, value) -> {
+			if (value != null && value.isPresent()) serialize(value.getAsDouble(), writer);
+			else writer.writeNull();
+		});
+		json.registerReader(
+				OptionalDouble.class,
+				reader -> reader.wasNull() ? OptionalDouble.empty() : OptionalDouble.of(deserializeDouble(reader)));
+		json.registerDefault(OptionalDouble.class, OptionalDouble.empty());
+		json.registerWriter(OptionalInt.class, (writer, value) -> {
+			if (value != null && value.isPresent()) serialize(value.getAsInt(), writer);
+			else writer.writeNull();
+		});
+		json.registerReader(
+				OptionalInt.class,
+				reader -> reader.wasNull() ? OptionalInt.empty() : OptionalInt.of(deserializeInt(reader)));
+		json.registerDefault(OptionalInt.class, OptionalInt.empty());
+		json.registerWriter(OptionalLong.class, (writer, value) -> {
+			if (value != null && value.isPresent()) serialize(value.getAsLong(), writer);
+			else writer.writeNull();
+		});
+		json.registerReader(
+				OptionalLong.class,
+				reader -> reader.wasNull() ? OptionalLong.empty() : OptionalLong.of(deserializeLong(reader)));
+		json.registerDefault(OptionalLong.class, OptionalLong.empty());
 	}
 
 	static void write4(final int value, final byte[] buf, final int pos) {
@@ -305,7 +299,7 @@ public abstract class NumberConverter {
 		}
 	}
 
-	private static BigDecimal parseNumberGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
+	private static int parseNumberGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
@@ -317,10 +311,24 @@ public abstract class NumberConverter {
 		if (buf[offset] == '0' && end > offset + 1 && buf[offset + 1] >= '0' && buf[offset + 1] <= '9') {
 			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len + (withQuotes ? 2 : 0));
 		}
+		return end;
+	}
+
+	private static BigDecimal parseBigDecimalGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
+		int end = parseNumberGeneric(buf, len, reader, withQuotes);
 		try {
 			return new BigDecimal(buf, 0, end);
 		} catch (NumberFormatException nfe) {
 			throw reader.newParseErrorAt("Error parsing number", len + (withQuotes ? 2 : 0), nfe);
+		}
+	}
+
+	private static BigInteger parseBigIntegerGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
+		int end = parseNumberGeneric(buf, len, reader, withQuotes);
+		try {
+			return new BigInteger(new String(buf, 0, end));
+		} catch (NumberFormatException nfe) {
+			throw reader.newParseErrorAt("Error parsing number", len, nfe);
 		}
 	}
 
@@ -888,7 +896,7 @@ public abstract class NumberConverter {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
 			try {
-				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).shortValueExact();
+				return parseBigDecimalGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).shortValueExact();
 			} catch (ArithmeticException ignore) {
 				throw reader.newParseErrorAt("Short overflow detected", reader.getCurrentIndex() - position);
 			}
@@ -911,7 +919,7 @@ public abstract class NumberConverter {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
 			try {
-				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).intValueExact();
+				return parseBigDecimalGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).intValueExact();
 			} catch (ArithmeticException ignore) {
 				throw reader.newParseErrorAt("Integer overflow detected", reader.getCurrentIndex() - position);
 			}
@@ -942,7 +950,7 @@ public abstract class NumberConverter {
 			if (ind < 0 || ind > 9) {
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
 				else if (i == end - 1 && buf[i] == '.') numberException(reader, start, end, "Number ends with a dot");
-				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
+				final BigDecimal v = parseBigDecimalGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
 				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value", v);
 				return v.intValue();
 
@@ -964,7 +972,7 @@ public abstract class NumberConverter {
 			if (ind < 0 || ind > 9) {
 				if (i > start + 1 && reader.allWhitespace(i, end)) return value;
 				else if (i == end - 1 && buf[i] == '.') numberException(reader, start, end, "Number ends with a dot");
-				final BigDecimal v = parseNumberGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
+				final BigDecimal v = parseBigDecimalGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
 				if (v.scale() > 0) numberException(reader, start, end, "Expecting int but found decimal value", v);
 				return v.intValue();
 			}
@@ -1246,7 +1254,7 @@ public abstract class NumberConverter {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
 			try {
-				return parseNumberGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).longValueExact();
+				return parseBigDecimalGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).longValueExact();
 			} catch (ArithmeticException ignore) {
 				throw reader.newParseErrorAt("Long overflow detected", reader.getCurrentIndex() - position);
 			}
@@ -1307,7 +1315,7 @@ public abstract class NumberConverter {
 		final int len = end - start;
 		final char[] buf = reader.prepareBuffer(start, len);
 		if (len > 0 && buf[len - 1] == '.') numberException(reader, start, end, "Number ends with a dot");
-		final BigDecimal v = parseNumberGeneric(buf, len, reader, false);
+		final BigDecimal v = parseBigDecimalGeneric(buf, len, reader, false);
 		if (v.scale() > 0) numberException(reader, start, end, "Expecting long, but found decimal value ", v);
 		return v.longValue();
 	}
@@ -1345,17 +1353,17 @@ public abstract class NumberConverter {
 	public static BigDecimal deserializeDecimal(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
 			final int len = reader.parseString();
-			return parseNumberGeneric(reader.chars, len, reader, true);
+			return parseBigDecimalGeneric(reader.chars, len, reader, true);
 		}
 		final int start = reader.scanNumber();
 		int end = reader.getCurrentIndex();
 		if (end == reader.length()) {
 			NumberInfo info = readLongNumber(reader, start);
-			return parseNumberGeneric(info.buffer, info.length, reader, false);
+			return parseBigDecimalGeneric(info.buffer, info.length, reader, false);
 		}
 		int len = end - start;
 		if (len > 18) {
-			return parseNumberGeneric(reader.prepareBuffer(start, len), len, reader, false);
+			return parseBigDecimalGeneric(reader.prepareBuffer(start, len), len, reader, false);
 		}
 		final byte[] buf = reader.buffer;
 		final byte ch = buf[start];
@@ -1499,6 +1507,59 @@ public abstract class NumberConverter {
 		return BigDecimal.valueOf(value);
 	}
 
+	public static void serialize(@Nullable final BigInteger value, final JsonWriter sw) {
+		if (value == null) {
+			sw.writeNull();
+		} else {
+			sw.writeAscii(value.toString());
+		}
+	}
+
+	public static BigInteger deserializeBigInteger(final JsonReader reader) throws IOException {
+		if (reader.last() == '"') {
+			final int len = reader.parseString();
+			return parseBigIntegerGeneric(reader.chars, len, reader, true);
+		}
+		final int start = reader.scanNumber();
+		int end = reader.getCurrentIndex();
+		if (end == reader.length()) {
+			NumberInfo info = readLongNumber(reader, start);
+			return parseBigIntegerGeneric(info.buffer, info.length, reader, false);
+		}
+		int len = end - start;
+		if (len > 18) {
+			return parseBigIntegerGeneric(reader.prepareBuffer(start, len), len, reader, false);
+		}
+		final byte[] buf = reader.buffer;
+		final byte ch = buf[start];
+		int i = start;
+		long value = 0;
+		if (ch == '-') {
+			i = start + 1;
+			if (i == end) numberException(reader, start, end, "Digit not found");
+			for (; i < end; i++) {
+				final int ind = buf[i] - 48;
+				if (ind < 0 || ind > 9) {
+					if (i > start + 1 && reader.allWhitespace(i, end)) return BigInteger.valueOf(value);
+					numberException(reader, start, end, "Unknown digit", (char)ch);
+				}
+				value = (value << 3) + (value << 1) - ind;
+			}
+			return BigInteger.valueOf(value);
+		}
+		if (i == end) numberException(reader, start, end, "Digit not found");
+		for (; i < end; i++) {
+			final int ind = buf[i] - 48;
+			if (ind < 0 || ind > 9) {
+				if (ch == '+' && i > start + 1 && reader.allWhitespace(i, end)) return BigInteger.valueOf(value);
+				else if (ch != '+' && i > start && reader.allWhitespace(i, end)) return BigInteger.valueOf(value);
+				numberException(reader, start, end, "Unknown digit", (char)ch);
+			}
+			value = (value << 3) + (value << 1) + ind;
+		}
+		return BigInteger.valueOf(value);
+	}
+
 	private static final BigDecimal BD_MAX_LONG = BigDecimal.valueOf(Long.MAX_VALUE);
 	private static final BigDecimal BD_MIN_LONG = BigDecimal.valueOf(Long.MIN_VALUE);
 
@@ -1509,7 +1570,7 @@ public abstract class NumberConverter {
 	}
 
 	private static Number tryLongFromBigDecimal(final char[] buf, final int len, JsonReader reader) throws IOException {
-		final BigDecimal num = parseNumberGeneric(buf, len, reader, false);
+		final BigDecimal num = parseBigDecimalGeneric(buf, len, reader, false);
 		if (num.scale() == 0 && num.precision() <= 19) {
 			if (num.signum() == 1) {
 				if (num.compareTo(BD_MAX_LONG) <= 0) {
@@ -1679,19 +1740,19 @@ public abstract class NumberConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<BigDecimal> deserializeDecimalCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(DecimalReader);
+		return reader.deserializeCollection(DECIMAL_READER);
 	}
 
 	public static void deserializeDecimalCollection(final JsonReader reader, final Collection<BigDecimal> res) throws IOException {
-		reader.deserializeCollection(DecimalReader, res);
+		reader.deserializeCollection(DECIMAL_READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<BigDecimal> deserializeDecimalNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(DecimalReader);
+		return reader.deserializeNullableCollection(DECIMAL_READER);
 	}
 
 	public static void deserializeDecimalNullableCollection(final JsonReader reader, final Collection<BigDecimal> res) throws IOException {
-		reader.deserializeNullableCollection(DecimalReader, res);
+		reader.deserializeNullableCollection(DECIMAL_READER, res);
 	}
 }

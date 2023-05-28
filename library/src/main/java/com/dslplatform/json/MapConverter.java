@@ -5,7 +5,7 @@ import java.util.*;
 
 public abstract class MapConverter {
 
-	private static final JsonReader.ReadObject<Map<String, String>> TypedMapReader = new JsonReader.ReadObject<Map<String, String>>() {
+	private static final JsonReader.ReadObject<Map<String, String>> TYPED_MAP_READER = new JsonReader.ReadObject<Map<String, String>>() {
 		@Nullable
 		@Override
 		public Map<String, String> read(JsonReader reader) throws IOException {
@@ -67,19 +67,19 @@ public abstract class MapConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, String>> deserializeCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(TypedMapReader);
+		return reader.deserializeCollection(TYPED_MAP_READER);
 	}
 
 	public static void deserializeCollection(final JsonReader reader, final Collection<Map<String, String>> res) throws IOException {
-		reader.deserializeCollection(TypedMapReader, res);
+		reader.deserializeCollection(TYPED_MAP_READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, String>> deserializeNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(TypedMapReader);
+		return reader.deserializeNullableCollection(TYPED_MAP_READER);
 	}
 
 	public static void deserializeNullableCollection(final JsonReader reader, final Collection<Map<String, String>> res) throws IOException {
-		reader.deserializeNullableCollection(TypedMapReader, res);
+		reader.deserializeNullableCollection(TYPED_MAP_READER, res);
 	}
 }

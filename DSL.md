@@ -157,15 +157,19 @@ And even though more generic solution might be less code, its more unpredictable
 
 ## Current state of DSL Platform integration
 
-Currently, DSL-JSON targets Java6 for base library (as it was developed in 2014) but due to
+As of v2 of the library, DSL Platform integration was removed. This is mostly integration from DSL-JSON which was
+creating DSL Platform code. If one wants to explore this behavior, they should refer to v1 of the library.
+DSL Platform still works with DSL-JSON, but its only in direction of DSL-JSON being one of the DSL Platform supported targets.
+
+DSL-JSON v1 targets Java6 for base library (as it was developed in 2014) but due to
 unfortunate history and the state of industry, it is not really all that useful to have it as an annotation processor,
-especially once DSL-JSON upgrades the baseline to Java8.
+especially since DSL-JSON v2 changed the baseline to Java8.
 
-So some time in the future, `dsl-json` and `dsl-json-java8` project will be merged, while `dsl-json-processor` will be deleted.
-DSL Platform will still be able to use DSL-JSON, but there will be no point in generating DSL to create optimized converters, 
-as Java8 project will have superset of that behavior.
+In v2 `dsl-json` and `dsl-json-java8` project were merged, while `dsl-json-processor` was deleted (used only for tests).
+DSL Platform is still be able to use DSL-JSON, but there is no point in generating DSL to create optimized converters, 
+as core project will have superset of that behavior.
 
-Until then, if one wants to use DSL Platform with DSL-JSON through DSL-JSON (which is not really a natural way to use DSL Platform)
+If one wants to use DSL Platform with DSL-JSON through DSL-JSON v1 (which is not really a natural way to use DSL Platform)
 the rest of README provides more information.
 
 ## Schema based serialization
@@ -275,7 +279,7 @@ If not sure which version to use, use Java8 version of the library with annotati
  ***A***: During startup DslJson loads services through `ServiceLoader`. For this to work `META-INF/services/com.dslplatform.json.Configuration` must exist with the content of `dsl_json_Annotation_Processor_External_Serialization` or `dsl_json.json.ExternalSerialization` which is the class crated during compilation step. Make sure you've referenced processor library (which is responsible for setting up readers/writers during compilation) and double check if annotation processor is running. Refer to [example projects](examples) for how to set up environment. As of v1.8.0 Java8 version of the library avoids this issue since services are not used by default anymore in favor of named based convention. Eclipse is known to create problems with annotation processor since it requires manual setup (instead of using pom.xml setup). For Eclipse the best workaround is to build with Maven instead or relying on its build tools.
 
  ***Q***: Maven/Gradle are failing during compilation with `@CompiledJson` when I'm using DSL Platform annotation processor. What can I do about it?  
- ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/MavenJava6/pom.xml#L35)
+ ***A***: If Mono/.NET is available it *should* work out-of-the-box. But if some strange issue occurs, detailed log can be enabled to see what is causing the issue. Log is disabled by default, since some Gradle setups fail if something is logged during compilation. Log can be enabled with `dsljson.loglevel` [processor option](examples/MavenJava/pom.xml#L35)
 
  ***Q***: DSL Platform annotation processor checks for new DSL compiler version on every compilation. How can I disable that?  
  ***A***: If you specify custom `dsljson.compiler` processor option or put `dsl-compiler.exe` in project root it will use that one and will not check online for updates

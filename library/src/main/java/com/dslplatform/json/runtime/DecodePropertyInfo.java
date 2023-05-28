@@ -5,14 +5,13 @@ import com.dslplatform.json.JsonReader;
 import com.dslplatform.json.ParsingException;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 
 public class DecodePropertyInfo<T> {
-
-	private static final Charset utf8 = Charset.forName("UTF-8");
 
 	public final String name;
 	public final int hash;
@@ -26,7 +25,7 @@ public class DecodePropertyInfo<T> {
 	final byte[] nameBytes;
 
 	public DecodePropertyInfo(String name, boolean exactName, boolean mandatory, int index, boolean nonNull, T value) {
-		this(name, exactName, mandatory, 0, index, nonNull, calcHash(name), calcWeakHash(name), value, name.getBytes(utf8));
+		this(name, exactName, mandatory, 0, index, nonNull, calcHash(name), calcWeakHash(name), value, name.getBytes(StandardCharsets.UTF_8));
 	}
 
 	static int calcHash(String name) {

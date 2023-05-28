@@ -17,19 +17,18 @@ import java.util.*;
 
 public abstract class XmlConverter {
 
-	static final JsonReader.ReadObject<Element> Reader = new JsonReader.ReadObject<Element>() {
+	private static final JsonReader.ReadObject<Element> READER = new JsonReader.ReadObject<Element>() {
 		@Nullable
 		@Override
 		public Element read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<Element> Writer = new JsonWriter.WriteObject<Element>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Element value) {
-			serializeNullable(value, writer);
-		}
-	};
+
+	static <T> void registerDefault(final DslJson<T> json) {
+		json.registerReader(Element.class, READER);
+		json.registerWriter(Element.class, (writer, value) -> serializeNullable(value, writer));
+	}
 
 	private static final DocumentBuilder documentBuilder;
 
@@ -196,19 +195,19 @@ public abstract class XmlConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Element> deserializeCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(Reader);
+		return reader.deserializeCollection(READER);
 	}
 
 	public static void deserializeCollection(final JsonReader reader, final Collection<Element> res) throws IOException {
-		reader.deserializeCollection(Reader, res);
+		reader.deserializeCollection(READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Element> deserializeNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(Reader);
+		return reader.deserializeNullableCollection(READER);
 	}
 
 	public static void deserializeNullableCollection(final JsonReader reader, final Collection<Element> res) throws IOException {
-		reader.deserializeNullableCollection(Reader, res);
+		reader.deserializeNullableCollection(READER, res);
 	}
 }

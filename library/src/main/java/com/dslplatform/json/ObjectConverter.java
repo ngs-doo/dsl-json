@@ -5,7 +5,7 @@ import java.util.*;
 
 public abstract class ObjectConverter {
 
-	private static final JsonReader.ReadObject<Map<String, Object>> TypedMapReader = new JsonReader.ReadObject<Map<String, Object>>() {
+	private static final JsonReader.ReadObject<Map<String, Object>> TYPED_MAP_READER = new JsonReader.ReadObject<Map<String, Object>>() {
 		@Nullable
 		@Override
 		public Map<String, Object> read(JsonReader reader) throws IOException {
@@ -13,13 +13,30 @@ public abstract class ObjectConverter {
 		}
 	};
 	@SuppressWarnings("rawtypes")
-	static final JsonReader.ReadObject<LinkedHashMap> MapReader = new JsonReader.ReadObject<LinkedHashMap>() {
+	private static final JsonReader.ReadObject<LinkedHashMap> MAP_READER = new JsonReader.ReadObject<LinkedHashMap>() {
 		@Nullable
 		@Override
 		public LinkedHashMap read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeMap(reader);
 		}
 	};
+
+	static <T> void registerDefault(DslJson<T> json) {
+		json.registerReader(LinkedHashMap.class, MAP_READER);
+		json.registerReader(HashMap.class, MAP_READER);
+		json.registerReader(Map.class, MAP_READER);
+		json.registerWriter(Map.class, (writer, value) -> {
+			if (value == null) {
+				writer.writeNull();
+			} else {
+				try {
+					json.serializeMap(value, writer);
+				} catch (IOException ex) {
+					throw new SerializationException(ex);
+				}
+			}
+		});
+	}
 
 	public static void serializeNullableMap(@Nullable final Map<String, Object> value, final JsonWriter sw) {
 		if (value == null) {
@@ -114,19 +131,19 @@ public abstract class ObjectConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, Object>> deserializeMapCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(TypedMapReader);
+		return reader.deserializeCollection(TYPED_MAP_READER);
 	}
 
 	public static void deserializeMapCollection(final JsonReader reader, final Collection<Map<String, Object>> res) throws IOException {
-		reader.deserializeCollection(TypedMapReader, res);
+		reader.deserializeCollection(TYPED_MAP_READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<Map<String, Object>> deserializeNullableMapCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(TypedMapReader);
+		return reader.deserializeNullableCollection(TYPED_MAP_READER);
 	}
 
 	public static void deserializeNullableMapCollection(final JsonReader reader, final Collection<Map<String, Object>> res) throws IOException {
-		reader.deserializeNullableCollection(TypedMapReader, res);
+		reader.deserializeNullableCollection(TYPED_MAP_READER, res);
 	}
 }

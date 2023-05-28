@@ -15,12 +15,7 @@ public abstract class UUIDConverter {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<UUID> WRITER = new JsonWriter.WriteObject<UUID>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable UUID value) {
-			serializeNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<UUID> WRITER = (writer, value) -> serializeNullable(value, writer);
 
 	private static final char[] Lookup;
 	private static final byte[] Values;
@@ -44,6 +39,10 @@ public abstract class UUIDConverter {
 		}
 	}
 
+	static <T> void registerDefault(DslJson<T> json) {
+		json.registerReader(UUID.class, READER);
+		json.registerWriter(UUID.class, WRITER);
+	}
 
 	public static void serializeNullable(@Nullable final UUID value, final JsonWriter sw) {
 		if (value == null) {

@@ -8,32 +8,27 @@ import java.util.Collection;
 
 public abstract class NetConverter {
 
-	static final JsonReader.ReadObject<URI> UriReader = new JsonReader.ReadObject<URI>() {
+	private static final JsonReader.ReadObject<URI> URI_READER = new JsonReader.ReadObject<URI>() {
 		@Nullable
 		@Override
 		public URI read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeUri(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<URI> UriWriter = new JsonWriter.WriteObject<URI>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable URI value) {
-			serializeNullable(value, writer);
-		}
-	};
-	static final JsonReader.ReadObject<InetAddress> AddressReader = new JsonReader.ReadObject<InetAddress>() {
+	private static final JsonReader.ReadObject<InetAddress> ADDRESS_READER = new JsonReader.ReadObject<InetAddress>() {
 		@Nullable
 		@Override
 		public InetAddress read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserializeIp(reader);
 		}
 	};
-	static final JsonWriter.WriteObject<InetAddress> AddressWriter = new JsonWriter.WriteObject<InetAddress>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable InetAddress value) {
-			serializeNullable(value, writer);
-		}
-	};
+
+	static <T> void registerDefault(DslJson<T> json) {
+		json.registerReader(URI.class, URI_READER);
+		json.registerWriter(URI.class, (writer, value) -> serializeNullable(value, writer));
+		json.registerReader(InetAddress.class, ADDRESS_READER);
+		json.registerWriter(InetAddress.class, (writer, value) -> serializeNullable(value, writer));
+	}
 
 	public static void serializeNullable(@Nullable final URI value, final JsonWriter sw) {
 		if (value == null) {
@@ -53,20 +48,20 @@ public abstract class NetConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<URI> deserializeUriCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(UriReader);
+		return reader.deserializeCollection(URI_READER);
 	}
 
 	public static void deserializeUriCollection(final JsonReader reader, final Collection<URI> res) throws IOException {
-		reader.deserializeCollection(UriReader, res);
+		reader.deserializeCollection(URI_READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<URI> deserializeUriNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(UriReader);
+		return reader.deserializeNullableCollection(URI_READER);
 	}
 
 	public static void deserializeUriNullableCollection(final JsonReader reader, final Collection<URI> res) throws IOException {
-		reader.deserializeNullableCollection(UriReader, res);
+		reader.deserializeNullableCollection(URI_READER, res);
 	}
 
 	public static void serializeNullable(@Nullable final InetAddress value, final JsonWriter sw) {
@@ -89,19 +84,19 @@ public abstract class NetConverter {
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<InetAddress> deserializeIpCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeCollection(AddressReader);
+		return reader.deserializeCollection(ADDRESS_READER);
 	}
 
 	public static void deserializeIpCollection(final JsonReader reader, final Collection<InetAddress> res) throws IOException {
-		reader.deserializeCollection(AddressReader, res);
+		reader.deserializeCollection(ADDRESS_READER, res);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static ArrayList<InetAddress> deserializeIpNullableCollection(final JsonReader reader) throws IOException {
-		return reader.deserializeNullableCollection(AddressReader);
+		return reader.deserializeNullableCollection(ADDRESS_READER);
 	}
 
 	public static void deserializeIpNullableCollection(final JsonReader reader, final Collection<InetAddress> res) throws IOException {
-		reader.deserializeNullableCollection(AddressReader, res);
+		reader.deserializeNullableCollection(ADDRESS_READER, res);
 	}
 }

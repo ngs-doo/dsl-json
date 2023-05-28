@@ -1,14 +1,11 @@
 package com.dslplatform.json;
 
-import org.w3c.dom.Element;
-
 import java.io.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
-import java.math.BigDecimal;
-import java.net.InetAddress;
-import java.net.URI;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.sql.ResultSet;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -60,7 +57,6 @@ import java.util.concurrent.*;
  */
 public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
-	private static final Charset UTF8 = Charset.forName("UTF-8");
 	private static final Object unknownValue = new Object();
 
 	/**
@@ -525,84 +521,19 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.externalConverterAnalyzer = new ExternalConverterAnalyzer(settings.classLoaders);
 		this.creatorMarkers = new HashMap<Class<? extends Annotation>, Boolean>(settings.creatorMarkers);
 
-		registerReader(byte[].class, BinaryConverter.Base64Reader);
-		registerWriter(byte[].class, BinaryConverter.Base64Writer);
-		registerReader(boolean.class, BoolConverter.READER);
-		registerWriter(boolean.class, BoolConverter.WRITER);
-		registerDefault(boolean.class, false);
-		registerReader(boolean[].class, BoolConverter.ARRAY_READER);
-		registerWriter(boolean[].class, BoolConverter.ARRAY_WRITER);
-		registerReader(Boolean.class, BoolConverter.NULLABLE_READER);
-		registerWriter(Boolean.class, BoolConverter.WRITER);
+		BinaryConverter.registerDefault(this);
+		BoolConverter.registerDefault(this);
 		if (settings.javaSpecifics) {
 			registerJavaSpecifics(this);
+			XmlConverter.registerDefault(this);
 		}
-		registerReader(LinkedHashMap.class, ObjectConverter.MapReader);
-		registerReader(HashMap.class, ObjectConverter.MapReader);
-		registerReader(Map.class, ObjectConverter.MapReader);
-		registerWriter(Map.class, new JsonWriter.WriteObject<Map>() {
-			@Override
-			public void write(JsonWriter writer, @Nullable Map value) {
-				if (value == null) {
-					writer.writeNull();
-				} else {
-					try {
-						serializeMap(value, writer);
-					} catch (IOException ex) {
-						throw new SerializationException(ex);
-					}
-				}
-			}
-		});
-		registerReader(URI.class, NetConverter.UriReader);
-		registerWriter(URI.class, NetConverter.UriWriter);
-		registerReader(InetAddress.class, NetConverter.AddressReader);
-		registerWriter(InetAddress.class, NetConverter.AddressWriter);
-		registerReader(double.class, NumberConverter.DOUBLE_READER);
-		registerWriter(double.class, NumberConverter.DOUBLE_WRITER);
-		registerDefault(double.class, 0.0);
-		registerReader(double[].class, NumberConverter.DOUBLE_ARRAY_READER);
-		registerWriter(double[].class, NumberConverter.DOUBLE_ARRAY_WRITER);
-		registerReader(Double.class, NumberConverter.NULLABLE_DOUBLE_READER);
-		registerWriter(Double.class, NumberConverter.DOUBLE_WRITER);
-		registerReader(float.class, NumberConverter.FLOAT_READER);
-		registerWriter(float.class, NumberConverter.FLOAT_WRITER);
-		registerDefault(float.class, 0.0f);
-		registerReader(float[].class, NumberConverter.FLOAT_ARRAY_READER);
-		registerWriter(float[].class, NumberConverter.FLOAT_ARRAY_WRITER);
-		registerReader(Float.class, NumberConverter.NULLABLE_FLOAT_READER);
-		registerWriter(Float.class, NumberConverter.FLOAT_WRITER);
-		registerReader(int.class, NumberConverter.INT_READER);
-		registerWriter(int.class, NumberConverter.INT_WRITER);
-		registerDefault(int.class, 0);
-		registerReader(int[].class, NumberConverter.INT_ARRAY_READER);
-		registerWriter(int[].class, NumberConverter.INT_ARRAY_WRITER);
-		registerReader(Integer.class, NumberConverter.NULLABLE_INT_READER);
-		registerWriter(Integer.class, NumberConverter.INT_WRITER);
-		registerReader(short.class, NumberConverter.SHORT_READER);
-		registerWriter(short.class, NumberConverter.SHORT_WRITER);
-		registerDefault(short.class, (short)0);
-		registerReader(short[].class, NumberConverter.SHORT_ARRAY_READER);
-		registerWriter(short[].class, NumberConverter.SHORT_ARRAY_WRITER);
-		registerReader(Short.class, NumberConverter.NULLABLE_SHORT_READER);
-		registerWriter(Short.class, NumberConverter.SHORT_WRITER);
-		registerReader(long.class, NumberConverter.LONG_READER);
-		registerWriter(long.class, NumberConverter.LONG_WRITER);
-		registerDefault(long.class, 0L);
-		registerReader(long[].class, NumberConverter.LONG_ARRAY_READER);
-		registerWriter(long[].class, NumberConverter.LONG_ARRAY_WRITER);
-		registerReader(Long.class, NumberConverter.NULLABLE_LONG_READER);
-		registerWriter(Long.class, NumberConverter.LONG_WRITER);
-		registerReader(BigDecimal.class, NumberConverter.DecimalReader);
-		registerWriter(BigDecimal.class, NumberConverter.DecimalWriter);
-		registerReader(String.class, StringConverter.READER);
-		registerWriter(String.class, StringConverter.WRITER);
-		registerReader(UUID.class, UUIDConverter.READER);
-		registerWriter(UUID.class, UUIDConverter.WRITER);
-		registerReader(Number.class, NumberConverter.NumberReader);
-		registerWriter(CharSequence.class, StringConverter.WRITER_CHARS);
-		registerReader(StringBuilder.class, StringConverter.READER_BUILDER);
-		registerReader(StringBuffer.class, StringConverter.READER_BUFFER);
+		ObjectConverter.registerDefault(this);
+		NetConverter.registerDefault(this);
+		NumberConverter.registerDefault(this);
+		UUIDConverter.registerDefault(this);
+		StringConverter.registerDefault(this);
+		JavaTimeConverter.registerDefault(this);
+		registerWriter(ResultSet.class, new ResultSetConverter(this));
 
 		for (Configuration serializer : settings.configurations) {
 			serializer.configure(this);
@@ -793,7 +724,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 */
 	@Deprecated
 	public JsonReader<TContext> newReader(String input) {
-		final byte[] bytes = input.getBytes(UTF8);
+		final byte[] bytes = input.getBytes(StandardCharsets.UTF_8);
 		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
@@ -810,19 +741,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	static void registerJavaSpecifics(final DslJson json) {
-		json.registerReader(java.awt.geom.Point2D.Double.class, JavaGeomConverter.LocationReader);
-		json.registerReader(java.awt.geom.Point2D.class, JavaGeomConverter.LocationReader);
-		json.registerWriter(java.awt.geom.Point2D.class, JavaGeomConverter.LocationWriter);
-		json.registerReader(java.awt.Point.class, JavaGeomConverter.PointReader);
-		json.registerWriter(java.awt.Point.class, JavaGeomConverter.PointWriter);
-		json.registerReader(java.awt.geom.Rectangle2D.Double.class, JavaGeomConverter.RectangleReader);
-		json.registerReader(java.awt.geom.Rectangle2D.class, JavaGeomConverter.RectangleReader);
-		json.registerWriter(java.awt.geom.Rectangle2D.class, JavaGeomConverter.RectangleWriter);
-		json.registerReader(java.awt.image.BufferedImage.class, JavaGeomConverter.ImageReader);
-		json.registerReader(java.awt.Image.class, JavaGeomConverter.ImageReader);
-		json.registerWriter(java.awt.Image.class, JavaGeomConverter.ImageWriter);
-		json.registerReader(Element.class, XmlConverter.Reader);
-		json.registerWriter(Element.class, XmlConverter.Writer);
+		JavaGeomConverter.registerDefault(json);
+		XmlConverter.registerDefault(json);
 	}
 
 	private final Map<Type, Object> defaults = new ConcurrentHashMap<Type, Object>();

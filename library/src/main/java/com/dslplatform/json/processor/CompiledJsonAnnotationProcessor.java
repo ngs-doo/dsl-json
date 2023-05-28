@@ -14,6 +14,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static com.dslplatform.json.processor.Context.nonGenericObject;
@@ -414,7 +415,6 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			code.append(generatedMarker).append("\n");
 		}
 		code.append("public class ").append(generateClassName).append(" implements com.dslplatform.json.Configuration {\n");
-		code.append("\tprivate static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName(\"UTF-8\");\n");
 		code.append("\t@Override\n");
 		code.append("\tpublic void configure(com.dslplatform.json.DslJson __dsljson) {\n");
 

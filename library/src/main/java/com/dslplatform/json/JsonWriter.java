@@ -2,7 +2,7 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -26,8 +26,6 @@ import java.util.*;
  */
 public final class JsonWriter {
 
-	private static final Charset UTF_8 = Charset.forName("UTF-8");
-
 	final byte[] ensureCapacity(final int free) {
 		if (position + free >= buffer.length) {
 			enlargeOrFlush(position, free);
@@ -46,15 +44,6 @@ public final class JsonWriter {
 
 	private final UnknownSerializer unknownSerializer;
 	private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
-
-	/**
-	 * Prefer creating JsonWriter through DslJson#newWriter
-	 * This instance is safe to use when all type information is known and lookups to custom writers is not required.
-	 */
-	@Deprecated
-	public JsonWriter() {
-		this(512, null);
-	}
 
 	JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
 		this(512, unknownSerializer);
@@ -499,7 +488,7 @@ public final class JsonWriter {
 
 	@Override
 	public String toString() {
-		return new String(buffer, 0, position, UTF_8);
+		return new String(buffer, 0, position, StandardCharsets.UTF_8);
 	}
 
 	/**

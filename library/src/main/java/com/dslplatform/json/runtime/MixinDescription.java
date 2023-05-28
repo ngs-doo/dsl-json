@@ -5,14 +5,14 @@ import com.dslplatform.json.*;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 
 public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, JsonReader.ReadObject<T>, ExplicitDescription {
 
-	private static final Charset utf8 = Charset.forName("UTF-8");
 	private static final int defaultTypeHash = DecodePropertyInfo.calcHash("$type");
-	private static final byte[] defaultObjectStart = "{\"$type\":".getBytes(utf8);
+	private static final byte[] defaultObjectStart = "{\"$type\":".getBytes(StandardCharsets.UTF_8);
 
 	private final int typeHash;
 	private final byte[] objectStart;
@@ -53,7 +53,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			throw new IllegalArgumentException("Invalid discriminator provided: " + discriminator);
 		}
 		this.typeHash = discriminator == null ? defaultTypeHash : DecodePropertyInfo.calcHash(discriminator);
-		this.objectStart = discriminator == null ? defaultObjectStart : ("{\"" + discriminator + "\":").getBytes(utf8);
+		this.objectStart = discriminator == null ? defaultObjectStart : ("{\"" + discriminator + "\":").getBytes(StandardCharsets.UTF_8);
 		this.discriminator = discriminator == null ? "$type" : discriminator;
 		this.manifest = manifest;
 		this.descriptions = descriptions;

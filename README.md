@@ -3,7 +3,7 @@ DSL-JSON library
 
 Fastest JVM (Java/Android/Scala/Kotlin) JSON library with advanced compile-time databinding support.
 
-Java JSON library designed for performance. Built for invasive software composition with DSL Platform compiler.
+Java JSON library designed for performance. Originally built for invasive software composition with DSL Platform compiler.
 
 ![JVM serializers benchmark results](https://cloud.githubusercontent.com/assets/1181401/13662269/8c49a02c-e699-11e5-9e46-f98f07fd68ef.png)
 
@@ -14,21 +14,20 @@ Java JSON library designed for performance. Built for invasive software composit
  * works on byte level - deserialization can work on byte[] or InputStream. It doesn't need intermediate char representation
  * extensibility - support for custom types, custom analyzers, annotation processor extensions...
  * streaming support - large JSON lists support streaming with minimal memory usage
- * zero-copy operations - converters avoid producing garbage
- * minimal size - runtime dependency weights around 200KB
+ * allocation friendly - converters avoid producing garbage
+ * minimal size - runtime dependency weights around 450KB
  * no unsafe code - library doesn't rely on Java UNSAFE/internal methods
  * POJO <-> object and/or array format - array format avoids serializing names, while object format can be used in minimal serialization mode
  * legacy name mapping - multiple versions of JSON property names can be mapped into a single POJO using alternativeNames annotation
  * binding to an existing instance - during deserialization an existing instance can be provided to reduce GC
- * generics, builder pattern, factory pattern and ctor with arguments - Java8 version supports all relevant initialization methods
- * compile time detection of unsafe conversion - Java8 version can throw compile time error for conversion which can fail at runtime
- * advanced annotation processor support - support for Java-only compilation or DSL Platform integration via conversion of Java code to DSL schema
- * customizable runtime overheads - works in reflection mode, in Java8 annotation processor mode or DSL Platform mode. Schema and annotation based POJOs are prepared at compile time
+ * generics, builder pattern, factory pattern and ctor with arguments - all relevant initialization methods are supported
+ * compile time detection of unsafe conversion - can throw compile time error for conversion which can fail at runtime
+ * customizable runtime overheads - works in reflection mode or annotation processor mode. Annotation based POJOs are prepared at compile time
  * support for other library annotations - Jackson and JsonB annotations will be used and compile time analysis can be extended in various ways
  * Scala types support - Scala collections, primitives and boxed primitives work without any extra annotations or configuration
  * Kotlin support - annotation processor can be used from Kotlin. NonNull annotation is supported
  * JsonB support - high level support for JsonB String and Stream API. Only minimal support for configuration
- * supports external schema - [Domain Specification Language](DSL.md)
+ * compatible with [DSL Platform](DSL.md)
 
 ## @CompiledJson annotation
 
@@ -44,21 +43,19 @@ There are 2 main ways how generated code/manual services are detected:
   * with lookups from `META-INF/services` through `ServiceLoader` during `DslJson` initialization
   * by probing for name conventions: `package._NAME_DslJsonConverter` when required
 
-### Java8 annotation processor
+### Annotation processor
 
-The recommended way to use library is via Java8 annotation processor.
-Alternative, DSL processor is rather specialized way and is not suited for average Java developer. 
-Java8 processor provides most features and flexibility, due to integration with runtime analysis and combining of various generic analysis.
+Annotation processor provides most features and flexibility, due to integration with runtime analysis and combining of various generic analysis.
 Bean properties, public fields, classes without empty constructor, factories and builder patterns are supported.
 Package private classes and factory methods can be used.
 Array format can be used for efficient payload transfer.
 
-To use Java8 annotation processor its sufficient to just reference Java8 version of the library:
+To use annotation processor it is sufficient to just reference the library:
 
     <dependency>
       <groupId>com.dslplatform</groupId>
-      <artifactId>dsl-json-java8</artifactId>
-      <version>1.10.0</version>
+      <artifactId>dsl-json</artifactId>
+      <version>2.0.0</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -70,8 +67,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json-java8:1.10.0'
-      annotationProcessor 'com.dslplatform:dsl-json-java8:1.10.0'
+      compile 'com.dslplatform:dsl-json:2.0.0'
+      annotationProcessor 'com.dslplatform:dsl-json:2.0.0'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -85,15 +82,16 @@ Types without built-in mapping can be supported in three ways:
  * by defining custom conversion class and referencing it from property with converter through `@JsonAttribute`
  * by implementing `JsonObject` and appropriate `JSON_READER`
 
-Custom converter for `java.time.LocalTime` can be found in [example project](examples/MavenJava8/src/main/java/com/dslplatform/maven/Example.java#L182) 
+Custom converter for `java.time.LocalTime` can be found in [example project](examples/MavenJava/src/main/java/com/dslplatform/maven/Example.java#L182) 
 Annotation processor will check if custom type implementations have appropriate signatures.
+... TODO ...
 Converter for `java.util.ArrayList` can be found in [same example project](examples/MavenJava6/src/main/java/com/dslplatform/maven/Example.java#L38) 
 
 `@JsonConverter` which implements `Configuration` will also be registered in `META-INF/services` which makes it convenient to [setup initialization](examples/MavenJava6/src/main/java/com/dslplatform/maven/ImmutablePerson.java#L48).
 
-All of the above custom type examples work out-of-the-box in Java8 version of the library.
+All of the above custom type examples work out-of-the-box.
 
-Custom converter for Java8 is a class with 2 static methods, eg:
+Custom converter is a class with 2 static methods, eg:
 
 	public static abstract class LocalTimeConverter {
 		public static LocalTime read(JsonReader reader) throws IOException {
@@ -121,7 +119,7 @@ DSL-JSON property annotation supports several customizations/features:
 
 ### @JsonValue enum feature
 
-Java8 version supports converting enum as custom value.
+Library supports converting enum as custom value.
 To use such feature @JsonValue annotation must be placed on method or field.
 
 ### JSON pretty print
@@ -199,7 +197,7 @@ Reference benchmark (built by library authors):
 
 ## Runtime analysis
 
-Java8 library has built-in runtime analysis support, so library can be used even without compile time databinding 
+Library has built-in runtime analysis support, so library can be used even without compile time databinding
 or it can just add additional runtime support alongside compile-time databinding (default behavior). 
 Runtime analysis is required for some features such as generics which are not known at compile time.
 Runtime analysis works by lazy type resolution from registered converters, eg:
@@ -287,7 +285,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "1.10.0"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "2.0.0"
 
 ### Kotlin support
 
@@ -298,8 +296,8 @@ When used with Gradle, configuration can be done via:
       kotlin("kapt") version "1.8.0"
     }
     dependencies {
-      implementation("com.dslplatform:dsl-json-java8:1.10.0")
-      kapt("com.dslplatform:dsl-json-java8:1.10.0")
+      implementation("com.dslplatform:dsl-json:2.0.0")
+      kapt("com.dslplatform:dsl-json:2.0.0")
     }
 
 ## FAQ
@@ -316,8 +314,5 @@ When used with Gradle, configuration can be done via:
  ***Q***: I get compilation error when annotation processor runs. What can I do?  
  ***A***: Common error is missing dependency on Java 9+ for annotation marker. You can add such dependency on configure compiler arguments to exclude it via `dsljson.generatedmarker`. Otherwise, it's best to inspect the generated code, look if there is some configuration error, like referencing class without sufficient visibility. If there is nothing wrong with the setup, there might be a bug with the DSL-JSON annotation processor in which case it would be helpful to provide a minimal reproducible
 
- ***Q***: I'm trying to compile library but its failing?  
- ***A***: Its most likely due to Mono/.NET dependency in processor tests. Please refer to [DSL README](DSL.md).
-
  ***Q***: Can you please help me out with...?  
- ***A***: There is only so many hours in a day. If you need to satisfy legalese for your company, contact me for a [support contract](mailto:rikard@ngs.hr?subject=DSL-JSON).
+ ***A***: There is only so many hours in a day. You can support the library by asking for support contract with your company via [support contract](mailto:rikard@ngs.hr?subject=DSL-JSON).

@@ -1,6 +1,7 @@
 package com.dslplatform.json.runtime;
 
 import com.dslplatform.json.*;
+import dsl_json.java.util.OptionalDslJsonConverter;
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
@@ -175,7 +176,7 @@ public abstract class Settings {
 
 	public static <T> DslJson.Settings<T> withRuntime() {
 		DslJson.Settings<T> settings = withAnalyzers();
-		return settings.with(new ConfigureJava8());
+		return settings.with(new OptionalDslJsonConverter());
 	}
 
 	public static <T> DslJson.Settings<T> basicSetup() {

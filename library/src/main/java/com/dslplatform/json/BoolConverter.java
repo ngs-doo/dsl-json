@@ -9,12 +9,7 @@ public abstract class BoolConverter {
 
 	public final static boolean[] EMPTY_ARRAY = new boolean[0];
 
-	public static final JsonReader.ReadObject<Boolean> READER = new JsonReader.ReadObject<Boolean>() {
-		@Override
-		public Boolean read(JsonReader reader) throws IOException {
-			return deserialize(reader);
-		}
-	};
+	public static final JsonReader.ReadObject<Boolean> READER = reader -> deserialize(reader);
 	public static final JsonReader.ReadObject<Boolean> NULLABLE_READER = new JsonReader.ReadObject<Boolean>() {
 		@Nullable
 		@Override
@@ -22,12 +17,7 @@ public abstract class BoolConverter {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<Boolean> WRITER = new JsonWriter.WriteObject<Boolean>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable Boolean value) {
-			serializeNullable(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<Boolean> WRITER = (writer, value) -> serializeNullable(value, writer);
 	public static final JsonReader.ReadObject<boolean[]> ARRAY_READER = new JsonReader.ReadObject<boolean[]>() {
 		@Nullable
 		@Override
@@ -38,12 +28,17 @@ public abstract class BoolConverter {
 			return deserializeBoolArray(reader);
 		}
 	};
-	public static final JsonWriter.WriteObject<boolean[]> ARRAY_WRITER = new JsonWriter.WriteObject<boolean[]>() {
-		@Override
-		public void write(JsonWriter writer, @Nullable boolean[] value) {
-			serialize(value, writer);
-		}
-	};
+	public static final JsonWriter.WriteObject<boolean[]> ARRAY_WRITER = (writer, value) -> serialize(value, writer);
+
+	static <T> void registerDefault(DslJson<T> json) {
+		json.registerReader(boolean.class, READER);
+		json.registerWriter(boolean.class, WRITER);
+		json.registerDefault(boolean.class, false);
+		json.registerReader(boolean[].class, ARRAY_READER);
+		json.registerWriter(boolean[].class, ARRAY_WRITER);
+		json.registerReader(Boolean.class, NULLABLE_READER);
+		json.registerWriter(Boolean.class, WRITER);
+	}
 
 	public static void serializeNullable(@Nullable final Boolean value, final JsonWriter sw) {
 		if (value == null) {

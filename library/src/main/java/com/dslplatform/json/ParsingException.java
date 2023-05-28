@@ -2,6 +2,12 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 
+/**
+ * DSL-JSON specific exception thrown when DSL-JSON is unable to parse provided JSON.
+ *
+ * Most of the time this is due to invalid JSON.
+ * Sometimes if its "valid" JSON it can be due to "unexpected" JSON.
+ */
 public class ParsingException extends IOException {
 
 	private ParsingException(String reason) {
