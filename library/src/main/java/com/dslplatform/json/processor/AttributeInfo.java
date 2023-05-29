@@ -6,6 +6,7 @@ import com.dslplatform.json.Nullable;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
+import javax.lang.model.util.Types;
 import java.util.*;
 
 public class AttributeInfo {
@@ -60,6 +61,7 @@ public class AttributeInfo {
 			@Nullable ConverterInfo converter,
 			boolean isJsonObject,
 			LinkedHashSet<TypeMirror> usedTypes,
+			String typeName,
 			Map<String, Integer> typeVariablesIndex,
 			Map<String, TypeMirror> genericSignatures,
 			boolean containsStructOwnerType) {
@@ -81,7 +83,7 @@ public class AttributeInfo {
 		this.includeToMinimal = includeToMinimal;
 		this.converter = converter;
 		this.isJsonObject = isJsonObject;
-		this.typeName = createTypeSignature(type, usedTypes, genericSignatures);
+		this.typeName = typeName;
 		this.readProperty = field != null ? field.getSimpleName().toString() : readMethod.getSimpleName() + "()";
 		this.isArray = type.getKind() == TypeKind.ARRAY;
 		this.isList = isList;
@@ -93,7 +95,7 @@ public class AttributeInfo {
 		this.containsStructOwnerType = containsStructOwnerType;
 	}
 
-	public AttributeInfo asConcreteType(LinkedHashMap<String, TypeMirror> genericSignatures) {
+	public AttributeInfo asConcreteType(Types types, LinkedHashMap<String, TypeMirror> genericSignatures) {
 		TypeMirror concreteType = genericSignatures.get(this.type.toString());
 		if (concreteType == null) return null;
 		return new AttributeInfo(
@@ -117,6 +119,7 @@ public class AttributeInfo {
 				this.converter,
 				this.isJsonObject,
 				this.usedTypes,
+				Analysis.createTypeSignature(types, concreteType, this.usedTypes, genericSignatures),
 				this.typeVariablesIndex,
 				genericSignatures,
 				this.containsStructOwnerType
@@ -168,55 +171,13 @@ public class AttributeInfo {
 		}
 		return null;
 	}
-
-	static String createTypeSignature(
+	String createTypeSignature(
+			Types types,
 			TypeMirror type,
-			LinkedHashSet<TypeMirror> usedTypes,
 			Map<String, TypeMirror> genericSignatures) {
-		if (usedTypes.isEmpty()) return Analysis.typeWithoutAnnotations(type.toString());
+		if (this.usedTypes.isEmpty()) return Analysis.unpackType(type, types).toString();
 		StringBuilder builder = new StringBuilder();
-		createTypeSignature(type, genericSignatures, builder);
+		Analysis.createTypeSignature(types, type, genericSignatures, builder);
 		return builder.toString();
-	}
-
-	String buildTypeName(TypeMirror type, Map<String, TypeMirror> genericSignatures) {
-		return createTypeSignature(type, usedTypes, genericSignatures);
-	}
-
-	private static void createTypeSignature(
-			TypeMirror type,
-			Map<String, TypeMirror> genericSignatures,
-			StringBuilder builder) {
-		String typeName = Analysis.typeWithoutAnnotations(type.toString());
-		if (type.getKind() == TypeKind.DECLARED) {
-			DeclaredType declaredType = (DeclaredType) type;
-			if (declaredType.getTypeArguments().isEmpty()) {
-				builder.append(typeName);
-			} else {
-				TypeElement typeElement = (TypeElement) declaredType.asElement();
-				builder.append(typeElement.getQualifiedName()).append("<");
-				for (TypeMirror typeArgument : declaredType.getTypeArguments()) {
-					createTypeSignature(typeArgument, genericSignatures, builder);
-					builder.append(",");
-				}
-				builder.setCharAt(builder.length() - 1, '>');
-			}
-		} else if (type.getKind() == TypeKind.ARRAY) {
-			ArrayType arrayType = (ArrayType) type;
-			createTypeSignature(arrayType.getComponentType(), genericSignatures, builder);
-			builder.append("[]");
-		} else if (type instanceof WildcardType) {
-			WildcardType wt = (WildcardType)type;
-			createTypeSignature(wt.getExtendsBound(), genericSignatures, builder);
-		} else if (type instanceof TypeVariable) {
-			TypeMirror mirror = genericSignatures.get(typeName);
-			if (mirror != null && mirror != type) {
-				createTypeSignature(mirror, genericSignatures, builder);
-			} else {
-				builder.append(typeName);
-			}
-		} else {
-			builder.append(typeName);
-		}
 	}
 }

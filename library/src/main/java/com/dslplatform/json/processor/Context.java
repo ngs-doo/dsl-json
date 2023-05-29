@@ -10,6 +10,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
@@ -131,11 +132,11 @@ final class Context {
 		return result;
 	}
 
-	static String extractRawType(TypeMirror type, Map<String, TypeMirror> genericSignatures) {
+	String extractRawType(TypeMirror type, Map<String, TypeMirror> genericSignatures) {
 		if (type.getKind() == TypeKind.DECLARED) {
 			return ((DeclaredType) type).asElement().toString();
 		}
-		String typeName = Analysis.typeWithoutAnnotations(type.toString());
+		String typeName = Analysis.unpackType(type, environment.getTypeUtils()).toString();
 		if (type.getKind() == TypeKind.TYPEVAR) {
 			TypeMirror mirror = genericSignatures.get(typeName);
 			if (mirror != null && mirror != type) {
@@ -143,6 +144,10 @@ final class Context {
 			}
 		}
 		return typeName;
+	}
+
+	Types types() {
+		return environment.getTypeUtils();
 	}
 
 	boolean useLazyResolution(String type) {

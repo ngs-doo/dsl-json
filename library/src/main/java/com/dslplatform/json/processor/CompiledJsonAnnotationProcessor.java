@@ -14,7 +14,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import java.io.*;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static com.dslplatform.json.processor.Context.nonGenericObject;

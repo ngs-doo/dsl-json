@@ -14,7 +14,6 @@ import java.io.Writer;
 import java.util.List;
 import java.util.Map;
 
-import static com.dslplatform.json.processor.Analysis.typeWithoutAnnotations;
 import static com.dslplatform.json.processor.CompiledJsonAnnotationProcessor.findConverterName;
 import static com.dslplatform.json.processor.Context.nonGenericObject;
 import static com.dslplatform.json.processor.Context.sortedAttributes;
@@ -162,7 +161,7 @@ class ConverterTemplate {
 					createLazyReaderAndWriter(attr, attr.type, "", si);
 				}
 				if (attr.isArray) {
-					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType(), si.genericSignatures);
+					String content = context.extractRawType(((ArrayType) attr.type).getComponentType(), si.genericSignatures);
 					code.append("\t\tprivate final ").append(content).append("[] emptyArray_").append(attr.name).append(";\n");
 				}
 			} else if (converter != null && attr.isArray && attr.notNull) {
@@ -170,7 +169,7 @@ class ConverterTemplate {
 					code.append("\t\tprivate static final ").append(attr.typeName).append(" emptyArray_").append(attr.name);
 					code.append(" = ").append(converter.defaultValue).append(";\n");
 				} else {
-					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType(), si.genericSignatures);
+					String content = context.extractRawType(((ArrayType) attr.type).getComponentType(), si.genericSignatures);
 					code.append("\t\tprivate final ").append(content).append("[] emptyArray_").append(attr.name).append(";\n");
 				}
 			}
@@ -260,7 +259,7 @@ class ConverterTemplate {
 				if (attr.isArray) {
 					TypeMirror arrayComponentType = ((ArrayType) attr.type).getComponentType();
 					code.append("\t\t\tthis.emptyArray_").append(attr.name).append(" = ");
-					String content = Context.extractRawType(arrayComponentType, si.genericSignatures);
+					String content = context.extractRawType(arrayComponentType, si.genericSignatures);
 					code.append("(").append(content).append("[]) java.lang.reflect.Array.newInstance((Class<?>) ");
 					buildArrayType(arrayComponentType, attr.typeVariablesIndex, si.genericSignatures);
 					code.append(", 0);\n");
@@ -285,7 +284,7 @@ class ConverterTemplate {
 		if (attr.isGeneric || !attr.usedTypes.isEmpty()) {
 			return createTypeSignature(type, attr.typeVariablesIndex, genericSignatures);
 		}
-		String typeName = typeWithoutAnnotations(type.toString());
+		String typeName = Analysis.unpackType(type, context.types()).toString();
 		return typeOrClass(nonGenericObject(typeName), typeName);
 	}
 
@@ -301,7 +300,7 @@ class ConverterTemplate {
 
 	private void createLazyReaderAndWriter(AttributeInfo attr, TypeMirror mirror, String namePrefix, StructInfo si) throws IOException {
 		String type = extractTypeSignature(attr, mirror, si.genericSignatures);
-		String typeName = attr.buildTypeName(mirror, si.genericSignatures);
+		String typeName = attr.createTypeSignature(context.types(), mirror, si.genericSignatures);
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append(";\n");
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append("() {\n");
 		code.append("\t\t\tif (").append(namePrefix).append("reader_").append(attr.name).append(" == null) {\n");
@@ -341,7 +340,7 @@ class ConverterTemplate {
 			Map<String, Integer> typeVariableIndexes,
 			Map<String, TypeMirror> genericSignatures,
 			StringBuilder builder) {
-		String typeName = typeWithoutAnnotations(type.toString());
+		String typeName = Analysis.unpackType(type, context.types()).toString();
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {
@@ -398,7 +397,7 @@ class ConverterTemplate {
 			TypeMirror type,
 			Map<String, Integer> typeVariableIndexes,
 			Map<String, TypeMirror> genericSignatures) throws IOException {
-		String typeName = typeWithoutAnnotations(type.toString());
+		String typeName = Analysis.unpackType(type, context.types()).toString();
 		if (type.getKind() == TypeKind.DECLARED) {
 			DeclaredType declaredType = (DeclaredType) type;
 			if (declaredType.getTypeArguments().isEmpty()) {
@@ -1100,7 +1099,7 @@ class ConverterTemplate {
 				context.serializeKnownCollection(attr, types, genericSignatures);
 			} else if (attr.isGeneric && !attr.containsStructOwnerType) {
 				if (attr.isArray) {
-					String content = Context.extractRawType(((ArrayType) attr.type).getComponentType(), genericSignatures);
+					String content = context.extractRawType(((ArrayType) attr.type).getComponentType(), genericSignatures);
 					code.append("(").append(content).append("[])reader.readArray(reader_").append(attr.name);
 					code.append(", emptyArray_").append(attr.name).append(")");
 				} else {
