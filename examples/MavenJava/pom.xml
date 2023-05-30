@@ -5,13 +5,13 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.dslplatform</groupId>
-	<artifactId>maven-java8-example</artifactId>
-	<version>1.10.0</version>
+	<artifactId>maven-java-example</artifactId>
+	<version>2.0.0</version>
 	<dependencies>
 		<dependency>
 			<groupId>com.dslplatform</groupId>
-			<artifactId>dsl-json-java8</artifactId>
-			<version>1.10.0</version>
+			<artifactId>dsl-json</artifactId>
+			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
 	<properties>

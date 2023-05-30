@@ -6,7 +6,7 @@
 
     <groupId>com.dslplatform</groupId>
     <artifactId>json-examples</artifactId>
-    <version>1.10.0</version>
+    <version>2.0.0</version>
     <packaging>pom</packaging>
     <url>https://github.com/ngs-doo/dsl-json</url>
 
@@ -17,12 +17,10 @@
     <modules>
         <module>ArrayFormat</module>
         <module>AutoValue</module>
-        <module>DslSchema</module>
         <module>Jackson</module>
         <module>Jsonb</module>
         <module>Lombok</module>
-        <module>MavenJava6</module>
-        <module>MavenJava8</module>
+        <module>MavenJava</module>
         <module>Polymorphism</module>
         <module>Reflection</module>
     </modules>
@@ -31,52 +29,42 @@
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>array-format-example</artifactId>
-            <version>1.10.0</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>autovalue-example</artifactId>
-            <version>1.10.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.dslplatform</groupId>
-            <artifactId>dsl-schema-example</artifactId>
-            <version>1.10.0</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>jackson-example</artifactId>
-            <version>1.10.0</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>jsonb-example</artifactId>
-            <version>1.10.0</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>lombok-example</artifactId>
-            <version>1.10.0</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
-            <artifactId>maven-java6-example</artifactId>
-            <version>1.10.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.dslplatform</groupId>
-            <artifactId>maven-java8-example</artifactId>
-            <version>1.10.0</version>
+            <artifactId>maven-java-example</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>reflection-example</artifactId>
-            <version>1.10.0</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dslplatform</groupId>
             <artifactId>polymorphic-example</artifactId>
-            <version>1.10.0</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 

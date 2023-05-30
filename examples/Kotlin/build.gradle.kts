@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "kotlin-dsl-json"
-version = "1.10.0-SNAPSHOT"
+version = "2.0.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -15,8 +15,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.dslplatform:dsl-json-java8:1.10.0")
-    kapt("com.dslplatform:dsl-json-java8:1.10.0")
+    implementation("com.dslplatform:dsl-json:2.0.0")
+    kapt("com.dslplatform:dsl-json:2.0.0")
 }
 
 tasks.withType<KotlinCompile>() {
