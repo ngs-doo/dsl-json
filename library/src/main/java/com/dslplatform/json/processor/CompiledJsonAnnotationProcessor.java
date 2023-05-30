@@ -267,7 +267,6 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 				Creators,
 				Indexes,
 				unknownTypes,
-				false,
 				true,
 				true,
 				true);

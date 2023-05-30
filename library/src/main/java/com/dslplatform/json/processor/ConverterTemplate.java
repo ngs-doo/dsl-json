@@ -1070,17 +1070,24 @@ class ConverterTemplate {
 				if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 				else if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(");
 				else if (attr.readMethod != null && (attr.isList || attr.isSet)) code.append(attr.readMethod.getSimpleName()).append("().addAll(");
-				else throw new RuntimeException("Unexpected code path. Please report this bug");
+				else throw new RuntimeException("Unexpected code path. Expecting to setup a value. Please report this bug");
 			} else {
 				code.append(alignment).append("\t\t_").append(attr.name).append("_ = ");
 			}
 			List<String> types = attr.collectionContent(context.typeSupport, context.structs);
-			if (attr.converter != null) {
-				attr.converter.read(code);
-				code.append(".read(reader)");
-			} else if (target != null && target.converter != null) {
-				target.converter.read(code);
-				code.append(".read(reader)");
+			if (attr.converter != null || target != null && target.converter != null) {
+				ConverterInfo converter = attr.converter != null ? attr.converter : target.converter;
+				if (useInstance && !converter.binder.isEmpty()) {
+					converter.bind(code);
+					code.append(".bind(reader, instance.");
+					if (attr.field != null) code.append(attr.field.getSimpleName());
+					else if (attr.readMethod != null) code.append(attr.readMethod.getSimpleName()).append("()");
+					else throw new RuntimeException("Unexpected code path. Expecting to bind a value. Please report this bug");
+					code.append(")");
+				} else {
+					converter.read(code);
+					code.append(".read(reader)");
+				}
 			} else if (optimizedConverter != null) {
 				boolean isPrimitive = !attr.typeName.equals(Analysis.objectName(attr.typeName));
 				if (attr.notNull || isPrimitive) {

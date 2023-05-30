@@ -17,7 +17,6 @@ public class Analysis {
 	private final AnnotationUsage annotationUsage;
 	private final LogLevel logLevel;
 	private final UnknownTypes unknownTypes;
-	private final boolean onlyBasicFeatures;
 	private final boolean includeFields;
 	private final boolean includeBeanMethods;
 	private final boolean includeExactMethods;
@@ -63,7 +62,7 @@ public class Analysis {
 	}
 
 	public Analysis(ProcessingEnvironment processingEnv, AnnotationUsage annotationUsage, LogLevel logLevel, TypeSupport typeSupport) {
-		this(processingEnv, annotationUsage, logLevel, typeSupport, null, null, null, null, null, null, UnknownTypes.ERROR, false, true, true, true);
+		this(processingEnv, annotationUsage, logLevel, typeSupport, null, null, null, null, null, null, UnknownTypes.ERROR, true, true, true);
 	}
 
 	public Analysis(
@@ -78,7 +77,6 @@ public class Analysis {
 			@Nullable Set<String> alternativeCreators,
 			@Nullable Map<String, String> alternativeIndex,
 			@Nullable UnknownTypes unknownTypes,
-			boolean onlyBasicFeatures,
 			boolean includeFields,
 			boolean includeBeanMethods,
 			boolean includeExactMethods) {
@@ -101,7 +99,6 @@ public class Analysis {
 		this.alternativeCreators = alternativeCreators == null ? new HashSet<String>() : alternativeCreators;
 		this.alternativeIndex = alternativeIndex == null ? new HashMap<String, String>() : alternativeIndex;
 		this.unknownTypes = unknownTypes == null ? UnknownTypes.ERROR : unknownTypes;
-		this.onlyBasicFeatures = onlyBasicFeatures;
 		this.includeFields = includeFields;
 		this.includeBeanMethods = includeBeanMethods;
 		this.includeExactMethods = includeExactMethods;
@@ -325,14 +322,7 @@ public class Analysis {
 				}
 			}
 			if (info.type == ObjectType.CLASS && !info.hasKnownConversion() && info.annotatedFactory != null) {
-				if (onlyBasicFeatures) {
-					hasError = true;
-					messager.printMessage(
-							Diagnostic.Kind.ERROR,
-							"Factory methods are not available with current analysis setup. Use annotation processor which supports such feature",
-							info.annotatedFactory,
-							info.annotation);
-				} else if (!types.isAssignable(info.annotatedFactory.getReturnType(), info.element.asType())) {
+				if (!types.isAssignable(info.annotatedFactory.getReturnType(), info.element.asType())) {
 					hasError = true;
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
@@ -455,14 +445,7 @@ public class Analysis {
 				}
 			}
 			if (!info.hasKnownConversion() && info.annotatedFactory == null && info.selectedConstructor() == null && info.builder != null) {
-				if (onlyBasicFeatures) {
-					hasError = true;
-					messager.printMessage(
-							Diagnostic.Kind.ERROR,
-							"Builder pattern is not available with current analysis setup. Use annotation processor which supports such feature",
-							info.builder.type,
-							info.builder.annotation);
-				} else if (requiresPublic(info.builder.type) && !info.builder.type.getModifiers().contains(Modifier.PUBLIC)) {
+				if (requiresPublic(info.builder.type) && !info.builder.type.getModifiers().contains(Modifier.PUBLIC)) {
 					hasError = true;
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
@@ -522,14 +505,6 @@ public class Analysis {
 			if (info.deserializeAs == null && info.type == ObjectType.MIXIN) {
 				Set<String> names = new HashSet<String>();
 				String discriminator = info.discriminator;
-				if (discriminator.length() > 0 && onlyBasicFeatures) {
-					hasError = true;
-					messager.printMessage(
-							Diagnostic.Kind.ERROR,
-							"Custom $type discriminator is not supported with current analysis setup",
-							info.element,
-							info.annotation);
-				}
 				int invalidChartAt = -1;
 				for (int i = 0; i < discriminator.length(); i++) {
 					char c = discriminator.charAt(i);
@@ -605,14 +580,7 @@ public class Analysis {
 					}
 				}
 			}
-			if (info.type == ObjectType.CLASS && onlyBasicFeatures && !info.hasKnownConversion() && !info.hasEmptyCtor()) {
-				hasError = true;
-				messager.printMessage(
-						Diagnostic.Kind.ERROR,
-						"'" + className + "' requires public no argument constructor" + info.pathDescription(),
-						info.element,
-						info.annotation);
-			} else if (info.type == ObjectType.CLASS && !onlyBasicFeatures && !info.hasEmptyCtor() && !info.hasKnownConversion()
+			if (info.type == ObjectType.CLASS && !info.hasEmptyCtor() && !info.hasKnownConversion()
 					&& info.annotatedFactory == null && info.builder == null && (info.selectedConstructor() == null || info.selectedConstructor().getParameters().size() != info.attributes.size())) {
 				hasError = true;
 				messager.printMessage(
@@ -730,8 +698,10 @@ public class Analysis {
 		Set<Element> usedTypes = new HashSet<Element>();
 		findAllElements(type, usedTypes, new HashSet<TypeMirror>());
 		VariableElement jsonReaderField = null;
+		VariableElement jsonBinderField = null;
 		VariableElement jsonWriterField = null;
 		ExecutableElement jsonReaderMethod = null;
+		ExecutableElement jsonBinderMethod = null;
 		ExecutableElement jsonWriterMethod = null;
 		boolean hasInstance = false;
 		boolean legacyDeclaration = true;
@@ -746,23 +716,28 @@ public class Analysis {
 				}
 			} else if ("JSON_READER".equals(field.getSimpleName().toString())) {
 				jsonReaderField = field;
+			} else if ("JSON_BINDER".equals(field.getSimpleName().toString())) {
+				jsonBinderField = field;
 			} else if ("JSON_WRITER".equals(field.getSimpleName().toString())) {
 				jsonWriterField = field;
 			}
 		}
-		if (!onlyBasicFeatures) {
-			for (ExecutableElement method : ElementFilter.methodsIn(converter.getEnclosedElements())) {
-				if ("JSON_READER".equals(method.getSimpleName().toString()) || "getJSON_READER".equals(method.getSimpleName().toString())) {
-					jsonReaderMethod = method;
-				} else if ("JSON_WRITER".equals(method.getSimpleName().toString()) || "getJSON_WRITER".equals(method.getSimpleName().toString())) {
-					jsonWriterMethod = method;
-				} else if ("read".equals(method.getSimpleName().toString())) {
-					legacyDeclaration = false;
-					jsonReaderMethod = method;
-				} else if ("write".equals(method.getSimpleName().toString())) {
-					legacyDeclaration = false;
-					jsonWriterMethod = method;
-				}
+		for (ExecutableElement method : ElementFilter.methodsIn(converter.getEnclosedElements())) {
+			if ("JSON_READER".equals(method.getSimpleName().toString()) || "getJSON_READER".equals(method.getSimpleName().toString())) {
+				jsonReaderMethod = method;
+			} else if ("JSON_BINDER".equals(method.getSimpleName().toString()) || "getJSON_BINDER".equals(method.getSimpleName().toString())) {
+				jsonBinderMethod = method;
+			} else if ("JSON_WRITER".equals(method.getSimpleName().toString()) || "getJSON_WRITER".equals(method.getSimpleName().toString())) {
+				jsonWriterMethod = method;
+			} else if ("read".equals(method.getSimpleName().toString())) {
+				legacyDeclaration = false;
+				jsonReaderMethod = method;
+			} else if ("bind".equals(method.getSimpleName().toString())) {
+				legacyDeclaration = false;
+				jsonBinderMethod = method;
+			} else if ("write".equals(method.getSimpleName().toString())) {
+				legacyDeclaration = false;
+				jsonWriterMethod = method;
 			}
 		}
 		for(Element used : usedTypes) {
@@ -775,7 +750,6 @@ public class Analysis {
 						getAnnotation(converter, converterType));
 			}
 		}
-		String allowed = onlyBasicFeatures ? "field" : "field/method";
 		if (!converter.getModifiers().contains(Modifier.PUBLIC)) {
 			hasError = true;
 			messager.printMessage(
@@ -790,16 +764,6 @@ public class Analysis {
 					"Specified converter: '" + converter.asType() + "' can't be a nested member. Only public static nested classes are supported",
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (onlyBasicFeatures && (converter.getQualifiedName().contentEquals(converter.getSimpleName())
-				|| converter.getNestingKind().isNested() && converter.getModifiers().contains(Modifier.STATIC)
-				&& converter.getEnclosingElement() instanceof TypeElement
-				&& ((TypeElement) converter.getEnclosingElement()).getQualifiedName().contentEquals(converter.getEnclosingElement().getSimpleName()))) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' is defined without a package name and cannot be accessed",
-					converter,
-					getAnnotation(converter, converterType));
 		} else if (jsonReaderField == null && jsonReaderMethod == null || jsonWriterField == null && jsonWriterMethod == null) {
 			hasError = true;
 			String errorMessage;
@@ -811,8 +775,6 @@ public class Analysis {
 				String definedName = (jsonWriterField != null ? jsonWriterField.getSimpleName() : jsonWriterMethod.getSimpleName()).toString();
 				String otherName = "JSON_WRITER".equals(definedName) ? "JSON_READER" : "read method";
 				errorMessage = "Specified converter: '" + converter.getQualifiedName() + "' only has " + definedName + " defined. " + otherName + " must also be defined for conversion.";
-			} else if (onlyBasicFeatures) {
-				errorMessage = "Specified converter: '" + converter.getQualifiedName() + "' doesn't have a JSON_READER/JSON_WRITER " + allowed + ". It must have public static JSON_READER/JSON_WRITER " + allowed + " for conversion.";
 			} else {
 				errorMessage = "Specified converter: '" + converter.getQualifiedName() + "' doesn't have a read/write methods. It must have public static read and write methods for conversion.";
 			}
@@ -825,7 +787,7 @@ public class Analysis {
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
 					legacyDeclaration
-						? "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER " + allowed + ". They must be public and static for converter to work properly."
+						? "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_READER and JSON_WRITER field/method. They must be public and static for converter to work properly."
 						: "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static read and write methods. They must be public and static for converter to work properly.",
 					converter,
 					getAnnotation(converter, converterType));
@@ -844,7 +806,7 @@ public class Analysis {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
-					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_WRITER " + allowed + ". It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">'",
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_WRITER field/method. It must be of type: 'com.dslplatform.json.JsonWriter.WriteObject<" + fullName + ">'",
 					converter,
 					getAnnotation(converter, converterType));
 		} else if (!legacyDeclaration && jsonReaderMethod != null
@@ -887,6 +849,39 @@ public class Analysis {
 					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for write method. It must be of type: 'void write(com.dslplatform.json.JsonWriter, " + javaType + ")'. " + additionalDescription,
 					converter,
 					getAnnotation(converter, converterType));
+		} else if (legacyDeclaration &&
+				(jsonBinderMethod != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderField.asType().toString())
+						|| jsonBinderMethod != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderMethod.getReturnType().toString()))) {
+			hasError = true;
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_BINDER field. It must be of type: 'com.dslplatform.json.JsonReader.BindObject<" + fullName + ">'",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (!legacyDeclaration && jsonBinderMethod != null
+			&& !(javaType.equals(jsonBinderMethod.getReturnType().toString()) && jsonBinderMethod.getParameters().size() == 2
+				&& jsonBinderMethod.getParameters().get(0).asType().toString().startsWith("com.dslplatform.json.JsonReader")
+				&& javaType.equals(jsonBinderMethod.getParameters().get(1).asType().toString()))) {
+			hasError = true;
+			String additionalDescription = "";
+			if (!javaType.equals(jsonBinderMethod.getReturnType().toString())) {
+				additionalDescription += "Wrong return type defined. Expecting: " + javaType + ". Detected: " + jsonBinderMethod.getReturnType();
+			}
+			if (jsonBinderMethod.getParameters().size() != 2) {
+				additionalDescription += "Wrong number of arguments defined. Expecting one argument. Detected: " + jsonBinderMethod.getParameters().size();
+			} else {
+				if (!jsonBinderMethod.getParameters().get(0).asType().toString().startsWith("com.dslplatform.json.JsonReader")) {
+					additionalDescription += "Wrong argument defined. Expecting 'com.dslplatform.json.JsonReader'. Detected: '" + jsonBinderMethod.getParameters().get(0).asType() + "'";
+				}
+				if ("com.dslplatform.json.JsonReader".equals(jsonBinderMethod.getParameters().get(0).asType().toString()) && javaType.equals(jsonBinderMethod.getParameters().get(1).asType().toString())) {
+					additionalDescription += "Wrong second argument defined. Expecting '" + javaType + "'. Detected: '" + jsonBinderMethod.getParameters().get(1).asType() + "'";
+				}
+			}
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for bind method. It must be of type: '" + javaType + " bind(com.dslplatform.json.JsonReader, " + javaType + ")'. " + additionalDescription,
+					converter,
+					getAnnotation(converter, converterType));
 		}
 		return new ConverterInfo(
 				converter,
@@ -894,6 +889,9 @@ public class Analysis {
 				jsonReaderMethod != null
 						? (hasInstance ? "INSTANCE." : "") + jsonReaderMethod.getSimpleName().toString() + "()" : jsonReaderField != null
 						?  jsonReaderField.getSimpleName().toString() : "",
+				jsonBinderMethod != null
+						? (hasInstance ? "INSTANCE." : "") + jsonBinderMethod.getSimpleName().toString() + "()" : jsonBinderField != null
+						? jsonBinderField.getSimpleName().toString() : "",
 				jsonWriterMethod != null
 						? (hasInstance ? "INSTANCE." : "") + jsonWriterMethod.getSimpleName().toString() + "()" : jsonWriterField != null
 						? jsonWriterField.getSimpleName().toString() : "",
@@ -948,7 +946,7 @@ public class Analysis {
 			for (StructInfo info : items) {
 				if (info.hasKnownConversion()) continue;
 				path.push(info.element.getSimpleName().toString());
-				if (!onlyBasicFeatures && info.builder != null && info.annotatedConstructor == null && info.annotatedFactory == null) {
+				if (info.builder != null && info.annotatedConstructor == null && info.annotatedFactory == null) {
 					for (Map.Entry<String, AccessElements> p : getBuilderProperties(info.element, info.builder, includeBeanMethods, includeExactMethods, includeFields).entrySet()) {
 						AccessElements ae = p.getValue();
 						if (ae.field != null || ae.read != null) {
@@ -963,9 +961,7 @@ public class Analysis {
 						creatorArguments.put(info.annotatedConstructor, getArguments(info.annotatedConstructor));
 					} else if (info.matchingConstructors != null) {
 						for (ExecutableElement ctor : info.matchingConstructors) {
-							if (!onlyBasicFeatures || ctor.getParameters().size() == 0) {
-								creatorArguments.put(ctor, getArguments(ctor));
-							}
+							creatorArguments.put(ctor, getArguments(ctor));
 						}
 					}
 					PropertyAnalysis bestAnalysis = null;
@@ -1253,7 +1249,6 @@ public class Analysis {
 	}
 
 	private boolean requiresPublic(Element element) {
-		if (onlyBasicFeatures) return true;
 		final String name = element.asType().toString();
 		if (name.startsWith("java.")) return true; //TODO: maybe some other namespaces !?
 		final PackageElement pkg = elements.getPackageOf(element);
@@ -1297,16 +1292,6 @@ public class Analysis {
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
 					errorMessage + ", therefore '" + element.asType() + "' can't be a nested member. Only static nested classes are supported.",
-					element,
-					annotation);
-		} else if (onlyBasicFeatures && (element.getQualifiedName().contentEquals(element.getSimpleName())
-				|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
-				&& element.getEnclosingElement() instanceof TypeElement
-				&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName()))) {
-			hasError = true;
-			messager.printMessage(
-					Diagnostic.Kind.ERROR,
-					errorMessage + ", but class '" + element.getQualifiedName() + "' is defined without a package name and cannot be accessed.",
 					element,
 					annotation);
 		} else if (element.getNestingKind().isNested() && requiresPublic(element.getEnclosingElement()) && !element.getEnclosingElement().getModifiers().contains(Modifier.PUBLIC)) {
@@ -1429,11 +1414,6 @@ public class Analysis {
 			return "can't be a nested member. Only public static nested classes are supported";
 		} else if (target.getNestingKind().isNested() && !target.getModifiers().contains(Modifier.PUBLIC)) {
 			return "must be public when nested in another class";
-		} else if (onlyBasicFeatures && (target.getQualifiedName().contentEquals(target.getSimpleName())
-				|| target.getNestingKind().isNested() && target.getModifiers().contains(Modifier.STATIC)
-				&& target.getEnclosingElement() instanceof TypeElement
-				&& ((TypeElement) target.getEnclosingElement()).getQualifiedName().contentEquals(target.getEnclosingElement().getSimpleName()))) {
-			return "is defined without a package name and cannot be accessed";
 		} else if (target.getKind() == ElementKind.INTERFACE || target.getModifiers().contains(Modifier.ABSTRACT)) {
 			return "must be a concrete type";
 		} else if (!source.asType().toString().equals(target.asType().toString()) && source.getKind() != ElementKind.INTERFACE && !source.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -1798,7 +1778,7 @@ public class Analysis {
 			}
 		}
 		String signatureType = "com.dslplatform.json.JsonReader.ReadJsonObject<" + element.getQualifiedName() + ">";
-		if (!onlyBasicFeatures && companion != null && companion.getModifiers().contains(Modifier.STATIC)) {
+		if (companion != null && companion.getModifiers().contains(Modifier.STATIC)) {
 			for (ExecutableElement method : ElementFilter.methodsIn(companion.getEnclosedElements())) {
 				if ("JSON_READER".equals(method.getSimpleName().toString()) || "getJSON_READER".equals(method.getSimpleName().toString())) {
 					jsonReaderMethod = method;
@@ -1823,25 +1803,13 @@ public class Analysis {
 								"Add static modifier so it can be used for serialization/deserialization.",
 						el,
 						getAnnotation(el, converterType));
-			} else if (onlyBasicFeatures && (element.getQualifiedName().contentEquals(element.getSimpleName())
-					|| element.getNestingKind().isNested() && element.getModifiers().contains(Modifier.STATIC)
-					&& element.getEnclosingElement() instanceof TypeElement
-					&& ((TypeElement) element.getEnclosingElement()).getQualifiedName().contentEquals(element.getEnclosingElement().getSimpleName()))) {
-				hasError = true;
-				messager.printMessage(
-						Diagnostic.Kind.ERROR,
-						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but its defined without a package name and cannot be accessed. " +
-								"Either add package to it or use a different analysis configuration which support classes without packages.",
-						element,
-						getAnnotation(element, converterType));
 			} else if (jsonReaderField == null && jsonReaderMethod == null) {
-				String allowed = onlyBasicFeatures ? "field" : "field/method";
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,
-						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER " + allowed + ". " +
+						"'" + element.getQualifiedName() + "' is 'com.dslplatform.json.JsonObject', but it doesn't have JSON_READER field/method. " +
 								"It can't be used for serialization/deserialization this way. " +
-								"You probably want to add public static JSON_READER " + allowed + ".",
+								"You probably want to add public static JSON_READER field/method.",
 						element,
 						getAnnotation(element, converterType));
 			} else if (jsonReaderMethod == null && (!jsonReaderField.getModifiers().contains(Modifier.PUBLIC) || !jsonReaderField.getModifiers().contains(Modifier.STATIC))
@@ -2105,7 +2073,7 @@ public class Analysis {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			} else if (setterType != null && (setterType + "<").startsWith(returnType)) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
-			} else if (!onlyBasicFeatures && arg != null && isCompatibleType(arg.asType(), kv.getValue().getReturnType())) {
+			} else if (arg != null && isCompatibleType(arg.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readOnly(kv.getValue(), arg, annotation));
 			} else if (arg == null && setterArgument == null && isAppendableCollection(kv.getValue())) {
 				boolean hasMarker = annotation != null || hasCustomMarker(kv.getValue()) || field != null && field.field != null && hasCustomMarker(field.field);
@@ -2119,7 +2087,7 @@ public class Analysis {
 							kv.getValue(),
 							annotation);
 				}
-			} else if (!onlyBasicFeatures && arg == null && field != null && setterType != null && field.field != null
+			} else if (arg == null && field != null && setterType != null && field.field != null
 					&& setterType.equals(typeWithoutAnnotations(field.field.asType())) && isCompatibleType(setterArgument.asType(), kv.getValue().getReturnType())) {
 				result.put(kv.getKey(), AccessElements.readWrite(kv.getValue(), setter, annotation));
 			}

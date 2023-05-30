@@ -84,8 +84,6 @@ Types without built-in mapping can be supported in three ways:
 
 Custom converter for `java.time.LocalTime` can be found in [example project](examples/MavenJava/src/main/java/com/dslplatform/maven/Example.java#L182) 
 Annotation processor will check if custom type implementations have appropriate signatures.
-... TODO ...
-Converter for `java.util.ArrayList` can be found in [same example project](examples/MavenJava6/src/main/java/com/dslplatform/maven/Example.java#L38) 
 
 `@JsonConverter` which implements `Configuration` will also be registered in `META-INF/services` which makes it convenient to [setup initialization](examples/MavenJava6/src/main/java/com/dslplatform/maven/ImmutablePerson.java#L48).
 
@@ -102,6 +100,7 @@ Custom converter is a class with 2 static methods, eg:
 		}
 	}
 
+For mutable objects 3rd optional method is supported (bind)
 
 ### @JsonAttribute features
 
@@ -136,7 +135,7 @@ For existing classes which can't be modified with `@JsonAttribute` alternative e
 
 During translation from Java objects into DSL schema, existing type system nullability rules are followed.
 With the help of non-null annotations, hints can be introduced to work around some Java nullability type system limitations.
-List of supported non-null annotations can be found in [processor source code](java8/src/main/java/com/dslplatform/json/processor/CompiledJsonAnnotationProcessor.java#L68)
+List of supported non-null annotations can be found in [processor source code](java/src/main/java/com/dslplatform/json/processor/CompiledJsonAnnotationProcessor.java#L68)
 
 Nullable annotations can be disabled via configuration parameter `dsljson.nullable=false`. This might be useful if you want to handle null checks after deserialization.
 
@@ -238,13 +237,25 @@ For small messages it's better to use `byte[]` API. When reader is used directly
 ### Binding
 
 `JsonReader` has `iterateOver` method for exposing input collection as consumable iterator.
-Also, since v1.5 binding API is available which can reuse instances for deserialization.
 
     DslJson<Object> json = new DslJson<Object>(); //always reuse
     byte[] bytes = "{\"number\":123}".getBytes("UTF-8");
     JsonReader<Object> reader = json.newReader().process(bytes, bytes.length);
     POJO instance = new POJO(); //can be reused
     POJO bound = reader.next(POJO.class, instance); //bound is the same as instance above
+
+Binding API is available which can reuse instances for deserialization. This is supported in converters
+via 3rd optional `JSON_BINDER` member or `bind` method, eg:
+
+    class POJO {
+      public String mutableValue;
+    }
+    class PojoConverter {
+      public POJO bind(JsonReader reader, POJO instance) {
+        if (instance == null) instance = new POJO();
+        instance.mutableValue = StringConverter.read(reader);
+      }
+    }
 
 ### Limits
 
@@ -315,4 +326,4 @@ When used with Gradle, configuration can be done via:
  ***A***: Common error is missing dependency on Java 9+ for annotation marker. You can add such dependency on configure compiler arguments to exclude it via `dsljson.generatedmarker`. Otherwise, it's best to inspect the generated code, look if there is some configuration error, like referencing class without sufficient visibility. If there is nothing wrong with the setup, there might be a bug with the DSL-JSON annotation processor in which case it would be helpful to provide a minimal reproducible
 
  ***Q***: Can you please help me out with...?  
- ***A***: There is only so many hours in a day. You can support the library by asking for support contract with your company via [support contract](mailto:rikard@ngs.hr?subject=DSL-JSON).
+ ***A***: There is only so many hours in a day. You can support the library by asking for [support contract](mailto:rikard@ngs.hr?subject=DSL-JSON) with your company.
