@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.dslplatform</groupId>
+	<artifactId>dsl-json-integration-tests-latest-java</artifactId>
+	<name>DSL-JSON integration tests (Java 20)</name>
+	<description>DSL Platform compatible JSON (https://dsl-platform.com)</description>
+	<url>https://github.com/ngs-doo/dsl-json</url>
+	<packaging>jar</packaging>
+	<version>2.0.0</version>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.deploy.skip>true</maven.deploy.skip>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.dslplatform</groupId>
+			<artifactId>dsl-json</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.13.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.assertj</groupId>
+			<artifactId>assertj-core</artifactId>
+			<version>3.10.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.validation</groupId>
+			<artifactId>validation-api</artifactId>
+			<version>2.0.1.Final</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<licenses>
+		<license>
+			<name>The BSD 3-Clause License</name>
+			<url>http://opensource.org/licenses/BSD-3-Clause</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Rikard Pavelić</name>
+			<email>rikard@ngs.hr</email>
+			<organization>NGS</organization>
+			<organizationUrl>https://github.com/ngs-doo</organizationUrl>
+		</developer>
+	</developers>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.3</version>
+				<configuration>
+					<compilerVersion>20</compilerVersion>
+					<source>20</source>
+					<target>20</target>
+					<useIncrementalCompilation>false</useIncrementalCompilation>
+					<compilerArguments>
+						<Adsljson.unknown>WARNING</Adsljson.unknown>
+					</compilerArguments>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

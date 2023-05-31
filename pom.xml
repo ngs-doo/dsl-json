@@ -9,14 +9,29 @@
 	<packaging>pom</packaging>
 	<version>0.0.0</version>
 
-	<modules>
-		<module>library</module>
-		<module>android</module>
-		<module>tests-processor</module>
-		<module>tests-java8</module>
-		<module>tests-java8-external-models</module>
-		<module>tests-kotlin</module>
-	</modules>
+	<profiles>
+		<profile>
+			<id>latest_java</id>
+			<modules>
+				<module>library</module>
+				<module>tests-java-latest</module>
+			</modules>
+		</profile>
+		<profile>
+			<id>default</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<modules>
+				<module>library</module>
+				<module>android</module>
+				<module>tests-processor</module>
+				<module>tests-java8</module>
+				<module>tests-java8-external-models</module>
+				<module>tests-kotlin</module>
+			</modules>
+		</profile>
+	</profiles>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
