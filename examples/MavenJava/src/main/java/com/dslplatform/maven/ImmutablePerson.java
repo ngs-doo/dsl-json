@@ -2,6 +2,8 @@ package com.dslplatform.maven;
 
 import com.dslplatform.json.*;
 
+import java.io.IOException;
+
 public class ImmutablePerson {
 
 	public final String firstName;

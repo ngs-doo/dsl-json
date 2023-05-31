@@ -791,6 +791,16 @@ public class Analysis {
 						: "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static read and write methods. They must be public and static for converter to work properly.",
 					converter,
 					getAnnotation(converter, converterType));
+		} else if (jsonBinderField != null && (!jsonBinderField.getModifiers().contains(Modifier.PUBLIC) || !jsonBinderField.getModifiers().contains(Modifier.STATIC))
+				|| jsonBinderMethod != null && (!jsonBinderMethod.getModifiers().contains(Modifier.PUBLIC) || !hasInstance && !jsonBinderMethod.getModifiers().contains(Modifier.STATIC))) {
+			hasError = true;
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					legacyDeclaration
+							? "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_BINDER field/method. It must be public and static for converter to work properly."
+							: "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static bind method. It must be public and static for converter to work properly.",
+					converter,
+					getAnnotation(converter, converterType));
 		} else if (legacyDeclaration &&
 				(jsonReaderField != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderField.asType().toString())
 						|| jsonReaderMethod != null && !("com.dslplatform.json.JsonReader.ReadObject<" + fullName + ">").equals(jsonReaderMethod.getReturnType().toString()))) {

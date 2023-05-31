@@ -50,6 +50,8 @@ public class Example {
 		public PersonBuilder builder; //builder pattern is supported
 		public List<SpecialNumber> numbers;//enum with specific values
 
+		public MutablePerson binding = new MutablePerson();
+
 		//explicitly referenced classes don't require @CompiledJson annotation
 		public static class Nested {
 			public long x;
@@ -238,6 +240,9 @@ public class Example {
 		instance.factories = Arrays.asList(null, Model.ViaFactory.create("me", 2), Model.ViaFactory.create("you", 3), null);
 		instance.builder = PersonBuilder.builder().firstName("first").lastName("last").age(42).build();
 		instance.numbers = Arrays.asList(SpecialNumber.E, SpecialNumber.PI, SpecialNumber.ZERO);
+		instance.binding.firstname = MutablePerson.Name.create("my name");
+		instance.binding.surname = MutablePerson.Name.create("your surname");
+		instance.binding.age = 99;
 
 		dslJson.serialize(writer, instance);
 
