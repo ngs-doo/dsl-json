@@ -31,12 +31,12 @@ class ConfigureScala extends Configuration {
     })
     json.registerReader(classOf[BigInt], new ReadObject[BigInt] {
       override def read(reader: JsonReader[_]): BigInt = {
-        BigInt(BigIntegerConverter.deserialize(reader))
+        BigInt(NumberConverter.deserializeBigInteger(reader))
       }
     })
     json.registerWriter(classOf[BigInt], new WriteObject[BigInt] {
       override def write(writer: JsonWriter, value: BigInt): Unit = {
-        BigIntegerConverter.serialize(value.bigInteger, writer)
+        NumberConverter.serialize(value.bigInteger, writer)
       }
     })
   }

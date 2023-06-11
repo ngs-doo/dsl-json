@@ -1,7 +1,7 @@
 name := "DSL-JSON Scala example"
 version := "2.0.0"
 organization := "com.dslplatform.json.example"
-scalaVersion := "2.12.17"
+scalaVersion := "2.13.11"
 
 ThisBuild / useCoursier := false
 resolvers += Resolver.mavenLocal

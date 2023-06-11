@@ -29,6 +29,18 @@ Java JSON library designed for performance. Originally built for invasive softwa
  * JsonB support - high level support for JsonB String and Stream API. Only minimal support for configuration
  * compatible with [DSL Platform](DSL.md)
 
+## Upgrade from v1
+
+v1 core library was targeting Java6, while v2 targets Java8.
+So there is no need anymore for `dsl-json-java8` project and instead just `dsl-json` project should be referenced.
+From v2 only a single annotation processor is supported, which was previously in java8 project.
+
+Joda and some other specific libraries were removed. If you still need converters for those types,
+you need to include them in your project.
+
+Few methods which were previously marked as `@Deprecated` are now removed,
+mostly around creating `JsonWriter` and `JsonReader` which should be created through `DslJson` instead of instatianted directly.
+
 ## @CompiledJson annotation
 
 Annotation processor works by analyzing Java classes and its explicit or implicit references.
