@@ -92,6 +92,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		Indexes = new HashMap<>();
 		Indexes.put("com.fasterxml.jackson.annotation.JsonProperty", "index()");
 		InlinedConverters = new HashMap<>();
+		InlinedConverters.put("byte[]", new OptimizedConverter("com.dslplatform.json.BinaryConverter", "WRITER", "serialize", "READER", "deserialize", "com.dslplatform.json.BinaryConverter.EMPTY_ARRAY"));
 		InlinedConverters.put("short", new OptimizedConverter("com.dslplatform.json.NumberConverter", "SHORT_WRITER", "serialize", "SHORT_READER", "deserializeShort", "(short)0"));
 		InlinedConverters.put("short[]", new OptimizedConverter("com.dslplatform.json.NumberConverter", "SHORT_ARRAY_WRITER", "serialize", "SHORT_ARRAY_READER", null, "com.dslplatform.json.NumberConverter.SHORT_EMPTY_ARRAY"));
 		InlinedConverters.put("java.lang.Short", new OptimizedConverter("com.dslplatform.json.NumberConverter", "SHORT_WRITER", "serialize", "NULLABLE_SHORT_READER", "deserializeShort", "com.dslplatform.json.NumberConverter.SHORT_ZERO"));

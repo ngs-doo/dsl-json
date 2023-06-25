@@ -306,6 +306,14 @@ public class AllTypes {
 		this.propRefList = propRefList;
 	}
 
+	public byte[] getByteArray() {
+		return byteArray;
+	}
+
+	public void setByteArray(byte[] byteArray) {
+		this.byteArray = byteArray;
+	}
+
 	private int propInt;
 	private long propLong;
 	private double propDouble;
@@ -345,4 +353,5 @@ public class AllTypes {
 	private List<UUID> propOptUuidList;
 	private List<Map<String, String>> propMapList;
 	private List<ValidType> propRefList;
+	private byte[] byteArray;
 }

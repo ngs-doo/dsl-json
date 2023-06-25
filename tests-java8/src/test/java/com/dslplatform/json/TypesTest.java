@@ -125,13 +125,17 @@ public class TypesTest {
 		@JsonAttribute(nullable = false)
 		public Set<Float> f4;
 
+		@JsonAttribute(nullable = false)
+		public byte[] ba;
+
 		public BasicCollections(
 				boolean[] b1, Boolean[] b2, List<Boolean> b3, Set<Boolean> b4,
 				short[] s1, Short[] s2, List<Short> s3, Set<Short> s4,
 				int[] i1, Integer[] i2, List<Integer> i3, Set<Integer> i4,
 				long[] l1, Long[] l2, List<Long> l3, Set<Long> l4,
 				double[] d1, Double[] d2, List<Double> d3, Set<Double> d4,
-				float[] f1, Float[] f2, List<Float> f3, Set<Float> f4) {
+				float[] f1, Float[] f2, List<Float> f3, Set<Float> f4,
+				byte[] ba) {
 			this.b1 = b1;
 			this.b2 = b2;
 			this.b3 = b3;
@@ -156,6 +160,7 @@ public class TypesTest {
 			this.f2 = f2;
 			this.f3 = f3;
 			this.f4 = f4;
+			this.ba = ba;
 		}
 	}
 
@@ -186,6 +191,7 @@ public class TypesTest {
 		Assert.assertEquals(0, c.f2.length);
 		Assert.assertEquals(0, c.f3.size());
 		Assert.assertEquals(0, c.f4.size());
+		Assert.assertEquals(0, c.ba.length);
 	}
 
 	@CompiledJson

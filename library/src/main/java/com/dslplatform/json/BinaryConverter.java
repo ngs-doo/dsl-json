@@ -6,13 +6,17 @@ import java.util.Collection;
 
 public abstract class BinaryConverter {
 
-	private static final JsonReader.ReadObject<byte[]> READER = new JsonReader.ReadObject<byte[]>() {
+	public static final JsonReader.ReadObject<byte[]> READER = new JsonReader.ReadObject<byte[]>() {
 		@Nullable
 		@Override
 		public byte[] read(JsonReader reader) throws IOException {
 			return reader.wasNull() ? null : deserialize(reader);
 		}
 	};
+
+	public static final JsonWriter.WriteObject<byte[]> WRITER = (writer, value) -> serialize(value, writer);
+
+	public static final byte[] EMPTY_ARRAY = new byte[0];
 
 	static <T> void registerDefault(DslJson<T> json) {
 		json.registerReader(byte[].class, READER);
