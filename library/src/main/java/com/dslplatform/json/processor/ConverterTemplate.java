@@ -139,23 +139,26 @@ class ConverterTemplate {
 					if (mirror != null) {
 						createLazyReaderAndWriter(attr, mirror, "", si);
 					} else {
-						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(content).append("> reader_").append(attr.name).append(";\n");
-						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(content).append("> writer_").append(attr.name).append(";\n");
+						String objectType = Analysis.objectName(content);
+						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(objectType).append("> reader_").append(attr.name).append(";\n");
+						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(objectType).append("> writer_").append(attr.name).append(";\n");
 					}
 				} else if (types != null && types.size() == 2) {
 					TypeMirror keyMirror = context.useLazyResolution(types.get(0)) ? context.findType(types.get(0)) : null;
 					if (keyMirror != null) {
 						createLazyReaderAndWriter(attr, keyMirror, "key_", si);
 					} else {
-						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(types.get(0)).append("> key_reader_").append(attr.name).append(";\n");
-						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(types.get(0)).append("> key_writer_").append(attr.name).append(";\n");
+						String objectType = Analysis.objectName(types.get(0));
+						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(objectType).append("> key_reader_").append(attr.name).append(";\n");
+						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(objectType).append("> key_writer_").append(attr.name).append(";\n");
 					}
 					TypeMirror valueMirror = context.useLazyResolution(types.get(1)) ? context.findType(types.get(1)) : null;
 					if (valueMirror != null) {
 						createLazyReaderAndWriter(attr, valueMirror, "value_", si);
 					} else {
-						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(types.get(1)).append("> value_reader_").append(attr.name).append(";\n");
-						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(types.get(1)).append("> value_writer_").append(attr.name).append(";\n");
+						String objectType = Analysis.objectName(types.get(1));
+						code.append("\t\tprivate final com.dslplatform.json.JsonReader.ReadObject<").append(objectType).append("> value_reader_").append(attr.name).append(";\n");
+						code.append("\t\tprivate final com.dslplatform.json.JsonWriter.WriteObject<").append(objectType).append("> value_writer_").append(attr.name).append(";\n");
 					}
 				} else {
 					createLazyReaderAndWriter(attr, attr.type, "", si);
@@ -300,7 +303,7 @@ class ConverterTemplate {
 
 	private void createLazyReaderAndWriter(AttributeInfo attr, TypeMirror mirror, String namePrefix, StructInfo si) throws IOException {
 		String type = extractTypeSignature(attr, mirror, si.genericSignatures);
-		String typeName = attr.createTypeSignature(context.types(), mirror, si.genericSignatures);
+		String typeName = Analysis.objectName(attr.createTypeSignature(context.types(), mirror, si.genericSignatures));
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append(";\n");
 		code.append("\t\tprivate com.dslplatform.json.JsonReader.ReadObject<").append(typeName).append("> ").append(namePrefix).append("reader_").append(attr.name).append("() {\n");
 		code.append("\t\t\tif (").append(namePrefix).append("reader_").append(attr.name).append(" == null) {\n");

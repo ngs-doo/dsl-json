@@ -2,6 +2,7 @@ package com.dslplatform.json;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -20,6 +21,17 @@ public abstract class StringConverter {
 		if (value == null) writer.writeNull();
 		else writer.writeString(value);
 	};
+	public static final JsonWriter.WriteObject<char[]> WRITER_ARRAY = (writer, value) -> {
+		if (value == null) {
+			writer.writeNull();
+		} else if(value.length == 0) {
+			writer.writeByte(JsonWriter.ARRAY_START);
+			writer.writeByte(JsonWriter.ARRAY_END);
+		} else {
+			writer.writeString(new String(value, 0, value.length));
+		}
+	};
+	public static final char[] EMPTY_ARRAY = new char[0];
 	public static final JsonReader.ReadObject<StringBuilder> READER_BUILDER = new JsonReader.ReadObject<StringBuilder>() {
 		@Nullable
 		@Override
@@ -38,13 +50,24 @@ public abstract class StringConverter {
 			return reader.appendString(builder);
 		}
 	};
+	public static final JsonReader.ReadObject<char[]> READER_ARRAY = new JsonReader.ReadObject<char[]>() {
+		@Nullable
+		@Override
+		public char[] read(JsonReader reader) throws IOException {
+			if (reader.wasNull()) return null;
+			int len = reader.parseString();
+			return Arrays.copyOf(reader.chars, len);
+		}
+	};
 
 	static <T> void registerDefault(DslJson<T> json) {
 		json.registerReader(String.class, READER);
 		json.registerWriter(String.class, WRITER);
 		json.registerWriter(CharSequence.class, WRITER_CHARS);
+		json.registerWriter(char[].class, WRITER_ARRAY);
 		json.registerReader(StringBuilder.class, READER_BUILDER);
 		json.registerReader(StringBuffer.class, READER_BUFFER);
+		json.registerReader(char[].class, READER_ARRAY);
 	}
 
 	public static void serializeShortNullable(@Nullable final String value, final JsonWriter sw) {

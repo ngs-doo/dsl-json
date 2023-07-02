@@ -52,14 +52,17 @@ public class TypesTest {
 		public Double d;
 		@JsonAttribute(nullable = false)
 		public Float f;
+		@JsonAttribute(nullable = false)
+		public Byte t;
 
-		public Zeros(Boolean b, Short s, Integer i, Long l, Double d, Float f) {
+		public Zeros(Boolean b, Short s, Integer i, Long l, Double d, Float f, Byte t) {
 			this.b = b;
 			this.s = s;
 			this.i = i;
 			this.l = l;
 			this.d = d;
 			this.f = f;
+			this.t = t;
 		}
 	}
 
@@ -72,6 +75,51 @@ public class TypesTest {
 		Assert.assertEquals(Long.valueOf(0L), z.l);
 		Assert.assertEquals(Double.valueOf(0.0), z.d);
 		Assert.assertEquals(Float.valueOf(0f), z.f);
+		Assert.assertEquals(Byte.valueOf((byte)0), z.t);
+	}
+
+	@CompiledJson
+	public static class PrimitiveZeros {
+		@JsonAttribute(nullable = false)
+		public boolean b;
+		@JsonAttribute(nullable = false)
+		public short s;
+		@JsonAttribute(nullable = false)
+		public int i;
+		@JsonAttribute(nullable = false)
+		public long l;
+		@JsonAttribute(nullable = false)
+		public double d;
+		@JsonAttribute(nullable = false)
+		public float f;
+		@JsonAttribute(nullable = false)
+		public byte t;
+		@JsonAttribute(nullable = false)
+		public char c;
+
+		public PrimitiveZeros(boolean b, short s, int i, long l, double d, float f, byte t, char c) {
+			this.b = b;
+			this.s = s;
+			this.i = i;
+			this.l = l;
+			this.d = d;
+			this.f = f;
+			this.t = t;
+			this.c = c;
+		}
+	}
+
+	@Test
+	public void allZerosPrimitive() throws IOException {
+		PrimitiveZeros z = dslJsonFull.deserialize(PrimitiveZeros.class, new byte[]{'{', '}'}, 2);
+		Assert.assertFalse(z.b);
+		Assert.assertEquals((short) 0, z.s);
+		Assert.assertEquals(0, z.i);
+		Assert.assertEquals(0L, z.l);
+		Assert.assertEquals(0.0, z.d, 0);
+		Assert.assertEquals(0f, z.f, 0);
+		Assert.assertEquals((byte)0, z.t);
+		Assert.assertEquals((char)0, z.c);
 	}
 
 	@CompiledJson
@@ -128,6 +176,9 @@ public class TypesTest {
 		@JsonAttribute(nullable = false)
 		public byte[] ba;
 
+		@JsonAttribute(nullable = false)
+		public char[] ca;
+
 		public BasicCollections(
 				boolean[] b1, Boolean[] b2, List<Boolean> b3, Set<Boolean> b4,
 				short[] s1, Short[] s2, List<Short> s3, Set<Short> s4,
@@ -135,7 +186,7 @@ public class TypesTest {
 				long[] l1, Long[] l2, List<Long> l3, Set<Long> l4,
 				double[] d1, Double[] d2, List<Double> d3, Set<Double> d4,
 				float[] f1, Float[] f2, List<Float> f3, Set<Float> f4,
-				byte[] ba) {
+				byte[] ba, char[] ca) {
 			this.b1 = b1;
 			this.b2 = b2;
 			this.b3 = b3;
@@ -161,6 +212,7 @@ public class TypesTest {
 			this.f3 = f3;
 			this.f4 = f4;
 			this.ba = ba;
+			this.ca = ca;
 		}
 	}
 
