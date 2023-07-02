@@ -8,15 +8,16 @@ import java.lang.annotation.Target;
 /**
  * JSON converter can be specified for class.
  * It must have JSON_READER and JSON_WRITER which do the JSON conversion.
- * This can be used for fine tuning the serialization/deserialization process.
+ * This can be used for fine-tuning the serialization/deserialization process.
  *
- * Eg. java.util.Date is not a supported type. After creating class such as
+ * Eg. java.time.Instant is not a supported type. After creating class such as
  *
  * <pre>
- *     {@literal @}JsonConverter(target=Date.class)
- *     public abstract DateConverter {
- *         public static JsonReader.ReadObject&lt;Date&gt; JSON_READER = ...
- *         public static JsonWriter.WriteObject&lt;Date&gt; JSON_WRITER = ...
+ *     {@literal @}JsonConverter(target=Instant.class)
+ *     public abstract InstantConverter {
+ *         public static Instant read(JsonReader reader) { ... }
+ *         public static void write(JsonWriter writer, Instant value) { ... }
+ *         public static Instant default() { ... }
  *     }
  * </pre>
  *

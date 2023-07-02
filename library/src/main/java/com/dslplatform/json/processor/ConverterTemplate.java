@@ -466,6 +466,16 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tpublic void bindContent(final com.dslplatform.json.JsonReader reader, final ");
 		code.append(className).append(" instance) throws java.io.IOException {\n");
+		for (int i = 0; i < sortedAttributes.size(); i++) {
+			AttributeInfo attr = sortedAttributes.get(i);
+			if (!attr.canReadInput() || attr.converter == null || attr.converter.defaultValue == null) continue;
+			code.append("\t\t\tinstance.");
+			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
+			else if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(");
+			code.append(attr.converter.defaultValue);
+			if (attr.writeMethod != null) code.append(")");
+			code.append(";\n");
+		}
 		code.append("\t\t\tif (reader.last() == '}')");
 		checkMandatory(sortedAttributes, 0);
 		for (int i = 0; i < sortedAttributes.size(); i++) {

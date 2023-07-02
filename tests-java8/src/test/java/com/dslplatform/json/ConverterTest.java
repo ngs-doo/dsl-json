@@ -1,6 +1,7 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.test.CustomNamingStrategyExternal;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -136,6 +137,10 @@ public class ConverterTest {
 		public static void write(JsonWriter writer, int value) {
 			NumberConverter.serialize(value, writer);
 		}
+
+		public static int jsonDefault() {
+			return 0;
+		}
 	}
 
 	@JsonConverter(target = char.class)
@@ -147,6 +152,8 @@ public class ConverterTest {
 		public static void write(JsonWriter writer, char value) {
 			StringConverter.serialize(Character.toString(value), writer);
 		}
+
+		public static final char JSON_DEFAULT = '0';
 	}
 
 	private final DslJson<Object> dslJson = new DslJson<>(new DslJson.Settings<>().allowArrayFormat(true).includeServiceLoader());
@@ -288,5 +295,45 @@ public class ConverterTest {
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		dslJson.serialize(cn, os);
 		Assert.assertEquals("{\"myName\":\"test\"}", os.toString("UTF-8"));
+	}
+
+	@CompiledJson
+	public static class CustomIntDefault {
+		@JsonAttribute(converter = NonZeroIntConverter.class)
+		public int number;
+	}
+
+	public static class NonZeroIntConverter {
+		public static int read(JsonReader reader) throws IOException {
+			return NumberConverter.deserializeInt(reader);
+		}
+
+		public static void write(JsonWriter writer, int value) {
+			NumberConverter.serialize(value, writer);
+		}
+
+		public static final int JSON_DEFAULT = 1;
+	}
+
+	@Test
+	public void withNonZeroDefault() throws IOException {
+		DslJson<Object> dslJsonOmit = new DslJson<>(new DslJson.Settings<>().allowArrayFormat(true).skipDefaultValues(true).includeServiceLoader());
+		CustomIntDefault ci = new CustomIntDefault();
+		ci.number = 1;
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(ci, os);
+		Assert.assertEquals("{\"number\":1}", os.toString("UTF-8"));
+		os.reset();
+		dslJsonOmit.serialize(ci, os);
+		Assert.assertEquals("{}", os.toString("UTF-8"));
+		ci.number = 0;
+		os.reset();
+		dslJson.serialize(ci, os);
+		Assert.assertEquals("{\"number\":0}", os.toString("UTF-8"));
+		os.reset();
+		dslJsonOmit.serialize(ci, os);
+		Assert.assertEquals("{\"number\":0}", os.toString("UTF-8"));
+		CustomIntDefault res = dslJson.deserialize(CustomIntDefault.class, new byte[]{(byte)'{', (byte)'}'}, 2);
+		Assert.assertEquals(NonZeroIntConverter.JSON_DEFAULT, res.number);
 	}
 }

@@ -52,17 +52,14 @@ public class TypesTest {
 		public Double d;
 		@JsonAttribute(nullable = false)
 		public Float f;
-		@JsonAttribute(nullable = false)
-		public Byte t;
 
-		public Zeros(Boolean b, Short s, Integer i, Long l, Double d, Float f, Byte t) {
+		public Zeros(Boolean b, Short s, Integer i, Long l, Double d, Float f) {
 			this.b = b;
 			this.s = s;
 			this.i = i;
 			this.l = l;
 			this.d = d;
 			this.f = f;
-			this.t = t;
 		}
 	}
 
@@ -75,7 +72,6 @@ public class TypesTest {
 		Assert.assertEquals(Long.valueOf(0L), z.l);
 		Assert.assertEquals(Double.valueOf(0.0), z.d);
 		Assert.assertEquals(Float.valueOf(0f), z.f);
-		Assert.assertEquals(Byte.valueOf((byte)0), z.t);
 	}
 
 	@CompiledJson

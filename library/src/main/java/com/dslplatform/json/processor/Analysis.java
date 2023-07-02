@@ -695,14 +695,16 @@ public class Analysis {
 		String javaType = typeWithoutAnnotations(type);
 		String fullName = objectName(javaType);
 		Element declaredType = findElement(type);
-		Set<Element> usedTypes = new HashSet<Element>();
-		findAllElements(type, usedTypes, new HashSet<TypeMirror>());
+		Set<Element> usedTypes = new HashSet<>();
+		findAllElements(type, usedTypes, new HashSet<>());
 		VariableElement jsonReaderField = null;
 		VariableElement jsonBinderField = null;
 		VariableElement jsonWriterField = null;
 		ExecutableElement jsonReaderMethod = null;
 		ExecutableElement jsonBinderMethod = null;
 		ExecutableElement jsonWriterMethod = null;
+		VariableElement jsonDefaultField = null;
+		ExecutableElement jsonDefaultMethod = null;
 		boolean hasInstance = false;
 		boolean legacyDeclaration = true;
 		for (VariableElement field : ElementFilter.fieldsIn(converter.getEnclosedElements())) {
@@ -720,6 +722,8 @@ public class Analysis {
 				jsonBinderField = field;
 			} else if ("JSON_WRITER".equals(field.getSimpleName().toString())) {
 				jsonWriterField = field;
+			} else if ("JSON_DEFAULT".equals(field.getSimpleName().toString())) {
+				jsonDefaultField = field;
 			}
 		}
 		for (ExecutableElement method : ElementFilter.methodsIn(converter.getEnclosedElements())) {
@@ -729,6 +733,8 @@ public class Analysis {
 				jsonBinderMethod = method;
 			} else if ("JSON_WRITER".equals(method.getSimpleName().toString()) || "getJSON_WRITER".equals(method.getSimpleName().toString())) {
 				jsonWriterMethod = method;
+			} else if ("JSON_DEFAULT".equals(method.getSimpleName().toString()) || "getJSON_DEFAULT".equals(method.getSimpleName().toString())) {
+				jsonDefaultMethod = method;
 			} else if ("read".equals(method.getSimpleName().toString())) {
 				legacyDeclaration = false;
 				jsonReaderMethod = method;
@@ -738,6 +744,8 @@ public class Analysis {
 			} else if ("write".equals(method.getSimpleName().toString())) {
 				legacyDeclaration = false;
 				jsonWriterMethod = method;
+			} else if ("jsonDefault".equals(method.getSimpleName().toString())) {
+				jsonDefaultMethod = method;
 			}
 		}
 		for(Element used : usedTypes) {
@@ -859,9 +867,8 @@ public class Analysis {
 					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for write method. It must be of type: 'void write(com.dslplatform.json.JsonWriter, " + javaType + ")'. " + additionalDescription,
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (legacyDeclaration &&
-				(jsonBinderMethod != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderField.asType().toString())
-						|| jsonBinderMethod != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderMethod.getReturnType().toString()))) {
+		} else if (legacyDeclaration && jsonBinderField != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderField.asType().toString())
+						|| jsonBinderMethod != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderMethod.getReturnType().toString())) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,
@@ -893,6 +900,41 @@ public class Analysis {
 					converter,
 					getAnnotation(converter, converterType));
 		}
+
+		if (jsonDefaultField != null && (!jsonDefaultField.getModifiers().contains(Modifier.PUBLIC) || !jsonDefaultField.getModifiers().contains(Modifier.STATIC))
+			|| jsonDefaultMethod != null && (!jsonDefaultMethod.getModifiers().contains(Modifier.PUBLIC) || !hasInstance && !jsonDefaultMethod.getModifiers().contains(Modifier.STATIC))) {
+			hasError = true;
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					jsonDefaultField != null
+							? "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static JSON_DEFAULT field/method. It must be public and static for converter to work properly."
+							: "Specified converter: '" + converter.getQualifiedName() + "' doesn't have public and static jsonDefault method. It must be public and static for converter to work properly.",
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (jsonDefaultMethod != null
+				&& !(javaType.equals(jsonDefaultMethod.getReturnType().toString()) && jsonDefaultMethod.getParameters().size() == 0)) {
+			hasError = true;
+			String additionalDescription = "";
+			if (!javaType.equals(jsonDefaultMethod.getReturnType().toString())) {
+				additionalDescription += "Wrong return type defined. Expecting: " + javaType + ". Detected: " + jsonDefaultMethod.getReturnType();
+			}
+			if (jsonDefaultMethod.getParameters().size() != 0) {
+				additionalDescription += "Wrong number of arguments defined. Method can't have arguments. Detected: " + jsonDefaultMethod.getParameters().size();
+			}
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for jsonDefault method. It must be of type: '" + javaType + " jsonDefault()'. " + additionalDescription,
+					converter,
+					getAnnotation(converter, converterType));
+		} else if (jsonDefaultField != null && !javaType.equals(jsonDefaultField.asType().toString())) {
+			hasError = true;
+			String additionalDescription = "Wrong return type defined. Expecting: " + javaType + ". Detected: " + jsonDefaultField.asType();
+			messager.printMessage(
+					Diagnostic.Kind.ERROR,
+					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for JSON_DEFAULT field. It must be of type: '" + javaType + "'. " + additionalDescription,
+					converter,
+					getAnnotation(converter, converterType));
+		}
 		return new ConverterInfo(
 				converter,
 				legacyDeclaration,
@@ -905,6 +947,9 @@ public class Analysis {
 				jsonWriterMethod != null
 						? (hasInstance ? "INSTANCE." : "") + jsonWriterMethod.getSimpleName().toString() + "()" : jsonWriterField != null
 						? jsonWriterField.getSimpleName().toString() : "",
+				jsonDefaultMethod != null
+					? (hasInstance ? "INSTANCE." : "") + jsonDefaultMethod.getSimpleName().toString() + "()" : jsonDefaultField != null
+					? jsonDefaultField.getSimpleName().toString() : null,
 				javaType,
 				declaredType
 		);

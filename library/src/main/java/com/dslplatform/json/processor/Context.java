@@ -36,6 +36,9 @@ final class Context {
 
 	String getDefault(AttributeInfo attr) {
 		String type = attr.typeName;
+		if (attr.converter != null && attr.converter.defaultValue != null) {
+			return attr.converter.defaultValue;
+		}
 		String defVal = defaults.get(type);
 		if (defVal != null) return defVal;
 		int genIndex = type.indexOf('<');

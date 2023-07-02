@@ -14,6 +14,9 @@ public class ConverterInfo {
 	public final String reader;
 	public final String binder;
 	public final String writer;
+
+	@Nullable final String defaultValue;
+
 	public final String targetSignature;
 	public final Element targetType;
 	private final String readPrefix;
@@ -26,6 +29,7 @@ public class ConverterInfo {
 			String reader,
 			String binder,
 			String writer,
+			@Nullable String defaultValue,
 			String targetSignature,
 			@Nullable Element targetType) {
 		this.converter = converter;
@@ -34,6 +38,7 @@ public class ConverterInfo {
 		this.reader = reader;
 		this.binder = binder;
 		this.writer = writer;
+		this.defaultValue = defaultValue != null ? fullName + "." + defaultValue : null;
 		this.targetSignature = targetSignature;
 		this.targetType = targetType;
 		readPrefix = detectPrefix(legacyDeclaration, reader);
