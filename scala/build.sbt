@@ -46,9 +46,9 @@ val publishSettings = Seq(
     "-no-link-warnings",
     "-sourcepath", baseDirectory.value.toString,
     "-doc-source-url", if (isSnapshot.value) {
-      s"""https://github.com/ngs-doo/dsl-json/tree/master/scala/${name.value}\u20AC{FILE_PATH}.scala"""
+      s"""https://github.com/ngs-doo/dsl-json/tree/master/scala/\u20AC{FILE_PATH}.scala"""
     } else {
-      s"""https://github.com/ngs-doo/dsl-json/blob/${version.value}/scala/${name.value}\u20AC{FILE_PATH}.scala"""
+      s"""https://github.com/ngs-doo/dsl-json/blob/${version.value}/scala/\u20AC{FILE_PATH}.scala"""
     }
   ),
 

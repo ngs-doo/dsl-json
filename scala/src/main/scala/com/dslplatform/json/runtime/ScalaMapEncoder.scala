@@ -51,7 +51,7 @@ final class ScalaMapEncoder[K, V](
         if (keyEncoder.isEmpty && !lastKeyClass.contains(currentKeyClass)) {
           lastKeyClass = Some(currentKeyClass)
           json.tryFindWriter(currentKeyClass) match {
-            case wo: JsonWriter.WriteObject[K] => lastKeyEncoder = Some(wo)
+            case wo: JsonWriter.WriteObject[K@unchecked] => lastKeyEncoder = Some(wo)
             case _ => throw new ConfigurationException(s"Unable to find writer for $lastKeyClass")
           }
         }
@@ -64,7 +64,7 @@ final class ScalaMapEncoder[K, V](
           if (!lastValueClass.contains(currentValueClass)) {
             lastValueClass = Some(currentValueClass)
             json.tryFindWriter(currentValueClass) match {
-              case wo: JsonWriter.WriteObject[V] => lastValueEncoder = Some(wo)
+              case wo: JsonWriter.WriteObject[V@unchecked] => lastValueEncoder = Some(wo)
               case _ => throw new ConfigurationException(s"Unable to find writer for $lastValueClass")
             }
           }

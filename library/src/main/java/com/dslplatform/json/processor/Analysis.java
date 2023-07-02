@@ -92,12 +92,12 @@ public class Analysis {
 		this.converterElement = elements.getTypeElement(JsonConverter.class.getName());
 		this.converterType = types.getDeclaredType(converterElement);
 		this.typeSupport = typeSupport;
-		this.alternativeIgnore = alternativeIgnore == null ? new HashSet<String>() : alternativeIgnore;
-		this.alternativeNonNullable = alternativeNonNullable == null ? new HashMap<String, List<AnnotationMapping<Boolean>>>() : alternativeNonNullable;
-		this.alternativeAlias = alternativeAlias == null ? new HashMap<String, String>() : alternativeAlias;
-		this.alternativeMandatory = alternativeMandatory == null ? new HashMap<String, List<AnnotationMapping<Boolean>>>() : alternativeMandatory;
-		this.alternativeCreators = alternativeCreators == null ? new HashSet<String>() : alternativeCreators;
-		this.alternativeIndex = alternativeIndex == null ? new HashMap<String, String>() : alternativeIndex;
+		this.alternativeIgnore = alternativeIgnore == null ? new HashSet<>() : alternativeIgnore;
+		this.alternativeNonNullable = alternativeNonNullable == null ? new HashMap<>() : alternativeNonNullable;
+		this.alternativeAlias = alternativeAlias == null ? new HashMap<>() : alternativeAlias;
+		this.alternativeMandatory = alternativeMandatory == null ? new HashMap<>() : alternativeMandatory;
+		this.alternativeCreators = alternativeCreators == null ? new HashSet<>() : alternativeCreators;
+		this.alternativeIndex = alternativeIndex == null ? new HashMap<>() : alternativeIndex;
 		this.unknownTypes = unknownTypes == null ? UnknownTypes.ERROR : unknownTypes;
 		this.includeFields = includeFields;
 		this.includeBeanMethods = includeBeanMethods;
@@ -108,7 +108,7 @@ public class Analysis {
 	}
 
 	public Map<String, Element> processConverters(Set<? extends Element> converters) {
-		Map<String, Element> configurations = new LinkedHashMap<String, Element>();
+		Map<String, Element> configurations = new LinkedHashMap<>();
 		for (Element el : converters) {
 			findConverters(el);
 			if (el instanceof TypeElement) {
@@ -131,7 +131,7 @@ public class Analysis {
 	}
 
 	public void processAnnotation(DeclaredType currentAnnotationType, Set<? extends Element> targets) {
-		Stack<String> path = new Stack<String>();
+		Stack<String> path = new Stack<>();
 		for (Element el : targets) {
 			Element classElement;
 			ExecutableElement factory = null;
@@ -628,7 +628,7 @@ public class Analysis {
 			}
 			info.sortAttributes();
 		}
-		return new LinkedHashMap<String, StructInfo>(structs);
+		return new LinkedHashMap<>(structs);
 	}
 
 	private void findConverters(Element el) {
@@ -996,8 +996,8 @@ public class Analysis {
 		int total;
 		do {
 			total = structs.size();
-			List<StructInfo> items = new ArrayList<StructInfo>(structs.values());
-			Stack<String> path = new Stack<String>();
+			List<StructInfo> items = new ArrayList<>(structs.values());
+			Stack<String> path = new Stack<>();
 			for (StructInfo info : items) {
 				if (info.hasKnownConversion()) continue;
 				path.push(info.element.getSimpleName().toString());
@@ -1009,7 +1009,7 @@ public class Analysis {
 						}
 					}
 				} else {
-					Map<ExecutableElement, Map<String, VariableElement>> creatorArguments = new HashMap<ExecutableElement, Map<String, VariableElement>>();
+					Map<ExecutableElement, Map<String, VariableElement>> creatorArguments = new HashMap<>();
 					if (info.annotatedFactory != null) {
 						creatorArguments.put(info.annotatedFactory, getArguments(info.annotatedFactory));
 					} else if (info.annotatedConstructor != null) {
@@ -1405,7 +1405,7 @@ public class Analysis {
 			}
 			CompiledJson.ObjectFormatPolicy objectFormatPolicy = objectFormatPolicyValue(annotation);
 			CompiledJson.Format[] formats = getFormats(annotation);
-			if ((new HashSet<CompiledJson.Format>(Arrays.asList(formats))).size() != formats.length) {
+			if ((new HashSet<>(Arrays.asList(formats))).size() != formats.length) {
 				hasError = true;
 				messager.printMessage(
 						Diagnostic.Kind.ERROR,

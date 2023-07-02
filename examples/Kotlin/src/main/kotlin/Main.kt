@@ -47,7 +47,11 @@ class ObjectFactory(val text: String) {
 
 fun main(args: Array<String>) {
     //include service loader will load up classes created via annotation processor
-    val dslJson = DslJson<Any>(Settings.withRuntime<Any>().includeServiceLoader())
+    val settings = Settings.withRuntime<Any>()
+        //.with(_DataClass_DslJsonConverter()) //if there is some issue explicit loading can be triggered
+        .includeServiceLoader()
+
+    val dslJson = DslJson<Any>(settings)
     val dc = DataClass(
         language = "Kotlin",
         versions = listOf(170, 171, 172),

@@ -7,6 +7,7 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Arrays;
 
 public class BasicStuffTest {
@@ -82,5 +83,22 @@ public class BasicStuffTest {
         WithIs deser = (WithIs) dslJson.deserialize(WithIs.class, input);
         Assert.assertNotNull(deser);
         Assert.assertTrue(deser.isLocked());
+    }
+
+    @Test
+    public void withConverters() throws IOException {
+        final DslJson dslJson = new DslJson(Settings.basicSetup());
+
+        Instant now = Instant.now();
+        InstantClass ic = new InstantClass("instant", now);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        dslJson.serialize(ic, output);
+
+        Assert.assertEquals("{\"name\":\"instant\",\"time\":\"" + now + "\"}", output.toString("UTF-8"));
+
+        ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
+        InstantClass deser = (InstantClass) dslJson.deserialize(InstantClass.class, input);
+        Assert.assertNotNull(deser);
+        Assert.assertEquals(now, deser.getTime());
     }
 }

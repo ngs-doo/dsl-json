@@ -67,7 +67,7 @@ To use annotation processor it is sufficient to just reference the library:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>2.0.0</version>
+      <version>2.0.1</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -79,8 +79,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json:2.0.0'
-      annotationProcessor 'com.dslplatform:dsl-json:2.0.0'
+      compile 'com.dslplatform:dsl-json:2.0.1'
+      annotationProcessor 'com.dslplatform:dsl-json:2.0.1'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -112,7 +112,18 @@ Custom converter is a class with 2 static methods, eg:
 		}
 	}
 
-For mutable objects 3rd optional method is supported (bind)
+For mutable objects 3rd optional method is supported [bind](#binding)
+
+Optional default value can be specified in converters which will be used for missing properties
+and during serialization for omit values check
+
+	public static abstract class PiConverter {
+		//... read and write
+		public static final double JSON_DEFAULT = 3.14159;
+	}
+
+This feature is useful for introducing new properties into classes which might not be yet sent,
+as a way to specify expected value for such new fields.
 
 ### @JsonAttribute features
 
@@ -308,7 +319,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "2.0.0"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "2.0.1"
 
 ### Kotlin support
 
@@ -319,8 +330,8 @@ When used with Gradle, configuration can be done via:
       kotlin("kapt") version "1.8.0"
     }
     dependencies {
-      implementation("com.dslplatform:dsl-json:2.0.0")
-      kapt("com.dslplatform:dsl-json:2.0.0")
+      implementation("com.dslplatform:dsl-json:2.0.1")
+      kapt("com.dslplatform:dsl-json:2.0.1")
     }
 
 ## FAQ
