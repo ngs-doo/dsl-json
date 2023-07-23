@@ -1121,12 +1121,18 @@ public class Analysis {
 		}
 		if (type instanceof DeclaredType) {
 			DeclaredType dt = (DeclaredType) type;
-			List<TypeMirror> args = new ArrayList<>(2);
-			for (TypeMirror a : dt.getTypeArguments()) {
-				args.add(unpackType(a, types));
+			TypeElement te = type instanceof TypeElement
+					? (TypeElement) type
+					: dt.asElement() instanceof TypeElement
+					? (TypeElement) dt.asElement()
+					: null;
+			if (te != null) {
+				List<TypeMirror> args = new ArrayList<>(2);
+				for (TypeMirror a : dt.getTypeArguments()) {
+					args.add(unpackType(a, types));
+				}
+				return types.getDeclaredType(te, args.toArray(new TypeMirror[0]));
 			}
-			TypeElement te = (TypeElement) dt.asElement();
-			return types.getDeclaredType(te, args.toArray(new TypeMirror[0]));
 		}
 		Element el = types.asElement(type);
 		if (el != null) {
