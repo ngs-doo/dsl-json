@@ -905,4 +905,11 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 				compileTestCase(VoidOnBuilderReturn.class),
 				"Skipping over method 'setS' because its return type is not the expected 'com.dslplatform.json.models.VoidOnBuilderReturn.Builder'");
 	}
+
+	@Test
+	public void faultyAnalysisModel() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(FaultyAnalysis.class);
+
+		Assert.assertEquals(0, diagnostics.size());
+	}
 }

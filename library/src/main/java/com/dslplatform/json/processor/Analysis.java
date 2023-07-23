@@ -1119,13 +1119,13 @@ public class Analysis {
 			TypeMirror sb = unpackType(wt.getSuperBound(), types);
 			return types.getWildcardType(ext, sb);
 		}
-		if (type instanceof DeclaredType && type instanceof TypeElement) {
+		if (type instanceof DeclaredType) {
 			DeclaredType dt = (DeclaredType) type;
 			List<TypeMirror> args = new ArrayList<>(2);
 			for (TypeMirror a : dt.getTypeArguments()) {
 				args.add(unpackType(a, types));
 			}
-			TypeElement te = (TypeElement) dt;
+			TypeElement te = (TypeElement) dt.asElement();
 			return types.getDeclaredType(te, args.toArray(new TypeMirror[0]));
 		}
 		Element el = types.asElement(type);
