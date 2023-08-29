@@ -867,8 +867,9 @@ public class Analysis {
 					"Specified converter: '" + converter.getQualifiedName() + "' has invalid type for write method. It must be of type: 'void write(com.dslplatform.json.JsonWriter, " + javaType + ")'. " + additionalDescription,
 					converter,
 					getAnnotation(converter, converterType));
-		} else if (legacyDeclaration && jsonBinderField != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderField.asType().toString())
-						|| jsonBinderMethod != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderMethod.getReturnType().toString())) {
+		} else if (legacyDeclaration &&
+				(jsonBinderField != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderField.asType().toString())
+						|| jsonBinderMethod != null && !("com.dslplatform.json.JsonReader.BindObject<" + fullName + ">").equals(jsonBinderMethod.getReturnType().toString())) ) {
 			hasError = true;
 			messager.printMessage(
 					Diagnostic.Kind.ERROR,

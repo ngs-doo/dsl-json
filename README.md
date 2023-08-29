@@ -67,7 +67,7 @@ To use annotation processor it is sufficient to just reference the library:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>2.0.1</version>
+      <version>2.0.2</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -79,8 +79,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json:2.0.1'
-      annotationProcessor 'com.dslplatform:dsl-json:2.0.1'
+      compile 'com.dslplatform:dsl-json:2.0.2'
+      annotationProcessor 'com.dslplatform:dsl-json:2.0.2'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -319,7 +319,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "2.0.1"
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "2.0.2"
 
 ### Kotlin support
 
@@ -330,8 +330,8 @@ When used with Gradle, configuration can be done via:
       kotlin("kapt") version "1.8.0"
     }
     dependencies {
-      implementation("com.dslplatform:dsl-json:2.0.1")
-      kapt("com.dslplatform:dsl-json:2.0.1")
+      implementation("com.dslplatform:dsl-json:2.0.2")
+      kapt("com.dslplatform:dsl-json:2.0.2")
     }
 
 ## FAQ

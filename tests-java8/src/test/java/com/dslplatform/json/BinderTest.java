@@ -65,4 +65,19 @@ public class BinderTest {
 		Assert.assertEquals("abc", wc.a);
 		Assert.assertEquals("value", wc.b.value);
 	}
+
+	@Test
+	public void nestedBindWorks() throws IOException {
+		byte[] input = "{\"firstname\":\"me\", \"surname\":\"for-real\",\"age\":42}".getBytes(StandardCharsets.UTF_8);
+		MutablePerson wc = dslJson.deserialize(MutablePerson.class, input, input.length);
+		Assert.assertEquals("me", wc.firstname.value());
+		Assert.assertEquals("for-real", wc.surname.value());
+		Assert.assertEquals(42, wc.age);
+		JsonWriter writer = dslJson.newWriter();
+		dslJson.serialize(writer, wc);
+		String output = writer.toString();
+		Assert.assertTrue(output.contains("\"firstname\":\"me\""));
+		Assert.assertTrue(output.contains("\"surname\":\"for-real\""));
+		Assert.assertTrue(output.contains("\"age\":42"));
+	}
 }
