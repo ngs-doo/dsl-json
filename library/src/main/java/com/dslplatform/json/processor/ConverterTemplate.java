@@ -717,7 +717,8 @@ class ConverterTemplate {
 					}
 				}
 				if (checkFiltering) {
-					code.append(" && (").append("instance.").append(si.filteringAttribute).append("().size()==0 || ").append("instance.").append(si.filteringAttribute).append("().contains(\"").append(attr.name).append("\"))");
+					if (checkDefaults) code.append(" && ");
+					code.append("(").append("instance.").append(si.filteringAttribute).append("().size()==0 || ").append("instance.").append(si.filteringAttribute).append("().contains(\"").append(attr.name).append("\"))");
 				}
 				code.append(") {\n");
 			}
