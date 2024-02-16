@@ -186,4 +186,11 @@ public @interface CompiledJson {
 	 * @return deserialization hint or additional serialization info
 	 */
 	String name() default "";
+
+	/**
+	 * Object attributes can be filtered out during serialization.<br>
+	 * Attributes to be filtered out can be carried by the object himself in an attribute (of Collection type)<br>
+	 * @return name of the attribute that may contain other attribute names to be filtered out from serialization
+	 */
+	String filteringAttribute() default "";
 }
