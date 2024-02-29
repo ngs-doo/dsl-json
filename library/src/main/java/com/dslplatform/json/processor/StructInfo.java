@@ -29,6 +29,7 @@ public class StructInfo {
 	public final CompiledJson.ObjectFormatPolicy objectFormatPolicy;
 	public final TypeElement deserializeAs;
 	public final String discriminator;
+	public final String filteringAttribute;
 	public final String deserializeName;
 	public final @Nullable NamingStrategy namingStrategy;
 	public final EnumSet<CompiledJson.Format> formats;
@@ -65,6 +66,7 @@ public class StructInfo {
 			CompiledJson.ObjectFormatPolicy objectFormatPolicy,
 			@Nullable TypeElement deserializeAs,
 			@Nullable String discriminator,
+			@Nullable String filteringAttribute,
 			@Nullable String deserializeName,
 			@Nullable Element enumConstantNameSource,
 			@Nullable NamingStrategy namingStrategy,
@@ -86,6 +88,7 @@ public class StructInfo {
 		this.objectFormatPolicy = objectFormatPolicy;
 		this.deserializeAs = deserializeAs;
 		this.discriminator = discriminator != null ? discriminator : "";
+		this.filteringAttribute = filteringAttribute != null ? filteringAttribute : "";
 		this.deserializeName = deserializeName != null ? deserializeName : "";
 		this.enumConstantNameSource = enumConstantNameSource;
 		this.namingStrategy = namingStrategy;
@@ -134,6 +137,7 @@ public class StructInfo {
 		this.objectFormatPolicy = CompiledJson.ObjectFormatPolicy.DEFAULT;
 		this.deserializeAs = null;
 		this.discriminator = "";
+		this.filteringAttribute = "";
 		this.deserializeName = "";
 		this.enumConstantNameSource = null;
 		this.namingStrategy = null;

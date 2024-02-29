@@ -1368,11 +1368,13 @@ public class Analysis {
 			CompiledJson.Behavior onUnknown = CompiledJson.Behavior.DEFAULT;
 			CompiledJson.TypeSignature typeSignature = CompiledJson.TypeSignature.DEFAULT;
 			TypeElement deserializeAs = null;
+			String filteringAttribute = "";
 			if (!isJsonObject) {
 				if (annotation != null) {
 					onUnknown = onUnknownValue(annotation);
 					typeSignature = typeSignatureValue(annotation);
 					deserializeAs = deserializeAs(annotation);
+					filteringAttribute = filteringAttribute(annotation);
 					if (deserializeAs != null) {
 						String error = validateDeserializeAs(element, deserializeAs);
 						if (error != null) {
@@ -1453,6 +1455,7 @@ public class Analysis {
 							objectFormatPolicy,
 							deserializeAs,
 							classDiscriminator(annotation),
+							filteringAttribute,
 							className(annotation),
 							type == ObjectType.ENUM ? findEnumConstantNameSource(element) : null,
 							namingStrategy(element, annotation),
@@ -2546,6 +2549,17 @@ public class Analysis {
 			}
 		}
 		return null;
+	}
+	
+	@Nullable
+	private static String filteringAttribute(AnnotationMirror annotation) {
+		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annotation.getElementValues();
+		for (ExecutableElement ee : values.keySet()) {
+			if (ee.toString().equals("filteringAttribute()")) {
+				return (String) values.get(ee).getValue();
+			}
+		}
+		return "";
 	}
 
 	private static final Map<String, NamingStrategy> namingCache = new HashMap<String, NamingStrategy>();

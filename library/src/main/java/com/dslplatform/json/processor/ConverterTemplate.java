@@ -689,6 +689,7 @@ class ConverterTemplate {
 		code.append("\t\tpublic boolean writeContentMinimal(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
 		code.append("\t\t\tboolean hasWritten = false;\n");
+		boolean checkFiltering = !si.filteringAttribute.isEmpty();
 		for (AttributeInfo attr : sortedAttributes) {
 			if (!attr.canWriteOutput()) continue;
 			String defaultValue = context.getDefault(attr);
@@ -697,21 +698,27 @@ class ConverterTemplate {
 			boolean isPrimitive = !attr.typeName.equals(Analysis.objectName(attr.typeName));
 			String readValue = "instance." + attr.readProperty;
 
-			if (checkDefaults) {
+			if (checkDefaults || checkFiltering) {
 				code.append("\t\t\tif (");
-				if ("null".equals(defaultValue) || isPrimitive) {
-					code.append(readValue).append(" != ").append(defaultValue);
-				} else if (attr.notNull && attr.isArray) {
-					code.append(readValue).append(" != null && ").append(readValue).append(".length != 0");
-				} else if (attr.notNull && (attr.isList || attr.isSet || attr.isMap)) {
-					code.append(readValue).append(" != null && !").append(readValue).append(".isEmpty()");
-				} else {
-					StructInfo target = context.structs.get(attr.typeName);
-					if (target != null && (target.hasEmptyCtor() || target.hasKnownConversion() || target.annotatedFactory != null)) {
-						code.append(readValue).append(" != null");
+				if (checkDefaults) {
+					if ("null".equals(defaultValue) || isPrimitive) {
+						code.append(readValue).append(" != ").append(defaultValue);
+					} else if (attr.notNull && attr.isArray) {
+						code.append(readValue).append(" != null && ").append(readValue).append(".length != 0");
+					} else if (attr.notNull && (attr.isList || attr.isSet || attr.isMap)) {
+						code.append(readValue).append(" != null && !").append(readValue).append(".isEmpty()");
 					} else {
-						code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+						StructInfo target = context.structs.get(attr.typeName);
+						if (target != null && (target.hasEmptyCtor() || target.hasKnownConversion() || target.annotatedFactory != null)) {
+							code.append(readValue).append(" != null");
+						} else {
+							code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+						}
 					}
+				}
+				if (checkFiltering) {
+					if (checkDefaults) code.append(" && ");
+					code.append("(").append("instance.").append(si.filteringAttribute).append("().size()==0 || ").append("instance.").append(si.filteringAttribute).append("().contains(\"").append(attr.name).append("\"))");
 				}
 				code.append(") {\n");
 			}
