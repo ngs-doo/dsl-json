@@ -24,7 +24,22 @@ import java.util.*;
  * For maximum performance JsonWriter instances should be reused (to avoid allocation of new byte[] buffer instances).
  * They should not be shared across threads (concurrently) so for Thread reuse it's best to use patterns such as ThreadLocal.
  */
-public final class JsonWriter {
+public class JsonWriter {
+
+	public static class Factory {
+
+		public JsonWriter create(@Nullable final UnknownSerializer unknownSerializer) {
+			return new JsonWriter(unknownSerializer);
+		}
+
+		public JsonWriter create(int size, @Nullable final UnknownSerializer unknownSerializer) {
+			return new JsonWriter(size, unknownSerializer);
+		}
+
+		public JsonWriter create(byte[] buffer, @Nullable final UnknownSerializer unknownSerializer) {
+			return new JsonWriter(buffer, unknownSerializer);
+		}
+	}
 
 	final byte[] ensureCapacity(final int free) {
 		if (position + free >= buffer.length) {
@@ -32,6 +47,8 @@ public final class JsonWriter {
 		}
 		return buffer;
 	}
+	public interface FilterInfo{};
+	protected final static FilterInfo FILTER_INFO_EMPTY = new FilterInfo(){};
 
 	void advance(int size) {
 		position += size;
@@ -45,15 +62,15 @@ public final class JsonWriter {
 	private final UnknownSerializer unknownSerializer;
 	private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
 
-	JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
+	protected JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
 		this(512, unknownSerializer);
 	}
 
-	JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer) {
+	protected JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer) {
 		this(new byte[size], unknownSerializer);
 	}
 
-	JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer) {
+	protected JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer) {
 		this.buffer = buffer;
 		this.unknownSerializer = unknownSerializer;
 	}
@@ -142,7 +159,7 @@ public final class JsonWriter {
 	 *
 	 * @param value string to write
 	 */
-	public final void writeString(final String value) {
+	public void writeString(final String value) {
 		final int len = value.length();
 		if (position + (len << 2) + (len << 1) + 2 >= buffer.length) {
 			enlargeOrFlush(position, (len << 2) + (len << 1) + 2);
@@ -169,7 +186,7 @@ public final class JsonWriter {
 	 *
 	 * @param value char sequence to write
 	 */
-	public final void writeString(final CharSequence value) {
+	public void writeString(final CharSequence value) {
 		final int len = value.length();
 		if (position + (len << 2) + (len << 1) + 2 >= buffer.length) {
 			enlargeOrFlush(position, (len << 2) + (len << 1) + 2);
@@ -370,7 +387,7 @@ public final class JsonWriter {
 	 * @param value ascii string
 	 */
 	@SuppressWarnings("deprecation")
-	public final void writeAscii(final String value) {
+	public void writeAscii(final String value) {
 		final int len = value.length();
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
@@ -387,7 +404,7 @@ public final class JsonWriter {
 	 * @param len   part of the provided string to use
 	 */
 	@SuppressWarnings("deprecation")
-	public final void writeAscii(final String value, final int len) {
+	public void writeAscii(final String value, final int len) {
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
 		}
@@ -401,7 +418,7 @@ public final class JsonWriter {
 	 *
 	 * @param buf byte buffer to copy
 	 */
-	public final void writeAscii(final byte[] buf) {
+	public void writeAscii(final byte[] buf) {
 		final int len = buf.length;
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
@@ -421,7 +438,7 @@ public final class JsonWriter {
 	 * @param buf byte buffer to copy
 	 * @param len part of buffer to copy
 	 */
-	public final void writeAscii(final byte[] buf, final int len) {
+	public void writeAscii(final byte[] buf, final int len) {
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
 		}
@@ -441,7 +458,7 @@ public final class JsonWriter {
 	 * @param offset in buffer to start from
 	 * @param len    part of buffer to copy
 	 */
-	public final void writeRaw(final byte[] buf, final int offset, final int len) {
+	public void writeRaw(final byte[] buf, final int offset, final int len) {
 		if (position + len >= buffer.length) {
 			enlargeOrFlush(position, len);
 		}
@@ -455,7 +472,7 @@ public final class JsonWriter {
 	 *
 	 * @param value bytes to encode
 	 */
-	public final void writeBinary(final byte[] value) {
+	public void writeBinary(final byte[] value) {
 		if (position + (value.length << 1) + 2 >= buffer.length) {
 			enlargeOrFlush(position, (value.length << 1) + 2);
 		}
@@ -767,7 +784,7 @@ public final class JsonWriter {
 		}
 		writeByte(ARRAY_END);
 	}
-
+	@SuppressWarnings("unchecked, rawtypes")
 	public void serializeRaw(@Nullable final List list, final WriteObject encoder) {
 		serialize(list, encoder);
 	}
@@ -808,6 +825,7 @@ public final class JsonWriter {
 		writeByte(ARRAY_END);
 	}
 
+	@SuppressWarnings("unchecked, rawtypes")
 	public void serializeRaw(@Nullable final Collection collection, final WriteObject encoder) {
 		serialize(collection, encoder);
 	}
@@ -836,6 +854,7 @@ public final class JsonWriter {
 		writeByte(OBJECT_END);
 	}
 
+	@SuppressWarnings("unchecked, rawtypes")
 	public void serializeRaw(@Nullable final Map map, final WriteObject keyEncoder, final WriteObject valueEncoder) {
 		serialize(map, keyEncoder, valueEncoder);
 	}
@@ -892,4 +911,56 @@ public final class JsonWriter {
 					"Check that JsonWriter was created through DslJson#newWriter.");
 		}
 	}
+	// Filter methods, called when filtering is enabled
+
+	/**
+	 * called prior to a class being serialised, and allows for any data about the class to be created/calculated.
+	 * The returned value is subsequently passed to other filter methods
+	 * @param instance the instance being serialized
+	 * @param clazz the class (or superclass) of the instance associated with the caller, i.e. the one marked with @JsonCompiled
+	 * @param access the property accessor for the class
+	 * @param properties the list of properties for the class
+	 * @return some private memo used to call other filter methods later for this serialisation
+	 * @param <C>
+	 */
+	public <C> FilterInfo controlledFilterInfo(C instance, Class<C> clazz, PropertyAccessor<C> access, List<PropertyInfo<C>> properties) {
+		return FILTER_INFO_EMPTY;
+	}
+
+	public <C> List<PropertyInfo<C>> controlledStart(C instance, Class<C> clazz, PropertyAccessor<C> access, List<PropertyInfo<C>> properties, FilterInfo filterInfo) {
+		return properties;
+	}
+
+	/**
+	 * prepare for the property to be written.
+	 * If the property should be skipped, then return null.
+	 * If the property is to be written, then return the writer to use for the property., then the property.writeQuoted method should be called to write the property name
+	 *
+	 * If the writer is changed, then the output should be managed correctly
+	 * @param instance the instance being serialized
+	 * @param clazz the class (or superclass) of the instance associated with the caller, i.e. the one marked with @JsonCompiled
+	 * @param access the property accessor for the class
+	 * @param filterInfo the filter info returned by to prior call to #controlledFilterInfo
+	 * @param property the property under consideration
+	 * @param writer the currnt writer. If chnaging writer, then ensure that output is managed correctly
+	 * @return null if the property should be skipped, or the writer to use for the property
+	 * @param <C>
+	 */
+	public <C> JsonWriter controlledPrepareForProperty(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, PropertyInfo<C> property, JsonWriter writer) {
+		property.writeQuoted(this);
+		return this;
+	}
+
+	/**
+	 *
+	 * @param instance the instance being serialized
+	 * @param clazz the class (or superclass) of the instance associated with the caller, i.e. the one marked with @JsonCompiled
+	 * @param access the property accessor for the class
+	 * @param filterInfo the filter info returned by to prior call to #controlledFilterInfo
+	 * @param writer the current writer. If chnnging writer, then ensure that output is managed correctly (e.g. that the writer is flushed)
+	 * @param <C>
+	 */
+	public <C> void controlledFinished(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, JsonWriter writer) {
+	}
+
 }

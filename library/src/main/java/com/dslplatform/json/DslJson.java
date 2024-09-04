@@ -73,6 +73,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * which can be reconstructed from schema information
 	 */
 	public final boolean omitDefaults;
+	public final boolean filterOutputs;
 	/**
 	 * When object supports array format, eg. [prop1, prop2, prop3] this value must be enabled before
 	 * object will be serialized in such a way. Regardless of this value deserialization will support all formats.
@@ -96,6 +97,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	protected final ThreadLocal<JsonReader> localReader;
 	private final ExternalConverterAnalyzer externalConverterAnalyzer;
 	private final Map<Class<? extends Annotation>, Boolean> creatorMarkers;
+	private final JsonWriter.Factory writerFactory;
 
 	public interface Fallback<TContext> {
 		void serialize(@Nullable Object instance, OutputStream stream) throws IOException;
@@ -139,6 +141,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
 		private final Set<ClassLoader> classLoaders = new HashSet<ClassLoader>();
 		private final Map<Class<? extends Annotation>, Boolean> creatorMarkers = new HashMap<Class<? extends Annotation>, Boolean>();
+		private JsonWriter.Factory writerFactory = new JsonWriter.Factory();
+		private boolean filterOutputs = false;
 
 		/**
 		 * Pass in context for DslJson.
@@ -418,6 +422,26 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 
 		/**
+		 * Set the custom writer factory to use
+		 * @return itself
+		 */
+		public Settings<TContext> writerFactory(JsonWriter.Factory writerFactory) {
+			if (writerFactory == null) throw new IllegalArgumentException("writerFactory can't be null");
+			this.writerFactory = writerFactory;
+			return this;
+		}
+
+		/**
+		 * Set if filtered outputs should be used
+		 * @return itself
+		 */
+		public Settings<TContext> filterOutputs(boolean filterOutputs) {
+			this.filterOutputs = filterOutputs;
+			return this;
+		}
+
+
+		/**
 		 * Configure DslJson with custom Configuration during startup.
 		 * Configurations are extension points for setting up readers/writers during DslJson initialization.
 		 *
@@ -492,7 +516,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.localWriter = new ThreadLocal<JsonWriter>() {
 			@Override
 			protected JsonWriter initialValue() {
-				return new JsonWriter(4096, self);
+				return writerFactory.create(4096, self);
 			}
 		};
 		this.localReader = new ThreadLocal<JsonReader>() {
@@ -520,6 +544,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.settingsBinders = settings.binderFactories.size();
 		this.externalConverterAnalyzer = new ExternalConverterAnalyzer(settings.classLoaders);
 		this.creatorMarkers = new HashMap<Class<? extends Annotation>, Boolean>(settings.creatorMarkers);
+		this.writerFactory = settings.writerFactory;
+		this.filterOutputs = settings.filterOutputs;
 
 		BinaryConverter.registerDefault(this);
 		BoolConverter.registerDefault(this);
@@ -614,7 +640,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound writer
 	 */
 	public JsonWriter newWriter() {
-		return new JsonWriter(this);
+		return writerFactory.create(this);
 	}
 
 	/**
@@ -627,7 +653,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound writer
 	 */
 	public JsonWriter newWriter(int size) {
-		return new JsonWriter(size, this);
+		return writerFactory.create(size, this);
 	}
 
 	/**
@@ -641,7 +667,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 */
 	public JsonWriter newWriter(byte[] buffer) {
 		if (buffer == null) throw new IllegalArgumentException("null value provided for buffer");
-		return new JsonWriter(buffer, this);
+		return writerFactory.create(buffer, this);
 	}
 
 	/**
@@ -2384,7 +2410,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			stream.write(JsonWriter.ARRAY_END);
 			return;
 		}
-		final JsonWriter buffer = writer == null ? new JsonWriter(this) : writer;
+		final JsonWriter buffer = writer == null ? writerFactory.create(this) : writer;
 		T item = iterator.next();
 		Class<?> lastManifest = null;
 		JsonWriter.WriteObject lastWriter = null;
@@ -2460,7 +2486,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (stream == null) {
 			throw new IllegalArgumentException("stream can't be null");
 		}
-		final JsonWriter buffer = writer == null ? new JsonWriter(this) : writer;
+		final JsonWriter buffer = writer == null ? writerFactory.create(this) : writer;
 		final JsonWriter.WriteObject instanceWriter = getOrCreateWriter(null, manifest);
 		stream.write(JsonWriter.ARRAY_START);
 		T item = iterator.next();

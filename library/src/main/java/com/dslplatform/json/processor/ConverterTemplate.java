@@ -121,6 +121,7 @@ class ConverterTemplate {
 		}
 		code.append(className).append("> {\n");
 		code.append("\t\tprivate final boolean alwaysSerialize;\n");
+		code.append("\t\tprivate final boolean controlledSerialize;\n");
 		code.append("\t\tprivate final com.dslplatform.json.DslJson __dsljson;\n");
 		if (si.isParameterized) {
 			code.append("\t\tprivate final java.lang.reflect.Type[] actualTypes;\n");
@@ -187,12 +188,19 @@ class ConverterTemplate {
 			case DEFAULT:
 			case EXPLICIT:
 				code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults;\n");
+				code.append("\t\t\tthis.controlledSerialize = __dsljson.filterOutputs;\n");
 				break;
 			case MINIMAL:
 				code.append("\t\t\tthis.alwaysSerialize = false;\n");
+				code.append("\t\t\tthis.controlledSerialize = __dsljson.filterOutputs;\n");
 				break;
 			case FULL:
 				code.append("\t\t\tthis.alwaysSerialize = true;\n");
+				code.append("\t\t\tthis.controlledSerialize = __dsljson.filterOutputs;\n");
+				break;
+			case CONTROLLED:
+				code.append("\t\t\tthis.alwaysSerialize = false;\n");
+				code.append("\t\t\tthis.controlledSerialize = true;\n");
 				break;
 		}
 
@@ -665,13 +673,15 @@ class ConverterTemplate {
 		if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
 			writeDiscriminator(si);
 			if (!si.attributes.isEmpty()) {
-				code.append("\t\t\t\tif (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
+				code.append("\t\t\t\tif (controlledSerialize) { writeContentControlled(writer, instance); writer.writeByte((byte)'}'); }\n");
+				code.append("\t\t\t\telse if (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
 				code.append("\t\t\t\telse { writeContentMinimal(writer, instance); writer.getByteBuffer()[writer.size() - 1] = '}'; }\n");
 			} else {
 				code.append("\t\t\t\twriter.writeByte((byte)'}');\n");
 			}
 		} else {
-			code.append("\t\t\t\tif (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
+			code.append("\t\t\t\tif (controlledSerialize) { writeContentControlled(writer, instance); writer.writeByte((byte)'}'); }\n");
+			code.append("\t\t\t\telse if (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
 			code.append("\t\t\t\telse if (writeContentMinimal(writer, instance)) writer.getByteBuffer()[writer.size() - 1] = '}';\n");
 			code.append("\t\t\t\telse writer.writeByte((byte)'}');\n");
 		}
@@ -684,6 +694,54 @@ class ConverterTemplate {
 			code.append("\t\t\twriter.writeAscii(quoted_").append(attr.name).append(");\n");
 			writeProperty(attr, false, "\t\t\t");
 		}
+		code.append("\t\t}\n");
+
+		String rawClassName = className.contains("<") ? className.substring(0, className.indexOf('<')) : className;
+		code.append("\t\tprivate final com.dslplatform.json.PropertyAccessor<").append(rawClassName).append("> propertyAccessor = (instance, field) -> {\n");
+		code.append("\t\t\tswitch (field.getName()) {\n");
+		for (AttributeInfo attr : sortedAttributes) {
+			if (!attr.canWriteOutput()) continue;
+			code.append("\t\t\t\tcase \"").append(attr.name).append("\":\n");
+			code.append("\t\t\t\t\treturn instance.").append(attr.readProperty).append(";\n");
+		}
+		code.append("\t\t\t\tdefault:\n");
+		code.append("\t\t\t\t\t throw new IllegalArgumentException(\"Unknown field \" + field.getName());");
+		code.append("\t\t\t}\n");
+		code.append("\t\t};\n");
+		code.append("\n");
+
+		code.append("\t\tprivate final java.util.List<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">> propertyInfos = java.util.List.of(");
+		boolean first = true;
+		for (AttributeInfo attr : sortedAttributes) {
+			if (!attr.canWriteOutput()) continue;
+			if (!first) code.append(",");
+			first = false;
+			code.append("\n\t\t\tnew com.dslplatform.json.PropertyInfo(\"").append(attr.name).append("\", quoted_").append(attr.name).append(")");
+		}
+		code.append(");\n\n");
+
+		code.append("\t\tpublic void writeContentControlled(final com.dslplatform.json.JsonWriter originalWriter, final ");
+		code.append(className).append(" instance) {\n");
+		code.append("\t\t\tfinal com.dslplatform.json.JsonWriter.FilterInfo filterInfo = originalWriter.controlledFilterInfo(instance, ").append(rawClassName).append(".class, propertyAccessor, propertyInfos);\n");
+
+		code.append("\t\t\tcom.dslplatform.json.JsonWriter writer = originalWriter;\n");
+		code.append("\t\t\tfor (com.dslplatform.json.PropertyInfo property : originalWriter.controlledStart(instance, ").append(rawClassName).append(".class, propertyAccessor, propertyInfos, filterInfo)) {\n");
+		code.append("\t\t\t\twriter = originalWriter.controlledPrepareForProperty(instance, ").append(rawClassName).append(".class, propertyAccessor, filterInfo, property, writer);\n");
+		code.append("\t\t\t\tif (writer != null) {\n");
+		code.append("\t\t\t\t\tswitch (property.getName()) {\n");
+
+		for (AttributeInfo attr : sortedAttributes) {
+			if (!attr.canWriteOutput()) continue;
+			code.append("\t\t\t\t\t\tcase \"").append(attr.name).append("\":\n");
+			writeProperty(attr, false, "\t\t\t\t\t\t\t");
+			code.append("\t\t\t\t\t\t\tbreak;\n");
+		}
+		code.append("\t\t\t\t\t\tdefault:\n");
+		code.append("\t\t\t\t\t\t\t throw new IllegalArgumentException(\"Unknown property \" + property.getName());\n");
+		code.append("\t\t\t\t\t}\n");
+		code.append("\t\t\t\t}\n");
+		code.append("\t\t\t}\n");
+		code.append("\t\t\toriginalWriter.controlledFinished(instance, ").append(rawClassName).append(".class, propertyAccessor, filterInfo, writer);\n");
 		code.append("\t\t}\n");
 
 		code.append("\t\tpublic boolean writeContentMinimal(final com.dslplatform.json.JsonWriter writer, final ");

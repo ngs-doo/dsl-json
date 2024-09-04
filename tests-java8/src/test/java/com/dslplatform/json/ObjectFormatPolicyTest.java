@@ -4,18 +4,22 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static com.dslplatform.json.CompiledJson.ObjectFormatPolicy.*;
 import static com.dslplatform.json.JsonAttribute.IncludePolicy.ALWAYS;
 import static com.dslplatform.json.JsonAttribute.IncludePolicy.NON_DEFAULT;
-
+import static com.dslplatform.json.TestJsonWriters.*;
 public class ObjectFormatPolicyTest {
 
 	private DslJson<Object> dslJsonMinimal = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(true));
 	private DslJson<Object> dslJsonFull = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(false));
+	private DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new AllWriterFactory()).filterOutputs(true));
+	private DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new NoneWriterFactory()).filterOutputs(true));
+	private DslJson<Object> dslJsonFilteredSecret(String fieldName)  {
+		return new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new SecretWriterFactory(fieldName)).filterOutputs(true));
+	}
+
 
 	@CompiledJson
 	static class User1 {
@@ -151,6 +155,19 @@ public class ObjectFormatPolicyTest {
 
 		public String description;
 	}
+	@CompiledJson(objectFormatPolicy = CONTROLLED)
+	static class User8 {
+		public UUID id;
+
+		@JsonAttribute
+		public int age;
+
+		@JsonAttribute(includeToMinimal = NON_DEFAULT)
+		public String firstName;
+
+		@JsonAttribute(includeToMinimal = ALWAYS)
+		public String lastName;
+	}
 
 	@Test
 	public void testDefaultObjectFormatPolicy() throws IOException {
@@ -158,6 +175,9 @@ public class ObjectFormatPolicyTest {
 
 		Assert.assertEquals("{\"lastName\":null}", serialize(dslJsonMinimal, user));
 		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":null}", serialize(dslJsonFull, user));
+		Assert.assertEquals("{}", serialize(dslJsonFilteredNone, user));
+		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":null}", serialize(dslJsonFilteredAll, user));
+		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":\"That's a secret!\"}", serialize(dslJsonFilteredSecret("firstName"), user));
 	}
 
 	@Test
