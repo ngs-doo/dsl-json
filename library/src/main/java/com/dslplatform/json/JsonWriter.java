@@ -59,7 +59,7 @@ public class JsonWriter {
 	private OutputStream target;
 	private byte[] buffer;
 
-	private final UnknownSerializer unknownSerializer;
+	protected final UnknownSerializer unknownSerializer;
 	private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
 
 	protected JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
@@ -946,8 +946,8 @@ public class JsonWriter {
 	 * @return null if the property should be skipped, or the writer to use for the property
 	 * @param <C>
 	 */
-	public <C> JsonWriter controlledPrepareForProperty(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, PropertyInfo<C> property, JsonWriter writer) {
-		property.writeQuoted(this);
+	public <C> @Nullable JsonWriter controlledPrepareForProperty(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, PropertyInfo<C> property, @Nullable JsonWriter writer) {
+		writeAscii(property.getQuoted());
 		return this;
 	}
 
@@ -960,7 +960,7 @@ public class JsonWriter {
 	 * @param writer the current writer. If chnnging writer, then ensure that output is managed correctly (e.g. that the writer is flushed)
 	 * @param <C>
 	 */
-	public <C> void controlledFinished(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, JsonWriter writer) {
+	public <C> void controlledFinished(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, @Nullable JsonWriter writer) {
 	}
 
 }

@@ -12,13 +12,15 @@ import static com.dslplatform.json.JsonAttribute.IncludePolicy.NON_DEFAULT;
 import static com.dslplatform.json.TestJsonWriters.*;
 public class ObjectFormatPolicyTest {
 
-	private DslJson<Object> dslJsonMinimal = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(true));
-	private DslJson<Object> dslJsonFull = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(false));
-	private DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new AllWriterFactory()).filterOutputs(true));
-	private DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new NoneWriterFactory()).filterOutputs(true));
+	private final DslJson<Object> dslJsonMinimal = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(true));
+	private final DslJson<Object> dslJsonFull = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(false));
+	private final DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new AllWriterFactory()).filterOutputs(true));
+	private final DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new NoneWriterFactory()).filterOutputs(true));
 	private DslJson<Object> dslJsonFilteredSecret(String fieldName)  {
 		return new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new SecretWriterFactory(fieldName)).filterOutputs(true));
 	}
+	private final DslJson<Object> dslJsonComplexControl = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new ComplexWriterFactory()).filterOutputs(true));
+
 
 
 	@CompiledJson
@@ -168,6 +170,64 @@ public class ObjectFormatPolicyTest {
 		@JsonAttribute(includeToMinimal = ALWAYS)
 		public String lastName;
 	}
+	@CompiledJson
+	static class User9 {
+		public UUID id;
+
+		@JsonAttribute
+		public int age;
+
+		@JsonAttribute
+		public String firstName;
+
+		@JsonAttribute
+		public String lastName;
+
+		@JsonAttribute
+		public String secretId;
+
+		@JsonAttribute
+		public String privateId;
+
+		@JsonAttribute
+		public Data dodgyData1;
+
+		@JsonAttribute
+		public Data dodgyData2;
+
+		@JsonAttribute
+		public Map<String, String> map1;
+		@JsonAttribute
+		public List<String> list1;
+
+		@JsonAttribute
+		public Map<String, Data> map2;
+		@JsonAttribute
+		public List<Data> list2;
+
+	}
+	static class Data {
+		public UUID id;
+
+		@JsonAttribute
+		public int age;
+
+		@JsonAttribute
+		public String firstName;
+
+		@JsonAttribute
+		public String lastName;
+
+		@JsonAttribute
+		public String secretId;
+
+		@JsonAttribute
+		public String privateId;
+
+		@JsonAttribute
+		public Data dodgyData1;
+
+	}
 
 	@Test
 	public void testDefaultObjectFormatPolicy() throws IOException {
@@ -272,6 +332,29 @@ public class ObjectFormatPolicyTest {
 		Assert.assertNull(res.firstName);
 		Assert.assertNull(res.lastName);
 		Assert.assertNull(res.description);
+	}
+	@Test
+	public void testComplex() throws IOException {
+		User9 user = new User9();
+		user.id = UUID.randomUUID();
+		user.age = 42;
+		user.firstName = "John";
+		user.lastName = "Doe";
+		user.secretId = "should be hidden";
+
+		user.dodgyData1 = new Data();
+		user.dodgyData1.id = UUID.randomUUID();
+		user.dodgyData1.firstName = "bad";
+
+		user.dodgyData2 = new Data();
+		user.dodgyData2.id = UUID.randomUUID();
+		user.dodgyData2.firstName = "good";
+		user.list1 = Arrays.asList("one", "two", "bad", "four");
+		user.list2 = Arrays.asList(user.dodgyData1, user.dodgyData2);
+
+		Assert.assertEquals("{\"age\":42,\"level\":9}", serialize(dslJsonFull, user));
+		Assert.assertEquals("{\"age\":42,\"level\":9}", serialize(dslJsonComplexControl, user));
+
 	}
 
 	private static String serialize(DslJson<?> dslJson, Object instance) throws IOException {
