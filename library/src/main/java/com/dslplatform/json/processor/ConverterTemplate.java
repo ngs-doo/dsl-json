@@ -11,6 +11,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.*;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -656,8 +657,13 @@ class ConverterTemplate {
 
 	private void writeObject(final StructInfo si, final String className, List<AttributeInfo> sortedAttributes) throws IOException {
 		boolean isFirst = true;
+		List<AttributeInfo> outputAttributes = new ArrayList<AttributeInfo>();
 		for (AttributeInfo attr : sortedAttributes) {
-			if (!attr.canWriteOutput()) continue;
+			if (attr.canWriteOutput()) {
+				outputAttributes.add(attr);
+			}
+		}
+		for (AttributeInfo attr : outputAttributes) {
 			String prefix = isFirst ? "" : ",";
 			isFirst = false;
 			String name = si.propertyName(attr);
@@ -689,8 +695,7 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 		code.append("\t\tpublic void writeContentFull(final com.dslplatform.json.JsonWriter writer, final ");
 		code.append(className).append(" instance) {\n");
-		for (AttributeInfo attr : sortedAttributes) {
-			if (!attr.canWriteOutput()) continue;
+		for (AttributeInfo attr : outputAttributes) {
 			code.append("\t\t\twriter.writeAscii(quoted_").append(attr.name).append(");\n");
 			writeProperty(attr, false, "\t\t\t");
 		}
@@ -699,8 +704,7 @@ class ConverterTemplate {
 		String rawClassName = className.contains("<") ? className.substring(0, className.indexOf('<')) : className;
 		code.append("\t\tprivate final com.dslplatform.json.PropertyAccessor<").append(rawClassName).append("> propertyAccessor = (instance, field) -> {\n");
 		code.append("\t\t\tswitch (field.getName()) {\n");
-		for (AttributeInfo attr : sortedAttributes) {
-			if (!attr.canWriteOutput()) continue;
+		for (AttributeInfo attr : outputAttributes) {
 			code.append("\t\t\t\tcase \"").append(attr.name).append("\":\n");
 			code.append("\t\t\t\t\treturn instance.").append(attr.readProperty).append(";\n");
 		}
@@ -710,15 +714,29 @@ class ConverterTemplate {
 		code.append("\t\t};\n");
 		code.append("\n");
 
-		code.append("\t\tprivate final java.util.List<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">> propertyInfos = java.util.List.of(");
-		boolean first = true;
-		for (AttributeInfo attr : sortedAttributes) {
-			if (!attr.canWriteOutput()) continue;
-			if (!first) code.append(",");
-			first = false;
-			code.append("\n\t\t\tnew com.dslplatform.json.PropertyInfo(\"").append(attr.name).append("\", quoted_").append(attr.name).append(")");
+		code.append("\t\tprivate final java.util.List<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">> propertyInfos");
+
+		switch (outputAttributes.size()) {
+			case 0:
+				code.append(" = java.util.Collections.emptyList();\n");
+				break;
+			case 1:
+				AttributeInfo a = outputAttributes.get(0);
+				code.append(" = java.util.Collections.singletonList(new com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">(\"")
+						.append(a.name).append("\", quoted_").append(a.name).append("));\n");
+				break;
+			default:
+				code.append(";\n");
+				code.append("\t\t{\n");
+				code.append("\t\t\tjava.util.ArrayList<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">> _propertyInfos = ")
+						.append("new java.util.ArrayList<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">>(").append(String.valueOf(outputAttributes.size())).append(");\n");
+				for (AttributeInfo attr : sortedAttributes) {
+					code.append("\t\t\t_propertyInfos.add(new com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">(\"").append(attr.name).append("\", quoted_").append(attr.name).append("));\n");
+				}
+				code.append("\t\t\tpropertyInfos = java.util.Collections.unmodifiableList(_propertyInfos);\n");
+				code.append("\t\t}\n");
+				break;
 		}
-		code.append(");\n\n");
 
 		code.append("\t\tpublic void writeContentControlled(final com.dslplatform.json.JsonWriter originalWriter, final ");
 		code.append(className).append(" instance) {\n");

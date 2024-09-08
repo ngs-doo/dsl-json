@@ -172,8 +172,6 @@ public class ObjectFormatPolicyTest {
 	}
 	@CompiledJson
 	static class User9 {
-		public UUID id;
-
 		@JsonAttribute
 		public int age;
 
@@ -193,6 +191,12 @@ public class ObjectFormatPolicyTest {
 		public Data dodgyData1;
 
 		@JsonAttribute
+		public int aaa;
+		@JsonAttribute
+		public int zzz;
+
+
+		@JsonAttribute
 		public Data dodgyData2;
 
 		@JsonAttribute
@@ -207,8 +211,6 @@ public class ObjectFormatPolicyTest {
 
 	}
 	static class Data {
-		public UUID id;
-
 		@JsonAttribute
 		public int age;
 
@@ -336,24 +338,26 @@ public class ObjectFormatPolicyTest {
 	@Test
 	public void testComplex() throws IOException {
 		User9 user = new User9();
-		user.id = UUID.randomUUID();
 		user.age = 42;
 		user.firstName = "John";
 		user.lastName = "Doe";
 		user.secretId = "should be hidden";
 
+		Assert.assertEquals("{\"age\":42,\"zzz\":0,\"list2\":null,\"privateId\":null,\"firstName\":\"John\",\"list1\":null,\"secretId\":\"should be hidden\",\"dodgyData2\":null,\"map1\":null,\"dodgyData1\":null,\"map2\":null,\"lastName\":\"Doe\",\"aaa\":0}", serialize(dslJsonFull, user));
+		//reordered, with privateId missing, and the secretId changed
+		Assert.assertEquals("{\"aaa\":0,\"age\":42,\"dodgyData1\":null,\"dodgyData2\":null,\"firstName\":\"John\",\"lastName\":\"Doe\",\"list1\":null,\"list2\":null,\"map1\":null,\"map2\":null,\"secretId\":\"That's a secret!\",\"zzz\":0}", serialize(dslJsonComplexControl, user));
+user.firstName = "there is a password: quiodico55";
+		Assert.assertEquals("{\"aaa\":0,\"age\":42,\"dodgyData1\":null,\"dodgyData2\":null,\"firstName\":null,\"lastName\":\"Doe\",\"list1\":null,\"list2\":null,\"map1\":null,\"map2\":null,\"secretId\":\"That's a secret!\",\"zzz\":0}", serialize(dslJsonComplexControl, user));
+
+
 		user.dodgyData1 = new Data();
-		user.dodgyData1.id = UUID.randomUUID();
 		user.dodgyData1.firstName = "bad";
 
 		user.dodgyData2 = new Data();
-		user.dodgyData2.id = UUID.randomUUID();
 		user.dodgyData2.firstName = "good";
 		user.list1 = Arrays.asList("one", "two", "bad", "four");
 		user.list2 = Arrays.asList(user.dodgyData1, user.dodgyData2);
 
-		Assert.assertEquals("{\"age\":42,\"level\":9}", serialize(dslJsonFull, user));
-		Assert.assertEquals("{\"age\":42,\"level\":9}", serialize(dslJsonComplexControl, user));
 
 	}
 

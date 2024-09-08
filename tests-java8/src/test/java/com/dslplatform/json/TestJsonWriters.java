@@ -2,10 +2,12 @@ package com.dslplatform.json;
 
 import org.junit.Assert;
 
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
 public class TestJsonWriters {
@@ -287,6 +289,58 @@ public class TestJsonWriters {
             public <C> void controlledFinished(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, JsonWriter writer) {
                 handleDodgy(writer);
             }
+
+            //strings values
+            private boolean isPassword(String value) {
+                return value.contains("password");
+            }
+
+            @Override
+            public void writeString(String value) {
+                if (isPassword(value)) {
+                    writeNull();
+                } else {
+                    super.writeString(value);
+                }
+            }
+
+
+            @Override
+            public void writeAscii(String value, int len) {
+                String actual = value.substring(0, len);
+                if (isPassword(actual)) {
+                    writeNull();
+                } else {
+                    super.writeAscii(value, len);
+                }
+            }
+            @Override
+            public void writeAscii(byte[] buf, int len) {
+                String actual = new String(buf, 0, len, UTF_8);
+                if (isPassword(actual)) {
+                    writeNull();
+                } else {
+                    super.writeAscii(buf, len);
+                }
+            }
+
+//
+//            redirects
+@Override
+public void writeString(CharSequence value) {
+    writeString(value.toString());
+}
+
+            @Override
+            public void writeAscii(String value) {
+                writeAscii(value, value.length());
+            }
+
+            @Override
+            public void writeAscii(byte[] buf) {
+                writeAscii(buf, buf.length);
+            }
+
         }
         @Override
         public JsonWriter create(UnknownSerializer unknownSerializer) {

@@ -17,11 +17,11 @@ public final class PropertyInfo<T> {
         return quoted;
     }
     public boolean isFirstProperty() {
-        return quoted[0] == ',';
+        return quoted[0] != ',';
     }
     public PropertyInfo<T> asFirstProperty(boolean firstProperty) {
         if (firstProperty == isFirstProperty()) return this;
-        if (isFirstProperty()) {
+        if (firstProperty) {
             return new PropertyInfo<T>(name, Arrays.copyOfRange(quoted, 1, quoted.length));
         } else {
             byte[] newQuoted = new byte[quoted.length + 1];
