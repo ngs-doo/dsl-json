@@ -702,7 +702,7 @@ class ConverterTemplate {
 		code.append("\t\t}\n");
 
 		String rawClassName = className.contains("<") ? className.substring(0, className.indexOf('<')) : className;
-		code.append("\t\tprivate final com.dslplatform.json.PropertyAccessor<").append(rawClassName).append("> propertyAccessor = (instance, field) -> {\n");
+		code.append("\t\tprivate final static com.dslplatform.json.PropertyAccessor<").append(rawClassName).append("> propertyAccessor = (instance, field) -> {\n");
 		code.append("\t\t\tswitch (field.getName()) {\n");
 		for (AttributeInfo attr : outputAttributes) {
 			code.append("\t\t\t\tcase \"").append(attr.name).append("\":\n");
@@ -714,7 +714,7 @@ class ConverterTemplate {
 		code.append("\t\t};\n");
 		code.append("\n");
 
-		code.append("\t\tprivate final java.util.List<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">> propertyInfos");
+		code.append("\t\tprivate final static java.util.List<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">> propertyInfos");
 
 		switch (outputAttributes.size()) {
 			case 0:
@@ -727,7 +727,7 @@ class ConverterTemplate {
 				break;
 			default:
 				code.append(";\n");
-				code.append("\t\t{\n");
+				code.append("\t\tstatic {\n");
 				code.append("\t\t\tjava.util.ArrayList<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">> _propertyInfos = ")
 						.append("new java.util.ArrayList<com.dslplatform.json.PropertyInfo<").append(rawClassName).append(">>(").append(String.valueOf(outputAttributes.size())).append(");\n");
 				for (AttributeInfo attr : sortedAttributes) {
