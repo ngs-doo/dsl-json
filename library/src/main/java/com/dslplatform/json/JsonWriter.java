@@ -26,18 +26,22 @@ import java.util.*;
  */
 public class JsonWriter {
 
-	public static class Factory {
+    public JsonControls<?> getControls() {
+        return controls;
+    }
 
-		public JsonWriter create(@Nullable final UnknownSerializer unknownSerializer) {
-			return new JsonWriter(unknownSerializer);
+    public static class Factory {
+
+		public JsonWriter create(@Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+			return new JsonWriter(unknownSerializer, controls);
 		}
 
-		public JsonWriter create(int size, @Nullable final UnknownSerializer unknownSerializer) {
-			return new JsonWriter(size, unknownSerializer);
+		public JsonWriter create(int size, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+			return new JsonWriter(size, unknownSerializer, controls);
 		}
 
-		public JsonWriter create(byte[] buffer, @Nullable final UnknownSerializer unknownSerializer) {
-			return new JsonWriter(buffer, unknownSerializer);
+		public JsonWriter create(byte[] buffer, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+			return new JsonWriter(buffer, unknownSerializer, controls);
 		}
 	}
 
@@ -60,20 +64,33 @@ public class JsonWriter {
 	private byte[] buffer;
 
 	protected final UnknownSerializer unknownSerializer;
-	private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
+    private final JsonControls<?> controls;
+    private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
 
 	protected JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
-		this(512, unknownSerializer);
+		this(512, unknownSerializer, MinimalControls.INSTANCE);
 	}
 
 	protected JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer) {
-		this(new byte[size], unknownSerializer);
+		this(new byte[size], unknownSerializer, MinimalControls.INSTANCE);
 	}
 
 	protected JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer) {
+		this(buffer, unknownSerializer, MinimalControls.INSTANCE);
+	}
+	public JsonWriter(@Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+		this(512, unknownSerializer, controls);
+	}
+
+	protected JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+		this(new byte[size], unknownSerializer, controls);
+	}
+
+	protected JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
 		this.buffer = buffer;
 		this.unknownSerializer = unknownSerializer;
-	}
+        this.controls = controls;
+    }
 
 	/**
 	 * Helper for writing JSON object start: {
@@ -923,11 +940,11 @@ public class JsonWriter {
 	 * @return some private memo used to call other filter methods later for this serialisation
 	 * @param <C>
 	 */
-	public <C> FilterInfo controlledFilterInfo(C instance, Class<C> clazz, PropertyAccessor<C> access, List<PropertyInfo<C>> properties) {
+	public <C> FilterInfo controlledFilterInfo(C instance, Class<C> clazz, PropertyAccessor<C> access, List<PropertyInfo> properties) {
 		return FILTER_INFO_EMPTY;
 	}
 
-	public <C> List<PropertyInfo<C>> controlledStart(C instance, Class<C> clazz, PropertyAccessor<C> access, List<PropertyInfo<C>> properties, FilterInfo filterInfo) {
+	public <C> List<PropertyInfo> controlledStart(C instance, Class<C> clazz, PropertyAccessor<C> access, List<PropertyInfo> properties, FilterInfo filterInfo) {
 		return properties;
 	}
 
@@ -946,8 +963,8 @@ public class JsonWriter {
 	 * @return null if the property should be skipped, or the writer to use for the property
 	 * @param <C>
 	 */
-	public <C> @Nullable JsonWriter controlledPrepareForProperty(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, PropertyInfo<C> property, @Nullable JsonWriter writer) {
-		writeAscii(property.getQuoted());
+	public <C> @Nullable JsonWriter controlledPrepareForProperty(C instance, Class<C> clazz, PropertyAccessor<C> access, FilterInfo filterInfo, PropertyInfo property, @Nullable JsonWriter writer) {
+//		writeAscii(property.getQuoted());
 		return this;
 	}
 

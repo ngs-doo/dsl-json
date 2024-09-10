@@ -1,5 +1,10 @@
 package com.dslplatform.json;
 
-public interface PropertyAccessor<T> {
-    Object getField(T instance, PropertyInfo<T> field);
+public abstract class PropertyAccessor<T> {
+    private final Class<T> clazz;
+    public PropertyAccessor(Class<T> clazz) {
+        this.clazz = clazz;
+    }
+
+    public abstract Object getField(T instance, PropertyInfo field);
 }

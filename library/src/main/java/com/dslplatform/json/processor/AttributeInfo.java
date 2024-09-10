@@ -180,4 +180,9 @@ public class AttributeInfo {
 		Analysis.createTypeSignature(types, type, genericSignatures, builder);
 		return builder.toString();
 	}
+	public String rawTypeName() {
+		if (typeName.indexOf('<') == -1) return typeName;
+		return typeName.substring(0, typeName.indexOf('<')) +
+				typeName.substring(typeName.lastIndexOf('>') + 1);
+    }
 }

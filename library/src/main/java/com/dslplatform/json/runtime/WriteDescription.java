@@ -1,5 +1,7 @@
 package com.dslplatform.json.runtime;
 
+import com.dslplatform.json.ControlInfo;
+import com.dslplatform.json.JsonControls;
 import com.dslplatform.json.JsonWriter;
 import com.dslplatform.json.Nullable;
 
@@ -25,7 +27,7 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 			writer.writeByte(JsonWriter.OBJECT_END);
 		} else {
 			writer.writeByte(JsonWriter.OBJECT_START);
-			if (writeContentMinimal(writer, instance)) {
+			if (writeContentControlled(writer, instance, writer.getControls())) {
 				writer.getByteBuffer()[writer.size() - 1] = JsonWriter.OBJECT_END;
 			} else {
 				writer.writeByte(JsonWriter.OBJECT_END);
@@ -42,7 +44,7 @@ abstract class WriteDescription<T> implements JsonWriter.WriteObject<T> {
 		}
 	}
 
-	public final boolean writeContentMinimal(final JsonWriter writer, @Nullable final T instance) {
+	public final <X extends ControlInfo> boolean writeContentControlled(JsonWriter writer, @Nullable T instance, JsonControls<X> controls) {
 		if (isEmpty) return false;
 		final int originalPos = writer.size();
 		final long originalFlushed = writer.flushed();

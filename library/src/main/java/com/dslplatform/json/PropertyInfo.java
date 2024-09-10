@@ -1,33 +1,29 @@
 package com.dslplatform.json;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public final class PropertyInfo<T> {
+public final class PropertyInfo {
     private final String name;
-    private final byte[] quoted;
-    public PropertyInfo(String name, byte[] quoted) {
+    private final byte[] quotedNameAndColon;
+
+    public JsonAttributeInfo getAttribute() {
+        return attribute;
+    }
+
+    private final JsonAttributeInfo attribute;
+
+    public PropertyInfo(String name, JsonAttributeInfo attribute) {
         this.name = name;
-        this.quoted = quoted;
+        this.quotedNameAndColon = ("\"" + name + "\":").getBytes(StandardCharsets.UTF_8);
+        this.attribute = attribute;
     }
 
     public String getName() {
         return name;
     }
-    public byte[] getQuoted() {
-        return quoted;
+    public byte[] getQuotedNameAndColon() {
+        return quotedNameAndColon;
     }
-    public boolean isFirstProperty() {
-        return quoted[0] != ',';
-    }
-    public PropertyInfo<T> asFirstProperty(boolean firstProperty) {
-        if (firstProperty == isFirstProperty()) return this;
-        if (firstProperty) {
-            return new PropertyInfo<T>(name, Arrays.copyOfRange(quoted, 1, quoted.length));
-        } else {
-            byte[] newQuoted = new byte[quoted.length + 1];
-            System.arraycopy(quoted, 0, newQuoted, 1, quoted.length);
-            newQuoted[0] = JsonWriter.COMMA;
-            return new PropertyInfo<T>(name, newQuoted);
-        }
-    }
+
 }

@@ -9,17 +9,25 @@ import java.util.*;
 import static com.dslplatform.json.CompiledJson.ObjectFormatPolicy.*;
 import static com.dslplatform.json.JsonAttribute.IncludePolicy.ALWAYS;
 import static com.dslplatform.json.JsonAttribute.IncludePolicy.NON_DEFAULT;
-import static com.dslplatform.json.TestJsonWriters.*;
+//import static com.dslplatform.json.TestJsonWriters.*;
+import static com.dslplatform.json.TestJsonControls.*;
 public class ObjectFormatPolicyTest {
 
 	private final DslJson<Object> dslJsonMinimal = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(true));
 	private final DslJson<Object> dslJsonFull = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().skipDefaultValues(false));
-	private final DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new AllWriterFactory()).filterOutputs(true));
-	private final DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new NoneWriterFactory()).filterOutputs(true));
+//	private final DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new AllWriterFactory()).filterOutputs(true));
+//	private final DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new NoneWriterFactory()).filterOutputs(true));
+//	private DslJson<Object> dslJsonFilteredSecret(String fieldName)  {
+//		return new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new SecretWriterFactory(fieldName)).filterOutputs(true));
+//	}
+//	private final DslJson<Object> dslJsonComplexControl = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new ComplexWriterFactory()).filterOutputs(true));
+
+	private final DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new AllControls()));
+	private final DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new NoneControls()));
 	private DslJson<Object> dslJsonFilteredSecret(String fieldName)  {
-		return new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new SecretWriterFactory(fieldName)).filterOutputs(true));
+		return new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new SecretControls(fieldName)));
 	}
-	private final DslJson<Object> dslJsonComplexControl = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new ComplexWriterFactory()).filterOutputs(true));
+	private final DslJson<Object> dslJsonComplexControl = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new ComplexControls()));
 
 
 

@@ -1,8 +1,6 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.JsonReader;
-import com.dslplatform.json.JsonWriter;
-import com.dslplatform.json.Nullable;
+import com.dslplatform.json.*;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -79,7 +77,7 @@ public final class ArrayFormatDescription<B, T> implements FormatConverter<T>, J
 	}
 
 	@Override
-	public boolean writeContentMinimal(final JsonWriter writer, @Nullable final T instance) {
+	public <X extends ControlInfo> boolean writeContentControlled(JsonWriter writer, T instance, JsonControls<X> controls) {
 		writeContentFull(writer, instance);
 		return false;
 	}
