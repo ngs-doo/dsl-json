@@ -4,21 +4,17 @@ import java.util.List;
 
 public class MinimalControls extends JsonControls<ControlInfo> {
     public final static MinimalControls INSTANCE = new MinimalControls();
-    private final static ControlInfo NO_CONTROLS = new ControlInfo() {};
+    public static final JsonControls.SingletonFactory<MinimalControls> FACTORY = JsonControls.SingletonFactory.of(MinimalControls.INSTANCE);
 
     MinimalControls() {
     }
 
     public <C> ControlInfo controlledInfo(C instance, ClassInfo<C> classInfo) {
-        return NO_CONTROLS;
+        return ControlInfo.BLANK;
     }
 
-    public <C> List<PropertyInfo> controlledProperties(C instance, ClassInfo<C> classInfo, ControlInfo controlledInfo) {
-        return classInfo.getPropertyInfos();
-    }
-
-
-    public <C> PropertyWriteControl shouldWrite(C instance, ClassInfo<C> classInfo, ControlInfo controlledInfo, PropertyInfo propertyInfo, JsonWriter writer, final Object value, final boolean checkDefaults, final boolean isNotDefaultValue) {
+    @Override
+    public <C> PropertyWriteControl shouldWriteCommon(C instance, ClassInfo<C> classInfo, ControlInfo controlledInfo, PropertyInfo propertyInfo, JsonWriter writer, boolean checkDefaults, boolean isNotDefaultValue) {
         switch (classInfo.getObjectFormatPolicy()) {
             case DEFAULT:
             case EXPLICIT:
@@ -35,6 +31,6 @@ public class MinimalControls extends JsonControls<ControlInfo> {
         }
     }
 
-    public <C> void afterPropertyWrite(C instance, ClassInfo<C> classInfo, ControlInfo controlInfo, PropertyInfo propertyInfo, JsonWriter writer, long positionBefore) {
+    public <C> void afterPropertyWrite(C instance, ClassInfo<C> classInfo, ControlInfo controlInfo, PropertyInfo propertyInfo, JsonWriter writer, int positionBefore) {
     }
 }

@@ -26,7 +26,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		this.read = read;
 		quotedName = ("\"" + name + "\":").getBytes(StandardCharsets.UTF_8);
-		this.alwaysSerialize = !json.omitDefaults;
+		this.alwaysSerialize = !json.omitDefaults();
 		this.json = json;
 		this.type = type;
 		this.defaultValue = json.getDefault(type);

@@ -65,7 +65,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			canObject = canObject || od.objectFormat != null;
 			canArray = canArray || od.arrayFormat != null;
 		}
-		this.alwaysSerialize = !json.omitDefaults;
+		this.alwaysSerialize = !json.omitDefaults();
 		this.canObjectFormat = canObject;
 		this.canArrayFormat = canArray;
 		this.exactMatch = uniqueHashNames.size() != descriptions.length;

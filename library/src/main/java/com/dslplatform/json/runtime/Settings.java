@@ -89,7 +89,7 @@ public abstract class Settings {
 		if (encoder == null || Object.class.equals(type)) {
 			return new LazyAttributeObjectEncoder<>(read, name, json, type);
 		}
-		if (json.omitDefaults) {
+		if (json.omitDefaults()) {
 			return new AttributeObjectNonDefaultEncoder<>(read, name, encoder, (R)json.getDefault(type));
 		}
 		return new AttributeObjectAlwaysEncoder<>(read, name, encoder);

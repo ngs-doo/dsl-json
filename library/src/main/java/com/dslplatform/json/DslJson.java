@@ -66,12 +66,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	public final TContext context;
 	@Nullable
 	protected final Fallback<TContext> fallback;
-	/**
-	 * Should properties with default values be omitted from the resulting JSON?
-	 * This will leave out nulls, empty collections, zeros and other attributes with default values
-	 * which can be reconstructed from schema information
-	 */
-	public final boolean omitDefaults;
+//	/**
+//	 * Should properties with default values be omitted from the resulting JSON?
+//	 * This will leave out nulls, empty collections, zeros and other attributes with default values
+//	 * which can be reconstructed from schema information
+//	 */
+//	public final boolean omitDefaults();
 //	public final boolean filterOutputs;
 	/**
 	 * When object supports array format, eg. [prop1, prop2, prop3] this value must be enabled before
@@ -96,8 +96,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	protected final ThreadLocal<JsonReader> localReader;
 	private final ExternalConverterAnalyzer externalConverterAnalyzer;
 	private final Map<Class<? extends Annotation>, Boolean> creatorMarkers;
-	private final JsonWriter.Factory writerFactory;
-	private final JsonControls controls;
+	private final JsonControls.Factory<? extends JsonControls<? extends ControlInfo>> controlsFactory;
+	private final boolean forceControlsFactory;
 
 	public interface Fallback<TContext> {
 		void serialize(@Nullable Object instance, OutputStream stream) throws IOException;
@@ -125,7 +125,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private TContext context;
 		private boolean javaSpecifics;
 		private Fallback<TContext> fallback;
-		//private boolean omitDefaults;
+		//private boolean omitDefaults();
 		private boolean allowArrayFormat;
 		private StringCache keyCache = new SimpleStringCache();
 		private StringCache valuesCache;
@@ -141,8 +141,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new ArrayList<ConverterFactory<JsonReader.BindObject>>();
 		private final Set<ClassLoader> classLoaders = new HashSet<ClassLoader>();
 		private final Map<Class<? extends Annotation>, Boolean> creatorMarkers = new HashMap<Class<? extends Annotation>, Boolean>();
-		private JsonWriter.Factory writerFactory = new JsonWriter.Factory();
-		private JsonControls<? extends ControlInfo> controls = null;
+		private JsonControls.Factory<? extends JsonControls<? extends ControlInfo>> controlsFactory = null;
+		private boolean forceControlsFactory;
 
 		/**
 		 * Pass in context for DslJson.
@@ -185,12 +185,16 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * Eg. int with value 0 can be omitted since that is default value for the type.
 		 * Null values can be excluded since they are handled the same way as missing property.
 		 *
-		 * @param omitDefaults should exclude default values from resulting JSON
+		 * @param omitDefaults() should exclude default values from resulting JSON
 		 * @return itself
 		 */
 		public Settings<TContext> skipDefaultValues(boolean omitDefaults) {
-			return withControls(omitDefaults ? MinimalControls.INSTANCE : null);
+			return withControlsFactory(omitDefaults ? MinimalControls.FACTORY : null, false);
 		}
+		public boolean isForceControlsFactory() {
+			return forceControlsFactory;
+		}
+
 
 		/**
 		 * Some encoders/decoders support writing objects in array format.
@@ -444,8 +448,10 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * Set if filtered outputs should be used
 		 * @return itself
 		 */
-		public Settings<TContext> withControls(@Nullable JsonControls<? extends ControlInfo> controls) {
-			this.controls = controls;
+		public Settings<TContext> withControlsFactory(@Nullable JsonControls.Factory<? extends JsonControls<? extends ControlInfo>> controlsFactory, boolean forceControlsFactory) {
+			if (forceControlsFactory && controlsFactory == null) throw new IllegalArgumentException("controlsFactory can't be null when forced");
+			this.controlsFactory = controlsFactory;
+			this.forceControlsFactory = forceControlsFactory;
 			return this;
 		}
 
@@ -525,7 +531,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.localWriter = new ThreadLocal<JsonWriter>() {
 			@Override
 			protected JsonWriter initialValue() {
-				return writerFactory.create(4096, self, controls);
+				return new JsonWriter(4096, self);
 			}
 		};
 		this.localReader = new ThreadLocal<JsonReader>() {
@@ -536,7 +542,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		};
 		this.context = settings.context;
 		this.fallback = settings.fallback;
-		this.omitDefaults = settings.controls != null;
+		this.controlsFactory = settings.controlsFactory;
+		this.forceControlsFactory = settings.forceControlsFactory;
 		this.allowArrayFormat = settings.allowArrayFormat;
 		this.keyCache = settings.keyCache;
 		this.valuesCache = settings.valuesCache;
@@ -553,9 +560,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.settingsBinders = settings.binderFactories.size();
 		this.externalConverterAnalyzer = new ExternalConverterAnalyzer(settings.classLoaders);
 		this.creatorMarkers = new HashMap<Class<? extends Annotation>, Boolean>(settings.creatorMarkers);
-		this.writerFactory = settings.writerFactory;
-//		this.filterOutputs = settings.controlOutputs;
-		this.controls = settings.controls;
 
 		BinaryConverter.registerDefault(this);
 		BoolConverter.registerDefault(this);
@@ -650,7 +654,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound writer
 	 */
 	public JsonWriter newWriter() {
-		return writerFactory.create(this, controls);
+		return newWriter(512);
 	}
 
 	/**
@@ -663,7 +667,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound writer
 	 */
 	public JsonWriter newWriter(int size) {
-		return writerFactory.create(size, this, controls);
+		return newWriter(new byte[size]);
 	}
 
 	/**
@@ -677,7 +681,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 */
 	public JsonWriter newWriter(byte[] buffer) {
 		if (buffer == null) throw new IllegalArgumentException("null value provided for buffer");
-		return writerFactory.create(buffer, this, controls);
+		return new JsonWriter(buffer, this, controlsFactory);
 	}
 
 	/**
@@ -2263,7 +2267,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		@Override
 		public void write(JsonWriter writer, @Nullable JsonObject value) {
 			if (value == null) writer.writeNull();
-			else value.serialize(writer, omitDefaults);
+			else value.serialize(writer, omitDefaults());
 		}
 	};
 	private <T extends JsonObject> JsonReader.ReadObject<T> convertToReader(final JsonReader.ReadJsonObject<T> decoder) {
@@ -2420,7 +2424,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			stream.write(JsonWriter.ARRAY_END);
 			return;
 		}
-		final JsonWriter buffer = writer == null ? writerFactory.create(this, this.controls) : writer;
+		final JsonWriter buffer = writer == null ? newWriter(): writer;
 		T item = iterator.next();
 		Class<?> lastManifest = null;
 		JsonWriter.WriteObject lastWriter = null;
@@ -2496,7 +2500,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (stream == null) {
 			throw new IllegalArgumentException("stream can't be null");
 		}
-		final JsonWriter buffer = writer == null ? writerFactory.create(this, this.controls) : writer;
+		final JsonWriter buffer = writer == null ? newWriter(): writer;
 		final JsonWriter.WriteObject instanceWriter = getOrCreateWriter(null, manifest);
 		stream.write(JsonWriter.ARRAY_START);
 		T item = iterator.next();
@@ -2533,6 +2537,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		stream.write(JsonWriter.ARRAY_END);
 	}
 
+	public boolean omitDefaults() {
+		return controlsFactory != null;
+	}
+	public boolean isForceControlsFactory() {
+		return forceControlsFactory;
+	}
 	/**
 	 * Use writer.serialize instead
 	 *
@@ -2550,7 +2560,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (array.length != 0) {
 			T item = array[0];
 			if (item != null) {
-				item.serialize(writer, omitDefaults);
+				item.serialize(writer, omitDefaults());
 			} else {
 				writer.writeNull();
 			}
@@ -2558,7 +2568,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				writer.writeByte(JsonWriter.COMMA);
 				item = array[i];
 				if (item != null) {
-					item.serialize(writer, omitDefaults);
+					item.serialize(writer, omitDefaults());
 				} else {
 					writer.writeNull();
 				}
@@ -2588,7 +2598,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (len != 0) {
 			T item = array[0];
 			if (item != null) {
-				item.serialize(writer, omitDefaults);
+				item.serialize(writer, omitDefaults());
 			} else {
 				writer.writeNull();
 			}
@@ -2596,7 +2606,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				writer.writeByte(JsonWriter.COMMA);
 				item = array[i];
 				if (item != null) {
-					item.serialize(writer, omitDefaults);
+					item.serialize(writer, omitDefaults());
 				} else {
 					writer.writeNull();
 				}
@@ -2625,7 +2635,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (list.size() != 0) {
 			T item = list.get(0);
 			if (item != null) {
-				item.serialize(writer, omitDefaults);
+				item.serialize(writer, omitDefaults());
 			} else {
 				writer.writeNull();
 			}
@@ -2633,7 +2643,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				writer.writeByte(JsonWriter.COMMA);
 				item = list.get(i);
 				if (item != null) {
-					item.serialize(writer, omitDefaults);
+					item.serialize(writer, omitDefaults());
 				} else {
 					writer.writeNull();
 				}
@@ -2663,7 +2673,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			final Iterator<T> it = collection.iterator();
 			T item = it.next();
 			if (item != null) {
-				item.serialize(writer, omitDefaults);
+				item.serialize(writer, omitDefaults());
 			} else {
 				writer.writeNull();
 			}
@@ -2671,7 +2681,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				writer.writeByte(JsonWriter.COMMA);
 				item = it.next();
 				if (item != null) {
-					item.serialize(writer, omitDefaults);
+					item.serialize(writer, omitDefaults());
 				} else {
 					writer.writeNull();
 				}
@@ -2704,7 +2714,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			writer.writeNull();
 			return true;
 		} else if (value instanceof JsonObject) {
-			((JsonObject) value).serialize(writer, omitDefaults);
+			((JsonObject) value).serialize(writer, omitDefaults());
 			return true;
 		} else if (value instanceof JsonObject[]) {
 			serialize(writer, (JsonObject[]) value);
@@ -2778,12 +2788,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				writer.writeByte(JsonWriter.ARRAY_START);
 				final Iterator iter = values.iterator();
 				final JsonObject first = (JsonObject) iter.next();
-				if (first != null) first.serialize(writer, omitDefaults);
+				if (first != null) first.serialize(writer, omitDefaults());
 				else writer.writeNull();
 				while (iter.hasNext()) {
 					writer.writeByte(JsonWriter.COMMA);
 					final JsonObject next = (JsonObject) iter.next();
-					if (next != null) next.serialize(writer, omitDefaults);
+					if (next != null) next.serialize(writer, omitDefaults());
 					else writer.writeNull();
 				}
 				writer.writeByte(JsonWriter.ARRAY_END);

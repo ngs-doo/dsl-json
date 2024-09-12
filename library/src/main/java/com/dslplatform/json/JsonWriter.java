@@ -29,21 +29,21 @@ public class JsonWriter {
     public JsonControls<?> getControls() {
         return controls;
     }
-
-    public static class Factory {
-
-		public JsonWriter create(@Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
-			return new JsonWriter(unknownSerializer, controls);
-		}
-
-		public JsonWriter create(int size, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
-			return new JsonWriter(size, unknownSerializer, controls);
-		}
-
-		public JsonWriter create(byte[] buffer, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
-			return new JsonWriter(buffer, unknownSerializer, controls);
-		}
-	}
+//
+//    public static class Factory {
+//
+//		public JsonWriter create(@Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+//			return new JsonWriter(unknownSerializer, controls);
+//		}
+//
+//		public JsonWriter create(int size, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+//			return new JsonWriter(size, unknownSerializer, controls);
+//		}
+//
+//		public JsonWriter create(byte[] buffer, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+//			return new JsonWriter(buffer, unknownSerializer, controls);
+//		}
+//	}
 
 	final byte[] ensureCapacity(final int free) {
 		if (position + free >= buffer.length) {
@@ -51,6 +51,15 @@ public class JsonWriter {
 		}
 		return buffer;
 	}
+
+	//TODO this could be in a priv access class, accessible only to the controls
+	public void rewind(int position) {
+		if (position > this.position || position < 0) {
+			throw new IllegalArgumentException("Can't rewind to position " + position + " when current position is " + this.position);
+		}
+		this.position = position;
+	}
+
 	public interface FilterInfo{};
 	protected final static FilterInfo FILTER_INFO_EMPTY = new FilterInfo(){};
 
@@ -64,32 +73,30 @@ public class JsonWriter {
 	private byte[] buffer;
 
 	protected final UnknownSerializer unknownSerializer;
-    private final JsonControls<?> controls;
+	@Nullable
+	private final JsonControls<?> controls;
     private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
 
 	protected JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
-		this(512, unknownSerializer, MinimalControls.INSTANCE);
+		this(512, unknownSerializer);
 	}
 
 	protected JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer) {
-		this(new byte[size], unknownSerializer, MinimalControls.INSTANCE);
+		this(new byte[size], unknownSerializer);
 	}
 
 	protected JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer) {
-		this(buffer, unknownSerializer, MinimalControls.INSTANCE);
-	}
-	public JsonWriter(@Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
-		this(512, unknownSerializer, controls);
+		this(buffer, unknownSerializer,null);
 	}
 
-	protected JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
-		this(new byte[size], unknownSerializer, controls);
+	protected JsonWriter(final int size, @Nullable final UnknownSerializer unknownSerializer, @Nullable JsonControls.Factory<? extends JsonControls<? extends ControlInfo>> controlsFactory) {
+		this(new byte[size], unknownSerializer, controlsFactory);
 	}
 
-	protected JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer, JsonControls<?> controls) {
+	protected JsonWriter(final byte[] buffer, @Nullable final UnknownSerializer unknownSerializer, @Nullable JsonControls.Factory<? extends JsonControls<? extends ControlInfo>> controlsFactory) {
 		this.buffer = buffer;
 		this.unknownSerializer = unknownSerializer;
-        this.controls = controls;
+        this.controls = controlsFactory == null ? MinimalControls.INSTANCE : controlsFactory.createFor(this);
     }
 
 	/**

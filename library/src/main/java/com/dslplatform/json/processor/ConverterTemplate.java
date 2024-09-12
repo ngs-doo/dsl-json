@@ -255,7 +255,7 @@ class ConverterTemplate {
         switch (si.objectFormatPolicy) {
             case DEFAULT:
             case EXPLICIT:
-                code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults;\n");
+                code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults();\n");
 //                code.append("\t\t\tthis.controlledSerialize = __dsljson.filterOutputs;\n");
                 break;
             case MINIMAL:
@@ -263,7 +263,7 @@ class ConverterTemplate {
 //                code.append("\t\t\tthis.controlledSerialize = __dsljson.filterOutputs;\n");
                 break;
             case FULL:
-                code.append("\t\t\tthis.alwaysSerialize = true;\n");
+                code.append("\t\t\tthis.alwaysSerialize = !__dsljson.isForceControlsFactory();\n");
 //                code.append("\t\t\tthis.controlledSerialize = __dsljson.filterOutputs;\n");
                 break;
             case CONTROLLED:
@@ -740,12 +740,11 @@ class ConverterTemplate {
         code.append("\t\t\tif (instance == null) writer.writeNull();\n");
         code.append("\t\t\telse {\n");
         code.append("\t\t\t\twriter.writeByte((byte)'{');\n");
-        code.append("\t\t\t\tfinal com.dslplatform.json.JsonControls<? extends  com.dslplatform.json.ControlInfo> controls = writer.getControls();\n");
         if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
             writeDiscriminator(si);
             if (!si.attributes.isEmpty()) {
 //                code.append("\t\t\t\tif (controlledSerialize) { writeContentFullControlled(writer, instance); writer.writeByte((byte)'}'); }\n");
-                code.append("\t\t\t\tif (controls == null) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
+                code.append("\t\t\t\tif (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
                 code.append("\t\t\t\telse { writeContentControlled(writer, instance, writer.getControls()); writer.getByteBuffer()[writer.size() - 1] = '}'; }\n");
 //                code.append("\t\t\t\telse if (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
 //                code.append("\t\t\t\telse { writeContentControlled(writer, instance, writer.getControls()); writer.getByteBuffer()[writer.size() - 1] = '}'; }\n");
@@ -754,7 +753,7 @@ class ConverterTemplate {
             }
         } else {
 //            code.append("\t\t\t\tif (controlledSerialize) { writeContentFullControlled(writer, instance); writer.writeByte((byte)'}'); }\n");
-            code.append("\t\t\t\tif (controls == null) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
+            code.append("\t\t\t\tif (alwaysSerialize) { writeContentFull(writer, instance); writer.writeByte((byte)'}'); }\n");
             code.append("\t\t\t\telse if (writeContentControlled(writer, instance, writer.getControls())) writer.getByteBuffer()[writer.size() - 1] = '}';\n");
             code.append("\t\t\t\telse writer.writeByte((byte)'}');\n");
         }
@@ -833,9 +832,11 @@ class ConverterTemplate {
             String alignment = "\t\t\t\t\t\t\t";
             code.append(alignment).append("case WRITE_NORMALLY:\n");
             code.append(alignment).append("\twriter.writeAscii(propertyInfo.getQuotedNameAndColon());\n");
-            code.append(alignment).append("\tlong positionBefore = writer.size();\n");
+            code.append(alignment).append("\t// expected fallthrough\n");
+            code.append(alignment).append("case WRITTEN_NAME:\n");
+            code.append(alignment).append("\tint positionBeforeValue = writer.size();\n");
             writeProperty(attr, false, alignment+"\t", "value");
-            code.append(alignment).append("\tcontrols.afterPropertyWrite(instance, classInfo, controlInfo, propertyInfo, writer, positionBefore);\n");
+            code.append(alignment).append("\tcontrols.afterPropertyWrite(instance, classInfo, controlInfo, propertyInfo, writer, value, positionBeforeValue);\n");
             code.append(alignment).append("\t// expected fallthrough\n");
             code.append(alignment).append("case WRITTEN_DIRECTLY:\n");
             code.append(alignment).append("\twriter.writeByte((byte)','); hasWritten = true;\n");
@@ -1083,6 +1084,7 @@ class ConverterTemplate {
             attr.converter.write(code);
             code.append(".write(writer, ").append(readValue).append(");\n");
         } else if (attr.isJsonObject) {
+            //TODO consider this path
             code.append(readValue).append(".serialize(writer, !alwaysSerialize);\n");
         } else if (target != null && target.converter != null) {
             target.converter.write(code);
