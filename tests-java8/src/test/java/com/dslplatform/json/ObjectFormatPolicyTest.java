@@ -22,12 +22,12 @@ public class ObjectFormatPolicyTest {
 //	}
 //	private final DslJson<Object> dslJsonComplexControl = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().writerFactory(new ComplexWriterFactory()).filterOutputs(true));
 
-	private final DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new AllControls()));
-	private final DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new NoneControls()));
-	private DslJson<Object> dslJsonFilteredSecret(String fieldName)  {
-		return new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new SecretControls(fieldName)));
+	private final DslJson<Object> dslJsonFilteredAll = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControlsFactory(AllControls.FACTORY, true));
+	private final DslJson<Object> dslJsonFilteredNone = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControlsFactory(NoneControls.FACTORY, true));
+	private DslJson<Object> dslJsonFilteredSecret(String fieldName, boolean forced)  {
+		return new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControlsFactory(SecretControls.factoryFor(fieldName), forced));
 	}
-	private final DslJson<Object> dslJsonComplexControl = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControls(new ComplexControls()));
+	private final DslJson<Object> dslJsonComplexControl = new DslJson<>(new DslJson.Settings<>().includeServiceLoader().withControlsFactory(ComplexControls.FACTORY, true));
 
 
 
@@ -247,7 +247,7 @@ public class ObjectFormatPolicyTest {
 		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":null}", serialize(dslJsonFull, user));
 		Assert.assertEquals("{}", serialize(dslJsonFilteredNone, user));
 		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":null}", serialize(dslJsonFilteredAll, user));
-		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":\"That's a secret!\"}", serialize(dslJsonFilteredSecret("firstName"), user));
+		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":\"That's a secret!\"}", serialize(dslJsonFilteredSecret("firstName", true), user));
 	}
 
 	@Test
@@ -354,7 +354,7 @@ public class ObjectFormatPolicyTest {
 		Assert.assertEquals("{\"age\":42,\"zzz\":0,\"list2\":null,\"privateId\":null,\"firstName\":\"John\",\"list1\":null,\"secretId\":\"should be hidden\",\"dodgyData2\":null,\"map1\":null,\"dodgyData1\":null,\"map2\":null,\"lastName\":\"Doe\",\"aaa\":0}", serialize(dslJsonFull, user));
 		//reordered, with privateId missing, and the secretId changed
 		Assert.assertEquals("{\"aaa\":0,\"age\":42,\"dodgyData1\":null,\"dodgyData2\":null,\"firstName\":\"John\",\"lastName\":\"Doe\",\"list1\":null,\"list2\":null,\"map1\":null,\"map2\":null,\"secretId\":\"That's a secret!\",\"zzz\":0}", serialize(dslJsonComplexControl, user));
-user.firstName = "there is a password: quiodico55";
+		user.firstName = "there is a password: quiodico55";
 		Assert.assertEquals("{\"aaa\":0,\"age\":42,\"dodgyData1\":null,\"dodgyData2\":null,\"firstName\":null,\"lastName\":\"Doe\",\"list1\":null,\"list2\":null,\"map1\":null,\"map2\":null,\"secretId\":\"That's a secret!\",\"zzz\":0}", serialize(dslJsonComplexControl, user));
 
 
