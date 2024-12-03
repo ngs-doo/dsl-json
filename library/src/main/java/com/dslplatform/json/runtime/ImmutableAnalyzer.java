@@ -279,7 +279,7 @@ public abstract class ImmutableAnalyzer {
 				instanceFactory,
 				writeProps,
 				readProps,
-				!json.omitDefaults,
+				!json.omitDefaults(),
 				true);
 		json.registerWriter(manifest, converter);
 		json.registerReader(manifest, converter);

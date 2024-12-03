@@ -29,7 +29,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.Processor;
 import javax.tools.*;
@@ -101,7 +105,7 @@ public abstract class AbstractAnnotationProcessorTest {
 
 	protected List<Diagnostic<? extends JavaFileObject>> compileTestCase(String[] compilationUnitPaths, List<String> arguments) {
 		ArrayList<Diagnostic<? extends JavaFileObject>> diagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>();
-		compileTestCase(compilationUnitPaths, arguments, diagnostics);
+		compileTestCase(false, compilationUnitPaths, arguments, diagnostics);
 		return diagnostics;
 	}
 	/**
@@ -115,7 +119,7 @@ public abstract class AbstractAnnotationProcessorTest {
 	 * as demonstrated in the documentation for {@link JavaCompiler}
 	 * @see #compileTestCase(Class...)
 	 */
-	protected Boolean compileTestCase(String[] compilationUnitPaths, List<String> arguments, List<Diagnostic<? extends JavaFileObject>> diagnostics) {
+	protected Boolean compileTestCase(boolean showErrors, String[] compilationUnitPaths, List<String> arguments, List<Diagnostic<? extends JavaFileObject>> diagnostics) {
 		assert (compilationUnitPaths != null);
 
 		Collection<File> compilationUnits;
@@ -148,11 +152,49 @@ public abstract class AbstractAnnotationProcessorTest {
          * with) is *not* available via the RoundEnvironment. However, if these classes
          * are annotations, they certainly need to be validated.
          */
-		CompilationTask task = COMPILER.getTask(null, fileManager, diagnosticCollector,
+		StringWriter out = new StringWriter();
+
+		CompilationTask task = COMPILER.getTask(out, fileManager, diagnosticCollector,
 				compileArgs, null,
 				fileManager.getJavaFileObjectsFromFiles(compilationUnits));
 		task.setProcessors(getProcessors());
 		Boolean compilationSuccessful = task.call();
+		if (!compilationSuccessful && showErrors) {
+			System.out.println(out);
+			fileManager.getJavaFileObjectsFromFiles(compilationUnits).forEach(file -> {
+				System.out.println("File: " + file);
+				try {
+					System.out.println("Content: " + file.getCharContent(true));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			});
+			Map<String, List<Diagnostic<? extends JavaFileObject>>> errors = diagnosticCollector.getDiagnostics().stream().collect(Collectors.toMap(
+					d -> d.getSource() == null ? "<no file>" : d.getSource().getName(),
+					d -> {
+						ArrayList<Diagnostic<? extends JavaFileObject>> list = new ArrayList<>(1);
+						list.add(d);
+						return list;
+					},
+					(a, b) -> {
+						a.addAll(b);
+						return a;
+					}));
+			errors.forEach((k, v) -> {
+				System.out.println("\n\n\nErrors for " + k);
+				v.forEach(System.out::println);
+				if (!k.equals("<no file>"))
+					try {
+						System.out.println("Content: \n");
+						String[] lines = v.get(0).getSource().getCharContent(true).toString().split("\\n");
+						for (int i = 0; i < lines.length; i++) {
+							System.out.println((i+1) + "   " +lines[i]);
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+			});
+		}
 
 		try {
 			fileManager.close();
@@ -210,7 +252,7 @@ public abstract class AbstractAnnotationProcessorTest {
 			compilationUnitPaths[i] = toResourcePath(compilationUnits[i]);
 		}
 		List<Diagnostic<? extends JavaFileObject>> diagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>();
-		Assert.assertTrue(compileTestCase(compilationUnitPaths, getDefaultArguments(), diagnostics));
+		Assert.assertTrue(compileTestCase(true, compilationUnitPaths, getDefaultArguments(), diagnostics));
 
 		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
 			assertFalse(diagnostic.getMessage(Locale.ENGLISH), diagnostic.getKind().equals(Kind.ERROR));

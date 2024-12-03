@@ -65,7 +65,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 			canObject = canObject || od.objectFormat != null;
 			canArray = canArray || od.arrayFormat != null;
 		}
-		this.alwaysSerialize = !json.omitDefaults;
+		this.alwaysSerialize = !json.omitDefaults();
 		this.canObjectFormat = canObject;
 		this.canArrayFormat = canArray;
 		this.exactMatch = uniqueHashNames.size() != descriptions.length;
@@ -159,7 +159,7 @@ public final class MixinDescription<T> implements JsonWriter.WriteObject<T>, Jso
 					}
 				} else {
 					writer.writeByte(JsonWriter.COMMA);
-					ofd.writeContentMinimal(writer, instance);
+					ofd.writeContentControlled(writer, instance, writer.getControls());
 					writer.getByteBuffer()[writer.size() - 1] = JsonWriter.OBJECT_END;
 				}
 			} else {

@@ -42,7 +42,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 			final DecodePropertyInfo<JsonReader.BindObject>[] decoders,
 			final DslJson json,
 			final boolean skipOnUnknown) {
-		super(encoders, !json.omitDefaults);
+		super(encoders, !json.omitDefaults());
 		if (manifest == null) throw new IllegalArgumentException("manifest can't be null");
 		if (newInstance == null) throw new IllegalArgumentException("create can't be null");
 		if (finalize == null) throw new IllegalArgumentException("finalize can't be null");

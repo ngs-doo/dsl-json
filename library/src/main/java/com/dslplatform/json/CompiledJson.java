@@ -83,7 +83,11 @@ public @interface CompiledJson {
 		 * Serialize only properties marked with annotations.
 		 * It will respect the omitDefault setting and serialize them accordingly.
 		 */
-		EXPLICIT
+		EXPLICIT,
+		/**
+		 * Serialize properties as determined by the JsonWriter at run time.
+		 */
+		CONTROLLED
 	}
 
 	Class namingStrategy() default NamingStrategy.class;
