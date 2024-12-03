@@ -6,11 +6,11 @@
 
 	<groupId>com.dslplatform</groupId>
 	<artifactId>dsl-json-integration-tests-latest-java</artifactId>
-	<name>DSL-JSON integration tests (Java 20)</name>
+	<name>DSL-JSON integration tests (Java 21)</name>
 	<description>DSL Platform compatible JSON (https://dsl-platform.com)</description>
 	<url>https://github.com/ngs-doo/dsl-json</url>
 	<packaging>jar</packaging>
-	<version>2.0.1</version>
+	<version>2.0.3</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -67,9 +67,9 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.3</version>
 				<configuration>
-					<compilerVersion>20</compilerVersion>
-					<source>20</source>
-					<target>20</target>
+					<compilerVersion>21</compilerVersion>
+					<source>21</source>
+					<target>21</target>
 					<useIncrementalCompilation>false</useIncrementalCompilation>
 					<compilerArguments>
 						<Adsljson.unknown>WARNING</Adsljson.unknown>

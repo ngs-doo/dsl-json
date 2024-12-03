@@ -74,6 +74,10 @@ public class RecordWithAnnotationTest {
 		private static final String ENUM = "enum";
 	}
 
+	@CompiledJson
+	public record IsCompilationIssue(
+			@JsonAttribute(name = "issuer") String issuer){}
+
 	private final DslJson<Object> dslJson = new DslJson<>();
 
 	@Test
@@ -85,5 +89,16 @@ public class RecordWithAnnotationTest {
 		ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
 		SerializableRecord result = dslJson.deserialize(SerializableRecord.class, is);
 		Assert.assertEquals(sr, result);
+	}
+
+	@Test
+	public void recordWithIsRoundtrip() throws IOException {
+		IsCompilationIssue ici = new IsCompilationIssue("abc");
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJson.serialize(ici, os);
+		Assert.assertEquals("{\"issuer\":\"abc\"}", os.toString(StandardCharsets.UTF_8));
+		ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray());
+		IsCompilationIssue result = dslJson.deserialize(IsCompilationIssue.class, is);
+		Assert.assertEquals(ici, result);
 	}
 }

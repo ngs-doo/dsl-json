@@ -359,13 +359,13 @@ public class Analysis {
 							if (info.objectFormatPolicy == CompiledJson.ObjectFormatPolicy.EXPLICIT) {
 								messager.printMessage(
 										Diagnostic.Kind.ERROR,
-										"Unable to find matching property: '" + argName + "' used in constructor. Since EXPLICIT object format policy is used, please check if all relevant fields are marked with @JsonAttribute.",
+										"Unable to find matching property: '" + argName + "' used in method factory. Since EXPLICIT object format policy is used, please check if all relevant fields are marked with @JsonAttribute.",
 										info.selectedConstructor(),
 										info.annotation);
 							} else if (!info.inheritedAttributes().isEmpty()) {
 								messager.printMessage(
 										Diagnostic.Kind.ERROR,
-										"Unable to find matching property: '" + argName + "' used in constructor. Please use the same name as the property in the base class to let dsl-json match them.",
+										"Unable to find matching property: '" + argName + "' used in method factory. Please use the same name as the property in the base class to let dsl-json match them.",
 										info.selectedConstructor(),
 										info.annotation);
 							} else {
@@ -2031,7 +2031,7 @@ public class Analysis {
 
 	public static String beanOrActualName(String name, boolean isBoolean) {
 
-		if (isBoolean && name.startsWith("is") && name.length() > 2) {
+		if (isBoolean && name.startsWith("is") && name.length() > 2 && Character.isUpperCase(name.charAt(2))) {
 			String after = name.substring(2);
 			if (name.length() == 3) return after.toLowerCase();
 			return after.toUpperCase().equals(after)
@@ -2039,7 +2039,7 @@ public class Analysis {
 					: Character.toLowerCase(after.charAt(0)) + after.substring(1);
 		}
 
-		if ((name.startsWith("get") || name.startsWith("set")) && name.length() > 3) {
+		if ((name.startsWith("get") || name.startsWith("set")) && name.length() > 3 && Character.isUpperCase(name.charAt(3))) {
 			String after = name.substring(3);
 			if (name.length() == 4) return after.toLowerCase();
 			return after.toUpperCase().equals(after)
@@ -2175,7 +2175,9 @@ public class Analysis {
 			for (ExecutableElement method : ElementFilter.methodsIn(inheritance.getEnclosedElements())) {
 				String name = method.getSimpleName().toString();
 				if (name.startsWith("get") || name.startsWith("is") || name.startsWith("set")) {
-					continue;
+					final boolean isBoolean = method.getReturnType() != null && "boolean".equals(method.getReturnType().toString());
+					final String property = Analysis.beanOrActualName(name, isBoolean);
+					if (!property.equals(name)) continue;
 				}
 				boolean isAccessible = isPublicInterface && !method.getModifiers().contains(Modifier.PRIVATE)
 						|| method.getModifiers().contains(Modifier.PUBLIC)
@@ -2291,9 +2293,7 @@ public class Analysis {
 				final boolean isBoolean = method.getReturnType() != null && "boolean".equals(method.getReturnType().toString());
 				final String property = Analysis.beanOrActualName(name, isBoolean);
 				if (method.getParameters().size() == 0 && method.getReturnType() != null) {
-					boolean canAdd = withExact
-							|| withBeans && name.startsWith("get") && name.length() > 4
-							|| withBeans && name.startsWith("is") && name.length() > 3;
+					boolean canAdd = withExact || withBeans && !name.equals(property);
 					if (canAdd && !getters.containsKey(property)) {
 						getters.put(property, method);
 					}
