@@ -1563,4 +1563,20 @@ public class NumberConverterTest {
 
 		Assert.assertEquals(expected, actual);
 	}
+
+	@Test
+	public void quotedDoubles() throws IOException {
+		// setup
+		final JsonWriter sw = new JsonWriter(null);
+		final String[] inputs = { "\"104923.87000004\"", "\"0.00230002\"","\"-104923.87000004\"", "\"-0.00230002\"" };
+		final JsonReader<Object> jr = dslJson.newReader(new byte[0]);
+		for (String inp : inputs) {
+			double expected = Double.parseDouble(inp.substring(1, inp.length() - 1));
+			byte[] bytes = inp.getBytes("UTF-8");
+			jr.process(bytes, bytes.length);
+			jr.read();
+			double number = NumberConverter.deserializeDouble(jr);
+			Assert.assertEquals(expected, number, 0);
+		}
+	}
 }
