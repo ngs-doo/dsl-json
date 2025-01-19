@@ -382,7 +382,7 @@ public abstract class NumberConverter {
 		return new NumberInfo(result, len);
 	}
 
-	public static double deserializeDouble(final JsonReader reader) throws IOException {
+	public static double deserializeDouble0(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
 			final int position = reader.getCurrentIndex();
 			final char[] buf = reader.readSimpleQuote();
@@ -393,30 +393,54 @@ public abstract class NumberConverter {
 		final byte[] buf = reader.buffer;
 		final byte ch = buf[start];
 		if (ch == '-') {
-			return -parseDouble(buf, reader, start, end, 1);
+			return -parseDouble(buf, reader, start, end, 1, false);
 		}
-		return parseDouble(buf, reader, start, end, 0);
+		return parseDouble(buf, reader, start, end, 0, false);
 	}
 
-	private static double parseDouble(final byte[] buf, final JsonReader reader, final int start, final int end, final int offset) throws IOException {
+	public static double deserializeDouble(final JsonReader reader) throws IOException {
+		final boolean withQuotes = reader.last() == '"';
+		final int start, end;
+		if (withQuotes) {
+			final char[] tmp = reader.readSimpleQuote();
+			start = reader.getTokenStart();
+			end = reader.getCurrentIndex() - 1;
+		}
+		else {
+			start = reader.scanNumber();
+			end = reader.getCurrentIndex();
+		}
+		final byte[] buf = reader.buffer;
+		final byte ch = buf[start];
+		if (ch == '-') {
+			return -parseDouble(buf, reader, start, end, 1, withQuotes);
+		}
+		return parseDouble(buf, reader, start, end, 0, withQuotes);
+	}
+
+	private static double parseDouble(final byte[] buf, final JsonReader reader, final int start, final int end, final int offset, final boolean withQuotes) throws IOException {
 		if (end - start - offset > reader.doubleLengthLimit) {
 			if (end == reader.length()) {
 				final NumberInfo tmp = readLongNumber(reader, start + offset);
-				return parseDoubleGeneric(tmp.buffer, tmp.length, reader, false);
+				return parseDoubleGeneric(tmp.buffer, tmp.length, reader, withQuotes);
 			}
-			return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
+			return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, withQuotes);
 		}
 		long value = 0;
 		byte ch = ' ';
 		int i = start + offset;
-		final boolean leadingZero = buf[start + offset] == 48;
+		final boolean leadingZero = buf[i] == 48;
+		// Add support for NaN and Infinity now that this method handles quoted values
+		if (buf[i] == 'N' || buf[i] == 'I') {
+			return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, withQuotes);
+		}
 		for (; i < end; i++) {
 			ch = buf[i];
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = buf[i] - 48;
 			if (ind < 0 || ind > 9) {
 				if (leadingZero && i > start + offset + 1) {
-					numberException(reader, start, end, "Leading zero is not allowed");
+					numberException(reader, start, end + (withQuotes ? 2 : 0), "Leading zero is not allowed");
 				}
 				if (i > start + offset && reader.allWhitespace(i, end)) return value;
 				numberException(reader, start, end, "Unknown digit", (char)ch);
@@ -424,7 +448,7 @@ public abstract class NumberConverter {
 			value = (value << 3) + (value << 1) + ind;
 		}
 		if (i == start + offset) numberException(reader, start, end, "Digit not found");
-		else if (leadingZero && ch != '.' && i > start + offset + 1) numberException(reader, start, end, "Leading zero is not allowed");
+		else if (leadingZero && ch != '.' && i > start + offset + 1) numberException(reader, start, end + (withQuotes ? 2 : 0), "Leading zero is not allowed");
 		else if (i == end) return value;
 		else if (ch == '.') {
 			i++;
@@ -438,7 +462,7 @@ public abstract class NumberConverter {
 				maxLen = i + 15;
 				ch = buf[i];
 				if (ch == '0' && end > maxLen) {
-					return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
+					return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, withQuotes);
 				} else if (ch < '8') {
 					preciseDividor = 1e14;
 					expDiff = -1;
@@ -477,7 +501,7 @@ public abstract class NumberConverter {
 				return doubleExponent(reader, value, i - decPos,0, buf, start, end, offset, i);
 			}
 			if (reader.doublePrecision == JsonReader.DoublePrecision.HIGH) {
-				return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, false);
+				return parseDoubleGeneric(reader.prepareBuffer(start + offset, end - start - offset), end - start - offset, reader, withQuotes);
 			}
 			int decimals = 0;
 			final int decLimit = start + offset + 18 < end ? start + offset + 18 : end;
