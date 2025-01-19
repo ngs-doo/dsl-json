@@ -382,22 +382,6 @@ public abstract class NumberConverter {
 		return new NumberInfo(result, len);
 	}
 
-	public static double deserializeDouble0(final JsonReader reader) throws IOException {
-		if (reader.last() == '"') {
-			final int position = reader.getCurrentIndex();
-			final char[] buf = reader.readSimpleQuote();
-			return parseDoubleGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true);
-		}
-		final int start = reader.scanNumber();
-		final int end = reader.getCurrentIndex();
-		final byte[] buf = reader.buffer;
-		final byte ch = buf[start];
-		if (ch == '-') {
-			return -parseDouble(buf, reader, start, end, 1, false);
-		}
-		return parseDouble(buf, reader, start, end, 0, false);
-	}
-
 	public static double deserializeDouble(final JsonReader reader) throws IOException {
 		final boolean withQuotes = reader.last() == '"';
 		final int start, end;
