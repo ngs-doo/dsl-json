@@ -1,10 +1,7 @@
 package com.dslplatform.lombok;
 
 import com.dslplatform.json.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -13,9 +10,6 @@ import java.io.IOException;
 public class Example {
 
 	@Data
-	@NoArgsConstructor
-	@AllArgsConstructor
-	@Builder
 	@CompiledJson
 	public static class Employee {
 		private String name;
