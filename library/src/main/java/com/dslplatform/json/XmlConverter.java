@@ -90,6 +90,11 @@ public abstract class XmlConverter {
 	private static synchronized Document createDocument() {
 		try {
 			final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+			// Securely configure the DocumentBuilderFactory
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+
 			final DocumentBuilder builder = factory.newDocumentBuilder();
 			return builder.newDocument();
 		} catch (ParserConfigurationException e) {
