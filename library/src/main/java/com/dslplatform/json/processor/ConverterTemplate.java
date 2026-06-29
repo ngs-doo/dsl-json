@@ -855,7 +855,7 @@ class ConverterTemplate {
 	private void returnInstance(final String alignment, StructInfo info, final String className) throws IOException {
 		code.append(alignment).append("return ");
 		//builder can be invalid, so execute it only when other methods are not available
-		if (info.annotatedFactory == null && info.selectedConstructor() == null && info.builder != null) {
+		if (info.usesBuilder()) {
 			ExecutableElement factory = info.builder.factory;
 			if (factory != null) {
 				code.append(factory.getEnclosingElement().toString()).append(".").append(factory.getSimpleName()).append("()");

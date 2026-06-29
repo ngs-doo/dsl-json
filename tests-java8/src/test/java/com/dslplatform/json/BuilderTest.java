@@ -281,6 +281,21 @@ public class BuilderTest {
 	}
 
 	@Test
+	public void builderWithEmptyCtorUsesBeanSetters() throws IOException {
+		byte[] json = "{\"name\":\"abc\",\"id\":5}".getBytes(StandardCharsets.UTF_8);
+		BuilderWithEmptyCtor res = dslJsonObject.deserialize(BuilderWithEmptyCtor.class, json, json.length);
+		Assert.assertEquals("abc", res.getName());
+		Assert.assertEquals(5, res.getId());
+
+		BuilderWithEmptyCtor built = BuilderWithEmptyCtor.builder().name("abc").id(5).build();
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		dslJsonObject.serialize(built, os);
+		BuilderWithEmptyCtor roundtrip = dslJsonObject.deserialize(BuilderWithEmptyCtor.class, os.toByteArray(), os.size());
+		Assert.assertEquals(built.getName(), roundtrip.getName());
+		Assert.assertEquals(built.getId(), roundtrip.getId());
+	}
+
+	@Test
 	public void roundtripNested() throws IOException {
 		FreeBuilder c = FreeBuilder.builder().id(5).name("abc").build();
 		ByteArrayOutputStream os = new ByteArrayOutputStream();

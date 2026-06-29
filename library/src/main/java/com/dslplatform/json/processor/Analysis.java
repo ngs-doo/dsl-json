@@ -444,7 +444,7 @@ public class Analysis {
 					}
 				}
 			}
-			if (!info.hasKnownConversion() && info.annotatedFactory == null && info.selectedConstructor() == null && info.builder != null) {
+			if (!info.hasKnownConversion() && info.usesBuilder()) {
 				if (requiresPublic(info.builder.type) && !info.builder.type.getModifiers().contains(Modifier.PUBLIC)) {
 					hasError = true;
 					messager.printMessage(
@@ -1002,7 +1002,7 @@ public class Analysis {
 			for (StructInfo info : items) {
 				if (info.hasKnownConversion()) continue;
 				path.push(info.element.getSimpleName().toString());
-				if (info.builder != null && info.annotatedConstructor == null && info.annotatedFactory == null) {
+				if (info.usesBuilder()) {
 					for (Map.Entry<String, AccessElements> p : getBuilderProperties(info.element, info.builder, includeBeanMethods, includeExactMethods, includeFields).entrySet()) {
 						AccessElements ae = p.getValue();
 						if (ae.field != null || ae.read != null) {
