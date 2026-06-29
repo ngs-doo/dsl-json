@@ -425,7 +425,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 			if (si.createFromEmptyInstance()) {
 				code.append("\t\t__dsljson.registerBinderFactory(factory);\n");
 			}
-		} else if (si.builder != null || si.type == ObjectType.CLASS && (si.selectedConstructor() != null || si.annotatedFactory != null)) {
+		} else if (si.usesBuilder() || si.type == ObjectType.CLASS && (si.selectedConstructor() != null || si.annotatedFactory != null)) {
 			String objectFormatConverterName = "converter";
 			if (si.formats.contains(CompiledJson.Format.OBJECT)) {
 				code.append("\t\tObjectFormatConverter objectConverter = new ObjectFormatConverter(__dsljson);\n");
@@ -505,7 +505,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 
 		code.append("\t}\n");
 
-		if (si.type == ObjectType.CLASS || si.builder != null) {
+		if (si.type == ObjectType.CLASS || si.usesBuilder()) {
 			final String typeName;
 			if (si.isParameterized) {
 				converterTemplate.factoryForGenericConverter(si);

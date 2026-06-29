@@ -210,6 +210,10 @@ public class StructInfo {
 				|| annotatedFactory == null && selectedConstructor != null && selectedConstructor.getParameters().size() == 0;
 	}
 
+	public boolean usesBuilder() {
+		return builder != null && annotatedFactory == null && selectedConstructor == null;
+	}
+
 	public boolean hasAnnotation() {
 		return annotation != null;
 	}

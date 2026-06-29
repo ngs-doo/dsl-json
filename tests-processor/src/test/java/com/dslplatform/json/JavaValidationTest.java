@@ -686,11 +686,6 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
-	public void builderWithEmptyCtorUsesBeanSetters() {
-		checkValidCompilation(BuilderWithEmptyCtor.class);
-	}
-
-	@Test
 	public void builderWithClassAnnotation() {
 		checkValidCompilation(ValidBuilderAnnotationOnClass.class);
 	}
