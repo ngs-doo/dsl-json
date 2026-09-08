@@ -3,7 +3,6 @@ package com.dslplatform.json.runtime;
 import com.dslplatform.json.*;
 
 import java.lang.reflect.Type;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
@@ -11,6 +10,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 	private final Settings.Function<T, R> read;
 	private final byte[] quotedName;
 	private final boolean alwaysSerialize;
+	private final boolean omitDefaults;
 	private JsonWriter.WriteObject<R> encoder;
 	private final Object defaultValue;
 	private final DslJson json;
@@ -26,7 +26,8 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 		if (json == null) throw new IllegalArgumentException("json can't be null");
 		this.read = read;
 		quotedName = ("\"" + name + "\":").getBytes(StandardCharsets.UTF_8);
-		this.alwaysSerialize = !json.omitDefaults;
+		this.alwaysSerialize = !json.omitDefaults && !json.omitNulls;
+		this.omitDefaults = json.omitDefaults;
 		this.json = json;
 		this.type = type;
 		this.defaultValue = json.getDefault(type);
@@ -53,14 +54,17 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 				if (tmp == null) {
 					throw new ConfigurationException("Unable to find writer for " + manifest);
 				}
-				if (!alwaysSerialize) {
+				if (omitDefaults) {
 					final Object tmpDefault = json.getDefault(manifest);
 					if (attr == tmpDefault) return;
 				}
 				writer.writeAscii(quotedName);
 				tmp.write(writer, attr);
 			}
-		} else if (alwaysSerialize || attr != defaultValue) {
+		} else if (alwaysSerialize) {
+			writer.writeAscii(quotedName);
+			encoder.write(writer, attr);
+		} else if (attr != null && (!omitDefaults || attr != defaultValue)) {
 			writer.writeAscii(quotedName);
 			encoder.write(writer, attr);
 		}

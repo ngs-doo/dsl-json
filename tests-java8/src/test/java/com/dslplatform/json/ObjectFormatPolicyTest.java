@@ -73,6 +73,18 @@ public class ObjectFormatPolicyTest {
 		public String lastName;
 	}
 
+	@CompiledJson(objectFormatPolicy = NON_NULL)
+	static class UserNonNull {
+		public UUID id;
+
+		@JsonAttribute
+		public int age;
+
+		public boolean active;
+
+		public String firstName;
+	}
+
 	@CompiledJson
 	static class EmptyCollections {
 		@JsonAttribute(includeToMinimal = NON_DEFAULT, nullable = false, index = 1)
@@ -182,6 +194,27 @@ public class ObjectFormatPolicyTest {
 
 		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":null}", serialize(dslJsonMinimal, user));
 		Assert.assertEquals("{\"age\":0,\"id\":null,\"lastName\":null,\"firstName\":null}", serialize(dslJsonFull, user));
+	}
+
+	@Test
+	public void testNonNullObjectFormatPolicy() throws IOException {
+		UserNonNull user = new UserNonNull();
+
+		String minimal = serialize(dslJsonMinimal, user);
+		String full = serialize(dslJsonFull, user);
+		Assert.assertTrue(minimal.contains("\"age\":0"));
+		Assert.assertTrue(minimal.contains("\"active\":false"));
+		Assert.assertFalse(minimal.contains("null"));
+		Assert.assertFalse(minimal.contains("id"));
+		Assert.assertFalse(minimal.contains("firstName"));
+		Assert.assertEquals(minimal, full);
+
+		user.firstName = "John";
+		String withName = serialize(dslJsonFull, user);
+		Assert.assertTrue(withName.contains("\"firstName\":\"John\""));
+		Assert.assertTrue(withName.contains("\"age\":0"));
+		Assert.assertTrue(withName.contains("\"active\":false"));
+		Assert.assertFalse(withName.contains("null"));
 	}
 
 	@Test

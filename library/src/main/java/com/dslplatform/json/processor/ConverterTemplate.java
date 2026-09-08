@@ -121,6 +121,7 @@ class ConverterTemplate {
 		}
 		code.append(className).append("> {\n");
 		code.append("\t\tprivate final boolean alwaysSerialize;\n");
+		code.append("\t\tprivate final boolean omitDefaults;\n");
 		code.append("\t\tprivate final com.dslplatform.json.DslJson __dsljson;\n");
 		if (si.isParameterized) {
 			code.append("\t\tprivate final java.lang.reflect.Type[] actualTypes;\n");
@@ -186,13 +187,20 @@ class ConverterTemplate {
 		switch (si.objectFormatPolicy) {
 			case DEFAULT:
 			case EXPLICIT:
-				code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults;\n");
+				code.append("\t\t\tthis.omitDefaults = __dsljson.omitDefaults;\n");
+				code.append("\t\t\tthis.alwaysSerialize = !__dsljson.omitDefaults && !__dsljson.omitNulls;\n");
 				break;
 			case MINIMAL:
+				code.append("\t\t\tthis.omitDefaults = true;\n");
 				code.append("\t\t\tthis.alwaysSerialize = false;\n");
 				break;
 			case FULL:
+				code.append("\t\t\tthis.omitDefaults = false;\n");
 				code.append("\t\t\tthis.alwaysSerialize = true;\n");
+				break;
+			case NON_NULL:
+				code.append("\t\t\tthis.omitDefaults = false;\n");
+				code.append("\t\t\tthis.alwaysSerialize = false;\n");
 				break;
 		}
 
@@ -699,18 +707,20 @@ class ConverterTemplate {
 
 			if (checkDefaults) {
 				code.append("\t\t\tif (");
-				if ("null".equals(defaultValue) || isPrimitive) {
-					code.append(readValue).append(" != ").append(defaultValue);
+				if (isPrimitive) {
+					code.append("!omitDefaults || ").append(readValue).append(" != ").append(defaultValue);
+				} else if ("null".equals(defaultValue)) {
+					code.append(readValue).append(" != null");
 				} else if (attr.notNull && attr.isArray) {
-					code.append(readValue).append(" != null && ").append(readValue).append(".length != 0");
+					code.append(readValue).append(" != null && (!omitDefaults || ").append(readValue).append(".length != 0)");
 				} else if (attr.notNull && (attr.isList || attr.isSet || attr.isMap)) {
-					code.append(readValue).append(" != null && !").append(readValue).append(".isEmpty()");
+					code.append(readValue).append(" != null && (!omitDefaults || !").append(readValue).append(".isEmpty())");
 				} else {
 					StructInfo target = context.structs.get(attr.typeName);
 					if (target != null && (target.hasEmptyCtor() || target.hasKnownConversion() || target.annotatedFactory != null)) {
 						code.append(readValue).append(" != null");
 					} else {
-						code.append(readValue).append(" != null && !").append(defaultValue).append(".equals(").append(readValue).append(")");
+						code.append(readValue).append(" != null && (!omitDefaults || !").append(defaultValue).append(".equals(").append(readValue).append("))");
 					}
 				}
 				code.append(") {\n");
