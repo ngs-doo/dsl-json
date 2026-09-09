@@ -74,6 +74,12 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 */
 	public final boolean omitDefaults;
 	/**
+	 * Should properties with null values be omitted from the resulting JSON?
+	 * Unlike {@link #omitDefaults}, this will still serialize primitive defaults such as 0 or false,
+	 * and only skip reference properties that are null.
+	 */
+	public final boolean omitNulls;
+	/**
 	 * When object supports array format, eg. [prop1, prop2, prop3] this value must be enabled before
 	 * object will be serialized in such a way. Regardless of this value deserialization will support all formats.
 	 */
@@ -124,6 +130,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private boolean javaSpecifics;
 		private Fallback<TContext> fallback;
 		private boolean omitDefaults;
+		private boolean omitNulls;
 		private boolean allowArrayFormat;
 		private StringCache keyCache = new SimpleStringCache();
 		private StringCache valuesCache;
@@ -186,6 +193,19 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		public Settings<TContext> skipDefaultValues(boolean omitDefaults) {
 			this.omitDefaults = omitDefaults;
+			return this;
+		}
+
+		/**
+		 * Exclude only null reference properties from resulting JSON.
+		 * Unlike {@link #skipDefaultValues(boolean)}, primitive defaults such as 0 or false are still serialized.
+		 * When both omitDefaults and omitNulls are enabled, omitDefaults takes precedence.
+		 *
+		 * @param omitNulls should exclude null values from resulting JSON
+		 * @return itself
+		 */
+		public Settings<TContext> skipNullValues(boolean omitNulls) {
+			this.omitNulls = omitNulls;
 			return this;
 		}
 
@@ -504,6 +524,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.context = settings.context;
 		this.fallback = settings.fallback;
 		this.omitDefaults = settings.omitDefaults;
+		this.omitNulls = settings.omitNulls;
 		this.allowArrayFormat = settings.allowArrayFormat;
 		this.keyCache = settings.keyCache;
 		this.valuesCache = settings.valuesCache;

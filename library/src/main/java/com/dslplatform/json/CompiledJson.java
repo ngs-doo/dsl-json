@@ -68,7 +68,7 @@ public @interface CompiledJson {
 	 */
 	enum ObjectFormatPolicy {
 		/**
-		 * Inherit the serialization policy from DslJson omitDefaults setting
+		 * Inherit the serialization policy from DslJson omitDefaults/omitNulls setting
 		 */
 		DEFAULT,
 		/**
@@ -79,6 +79,11 @@ public @interface CompiledJson {
 		 * Always serialize all properties regardless of DslJson omitDefaults setting
 		 */
 		FULL,
+		/**
+		 * Serialize only non-null properties regardless of DslJson omitDefaults setting.
+		 * Primitive defaults such as 0 or false are still included.
+		 */
+		NON_NULL,
 		/**
 		 * Serialize only properties marked with annotations.
 		 * It will respect the omitDefault setting and serialize them accordingly.

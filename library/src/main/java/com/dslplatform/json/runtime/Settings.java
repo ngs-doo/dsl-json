@@ -92,6 +92,9 @@ public abstract class Settings {
 		if (json.omitDefaults) {
 			return new AttributeObjectNonDefaultEncoder<>(read, name, encoder, (R)json.getDefault(type));
 		}
+		if (json.omitNulls) {
+			return new AttributeObjectNonNullEncoder<>(read, name, encoder);
+		}
 		return new AttributeObjectAlwaysEncoder<>(read, name, encoder);
 	}
 

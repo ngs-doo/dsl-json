@@ -494,6 +494,36 @@ public class ReflectionTest {
 		Assert.assertEquals(sc.getY(), sc2.getY());
 	}
 
+	public static class DefaultsAndNulls {
+		public int count;
+		public boolean active;
+		public String name;
+		public SimpleClass nested;
+	}
+
+	@Test
+	public void skipNullValuesKeepsPrimitiveDefaults() throws IOException {
+		DslJson<Object> jsonNulls = new DslJson<Object>(Settings.withRuntime().skipNullValues(true).includeServiceLoader());
+		DefaultsAndNulls value = new DefaultsAndNulls();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		jsonNulls.serialize(value, baos);
+		String result = baos.toString("UTF-8");
+		Assert.assertTrue(result.contains("\"count\":0"));
+		Assert.assertTrue(result.contains("\"active\":false"));
+		Assert.assertFalse(result.contains("name"));
+		Assert.assertFalse(result.contains("nested"));
+		Assert.assertFalse(result.contains("null"));
+	}
+
+	@Test
+	public void skipDefaultValuesOmitsPrimitives() throws IOException {
+		DslJson<Object> jsonMin = new DslJson<Object>(Settings.withRuntime().skipDefaultValues(true).includeServiceLoader());
+		DefaultsAndNulls value = new DefaultsAndNulls();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		jsonMin.serialize(value, baos);
+		Assert.assertEquals("{}", baos.toString("UTF-8"));
+	}
+
 	@Test
 	public void selfReference() throws IOException {
 		SimpleClass sc1 = new SimpleClass();

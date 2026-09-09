@@ -21,12 +21,12 @@ public class DslJsonbProvider extends JsonbProvider {
 
 	private static class DslJsonbBuilder implements JsonbBuilder {
 
-		private final DslJson.Settings settings = Settings.withRuntime().skipDefaultValues(true).includeServiceLoader();
+		private final DslJson.Settings settings = Settings.withRuntime().skipNullValues(true).includeServiceLoader();
 
 		@Override
 		public JsonbBuilder withConfig(JsonbConfig config) {
 			config.getProperty("jsonb.null-values")
-					.ifPresent(o -> settings.skipDefaultValues(Boolean.FALSE.equals(o)));
+					.ifPresent(o -> settings.skipNullValues(Boolean.FALSE.equals(o)));
 			return this;
 		}
 
