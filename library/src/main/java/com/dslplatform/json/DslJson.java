@@ -228,7 +228,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 * Key cache is enabled by default and it's used when deserializing unstructured objects such as Map&lt;String, Object&gt;
 		 * to avoid allocating new String key instance. Instead StringCache will provide a new or an old instance.
 		 * This improves memory usage and performance since there is usually small number of keys.
-		 * It does have some performance overhead, but this is dependant on the implementation.
+		 * It does have some performance overhead, but this is dependent on the implementation.
 		 * <p>
 		 * To disable key cache, provide null for it.
 		 *
@@ -242,7 +242,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 		/**
 		 * Use specific string values cache implementation.
-		 * By default string values cache is disabled.
+		 * By default, string values cache is disabled.
 		 * <p>
 		 * To support memory restricted scenarios where there is limited number of string values,
 		 * values cache can be used.

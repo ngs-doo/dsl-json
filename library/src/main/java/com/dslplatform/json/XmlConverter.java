@@ -13,6 +13,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.util.*;
 
 public abstract class XmlConverter {
@@ -30,15 +31,72 @@ public abstract class XmlConverter {
 		json.registerWriter(Element.class, (writer, value) -> serializeNullable(value, writer));
 	}
 
-	private static final DocumentBuilder documentBuilder;
+	private static final DocumentBuilderFactory documentBuilderFactory;
 
 	static {
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilderFactory parser = null;
+		ClassLoader loader = Thread.currentThread().getContextClassLoader();
 		try {
-			documentBuilder = dbFactory.newDocumentBuilder();
-		} catch (ParserConfigurationException e) {
-			throw new RuntimeException(e);
+			Method defaultInstance = DocumentBuilderFactory.class.getMethod("newDefaultInstance");
+			if (defaultInstance != null) {
+				parser = prepareParser((DocumentBuilderFactory) defaultInstance.invoke(null));
+			}
+		} catch (Throwable ignore) {
 		}
+		try {
+			if (parser == null && hasClass("com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl", loader)) {
+				parser = prepareParser(DocumentBuilderFactory.newInstance("com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl", loader));
+			}
+			if (parser == null) {
+				parser = prepareParser(DocumentBuilderFactory.newInstance());
+			}
+		} catch (Throwable ignore) {
+		}
+		documentBuilderFactory = parser;
+	}
+
+	private static boolean hasClass(String name, ClassLoader loader) {
+		try {
+			return Class.forName(name, false, loader) != null;
+		} catch (Exception ignore) {
+			return false;
+		}
+	}
+
+	private static void tryConfigureParser(DocumentBuilderFactory dbf, String feature, boolean value) {
+		try {
+			dbf.setFeature(feature, value);
+		} catch (Throwable ex) {
+			System.err.println("Unable to setFeature " + feature);
+		}
+	}
+
+	private static DocumentBuilderFactory prepareParser(DocumentBuilderFactory dbf) {
+		try {
+			dbf.setValidating(false);
+		} catch (Throwable ex) {
+			System.err.println("Unable to set setValidating(false).");
+		}
+		tryConfigureParser(dbf, "http://xml.org/sax/features/namespaces", false);
+		tryConfigureParser(dbf, "http://xml.org/sax/features/validation", false);
+		tryConfigureParser(dbf, "http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
+		tryConfigureParser(dbf, "http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+		tryConfigureParser(dbf, "http://apache.org/xml/features/dom/defer-node-expansion", false);
+		dbf.setNamespaceAware(false);
+		tryConfigureParser(dbf, "http://javax.xml.XMLConstants/feature/secure-processing", true);
+		tryConfigureParser(dbf, "http://xml.org/sax/features/external-general-entities", false);
+		tryConfigureParser(dbf, "http://xml.org/sax/features/external-parameter-entities", false);
+		try {
+			dbf.setXIncludeAware(false);
+		} catch (Throwable ex) {
+			System.err.println("Unable to set setXIncludeAware(false).");
+		}
+		try {
+			dbf.setExpandEntityReferences(false);
+		} catch (Throwable ex) {
+			System.err.println("Unable to set setExpandEntityReferences(false).");
+		}
+		return dbf;
 	}
 
 	public static void serializeNullable(@Nullable final Element value, final JsonWriter sw) {
@@ -64,7 +122,7 @@ public abstract class XmlConverter {
 		if (reader.last() == '"') {
 			try {
 				InputSource source = new InputSource(new StringReader(reader.readString()));
-				return documentBuilder.parse(source).getDocumentElement();
+				return threadLocalBuilder.get().parse(source).getDocumentElement();
 			} catch (SAXException ex) {
 				throw reader.newParseErrorAt("Invalid XML value", 0, ex);
 			}
@@ -87,14 +145,16 @@ public abstract class XmlConverter {
 		return rootElement;
 	}
 
-	private static synchronized Document createDocument() {
+	private static final ThreadLocal<DocumentBuilder> threadLocalBuilder = ThreadLocal.withInitial(() -> {
 		try {
-			final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-			final DocumentBuilder builder = factory.newDocumentBuilder();
-			return builder.newDocument();
+			return documentBuilderFactory.newDocumentBuilder();
 		} catch (ParserConfigurationException e) {
 			throw new ConfigurationException(e);
 		}
+	});
+
+	private static synchronized Document createDocument() {
+		return threadLocalBuilder.get().newDocument();
 	}
 
 	private static final String TEXT_NODE_TAG = "#text";
