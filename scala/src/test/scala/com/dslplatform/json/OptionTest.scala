@@ -68,7 +68,13 @@ class OptionTest extends Specification with ScalaCheck {
         ParsingException.create("Mandatory property (i) not found at position: 9, following: `{\"l\":null`, before: `}`", true)
       }
     }
+    "missing property will throw an error when non mandatory exists" >> {
+      dslJson.decode[WithOption2]("{\"str\":null}".getBytes("UTF-8")) must throwA {
+        ParsingException.create("Mandatory property (i) not found at position: 11, following: `{\"str\":null`, before: `}`", true)
+      }
+    }
   }
 }
 
 case class WithOption(str: Option[String] = None, i: Option[Int], l: Option[Long])
+case class WithOption2(i: Option[Int], str: Option[String] = None)

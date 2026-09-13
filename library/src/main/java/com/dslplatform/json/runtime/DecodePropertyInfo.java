@@ -1,12 +1,12 @@
 package com.dslplatform.json.runtime;
 
-import com.dslplatform.json.ConfigurationException;
 import com.dslplatform.json.JsonReader;
+import com.dslplatform.json.Nullable;
 import com.dslplatform.json.ParsingException;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,6 +18,7 @@ public class DecodePropertyInfo<T> {
 	public final int weakHash;
 	public final boolean exactName;
 	public final boolean mandatory;
+	public final int mandatoryIndex;
 	public final int index;
 	public final boolean nonNull;
 	public final T value;
@@ -25,7 +26,7 @@ public class DecodePropertyInfo<T> {
 	final byte[] nameBytes;
 
 	public DecodePropertyInfo(String name, boolean exactName, boolean mandatory, int index, boolean nonNull, T value) {
-		this(name, exactName, mandatory, 0, index, nonNull, calcHash(name), calcWeakHash(name), value, name.getBytes(StandardCharsets.UTF_8));
+		this(name, exactName, mandatory, ~0L, -1, index, nonNull, calcHash(name), calcWeakHash(name), value, name.getBytes(StandardCharsets.UTF_8));
 	}
 
 	static int calcHash(String name) {
@@ -45,11 +46,12 @@ public class DecodePropertyInfo<T> {
 		return hash;
 	}
 
-	private DecodePropertyInfo(String name, boolean exactName, boolean mandatory, long mandatoryValue, int index, boolean nonNull, int hash, int weakHash, T value, byte[] nameBytes) {
+	private DecodePropertyInfo(String name, boolean exactName, boolean mandatory, long mandatoryValue, int mandatoryIndex, int index, boolean nonNull, int hash, int weakHash, T value, byte[] nameBytes) {
 		this.name = name;
 		this.exactName = exactName;
 		this.mandatory = mandatory;
 		this.mandatoryValue = mandatoryValue;
+		this.mandatoryIndex = mandatoryIndex;
 		this.index = index;
 		this.nonNull = nonNull;
 		this.hash = hash;
@@ -61,6 +63,11 @@ public class DecodePropertyInfo<T> {
 	static <T> DecodePropertyInfo<T>[] prepare(DecodePropertyInfo<T>[] initial, int argumentCount) {
 		final DecodePropertyInfo<T>[] decoders = initial.clone();
 		final HashSet<Integer> hashes = new HashSet<Integer>();
+		int mandatoryCount = 0;
+		for (DecodePropertyInfo<T> decoder : decoders) {
+			if (decoder.mandatory) mandatoryCount++;
+		}
+		final boolean bitSetMandatory = mandatoryCount > 64;
 		int mandatoryIndex = 0;
 		boolean needsSorting = false;
 		for (int i = 0; i < decoders.length; i++) {
@@ -69,16 +76,13 @@ public class DecodePropertyInfo<T> {
 				for (int j = 0; j < decoders.length; j++) {
 					final DecodePropertyInfo si = decoders[j];
 					if (si.hash == ri.hash && !si.exactName) {
-						decoders[j] = new DecodePropertyInfo<>(ri.name, true, ri.mandatory, ~0, ri.index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
+						decoders[j] = new DecodePropertyInfo<>(ri.name, true, ri.mandatory, ~0L, -1, ri.index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
 					}
 				}
 			}
 			if (ri.mandatory) {
 				ri = decoders[i];
-				if (mandatoryIndex > 63) {
-					throw new ConfigurationException("Only up to 64 mandatory properties are supported");
-				}
-				decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, true, ~(1 << mandatoryIndex), ri.index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
+				decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, true, bitSetMandatory ? ~0L : ~(1L << mandatoryIndex), mandatoryIndex, ri.index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
 				mandatoryIndex++;
 			}
 			needsSorting = needsSorting || ri.index >= 0;
@@ -102,7 +106,7 @@ public class DecodePropertyInfo<T> {
 				index = nameOrder.size();
 				nameOrder.put(ri.name, index);
 			}
-			decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, ri.mandatory, ri.mandatoryValue, index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
+			decoders[i] = new DecodePropertyInfo<>(ri.name, ri.exactName, ri.mandatory, ri.mandatoryValue, ri.mandatoryIndex, index, ri.nonNull, ri.hash, ri.weakHash, ri.value, ri.nameBytes);
 		}
 		return decoders;
 	}
@@ -117,15 +121,33 @@ public class DecodePropertyInfo<T> {
 		return flag;
 	}
 
+	@Nullable
+	static BitSet calculateMandatoryBits(DecodePropertyInfo[] decoders) {
+		BitSet bits = null;
+		for (DecodePropertyInfo dp : decoders) {
+			if (dp.mandatory && dp.mandatoryIndex >= 0) {
+				if (bits == null) bits = new BitSet();
+				bits.set(dp.mandatoryIndex);
+			}
+		}
+		return bits;
+	}
+
 	static void showMandatoryError(
 			final JsonReader reader,
 			final long mandatoryFlag,
+			@Nullable final BitSet mandatoryBits,
 			final DecodePropertyInfo[] decoders) throws ParsingException {
 		final StringBuilder sb = new StringBuilder("Mandatory ");
-		sb.append(Long.bitCount(mandatoryFlag) == 1 ? "property" : "properties");
+		final int missingCount = mandatoryBits != null ? mandatoryBits.cardinality() : Long.bitCount(mandatoryFlag);
+		sb.append(missingCount == 1 ? "property" : "properties");
 		sb.append(" (");
 		for (final DecodePropertyInfo ri : decoders) {
-			if (ri.mandatory && (mandatoryFlag & ~ri.mandatoryValue) != 0) {
+			if (!ri.mandatory) continue;
+			final boolean missing = mandatoryBits != null
+					? ri.mandatoryIndex >= 0 && mandatoryBits.get(ri.mandatoryIndex)
+					: (mandatoryFlag & ~ri.mandatoryValue) != 0;
+			if (missing) {
 				sb.append(ri.name).append(", ");
 			}
 		}

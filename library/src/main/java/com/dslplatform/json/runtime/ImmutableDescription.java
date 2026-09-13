@@ -6,6 +6,7 @@ import com.dslplatform.json.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.BitSet;
 
 public final class ImmutableDescription<T> extends WriteDescription<T> implements JsonReader.ReadObject<T> {
 
@@ -16,6 +17,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
 	private final long mandatoryFlag;
+	private final BitSet mandatoryBits;
 	private final String startError;
 	private final String endError;
 
@@ -48,8 +50,18 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		this.newInstance = newInstance;
 		this.decoders = DecodePropertyInfo.prepare(decoders, defArgs.length);
 		this.skipOnUnknown = skipOnUnknown;
-		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
-		hasMandatory = mandatoryFlag != 0;
+		int mandatoryCount = 0;
+		for (DecodePropertyInfo<JsonReader.ReadObject> ri : this.decoders) {
+			if (ri.mandatory) mandatoryCount++;
+		}
+		if (mandatoryCount > 64) {
+			this.mandatoryFlag = 0L;
+			this.mandatoryBits = DecodePropertyInfo.calculateMandatoryBits(this.decoders);
+		} else {
+			this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
+			this.mandatoryBits = null;
+		}
+		hasMandatory = mandatoryFlag != 0 || (mandatoryBits != null && !mandatoryBits.isEmpty());
 		this.startError = String.format("Expecting '{' to start decoding %s", Reflection.typeDescription(manifest));
 		this.endError = String.format("Expecting '}' or ',' while decoding %s", Reflection.typeDescription(manifest));
 	}
@@ -62,18 +74,19 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 		}
 		if (reader.getNextToken() == '}') {
 			if (hasMandatory) {
-				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, decoders);
+				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, mandatoryBits, decoders);
 			}
 			return newInstance.apply(defArgs);
 		}
 		final Object[] args = defArgs.clone();
 		long currentMandatory = mandatoryFlag;
+		final BitSet currentBits = mandatoryBits != null ? (BitSet) mandatoryBits.clone() : null;
 		int i = 0;
 		while(i < decoders.length) {
 			final DecodePropertyInfo<JsonReader.ReadObject> ri = decoders[i++];
 			final int weakHash = reader.fillNameWeakHash();
 			if (weakHash != ri.weakHash || !reader.wasLastName(ri.nameBytes)) {
-				return readObjectSlow(args, reader, currentMandatory);
+				return readObjectSlow(args, reader, currentMandatory, currentBits);
 			}
 			reader.getNextToken();
 			if (ri.nonNull && reader.wasNull()) {
@@ -81,14 +94,19 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
+			clearMandatory(ri, currentBits);
 			if (reader.getNextToken() == ',' && i != decoders.length) reader.getNextToken();
 			else break;
 		}
-		return finalChecks(args, reader, currentMandatory);
+		return finalChecks(args, reader, currentMandatory, currentBits);
+	}
+
+	private static void clearMandatory(DecodePropertyInfo<?> ri, @Nullable BitSet currentBits) {
+		if (currentBits != null && ri.mandatoryIndex >= 0) currentBits.clear(ri.mandatoryIndex);
 	}
 
 	@Nullable
-	private T readObjectSlow(final Object[] args, final JsonReader reader, long currentMandatory) throws IOException {
+	private T readObjectSlow(final Object[] args, final JsonReader reader, long currentMandatory, BitSet currentBits) throws IOException {
 		boolean processed = false;
 		final int oldHash = reader.getLastHash();
 		for (final DecodePropertyInfo<JsonReader.ReadObject> ri : decoders) {
@@ -102,6 +120,7 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 			}
 			args[ri.index] = ri.value.read(reader);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
+			clearMandatory(ri, currentBits);
 			processed = true;
 			break;
 		}
@@ -122,27 +141,28 @@ public final class ImmutableDescription<T> extends WriteDescription<T> implement
 				}
 				args[ri.index] = ri.value.read(reader);
 				currentMandatory = currentMandatory & ri.mandatoryValue;
+				clearMandatory(ri, currentBits);
 				processed = true;
 				break;
 			}
 			if (!processed) skip(reader);
 			else reader.getNextToken();
 		}
-		return finalChecks(args, reader, currentMandatory);
+		return finalChecks(args, reader, currentMandatory, currentBits);
 	}
 
 	@Nullable
-	private T finalChecks(Object[] args, JsonReader reader, long currentMandatory) throws IOException {
+	private T finalChecks(Object[] args, JsonReader reader, long currentMandatory, BitSet currentBits) throws IOException {
 		if (reader.last() != '}') {
 			if (reader.last() != ',') {
 				throw reader.newParseError(endError);
 			}
 			reader.getNextToken();
 			reader.fillNameWeakHash();
-			return readObjectSlow(args, reader, currentMandatory);
+			return readObjectSlow(args, reader, currentMandatory, currentBits);
 		}
-		if (hasMandatory && currentMandatory != 0) {
-			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
+		if (hasMandatory && (currentBits != null ? !currentBits.isEmpty() : currentMandatory != 0)) {
+			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, currentBits, decoders);
 		}
 		return newInstance.apply(args);
 	}

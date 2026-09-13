@@ -4,6 +4,7 @@ import com.dslplatform.json.*;
 
 import java.io.IOException;
 import java.lang.reflect.*;
+import java.util.BitSet;
 
 public final class ObjectFormatDescription<B, T> extends WriteDescription<T> implements FormatConverter<T>, JsonReader.BindObject<B> {
 
@@ -14,6 +15,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	private final boolean skipOnUnknown;
 	private final boolean hasMandatory;
 	private final long mandatoryFlag;
+	private final BitSet mandatoryBits;
 	private final String startError;
 	private final String endError;
 
@@ -52,8 +54,18 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 		this.finalize = finalize;
 		this.decoders = DecodePropertyInfo.prepare(decoders, decoders.length);
 		this.skipOnUnknown = skipOnUnknown;
-		this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
-		this.hasMandatory = mandatoryFlag != 0;
+		int mandatoryCount = 0;
+		for (DecodePropertyInfo<JsonReader.BindObject> ri : this.decoders) {
+			if (ri.mandatory) mandatoryCount++;
+		}
+		if (mandatoryCount > 64) {
+			this.mandatoryFlag = 0L;
+			this.mandatoryBits = DecodePropertyInfo.calculateMandatoryBits(this.decoders);
+		} else {
+			this.mandatoryFlag = DecodePropertyInfo.calculateMandatory(this.decoders);
+			this.mandatoryBits = null;
+		}
+		this.hasMandatory = mandatoryFlag != 0 || (mandatoryBits != null && !mandatoryBits.isEmpty());
 		this.startError = String.format("Expecting '{' to start decoding %s", Reflection.typeDescription(manifest));
 		this.endError = String.format("Expecting '}' or ',' while decoding %s", Reflection.typeDescription(manifest));
 	}
@@ -89,17 +101,18 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 	private void bindContent(final JsonReader reader, final B instance) throws IOException {
 		if (reader.last() == '}') {
 			if (hasMandatory) {
-				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, decoders);
+				DecodePropertyInfo.showMandatoryError(reader, mandatoryFlag, mandatoryBits, decoders);
 			}
 			return;
 		}
 		long currentMandatory = mandatoryFlag;
+		final BitSet currentBits = mandatoryBits != null ? (BitSet) mandatoryBits.clone() : null;
 		int i = 0;
 		while(i < decoders.length) {
 			final DecodePropertyInfo<JsonReader.BindObject> ri = decoders[i++];
 			final int weakHash = reader.fillNameWeakHash();
 			if (weakHash != ri.weakHash || !reader.wasLastName(ri.nameBytes)) {
-				bindObjectSlow(reader, instance, currentMandatory);
+				bindObjectSlow(reader, instance, currentMandatory, currentBits);
 				return;
 			}
 			reader.getNextToken();
@@ -108,13 +121,18 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 			}
 			ri.value.bind(reader, instance);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
+			clearMandatory(ri, currentBits);
 			if (reader.getNextToken() == ',' && i != decoders.length) reader.getNextToken();
 			else break;
 		}
-		finalChecks(reader, instance, currentMandatory);
+		finalChecks(reader, instance, currentMandatory, currentBits);
 	}
 
-	private void bindObjectSlow(final JsonReader reader, final B instance, long currentMandatory) throws IOException {
+	private static void clearMandatory(DecodePropertyInfo<?> ri, @Nullable BitSet currentBits) {
+		if (currentBits != null && ri.mandatoryIndex >= 0) currentBits.clear(ri.mandatoryIndex);
+	}
+
+	private void bindObjectSlow(final JsonReader reader, final B instance, long currentMandatory, BitSet currentBits) throws IOException {
 		boolean processed = false;
 		final int oldHash = reader.getLastHash();
 		for (final DecodePropertyInfo<JsonReader.BindObject> ri : decoders) {
@@ -128,6 +146,7 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 			}
 			ri.value.bind(reader, instance);
 			currentMandatory = currentMandatory & ri.mandatoryValue;
+			clearMandatory(ri, currentBits);
 			processed = true;
 			break;
 		}
@@ -148,26 +167,27 @@ public final class ObjectFormatDescription<B, T> extends WriteDescription<T> imp
 				}
 				ri.value.bind(reader, instance);
 				currentMandatory = currentMandatory & ri.mandatoryValue;
+				clearMandatory(ri, currentBits);
 				processed = true;
 				break;
 			}
 			if (!processed) skip(reader);
 			else reader.getNextToken();
 		}
-		finalChecks(reader, instance, currentMandatory);
+		finalChecks(reader, instance, currentMandatory, currentBits);
 	}
 
-	private void finalChecks(final JsonReader reader, final B instance, final long currentMandatory) throws IOException {
+	private void finalChecks(final JsonReader reader, final B instance, long currentMandatory, BitSet currentBits) throws IOException {
 		if (reader.last() != '}') {
 			if (reader.last() == ',') {
 				reader.getNextToken();
 				reader.fillNameWeakHash();
-				bindObjectSlow(reader, instance, currentMandatory);
+				bindObjectSlow(reader, instance, currentMandatory, currentBits);
 				return;
 			} else throw reader.newParseError(endError);
 		}
-		if (hasMandatory && currentMandatory != 0) {
-			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, decoders);
+		if (hasMandatory && (currentBits != null ? !currentBits.isEmpty() : currentMandatory != 0)) {
+			DecodePropertyInfo.showMandatoryError(reader, currentMandatory, currentBits, decoders);
 		}
 	}
 
