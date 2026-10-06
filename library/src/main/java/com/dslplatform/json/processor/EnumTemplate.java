@@ -86,7 +86,7 @@ class EnumTemplate {
 				code.append("\t\t}\n");
 			}
 		}
-		code.append("\t\tpublic void write(final com.dslplatform.json.JsonWriter writer, final ");
+		code.append("\t\tpublic void write(final com.dslplatform.json.JsonWriter writer, final @com.dslplatform.json.Nullable ");
 		code.append(className).append(" value) {\n");
 		code.append("\t\t\tif (value == null) writer.writeNull();\n");
 		code.append("\t\t\telse {\n");
@@ -94,7 +94,7 @@ class EnumTemplate {
 		writeName(code, si, "value", "valueWriter", false);
 		code.append("\t\t\t}\n");
 		code.append("\t\t}\n");
-		code.append("\t\tpublic ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
+		code.append("\t\tpublic @com.dslplatform.json.Nullable ").append(className).append(" read(final com.dslplatform.json.JsonReader reader) throws java.io.IOException {\n");
 		code.append("\t\t\tif (reader.wasNull()) return null;\n");
 		if (isStatic(si)) {
 			code.append("\t\t\treturn readStatic(reader);\n");
