@@ -43,7 +43,6 @@ public final class JsonWriter {
 	private byte[] buffer;
 
 	private final UnknownSerializer unknownSerializer;
-	private final Grisu3.FastDtoaBuilder doubleBuilder = new Grisu3.FastDtoaBuilder();
 
 	JsonWriter(@Nullable final UnknownSerializer unknownSerializer) {
 		this(512, unknownSerializer);
@@ -474,15 +473,24 @@ public final class JsonWriter {
 		} else if (value == 0.0) {
 			writeAscii("0.0");
 		} else {
-			if (Grisu3.tryConvert(value, doubleBuilder)) {
-				if (position + 24 >= buffer.length) {
-					enlargeOrFlush(position, 24);
-				}
-				final int len = doubleBuilder.copyTo(buffer, position);
-				position += len;
-			} else {
-				writeAscii(Double.toString(value));
+			if (position + 24 >= buffer.length) {
+				enlargeOrFlush(position, 24);
 			}
+			position += RyuDouble.writeDouble(value, buffer, position);
+		}
+	}
+	final void writeFloat(final float value) {
+		if (value == Float.POSITIVE_INFINITY) {
+			writeAscii("\"Infinity\"");
+		} else if (value == Float.NEGATIVE_INFINITY) {
+			writeAscii("\"-Infinity\"");
+		} else if (value != value) {
+			writeAscii("\"NaN\"");
+		} else {
+			if (position + 15 >= buffer.length) {
+				enlargeOrFlush(position, 15);
+			}
+			position += RyuFloat.writeFloat(value, buffer, position);
 		}
 	}
 
