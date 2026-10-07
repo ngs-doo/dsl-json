@@ -35,9 +35,13 @@ final class Context {
 	}
 
 	String getDefault(AttributeInfo attr) {
-		String type = attr.typeName;
 		if (attr.converter != null && attr.converter.defaultValue != null) {
 			return attr.converter.defaultValue;
+		}
+		String type = attr.typeName;
+		StructInfo target = structs.get(type);
+		if (target != null && target.converter != null && target.converter.defaultValue != null) {
+			return target.converter.defaultValue;
 		}
 		String defVal = defaults.get(type);
 		if (defVal != null) return defVal;
@@ -64,7 +68,6 @@ final class Context {
 		} else if (attr.isMap && type.startsWith("java.util.Map<")) {
 			return "java.util.Collections.emptyMap()";
 		}
-		StructInfo target = structs.get(attr.typeName);
 		if (target != null) {
 			if (target.annotatedFactory != null && target.annotatedFactory.getParameters().isEmpty()) {
 				return target.annotatedFactory.getEnclosingElement().toString() + "." + target.annotatedFactory.getSimpleName() + "()";

@@ -476,11 +476,16 @@ class ConverterTemplate {
 		code.append(className).append(" instance) throws java.io.IOException {\n");
 		for (int i = 0; i < sortedAttributes.size(); i++) {
 			AttributeInfo attr = sortedAttributes.get(i);
-			if (!attr.canReadInput() || attr.converter == null || attr.converter.defaultValue == null) continue;
+			if (!attr.canReadInput()) continue;
+			StructInfo target = context.structs.get(attr.typeName);
+			String defaultValue = attr.converter != null ? attr.converter.defaultValue
+					: target != null && target.converter != null ? target.converter.defaultValue
+					: null;
+			if (defaultValue == null || defaultValue.equals("null")) continue;
 			code.append("\t\t\tinstance.");
 			if (attr.field != null) code.append(attr.field.getSimpleName()).append(" = ");
 			else if (attr.writeMethod != null) code.append(attr.writeMethod.getSimpleName()).append("(");
-			code.append(attr.converter.defaultValue);
+			code.append(defaultValue);
 			if (attr.writeMethod != null) code.append(")");
 			code.append(";\n");
 		}
@@ -618,7 +623,7 @@ class ConverterTemplate {
 			} else if (context.isObjectInstance(attr)) {
 				code.append("null");
 			} else {
-				code.append(context.getDefault(attr));
+				code.append(defaultValue);
 			}
 			code.append(";\n");
 			if (attr.mandatory || attr.notNull && nonPrimitive && ("null".equals(defaultValue) || context.isObjectInstance(attr))) {

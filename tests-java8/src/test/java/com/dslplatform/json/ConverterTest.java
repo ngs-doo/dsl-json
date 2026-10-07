@@ -1,7 +1,6 @@
 package com.dslplatform.json;
 
 import com.dslplatform.json.test.CustomNamingStrategyExternal;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -21,6 +20,7 @@ public class ConverterTest {
 				return ClosedClass.create(reader.readString());
 			}
 		};
+
 		public static JsonWriter.WriteObject<ClosedClass> JSON_WRITER() {
 			return new JsonWriter.WriteObject<ClosedClass>() {
 				@Override
@@ -38,6 +38,7 @@ public class ConverterTest {
 				return null;
 			}
 		};
+
 		public static JsonWriter.WriteObject<byte[]> JSON_WRITER() {
 			return new JsonWriter.WriteObject<byte[]>() {
 				@Override
@@ -60,9 +61,11 @@ public class ConverterTest {
 
 	public static class ClosedClass {
 		public final String value;
+
 		private ClosedClass(String value) {
 			this.value = value;
 		}
+
 		static ClosedClass create(String value) {
 			return new ClosedClass(value);
 		}
@@ -75,11 +78,11 @@ public class ConverterTest {
 		@Override
 		public boolean equals(Object obj) {
 			if (!(obj instanceof ClosedClass)) return false;
-			return value.equals(((ClosedClass)obj).value);
+			return value.equals(((ClosedClass) obj).value);
 		}
 	}
 
-	@CompiledJson(formats = {CompiledJson.Format.ARRAY,CompiledJson.Format.OBJECT})
+	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
 	public static class Composite1 {
 		@JsonAttribute(index = 1, converter = IntConverter.class)
 		public int x;
@@ -88,7 +91,8 @@ public class ConverterTest {
 		@JsonAttribute(index = 3, converter = ClosedClassConverter.class)
 		public ClosedClass d;
 	}
-	@CompiledJson(formats = {CompiledJson.Format.OBJECT,CompiledJson.Format.ARRAY})
+
+	@CompiledJson(formats = {CompiledJson.Format.OBJECT, CompiledJson.Format.ARRAY})
 	public static class Composite2 {
 		@JsonAttribute(index = 1, converter = IntConverter.class)
 		public int x;
@@ -98,7 +102,7 @@ public class ConverterTest {
 		public ClosedClass d;
 	}
 
-	@CompiledJson(formats = {CompiledJson.Format.ARRAY,CompiledJson.Format.OBJECT})
+	@CompiledJson(formats = {CompiledJson.Format.ARRAY, CompiledJson.Format.OBJECT})
 	public static class ImmutableComposite1 {
 		@JsonAttribute(index = 1, converter = IntConverter.class)
 		public final int x;
@@ -113,7 +117,8 @@ public class ConverterTest {
 			this.d = d;
 		}
 	}
-	@CompiledJson(formats = {CompiledJson.Format.OBJECT,CompiledJson.Format.ARRAY})
+
+	@CompiledJson(formats = {CompiledJson.Format.OBJECT, CompiledJson.Format.ARRAY})
 	public static class ImmutableComposite2 {
 		@JsonAttribute(index = 1, converter = IntConverter.class)
 		public final int x;
@@ -254,7 +259,7 @@ public class ConverterTest {
 	}
 
 	@CompiledJson
-	public static class NullChecks{
+	public static class NullChecks {
 		@JsonAttribute(converter = CustomIntConverter.class, nullable = false)
 		public Integer x;
 	}
@@ -315,6 +320,52 @@ public class ConverterTest {
 		public static final int JSON_DEFAULT = 1;
 	}
 
+	public static class MyMoney {
+		public final int cents;
+
+		public MyMoney(int cents) {
+			this.cents = cents;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof MyMoney && ((MyMoney) o).cents == cents;
+		}
+
+		@Override
+		public int hashCode() {
+			return Integer.hashCode(cents);
+		}
+	}
+
+	@JsonConverter(target = MyMoney.class)
+	public static class MoneyConverter {
+		public static final JsonReader.ReadObject<MyMoney> JSON_READER = new JsonReader.ReadObject<MyMoney>() {
+			@Override
+			public MyMoney read(JsonReader reader) throws IOException {
+				return new MyMoney(NumberConverter.deserializeInt(reader));
+			}
+		};
+		public static final JsonWriter.WriteObject<MyMoney> JSON_WRITER = new JsonWriter.WriteObject<MyMoney>() {
+			@Override
+			public void write(JsonWriter writer, @Nullable MyMoney value) {
+				NumberConverter.serialize(value.cents, writer);
+			}
+		};
+		public static final MyMoney JSON_DEFAULT = new MyMoney(42);
+	}
+
+	@CompiledJson
+	public static class MoneyHolder {
+		public MyMoney money;
+	}
+
+	@Test
+	public void typeLevelConverterDefault() throws IOException {
+		MoneyHolder res = dslJson.deserialize(MoneyHolder.class, new byte[]{'{', '}'}, 2);
+		Assert.assertEquals(new MyMoney(42), res.money);
+	}
+
 	@Test
 	public void withNonZeroDefault() throws IOException {
 		DslJson<Object> dslJsonOmit = new DslJson<>(new DslJson.Settings<>().allowArrayFormat(true).skipDefaultValues(true).includeServiceLoader());
@@ -333,7 +384,7 @@ public class ConverterTest {
 		os.reset();
 		dslJsonOmit.serialize(ci, os);
 		Assert.assertEquals("{\"number\":0}", os.toString("UTF-8"));
-		CustomIntDefault res = dslJson.deserialize(CustomIntDefault.class, new byte[]{(byte)'{', (byte)'}'}, 2);
+		CustomIntDefault res = dslJson.deserialize(CustomIntDefault.class, new byte[]{(byte) '{', (byte) '}'}, 2);
 		Assert.assertEquals(NonZeroIntConverter.JSON_DEFAULT, res.number);
 	}
 }

@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  *     public abstract InstantConverter {
  *         public static Instant read(JsonReader reader) { ... }
  *         public static void write(JsonWriter writer, Instant value) { ... }
- *         public static Instant default() { ... }
+ *         public static Instant jsonDefault() { ... }
  *     }
  * </pre>
  *

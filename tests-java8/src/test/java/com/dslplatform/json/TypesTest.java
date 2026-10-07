@@ -115,7 +115,7 @@ public class TypesTest {
 		Assert.assertEquals(0.0, z.d, 0);
 		Assert.assertEquals(0f, z.f, 0);
 		Assert.assertEquals((byte)0, z.t);
-		Assert.assertEquals((char)0, z.c);
+		Assert.assertEquals('0', z.c);
 	}
 
 	@CompiledJson
