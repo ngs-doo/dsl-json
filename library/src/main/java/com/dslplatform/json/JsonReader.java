@@ -35,6 +35,7 @@ public final class JsonReader<TContext> {
 
 	private int tokenStart;
 	private int nameEnd;
+	private boolean preserveName;
 	private int currentIndex = 0;
 	private long currentPosition = 0;
 	private byte last = ' ';
@@ -193,6 +194,7 @@ public final class JsonReader<TContext> {
 	public final JsonReader<TContext> process(@Nullable final InputStream stream) throws IOException {
 		this.currentPosition = 0;
 		this.currentIndex = 0;
+		this.preserveName = false;
 		this.stream = stream;
 		if (stream != null) {
 			this.readLimit = this.length < bufferLenWithExtraSpace ? this.length : bufferLenWithExtraSpace;
@@ -281,19 +283,24 @@ public final class JsonReader<TContext> {
 	}
 
 	private int prepareNextBlock() throws IOException {
-		final int len = length - currentIndex;
-		System.arraycopy(buffer, currentIndex, buffer, 0, len);
+		final boolean keepName = preserveName && nameEnd != -1 && tokenStart >= 0 && tokenStart < currentIndex;
+		final int fromPosition = keepName ? tokenStart : currentIndex;
+		final int len = length - fromPosition;
+		System.arraycopy(buffer, fromPosition, buffer, 0, len);
 		final int available = readFully(buffer, stream, len);
-		currentPosition += currentIndex;
+		currentPosition += fromPosition;
 		if (available == len) {
-			readLimit = length - currentIndex;
+			readLimit = length - fromPosition;
 			length = readLimit;
-			currentIndex = 0;
 		} else {
 			readLimit = available < bufferLenWithExtraSpace ? available : bufferLenWithExtraSpace;
 			this.length = available;
-			currentIndex = 0;
 		}
+		if (keepName) {
+			tokenStart -= fromPosition;
+			nameEnd -= fromPosition;
+		}
+		currentIndex -= fromPosition;
 		return available;
 	}
 
@@ -819,21 +826,25 @@ public final class JsonReader<TContext> {
 
 	public final int fillName() throws IOException {
 		final int hash = calcHash();
+		preserveName = nameEnd != -1;
 		if (read() != ':') {
 			if (!wasWhiteSpace() || getNextToken() != ':') {
 				throw newParseError("Expecting ':' after attribute name");
 			}
 		}
+		preserveName = false;
 		return hash;
 	}
 
 	public final int fillNameWeakHash() throws IOException {
 		final int hash = calcWeakHash();
+		preserveName = nameEnd != -1;
 		if (read() != ':') {
 			if (!wasWhiteSpace() || getNextToken() != ':') {
 				throw newParseError("Expecting ':' after attribute name");
 			}
 		}
+		preserveName = false;
 		return hash;
 	}
 
