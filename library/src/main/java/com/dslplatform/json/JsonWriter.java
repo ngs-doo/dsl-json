@@ -455,8 +455,9 @@ public final class JsonWriter {
 	 * @param value bytes to encode
 	 */
 	public final void writeBinary(final byte[] value) {
-		if (position + (value.length << 1) + 2 >= buffer.length) {
-			enlargeOrFlush(position, (value.length << 1) + 2);
+		final int maxLen = ((value.length + 2) / 3) * 4 + 2;
+		if (position + maxLen >= buffer.length) {
+			enlargeOrFlush(position, maxLen);
 		}
 		buffer[position++] = '"';
 		position += Base64.encodeToBytes(value, buffer, position);

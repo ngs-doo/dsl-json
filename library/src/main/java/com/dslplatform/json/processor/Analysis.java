@@ -216,7 +216,7 @@ public class Analysis {
 			if (info.type == ObjectType.CLASS && info.selectedConstructor() == null && info.annotatedFactory == null
 					&& info.builder == null && !info.hasKnownConversion() && info.matchingConstructors != null) {
 				hasError = true;
-				if (info.matchingConstructors.size() == 0) {
+				if (info.matchingConstructors.isEmpty()) {
 					messager.printMessage(
 							Diagnostic.Kind.ERROR,
 							"No matching constructors found for '" + info.element.asType() + "'. Make sure there is at least one matching constructor available.",
@@ -292,7 +292,7 @@ public class Analysis {
 					Map<String, PartKind> references = analyzeParts(attr.type);
 					for (String r : references.keySet()) {
 						StructInfo target = structs.get(r);
-						if (target != null && target.type == ObjectType.MIXIN && target.implementations.size() == 0) {
+						if (target != null && target.type == ObjectType.MIXIN && target.implementations.isEmpty()) {
 							String what = target.element.getKind() == ElementKind.INTERFACE ? "interface" : "abstract class";
 							String one = target.element.getKind() == ElementKind.INTERFACE ? "implementation" : "concrete extension";
 							hasError = true;

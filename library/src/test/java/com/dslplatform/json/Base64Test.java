@@ -4,14 +4,16 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Random;
 
 public class Base64Test {
+
+	private final DslJson<Object> dsl = new DslJson<Object>();
 
 	@Test
 	public void shortIllegalBase64() throws IOException {
 		try {
 			byte[] base64 = "\"a\"".getBytes("UTF-8");
-			DslJson<Object> dsl = new DslJson<Object>();
 			dsl.deserialize(byte[].class, base64, base64.length);
 			Assert.fail("Expecting end of JSON error");
 		} catch (ParsingException e) {
@@ -23,7 +25,6 @@ public class Base64Test {
 	public void whitespace() throws IOException {
 		try {
 			byte[] base64 = "\" \"".getBytes("UTF-8");
-			DslJson<Object> dsl = new DslJson<Object>();
 			dsl.deserialize(byte[].class, base64, base64.length);
 			Assert.fail("Expecting end of JSON error");
 		} catch (ParsingException e) {
@@ -34,7 +35,6 @@ public class Base64Test {
 	@Test
 	public void shortValidBase64_1() throws IOException {
 		byte[] base64 = "\"MQ\"".getBytes("UTF-8");
-		DslJson<Object> dsl = new DslJson<Object>();
 		byte[] res = dsl.deserialize(byte[].class, base64, base64.length);
 		Assert.assertArrayEquals(new byte[]{'1'}, res);
 	}
@@ -42,7 +42,6 @@ public class Base64Test {
 	@Test
 	public void shortValidBase64_2() throws IOException {
 		byte[] base64 = "\"aa\"".getBytes("UTF-8");
-		DslJson<Object> dsl = new DslJson<Object>();
 		byte[] res = dsl.deserialize(byte[].class, base64, base64.length);
 		Assert.assertArrayEquals(new byte[]{'i'}, res);
 	}
@@ -50,8 +49,31 @@ public class Base64Test {
 	@Test
 	public void emptyBase64() throws IOException {
 		byte[] base64 = "\"\"".getBytes("UTF-8");
-		DslJson<Object> dsl = new DslJson<Object>();
 		byte[] res = dsl.deserialize(byte[].class, base64, base64.length);
 		Assert.assertEquals(0, res.length);
+	}
+
+	@Test
+	public void testWriteBinaryBufferBoundaries() {
+		for (int length = 0; length <= 1024; length++) {
+			byte[] value = new byte[length];
+			new Random(length).nextBytes(value);
+
+			JsonWriter writer = dsl.newWriter();
+			writer.writeBinary(value);
+
+			String expected = "\"" + java.util.Base64.getEncoder().encodeToString(value) + "\"";
+			Assert.assertEquals(expected, writer.toString());
+		}
+	}
+
+	@Test
+	public void testWriteBinaryWithOneByteAtBufferBoundary() {
+		JsonWriter writer = dsl.newWriter();
+
+		writer.writeAscii(new byte[507]);
+		writer.writeBinary(new byte[]{0});
+
+		Assert.assertTrue(writer.toString().endsWith("\"AA==\""));
 	}
 }

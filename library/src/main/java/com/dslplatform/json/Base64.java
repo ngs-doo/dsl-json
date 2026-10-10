@@ -88,6 +88,7 @@ abstract class Base64 {
 
 	static int encodeToBytes(byte[] sArr, byte[] dArr, final int start) {
 		final int sLen = sArr.length;
+		if (sLen == 0) return 0;
 
 		final int eLen = (sLen / 3) * 3;              // Length of even 24-bits.
 		final int dLen = ((sLen - 1) / 3 + 1) << 2;   // Returned character count

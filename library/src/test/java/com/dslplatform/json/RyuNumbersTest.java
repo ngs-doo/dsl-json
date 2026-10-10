@@ -323,4 +323,32 @@ public class RyuNumbersTest {
 		checkParseDoubles(randomDecimals(3, 3_000_000));
 		checkParseFloats(randomDecimals(4, 3_000_000));
 	}
+
+	@Test
+	public void doubleLargeValuesRegression() throws IOException {
+		final double[] values = {
+				2E15,
+				3E15,
+				4E15,
+				5E15,
+				6E15,
+				7E15,
+				2670986322885633.0
+		};
+
+		final DslJson<Object> dslJson = new DslJson<>(new DslJson.Settings<>());
+		final JsonWriter writer = new JsonWriter(40, null);
+		final JsonReader<Object> reader = dslJson.newReader(writer.getByteBuffer());
+
+		for (double value : values) {
+			writer.reset();
+			NumberConverter.serialize(value, writer);
+
+			reader.process(null, writer.size());
+			reader.getNextToken();
+
+			final double actual = NumberConverter.deserializeDouble(reader);
+			Assert.assertEquals(value, actual, 0);
+		}
+	}
 }
