@@ -283,6 +283,55 @@ public class JavaValidationTest extends AbstractAnnotationProcessorTest {
 	}
 
 	@Test
+	public void excludeOnConcreteImplementationIsWarning() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ExcludeOnImplIface.class, ExcludeOnImplClass.class);
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				5,
+				diagnostics,
+				"TypeSignature.EXCLUDE has no effect on class: com.dslplatform.json.models.ExcludeOnImplClass. It only applies to mixins (interfaces or abstract classes). '$type' will still be written when serializing through: com.dslplatform.json.models.ExcludeOnImplIface. Set EXCLUDE on the mixin instead to exclude it.");
+	}
+
+	@Test
+	public void excludeOnAbstractClassUsedAsMixinIsNotWarning() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ExcludeOnImplIface.class, ExcludeOnAbstractBase.class, ExcludeAbstractImpl.class);
+		assertCompilationSuccessful(diagnostics);
+		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
+			Assert.assertFalse(diagnostic.getMessage(Locale.ENGLISH),
+					diagnostic.getKind() == Diagnostic.Kind.WARNING && diagnostic.getMessage(Locale.ENGLISH).contains("TypeSignature.EXCLUDE has no effect"));
+		}
+	}
+
+	@Test
+	public void excludeOnFinalConcreteImplementationIsWarning() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ExcludeOnImplIface.class, ExcludeFinalImplClass.class);
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				5,
+				diagnostics,
+				"TypeSignature.EXCLUDE has no effect on class: com.dslplatform.json.models.ExcludeFinalImplClass. It only applies to mixins (interfaces or abstract classes). '$type' will still be written when serializing through: com.dslplatform.json.models.ExcludeOnImplIface. Set EXCLUDE on the mixin instead to exclude it.");
+	}
+
+	@Test
+	public void excludeOnSubMixinUsedAsImplementationIsNotNoEffectWarning() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ExcludeNestedOuter.class, ExcludeNestedInner.class, ExcludeNestedImpl.class);
+		assertCompilationSuccessful(diagnostics);
+		for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
+			Assert.assertFalse(diagnostic.getMessage(Locale.ENGLISH),
+					diagnostic.getKind() == Diagnostic.Kind.WARNING && diagnostic.getMessage(Locale.ENGLISH).contains("TypeSignature.EXCLUDE has no effect"));
+		}
+	}
+
+	@Test
+	public void excludeWithoutDeserializeAsIsWriteOnlyWarning() {
+		List<Diagnostic<? extends JavaFileObject>> diagnostics = compileTestCase(ExcludeNoDeserializeAsIface.class, ExcludeNoDeserializeAsImpl.class);
+		assertCompilationReturned(
+				Diagnostic.Kind.WARNING,
+				5,
+				diagnostics,
+				"TypeSignature.EXCLUDE without deserializeAs makes mixin: com.dslplatform.json.models.ExcludeNoDeserializeAsIface write-only. It can be serialized without '$type', but it can never be deserialized. Add deserializeAs if you need to read values back.");
+	}
+	@Test
 	public void nestedAbstractMustBeStatic() {
 		assertCompilationReturned(
 				Diagnostic.Kind.ERROR,

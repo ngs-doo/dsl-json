@@ -556,6 +556,35 @@ public class Analysis {
 						info.element,
 						info.annotation);
 			}
+			if (info.type == ObjectType.CLASS && info.typeSignature == CompiledJson.TypeSignature.EXCLUDE) {
+				StringBuilder message = new StringBuilder("TypeSignature.EXCLUDE has no effect on class: ").append(className)
+						.append(". It only applies to mixins (interfaces or abstract classes).");
+				List<String> targets = new ArrayList<String>();
+				for (StructInfo other : structs.values()) {
+					if (other.type == ObjectType.MIXIN && other.implementations.contains(info) && other.typeSignature != CompiledJson.TypeSignature.EXCLUDE) {
+						targets.add(other.element.getQualifiedName().toString());
+					}
+				}
+				if (!targets.isEmpty()) {
+					message.append(" '$type' will still be written when serializing through: ")
+							.append(String.join(", ", targets))
+							.append(". Set EXCLUDE on the mixin instead to exclude it.");
+				}
+				messager.printMessage(
+						Diagnostic.Kind.WARNING,
+						message.toString(),
+						info.element,
+						info.annotation);
+			}
+			if (info.type == ObjectType.MIXIN && info.typeSignature == CompiledJson.TypeSignature.EXCLUDE
+					&& info.deserializeAs == null && !info.implementations.isEmpty()) {
+				messager.printMessage(
+						Diagnostic.Kind.WARNING,
+						"TypeSignature.EXCLUDE without deserializeAs makes mixin: " + className +
+						" write-only. It can be serialized without '$type', but it can never be deserialized. Add deserializeAs if you need to read values back.",
+						info.element,
+						info.annotation);
+			}
 			if (info.type == ObjectType.CLASS && info.discriminator.length() > 0) {
 				if (info.attributes.containsKey(info.discriminator)) {
 					messager.printMessage(

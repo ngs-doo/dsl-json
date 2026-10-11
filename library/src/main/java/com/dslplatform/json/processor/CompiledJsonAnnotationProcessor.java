@@ -490,7 +490,8 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		}
 
 		if (si.type == ObjectType.MIXIN && !si.implementations.isEmpty()) {
-			mixin(code, si.deserializeAs != null, si, className);
+			boolean writeOnly = si.deserializeAs != null || si.typeSignature == CompiledJson.TypeSignature.EXCLUDE;
+			mixin(code, writeOnly, si, className);
 		}
 		if (si.type == ObjectType.MIXIN && si.deserializeAs != null) {
 			String typeMixin = typeOrClass(nonGenericObject(className), className);
@@ -541,7 +542,7 @@ public class CompiledJsonAnnotationProcessor extends AbstractProcessor {
 		code.append("\t\tcom.dslplatform.json.runtime.").append(mixinType).append("<").append(className).append("> description = new com.dslplatform.json.runtime.").append(mixinType).append("<>(\n");
 		code.append("\t\t\t").append(className).append(".class,\n");
 		code.append("\t\t\t__dsljson,\n");
-		if (si.discriminator.length() > 0) {
+		if (!writeOnly && si.discriminator.length() > 0) {
 			code.append("\t\t\t\"").append(si.discriminator).append("\",\n");
 		}
 		code.append("\t\t\tnew com.dslplatform.json.runtime.FormatDescription[] {\n");
