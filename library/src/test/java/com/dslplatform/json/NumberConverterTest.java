@@ -12,7 +12,7 @@ import java.util.*;
 
 public class NumberConverterTest {
 
-	private final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>().doublePrecision(JsonReader.DoublePrecision.HIGH));
+	private final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>());
 
 	@Test
 	public void rangeCheckInt() throws IOException {
@@ -900,7 +900,7 @@ public class NumberConverterTest {
 
 	@Test
 	public void doubleRoundingError() throws IOException {
-		final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>().doublePrecision(JsonReader.DoublePrecision.DEFAULT));
+		final DslJson<Object> dslJson = new DslJson<Object>(new DslJson.Settings<Object>());
 		final JsonWriter sw = new JsonWriter(40, null);
 		final JsonReader<Object> jr = dslJson.newReader(sw.getByteBuffer());
 		final JsonReader<Object> jsr = dslJson.newReader(new ByteArrayInputStream(new byte[0]), new byte[64]);

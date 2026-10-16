@@ -94,7 +94,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	protected final List<ConverterFactory<JsonReader.BindObject>> binderFactories = new CopyOnWriteArrayList<ConverterFactory<JsonReader.BindObject>>();
 	private final int settingsBinders;
 	private final JsonReader.ErrorInfo errorInfo;
-	private final JsonReader.DoublePrecision doublePrecision;
 	private final JsonReader.UnknownNumberParsing unknownNumbers;
 	private final int maxNumberDigits;
 	private final int maxStringSize;
@@ -136,7 +135,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private StringCache valuesCache;
 		private int fromServiceLoader;
 		private JsonReader.ErrorInfo errorInfo = JsonReader.ErrorInfo.WITH_STACK_TRACE;
-		private JsonReader.DoublePrecision doublePrecision = JsonReader.DoublePrecision.DEFAULT;
 		private JsonReader.UnknownNumberParsing unknownNumbers = JsonReader.UnknownNumberParsing.LONG_AND_BIGDECIMAL;
 		private int maxNumberDigits = 512;
 		private int maxStringBuffer = 128 * 1024 * 1024;
@@ -366,15 +364,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 			return this;
 		}
 
-		/**
-		 * By default doubles are not deserialized into an exact value in some rare edge cases.
-		 *
-		 * @param precision type of double deserialization
-		 * @return itself
-		 */
+		@Deprecated
 		public Settings<TContext> doublePrecision(JsonReader.DoublePrecision precision) {
-			if (precision == null) throw new IllegalArgumentException("precision can't be null");
-			this.doublePrecision = precision;
 			return this;
 		}
 
@@ -518,7 +509,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.localReader = new ThreadLocal<JsonReader>() {
 			@Override
 			protected JsonReader initialValue() {
-				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self, self.errorInfo, self.doublePrecision, self.unknownNumbers, self.maxNumberDigits, self.maxStringSize);
+				return new JsonReader<TContext>(new byte[4096], 4096, self.context, new char[64], self.keyCache, self.valuesCache, self, self.errorInfo, self.unknownNumbers, self.maxNumberDigits, self.maxStringSize);
 			}
 		};
 		this.context = settings.context;
@@ -530,7 +521,6 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		this.valuesCache = settings.valuesCache;
 		this.unknownNumbers = settings.unknownNumbers;
 		this.errorInfo = settings.errorInfo;
-		this.doublePrecision = settings.doublePrecision;
 		this.maxNumberDigits = settings.maxNumberDigits;
 		this.maxStringSize = settings.maxStringBuffer;
 		this.writerFactories.addAll(settings.writerFactories);
@@ -673,7 +663,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader() {
-		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(new byte[4096], 4096, context, new char[64], keyCache, valuesCache, this, errorInfo, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -685,7 +675,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes) {
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, errorInfo, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -698,7 +688,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length) {
-		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, length, context, new char[64], keyCache, valuesCache, this, errorInfo, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 
@@ -714,7 +704,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	 * @return bound reader
 	 */
 	public JsonReader<TContext> newReader(byte[] bytes, int length, char[] tmp) {
-		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, length, context, tmp, keyCache, valuesCache, this, errorInfo, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	/**
@@ -746,7 +736,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	@Deprecated
 	public JsonReader<TContext> newReader(String input) {
 		final byte[] bytes = input.getBytes(StandardCharsets.UTF_8);
-		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringSize);
+		return new JsonReader<TContext>(bytes, bytes.length, context, new char[64], keyCache, valuesCache, this, errorInfo, unknownNumbers, maxNumberDigits, maxStringSize);
 	}
 
 	private static void loadDefaultConverters(final DslJson json, Set<ClassLoader> loaders, final String name) {

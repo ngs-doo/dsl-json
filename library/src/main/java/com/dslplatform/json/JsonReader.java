@@ -66,17 +66,12 @@ public final class JsonReader<TContext> {
 		MINIMAL
 	}
 
+	@Deprecated
 	public enum DoublePrecision {
-		EXACT(0),
-		HIGH(1),
-		DEFAULT(3),
-		LOW(4);
-
-		final int level;
-
-		DoublePrecision(int level) {
-			this.level = level;
-		}
+		EXACT,
+		HIGH,
+		DEFAULT,
+		LOW
 	}
 
 	public enum UnknownNumberParsing {
@@ -87,8 +82,6 @@ public final class JsonReader<TContext> {
 	}
 
 	protected final ErrorInfo errorInfo;
-	protected final DoublePrecision doublePrecision;
-	protected final int doubleLengthLimit;
 	protected final UnknownNumberParsing unknownNumbers;
 	protected final int maxNumberDigits;
 	private final int maxStringBuffer;
@@ -102,7 +95,6 @@ public final class JsonReader<TContext> {
 			@Nullable final StringCache valuesCache,
 			@Nullable final TypeLookup typeLookup,
 			final ErrorInfo errorInfo,
-			final DoublePrecision doublePrecision,
 			final UnknownNumberParsing unknownNumbers,
 			final int maxNumberDigits,
 			final int maxStringBuffer) {
@@ -116,11 +108,9 @@ public final class JsonReader<TContext> {
 		this.valuesCache = valuesCache;
 		this.typeLookup = typeLookup;
 		this.errorInfo = errorInfo;
-		this.doublePrecision = doublePrecision;
 		this.unknownNumbers = unknownNumbers;
 		this.maxNumberDigits = maxNumberDigits;
 		this.maxStringBuffer = maxStringBuffer;
-		this.doubleLengthLimit = 15 + doublePrecision.level;
 		this.originalBuffer = buffer;
 		this.originalBufferLenWithExtraSpace = bufferLenWithExtraSpace;
 	}
@@ -134,11 +124,10 @@ public final class JsonReader<TContext> {
 			@Nullable final StringCache valuesCache,
 			@Nullable final TypeLookup typeLookup,
 			final ErrorInfo errorInfo,
-			final DoublePrecision doublePrecision,
 			final UnknownNumberParsing unknownNumbers,
 			final int maxNumberDigits,
 			final int maxStringBuffer) {
-		this(tmp, buffer, length, context, keyCache, valuesCache, typeLookup, errorInfo, doublePrecision, unknownNumbers, maxNumberDigits, maxStringBuffer);
+		this(tmp, buffer, length, context, keyCache, valuesCache, typeLookup, errorInfo, unknownNumbers, maxNumberDigits, maxStringBuffer);
 		if (tmp == null) {
 			throw new IllegalArgumentException("tmp buffer provided as null.");
 		}
@@ -566,6 +555,16 @@ public final class JsonReader<TContext> {
 		if (ci > length) throw newParseErrorAt("JSON string was not closed with a double quote", 0);
 		currentIndex = ci;
 		return tmp;
+	}
+
+	final int scanSimpleQuote() throws ParsingException {
+		if (last != '"') throw newParseError("Expecting '\"' for string start");
+		tokenStart = currentIndex;
+		int ci = currentIndex;
+		while (ci < length && buffer[ci] != '"') ci++;
+		if (ci >= length) throw newParseErrorAt("JSON string was not closed with a double quote", 0);
+		currentIndex = ci + 1;
+		return tokenStart;
 	}
 
 	/**

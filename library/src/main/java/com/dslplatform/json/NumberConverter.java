@@ -311,6 +311,45 @@ public abstract class NumberConverter {
 		return end;
 	}
 
+	private static BigDecimal parseQuotedDecimal(final JsonReader reader) throws IOException {
+		final int start = reader.getCurrentIndex(); // first char after the opening quote
+		final byte[] buf = reader.buffer;
+		int end = start;
+		while (end < reader.length() && buf[end] != '"') end++;
+		if (end == reader.length()) {
+			return parseQuotedDecimalGeneric(reader); // closing quote not in current block, multi-chunk string
+		}
+		for (int i = start; i < end; i++) {
+			final byte b = buf[i];
+			if (b != '-' && b != '.' && b != 'e' && b != 'E' && (b < '0' || b > '9')) return parseQuotedDecimalGeneric(reader);
+		}
+		final int len = end - start;
+		if (len > 18 || buf[end - 1] == '.') {
+			reader.scanSimpleQuote();
+			return parseBigDecimalGeneric(reader.prepareBuffer(start, len), len, reader, true);
+		}
+		reader.scanSimpleQuote();
+		if (len == 0) numberException(reader, start - 1, end + 1, "Digit not found");
+		final byte ch = buf[start];
+		if (ch == '-') {
+			if (len == 1) numberException(reader, start - 1, end + 1, "Digit not found");
+			if (len > 2 && buf[start + 1] == '0' && buf[start + 2] >= '0' && buf[start + 2] <= '9') {
+				numberException(reader, start - 1, end + 1, "Leading zero is not allowed");
+			}
+			return parseNegativeDecimal(buf, reader, start, end);
+		} else {
+			if (len > 1 && ch == '0' && buf[start + 1] >= '0' && buf[start + 1] <= '9') {
+				numberException(reader, start - 1, end + 1, "Leading zero is not allowed");
+			}
+			return parsePositiveDecimal(buf, reader, start, end);
+		}
+	}
+
+	private static BigDecimal parseQuotedDecimalGeneric(final JsonReader reader) throws IOException {
+		final int len = reader.parseString();
+		return parseBigDecimalGeneric(reader.chars, len, reader, true);
+	}
+
 	private static BigDecimal parseBigDecimalGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
 		int end = parseNumberGeneric(buf, len, reader, withQuotes);
 		try {
@@ -381,27 +420,33 @@ public abstract class NumberConverter {
 
 	public static double deserializeDouble(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
-			final int position = reader.getCurrentIndex();
-			final char[] buf = reader.readSimpleQuote();
-			return parseDoubleGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true);
+			final int start = reader.scanSimpleQuote();
+			return parseQuotedDouble(reader.buffer, reader, start);
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
 		return parseDouble(reader.buffer, reader, start, end);
 	}
 
+	private static double parseQuotedDouble(final byte[] buf, final JsonReader reader, final int start) throws IOException {
+		final int end = reader.getCurrentIndex() - 1; // index of the closing quote
+		if (end - start == 3 && equalsAscii(buf, start, "NaN")) return Double.NaN;
+		if (end - start == 8 && equalsAscii(buf, start, "Infinity")) return Double.POSITIVE_INFINITY;
+		if (end - start == 9 && equalsAscii(buf, start, "-Infinity")) return Double.NEGATIVE_INFINITY;
+		checkMaxNumberDigits(reader, start, end);
+		return RyuParser.parseQuotedDouble(reader, buf, start - 1, end + 1);
+	}
+
 	private static double parseDouble(final byte[] buf, final JsonReader reader, final int start, final int end) throws IOException {
-		if (end - start > reader.doubleLengthLimit) {
-			if (end == reader.length()) {
-				final NumberInfo tmp = readLongNumber(reader, start);
-				return parseDoubleGeneric(tmp.buffer, tmp.length, reader, false);
-			}
-			return parseDoubleGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
+		if (end == reader.length()) {
+			final NumberInfo tmp = readLongNumber(reader, start);
+			return parseDoubleGeneric(tmp.buffer, tmp.length, reader);
 		}
+		checkMaxNumberDigits(reader, start, end);
 		return RyuParser.parseDouble(reader, buf, start, end);
 	}
 
-	private static double parseDoubleGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws IOException {
+	private static double parseDoubleGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
@@ -411,12 +456,19 @@ public abstract class NumberConverter {
 		}
 		final int offset = buf[0] == '-' ? 1 : 0;
 		if (buf[offset] == '0' && end > offset + 1 && buf[offset + 1] >= '0' && buf[offset + 1] <= '9') {
-			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len + (withQuotes ? 2 : 0));
+			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len);
 		}
 		try {
 			return Double.parseDouble(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw reader.newParseErrorAt("Error parsing number", len + (withQuotes ? 2 : 0), nfe);
+			throw reader.newParseErrorAt("Error parsing number", len, nfe);
+		}
+	}
+
+	private static void checkMaxNumberDigits(final JsonReader reader, final int start, final int end) throws ParsingException {
+		final int len = end - start;
+		if (len > reader.maxNumberDigits) {
+			throw reader.newParseErrorWith("Too many digits detected in number", len, "", "Too many digits detected in number", len, "");
 		}
 	}
 
@@ -468,27 +520,40 @@ public abstract class NumberConverter {
 
 	public static float deserializeFloat(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
-			final int position = reader.getCurrentIndex();
-			final char[] buf = reader.readSimpleQuote();
-			return parseFloatGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true);
+			final int start = reader.scanSimpleQuote();
+			return parseQuotedFloat(reader.buffer, reader, start);
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
-		if (end == reader.length()) {
-			final NumberInfo tmp = readLongNumber(reader, start);
-			return parseFloatGeneric(tmp.buffer, tmp.length, reader, false);
-		}
 		return parseFloat(reader.buffer, reader, start, end);
 	}
 
+	private static float parseQuotedFloat(final byte[] buf, final JsonReader reader, final int start) throws IOException {
+		final int end = reader.getCurrentIndex() - 1; // index of the closing quote
+		if (end - start == 3 && equalsAscii(buf, start, "NaN")) return Float.NaN;
+		if (end - start == 8 && equalsAscii(buf, start, "Infinity")) return Float.POSITIVE_INFINITY;
+		if (end - start == 9 && equalsAscii(buf, start, "-Infinity")) return Float.NEGATIVE_INFINITY;
+		checkMaxNumberDigits(reader, start, end);
+		return RyuParser.parseQuotedFloat(reader, buf, start - 1, end + 1);
+	}
+
 	private static float parseFloat(final byte[] buf, final JsonReader reader, final int start, final int end) throws IOException {
-		if (end - start > reader.doubleLengthLimit) {
-			return parseFloatGeneric(reader.prepareBuffer(start, end - start), end - start, reader, false);
+		if (end == reader.length()) {
+			final NumberInfo tmp = readLongNumber(reader, start);
+			return parseFloatGeneric(tmp.buffer, tmp.length, reader);
 		}
+		checkMaxNumberDigits(reader, start, end);
 		return RyuParser.parseFloat(reader, buf, start, end);
 	}
 
-	private static float parseFloatGeneric(final char[] buf, final int len, final JsonReader reader, final boolean withQuotes) throws ParsingException {
+	private static boolean equalsAscii(final byte[] buf, final int start, final String s) {
+		for (int i = 0; i < s.length(); i++) {
+			if (buf[start + i] != s.charAt(i)) return false;
+		}
+		return true;
+	}
+
+	private static float parseFloatGeneric(final char[] buf, final int len, final JsonReader reader) throws ParsingException {
 		int end = len;
 		while (end > 0 && Character.isWhitespace(buf[end - 1])) {
 			end--;
@@ -498,12 +563,12 @@ public abstract class NumberConverter {
 		}
 		final int offset = buf[0] == '-' ? 1 : 0;
 		if (buf[offset] == '0' && end > offset + 1 && buf[offset + 1] >= '0' && buf[offset + 1] <= '9') {
-			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len + (withQuotes ? 2 : 0));
+			throw reader.newParseErrorAt("Leading zero is not allowed. Error parsing number", len);
 		}
 		try {
 			return Float.parseFloat(new String(buf, 0, end));
 		} catch (NumberFormatException nfe) {
-			throw reader.newParseErrorAt("Error parsing number", len + (withQuotes ? 2 : 0), nfe);
+			throw reader.newParseErrorAt("Error parsing number", len, nfe);
 		}
 	}
 
@@ -625,13 +690,8 @@ public abstract class NumberConverter {
 
 	public static short deserializeShort(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
-			final int position = reader.getCurrentIndex();
-			final char[] buf = reader.readSimpleQuote();
-			try {
-				return parseBigDecimalGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).shortValueExact();
-			} catch (ArithmeticException ignore) {
-				throw reader.newParseErrorAt("Short overflow detected", reader.getCurrentIndex() - position);
-			}
+			final int start = reader.scanSimpleQuote();
+			return parseQuotedShort(reader.buffer, reader, start);
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
@@ -648,13 +708,8 @@ public abstract class NumberConverter {
 
 	public static int deserializeInt(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
-			final int position = reader.getCurrentIndex();
-			final char[] buf = reader.readSimpleQuote();
-			try {
-				return parseBigDecimalGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).intValueExact();
-			} catch (ArithmeticException ignore) {
-				throw reader.newParseErrorAt("Integer overflow detected", reader.getCurrentIndex() - position);
-			}
+			final int start = reader.scanSimpleQuote();
+			return parseQuotedInt(reader.buffer, reader, start);
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
@@ -670,6 +725,98 @@ public abstract class NumberConverter {
 				numberException(reader, start, end, "Leading zero is not allowed");
 			}
 			return parsePositiveInt(buf, reader, start, end, 0);
+		}
+	}
+
+	private static int parseQuotedInt(final byte[] buf, final JsonReader reader, final int start) throws IOException {
+		final int end = reader.getCurrentIndex() - 1;
+		checkMaxNumberDigits(reader, start, end);
+		if (end == start) numberException(reader, start - 1, end + 1, "Digit not found");
+		final byte ch = buf[start];
+		if (ch == '-') {
+			if (end == start + 1) numberException(reader, start - 1, end + 1, "Digit not found");
+			if (end > start + 2 && buf[start + 1] == '0' && buf[start + 2] >= '0' && buf[start + 2] <= '9') {
+				numberException(reader, start - 1, end + 1, "Leading zero is not allowed");
+			}
+			int value = 0;
+			for (int i = start + 1; i < end; i++) {
+				final int ind = buf[i] - 48;
+				if (ind < 0 || ind > 9) return parseIntGeneric(reader, start, end);
+				value = (value << 3) + (value << 1) - ind;
+				if (value > 0) numberException(reader, start - 1, end + 1, "Integer overflow detected");
+			}
+			return value;
+		} else {
+			if (ch == '0' && end > start + 1 && buf[start + 1] >= '0' && buf[start + 1] <= '9') {
+				numberException(reader, start - 1, end + 1, "Leading zero is not allowed");
+			}
+			int value = 0;
+			for (int i = start; i < end; i++) {
+				final int ind = buf[i] - 48;
+				if (ind < 0 || ind > 9) return parseIntGeneric(reader, start, end);
+				value = (value << 3) + (value << 1) + ind;
+				if (value < 0) numberException(reader, start - 1, end + 1, "Integer overflow detected");
+			}
+			return value;
+		}
+	}
+
+	private static int parseIntGeneric(final JsonReader reader, final int start, final int end) throws IOException {
+		final int len = end - start;
+		try {
+			return parseBigDecimalGeneric(reader.prepareBuffer(start, len), len, reader, true).intValueExact();
+		} catch (ArithmeticException ignore) {
+			throw reader.newParseErrorAt("Integer overflow detected", len + 2);
+		}
+	}
+
+	private static short parseQuotedShort(final byte[] buf, final JsonReader reader, final int start) throws IOException {
+		final int value = parseQuotedInt(buf, reader, start);
+		if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
+			throw reader.newParseErrorAt("Short overflow detected", reader.getCurrentIndex() - start + 1);
+		}
+		return (short) value;
+	}
+
+	private static long parseQuotedLong(final byte[] buf, final JsonReader reader, final int start) throws IOException {
+		final int end = reader.getCurrentIndex() - 1;
+		checkMaxNumberDigits(reader, start, end);
+		if (end == start) numberException(reader, start - 1, end + 1, "Digit not found");
+		final byte ch = buf[start];
+		if (ch == '-') {
+			if (end == start + 1) numberException(reader, start - 1, end + 1, "Digit not found");
+			if (end > start + 2 && buf[start + 1] == '0' && buf[start + 2] >= '0' && buf[start + 2] <= '9') {
+				numberException(reader, start - 1, end + 1, "Leading zero is not allowed");
+			}
+			long value = 0;
+			for (int i = start + 1; i < end; i++) {
+				final int ind = buf[i] - 48;
+				if (ind < 0 || ind > 9) return parseQuotedLongGeneric(reader, start, end);
+				value = (value << 3) + (value << 1) - ind;
+				if (value > 0) numberException(reader, start - 1, end + 1, "Long overflow detected");
+			}
+			return value;
+		} else {
+			if (ch == '0' && end > start + 1 && buf[start + 1] >= '0' && buf[start + 1] <= '9') {
+				numberException(reader, start - 1, end + 1, "Leading zero is not allowed");
+			}
+			long value = 0;
+			for (int i = start; i < end; i++) {
+				final int ind = buf[i] - 48;
+				if (ind < 0 || ind > 9) return parseQuotedLongGeneric(reader, start, end);
+				value = (value << 3) + (value << 1) + ind;
+				if (value < 0) numberException(reader, start - 1, end + 1, "Long overflow detected");
+			}
+			return value;
+		}
+	}
+
+	private static long parseQuotedLongGeneric(final JsonReader reader, final int start, final int end) throws IOException {
+		final int len = end - start;
+		try {
+			return parseBigDecimalGeneric(reader.prepareBuffer(start, len), len, reader, true).longValueExact();
+		} catch (ArithmeticException ignore) {
+			throw reader.newParseErrorAt("Long overflow detected", len + 2);
 		}
 	}
 
@@ -983,13 +1130,8 @@ public abstract class NumberConverter {
 
 	public static long deserializeLong(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
-			final int position = reader.getCurrentIndex();
-			final char[] buf = reader.readSimpleQuote();
-			try {
-				return parseBigDecimalGeneric(buf, reader.getCurrentIndex() - position - 1, reader, true).longValueExact();
-			} catch (ArithmeticException ignore) {
-				throw reader.newParseErrorAt("Long overflow detected", reader.getCurrentIndex() - position);
-			}
+			final int start = reader.scanSimpleQuote();
+			return parseQuotedLong(reader.buffer, reader, start);
 		}
 		final int start = reader.scanNumber();
 		final int end = reader.getCurrentIndex();
@@ -1084,8 +1226,7 @@ public abstract class NumberConverter {
 
 	public static BigDecimal deserializeDecimal(final JsonReader reader) throws IOException {
 		if (reader.last() == '"') {
-			final int len = reader.parseString();
-			return parseBigDecimalGeneric(reader.chars, len, reader, true);
+			return parseQuotedDecimal(reader);
 		}
 		final int start = reader.scanNumber();
 		int end = reader.getCurrentIndex();

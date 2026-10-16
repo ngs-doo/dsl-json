@@ -130,24 +130,36 @@ final class RyuParser {
 		return toFloat(scan(reader, buf, start, end));
 	}
 
+	static double parseQuotedDouble(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
+		return toDouble(scan(reader, buf, start + 1, end - 1, start, end));
+	}
+
+	static float parseQuotedFloat(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
+		return toFloat(scan(reader, buf, start + 1, end - 1, start, end));
+	}
+
 
 	private static Parsed scan(final JsonReader reader, final byte[] buf, final int start, final int end0) throws ParsingException {
+		return scan(reader, buf, start, end0, start, end0);
+	}
+
+	private static Parsed scan(final JsonReader reader, final byte[] buf, final int start, final int end0, final int errStart, final int errEnd) throws ParsingException {
 		int end = end0;
 		while (end > start && isWs(buf[end - 1])) end--;
 		final Parsed p = PARSED.get();
 		p.reset();
 		if (end == start) {
 			// no digits at all: empty or whitespace-only span
-			NumberConverter.numberException(reader, start, end0, end0 != start ? "Unknown digit" : "Digit not found", end0 != start ? ' ' : null);
+			NumberConverter.numberException(reader, errStart, errEnd, end0 != start ? "Unknown digit" : "Digit not found", end0 != start ? ' ' : null);
 		}
 		int i = start;
 		if (buf[i] == '-') {
 			p.negative = true;
 			i++;
 		} else if (buf[i] == '+') {
-			NumberConverter.numberException(reader, start, end0, "Unknown digit", '+');
+			NumberConverter.numberException(reader, errStart, errEnd, "Unknown digit", '+');
 		}
-		if (end == i) NumberConverter.numberException(reader, start, end0, "Digit not found", null);
+		if (end == i) NumberConverter.numberException(reader, errStart, errEnd, "Digit not found", null);
 		long mLong = 0;
 		int bigWords = 0;
 		boolean leadingZero = false;
@@ -159,28 +171,28 @@ final class RyuParser {
 			if (ch == '.' || ch == 'e' || ch == 'E') break;
 			final int ind = ch - 48;
 			if (ind < 0 || ind > 9) {
-				if (leadingZero && i > digitsStart + 1) NumberConverter.numberException(reader, start, end0, "Leading zero is not allowed", null);
-				NumberConverter.numberException(reader, start, end0, "Unknown digit", (char) ch);
+				if (leadingZero && i > digitsStart + 1) NumberConverter.numberException(reader, errStart, errEnd, "Leading zero is not allowed", null);
+				NumberConverter.numberException(reader, errStart, errEnd, "Unknown digit", (char) ch);
 			}
 			if (p.totalDigits == 0 && ind == 0) leadingZero = true;
 			addDigit(p, ind, mLong, bigWords);
 			mLong = p.mLong;
 			bigWords = p.bigWords;
 		}
-		if (i == digitsStart) NumberConverter.numberException(reader, start, end0, "Digit not found", null);
-		if (leadingZero && ch != '.' && i > digitsStart + 1) NumberConverter.numberException(reader, start, end0, "Leading zero is not allowed", null);
+		if (i == digitsStart) NumberConverter.numberException(reader, errStart, errEnd, "Digit not found", null);
+		if (leadingZero && ch != '.' && i > digitsStart + 1) NumberConverter.numberException(reader, errStart, errEnd, "Leading zero is not allowed", null);
 		int expPart = 0;
 		int fracCount = 0;
 		if (i < end && ch == '.') {
 			i++;
-			if (i == end) NumberConverter.numberException(reader, start, end0, "Number ends with a dot", null);
+			if (i == end) NumberConverter.numberException(reader, errStart, errEnd, "Number ends with a dot", null);
 			for (; i < end; i++) {
 				ch = buf[i];
 				if (ch == 'e' || ch == 'E') break;
 				final int ind = ch - 48;
 				if (ind < 0 || ind > 9) {
-					if (leadingZero && i > digitsStart + 1) NumberConverter.numberException(reader, start, end0, "Leading zero is not allowed", null);
-					NumberConverter.numberException(reader, start, end0, "Unknown digit", (char) ch);
+					if (leadingZero && i > digitsStart + 1) NumberConverter.numberException(reader, errStart, errEnd, "Leading zero is not allowed", null);
+					NumberConverter.numberException(reader, errStart, errEnd, "Unknown digit", (char) ch);
 				}
 				addDigit(p, ind, mLong, bigWords);
 				mLong = p.mLong;
@@ -199,7 +211,7 @@ final class RyuParser {
 			boolean saturated = false;
 			while (i < end) {
 				final int ind = buf[i] - 48;
-				if (ind < 0 || ind > 9) NumberConverter.numberException(reader, start, end0, "Unknown digit", (char) buf[i]);
+				if (ind < 0 || ind > 9) NumberConverter.numberException(reader, errStart, errEnd, "Unknown digit", (char) buf[i]);
 				if (!saturated) {
 					expPart = expPart * 10 + ind;
 					if (expPart > 10000) {
@@ -209,7 +221,7 @@ final class RyuParser {
 				}
 				i++;
 			}
-			if (i == expDigitsStart) NumberConverter.numberException(reader, start, end0, "Digit not found", null);
+			if (i == expDigitsStart) NumberConverter.numberException(reader, errStart, errEnd, "Digit not found", null);
 			p.exp = (expNeg ? -expPart : expPart) - fracCount;
 		} else {
 			p.exp = -fracCount;
