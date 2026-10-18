@@ -15,8 +15,12 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public abstract class XmlConverter {
+
+	private static final Logger LOG = Logger.getLogger(XmlConverter.class.getName());
 
 	private static final JsonReader.ReadObject<Element> READER = new JsonReader.ReadObject<Element>() {
 		@Nullable
@@ -67,7 +71,7 @@ public abstract class XmlConverter {
 		try {
 			dbf.setFeature(feature, value);
 		} catch (Throwable ex) {
-			System.err.println("Unable to setFeature " + feature);
+			LOG.log(Level.WARNING, "Unable to setFeature " + feature, ex);
 		}
 	}
 
@@ -75,7 +79,7 @@ public abstract class XmlConverter {
 		try {
 			dbf.setValidating(false);
 		} catch (Throwable ex) {
-			System.err.println("Unable to set setValidating(false).");
+			LOG.log(Level.WARNING, "Unable to set setValidating(false)", ex);
 		}
 		tryConfigureParser(dbf, "http://xml.org/sax/features/namespaces", false);
 		tryConfigureParser(dbf, "http://xml.org/sax/features/validation", false);
@@ -89,12 +93,12 @@ public abstract class XmlConverter {
 		try {
 			dbf.setXIncludeAware(false);
 		} catch (Throwable ex) {
-			System.err.println("Unable to set setXIncludeAware(false).");
+			LOG.log(Level.WARNING, "Unable to set setXIncludeAware(false)", ex);
 		}
 		try {
 			dbf.setExpandEntityReferences(false);
 		} catch (Throwable ex) {
-			System.err.println("Unable to set setExpandEntityReferences(false).");
+			LOG.log(Level.WARNING, "Unable to set setExpandEntityReferences(false)", ex);
 		}
 		return dbf;
 	}

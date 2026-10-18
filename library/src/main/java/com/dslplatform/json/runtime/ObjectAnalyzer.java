@@ -7,8 +7,12 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public abstract class ObjectAnalyzer {
+
+	private static final Logger LOG = Logger.getLogger(ObjectAnalyzer.class.getName());
 
 	public static class Runtime {
 		public static final JsonReader.ReadObject<Object> JSON_READER = new JsonReader.ReadObject<Object>() {
@@ -143,7 +147,11 @@ public abstract class ObjectAnalyzer {
 		if (newInstance == null) {
 			try {
 				raw.newInstance();
-			} catch (InstantiationException | IllegalAccessException ignore) {
+			} catch (InstantiationException ignore) {
+				return null;
+			} catch (IllegalAccessException ex) {
+				final Package pkg = raw.getPackage();
+				LOG.log(Level.SEVERE, "Unable to analyze class " + raw.getName() + " for runtime serialization: its public no-arg constructor is not accessible from DSL-JSON (module com.dslplatform.json). If the class lives in a named module, export or open its package to DSL-JSON, eg: --add-opens my.module/" + (pkg == null ? "" : pkg.getName()) + "=com.dslplatform.json", ex);
 				return null;
 			}
 			newInstance = new InstanceFactory() {
