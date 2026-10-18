@@ -56,7 +56,7 @@ class LazyAttributeObjectEncoder<T, R> implements JsonWriter.WriteObject<T> {
 				}
 				if (omitDefaults) {
 					final Object tmpDefault = json.getDefault(manifest);
-					if (attr == tmpDefault) return;
+					if (attr.equals(tmpDefault)) return;
 				}
 				writer.writeAscii(quotedName);
 				tmp.write(writer, attr);
