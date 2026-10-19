@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,29 +41,36 @@ public abstract class ObjectAnalyzer {
 		private JsonReader.BindObject resolvedBinder;
 		private JsonReader.ReadObject resolvedReader;
 		volatile ObjectFormatDescription resolved;
+		private final CountDownLatch resolutionComplete = new CountDownLatch(1);
 
 		LazyObjectDescription(DslJson json, Type type) {
 			this.json = json;
 			this.type = type;
 		}
 
+		void resolve(ObjectFormatDescription converter) {
+			resolved = converter;
+			resolutionComplete.countDown();
+		}
+
+		void release() {
+			resolutionComplete.countDown();
+		}
+
 		private boolean checkSignatureNotFound() {
-			int i = 0;
-			ObjectFormatDescription local = null;
-			while (i < 50) {
+			ObjectFormatDescription local = resolved;
+			if (local == null) {
 				try {
-					Thread.sleep(100);
+					resolutionComplete.await(5, TimeUnit.SECONDS);
 				} catch (InterruptedException e) {
 					throw new ConfigurationException(e);
 				}
 				local = resolved;
-				if (local != null) {
-					resolvedWriter = local;
-					resolvedReader = local;
-					resolvedBinder = local;
-					break;
-				}
-				i++;
+			}
+			if (local != null) {
+				resolvedWriter = local;
+				resolvedReader = local;
+				resolvedBinder = local;
 			}
 			return local == null;
 		}
@@ -166,27 +175,34 @@ public abstract class ObjectAnalyzer {
 			};
 		}
 		final LazyObjectDescription lazy = new LazyObjectDescription(json, manifest);
-		if (!hasEncoder) json.registerWriter(manifest, lazy);
-		if (!hasDecoder) json.registerReader(manifest, lazy);
-		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
-		final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
-		final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
-		int index = 0;
-		for (final Field f : raw.getFields()) {
-			if (analyzeField(json, foundWrite, foundRead, f, index, f.getDeclaringClass(), genericMappings)) index++;
+		final JsonWriter.WriteObject oldWriter = hasEncoder ? null : json.registerWriter(manifest, lazy);
+		final JsonReader.ReadObject oldReader = hasDecoder ? null : json.registerReader(manifest, lazy);
+		try {
+			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
+			final LinkedHashMap<String, DecodePropertyInfo<JsonReader.BindObject>> foundRead = new LinkedHashMap<>();
+			final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
+			int index = 0;
+			for (final Field f : raw.getFields()) {
+				if (analyzeField(json, foundWrite, foundRead, f, index, f.getDeclaringClass(), genericMappings)) index++;
+			}
+			for (final Method m : raw.getMethods()) {
+				if (analyzeMethods(m, raw, json, foundWrite, foundRead, index, m.getDeclaringClass(), genericMappings)) index++;
+			}
+			//TODO: don't register bean if something can't be serialized
+			final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
+			final DecodePropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new DecodePropertyInfo[0]);
+			final ObjectFormatDescription<T, T> converter = ObjectFormatDescription.create(raw, newInstance, writeProps, readProps, json, true);
+			if (!hasEncoder) json.registerWriter(manifest, converter);
+			if (!hasDecoder) json.registerReader(manifest, converter);
+			if (!hasBinder) json.registerBinder(manifest, converter);
+			lazy.resolve(converter);
+			return converter;
+		} catch (RuntimeException ex) {
+			if (!hasEncoder) json.registerWriter(manifest, oldWriter);
+			if (!hasDecoder) json.registerReader(manifest, oldReader);
+			lazy.release();
+			throw ex;
 		}
-		for (final Method m : raw.getMethods()) {
-			if (analyzeMethods(m, raw, json, foundWrite, foundRead, index, m.getDeclaringClass(), genericMappings)) index++;
-		}
-		//TODO: don't register bean if something can't be serialized
-		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
-		final DecodePropertyInfo<JsonReader.BindObject>[] readProps = foundRead.values().toArray(new DecodePropertyInfo[0]);
-		final ObjectFormatDescription<T, T> converter = ObjectFormatDescription.create(raw, newInstance, writeProps, readProps, json, true);
-		if (!hasEncoder) json.registerWriter(manifest, converter);
-		if (!hasDecoder) json.registerReader(manifest, converter);
-		if (!hasBinder) json.registerBinder(manifest, converter);
-		lazy.resolved = converter;
-		return converter;
 	}
 
 	static boolean matchesContext(Type manifest, DslJson json) {

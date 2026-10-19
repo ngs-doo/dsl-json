@@ -7,6 +7,8 @@ import java.lang.reflect.*;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public abstract class MixinAnalyzer {
 
@@ -16,27 +18,36 @@ public abstract class MixinAnalyzer {
 		private final Type type;
 		private JsonWriter.WriteObject resolvedWriter;
 		volatile ObjectFormatDescription resolved;
+		private final CountDownLatch resolutionComplete = new CountDownLatch(1);
 
 		LazyMixinDescription(DslJson json, Type type) {
 			this.json = json;
 			this.type = type;
 		}
 
+		void resolve(ObjectFormatDescription converter) {
+			resolved = converter;
+			resolutionComplete.countDown();
+		}
+
+		void release() {
+			resolutionComplete.countDown();
+		}
+
 		private boolean checkSignatureNotFound() {
-			int i = 0;
-			while (i < 50) {
+			ObjectFormatDescription local = resolved;
+			if (local == null) {
 				try {
-					Thread.sleep(100);
+					resolutionComplete.await(5, TimeUnit.SECONDS);
 				} catch (InterruptedException e) {
 					throw new ConfigurationException(e);
 				}
-				if (resolved != null) {
-					resolvedWriter = resolved;
-					break;
-				}
-				i++;
+				local = resolved;
 			}
-			return resolved == null;
+			if (local != null) {
+				resolvedWriter = local;
+			}
+			return local == null;
 		}
 
 		@Override
@@ -90,21 +101,27 @@ public abstract class MixinAnalyzer {
 				throw new IllegalArgumentException("Internal DSL-JSON error. Should not be used for deserialization");			}
 		};
 		final LazyMixinDescription lazy = new LazyMixinDescription(json, manifest);
-		if (!hasEncoder) json.registerWriter(manifest, lazy);
-		final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
-		final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
-		for (final Field f : raw.getDeclaredFields()) {
-			analyzeField(json, foundWrite, f, genericMappings);
+		final JsonWriter.WriteObject oldWriter = hasEncoder ? null : json.registerWriter(manifest, lazy);
+		try {
+			final LinkedHashMap<String, JsonWriter.WriteObject> foundWrite = new LinkedHashMap<>();
+			final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
+			for (final Field f : raw.getDeclaredFields()) {
+				analyzeField(json, foundWrite, f, genericMappings);
+			}
+			for (final Method m : raw.getDeclaredMethods()) {
+				analyzeMethods(m, json, foundWrite, m.getDeclaringClass(), genericMappings);
+			}
+			//TODO: don't register bean if something can't be serialized
+			final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
+			final ObjectFormatDescription<T, T> converter = ObjectFormatDescription.create(raw, newInstance, writeProps, new DecodePropertyInfo[0], json, true);
+			if (!hasEncoder) json.registerWriter(manifest, converter);
+			lazy.resolve(converter);
+			return converter;
+		} catch (RuntimeException ex) {
+			if (!hasEncoder) json.registerWriter(manifest, oldWriter);
+			lazy.release();
+			throw ex;
 		}
-		for (final Method m : raw.getDeclaredMethods()) {
-			analyzeMethods(m, json, foundWrite, m.getDeclaringClass(), genericMappings);
-		}
-		//TODO: don't register bean if something can't be serialized
-		final JsonWriter.WriteObject[] writeProps = foundWrite.values().toArray(new JsonWriter.WriteObject[0]);
-		final ObjectFormatDescription<T, T> converter = ObjectFormatDescription.create(raw, newInstance, writeProps, new DecodePropertyInfo[0], json, true);
-		if (!hasEncoder) json.registerWriter(manifest, converter);
-		lazy.resolved = converter;
-		return converter;
 	}
 
 	private static void analyzeField(

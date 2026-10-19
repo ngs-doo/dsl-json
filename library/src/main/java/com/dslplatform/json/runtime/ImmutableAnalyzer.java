@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public abstract class ImmutableAnalyzer {
 
@@ -57,28 +59,35 @@ public abstract class ImmutableAnalyzer {
 		private JsonWriter.WriteObject encoder;
 		private JsonReader.ReadObject decoder;
 		volatile ImmutableDescription resolved;
+		private final CountDownLatch resolutionComplete = new CountDownLatch(1);
 
 		LazyImmutableDescription(DslJson json, Type type) {
 			this.json = json;
 			this.type = type;
 		}
 
+		void resolve(ImmutableDescription converter) {
+			resolved = converter;
+			resolutionComplete.countDown();
+		}
+
+		void release() {
+			resolutionComplete.countDown();
+		}
+
 		private boolean checkSignatureNotFound() {
-			int i = 0;
-			ImmutableDescription local = null;
-			while (i < 50) {
+			ImmutableDescription local = resolved;
+			if (local == null) {
 				try {
-					Thread.sleep(100);
+					resolutionComplete.await(5, TimeUnit.SECONDS);
 				} catch (InterruptedException e) {
 					throw new ConfigurationException(e);
 				}
 				local = resolved;
-				if (local != null) {
-					encoder = local;
-					decoder = local;
-					break;
-				}
-				i++;
+			}
+			if (local != null) {
+				encoder = local;
+				decoder = local;
 			}
 			return local == null;
 		}
@@ -163,128 +172,133 @@ public abstract class ImmutableAnalyzer {
 		final LazyImmutableDescription lazy = new LazyImmutableDescription(json, manifest);
 		final JsonWriter.WriteObject oldWriter = json.registerWriter(manifest, lazy);
 		final JsonReader.ReadObject oldReader = json.registerReader(manifest, lazy);
-		final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();
-		final LinkedHashMap<String, JsonWriter.WriteObject> methods = new LinkedHashMap<>();
-		final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
-		final Object[] defArgs = findDefaultArguments(paramTypes, raw, genericMappings, json);
-		final int contextCount = json.context != null && Arrays.asList(defArgs).contains(json.context) ? 1 : 0;
-		final LinkedHashMap<String, Field> matchingFields = new LinkedHashMap<>();
-		for (final Field f : raw.getFields()) {
-			if (isPublicFinalNonStatic(f.getModifiers())) {
-				matchingFields.put(f.getName(), f);
-			}
-		}
-		final LinkedHashMap<String, Method> matchingMethods = new LinkedHashMap<>();
-		for (final Method mget : raw.getMethods()) {
-			if (mget.getParameterTypes().length != 0) continue;
-			final boolean isBoolean = boolean.class.equals(mget.getReturnType());
-			final String name = Analysis.beanOrActualName(mget.getName(), isBoolean);
-			if (isPublicNonStatic(mget.getModifiers()) && !name.contains("$") && !objectMethods.contains(name)) {
-				matchingMethods.put(name, mget);
-				if (isBoolean && !name.equals(mget.getName())) {
-					matchingMethods.put(mget.getName(), mget);
+		try {
+			final LinkedHashMap<String, JsonWriter.WriteObject> fields = new LinkedHashMap<>();
+			final LinkedHashMap<String, JsonWriter.WriteObject> methods = new LinkedHashMap<>();
+			final GenericsMapper genericMappings = GenericsMapper.create(manifest, raw);
+			final Object[] defArgs = findDefaultArguments(paramTypes, raw, genericMappings, json);
+			final int contextCount = json.context != null && Arrays.asList(defArgs).contains(json.context) ? 1 : 0;
+			final LinkedHashMap<String, Field> matchingFields = new LinkedHashMap<>();
+			for (final Field f : raw.getFields()) {
+				if (isPublicFinalNonStatic(f.getModifiers())) {
+					matchingFields.put(f.getName(), f);
 				}
 			}
-		}
-		final JsonWriter.WriteObject[] writeProps;
-		final int attributesCount = paramTypes.length - contextCount;
-		if (contextCount == 1 && paramTypes.length == 1) {
-			return unregister(manifest, json, oldWriter, oldReader);
-		}
-		if (names != null) {
-			if (matchingFields.size() == attributesCount) {
-				for (int i = 0; i < paramTypes.length; i++) {
-					final Field f = matchingFields.get(names[i]);
-					if (f == null && json.context != null && json.context == defArgs[i]) continue;
-					if (f == null || !analyzeField(json, paramTypes[i], fields, f, raw, genericMappings)) {
-						return unregister(manifest, json, oldWriter, oldReader);
+			final LinkedHashMap<String, Method> matchingMethods = new LinkedHashMap<>();
+			for (final Method mget : raw.getMethods()) {
+				if (mget.getParameterTypes().length != 0) continue;
+				final boolean isBoolean = boolean.class.equals(mget.getReturnType());
+				final String name = Analysis.beanOrActualName(mget.getName(), isBoolean);
+				if (isPublicNonStatic(mget.getModifiers()) && !name.contains("$") && !objectMethods.contains(name)) {
+					matchingMethods.put(name, mget);
+					if (isBoolean && !name.equals(mget.getName())) {
+						matchingMethods.put(mget.getName(), mget);
 					}
 				}
-				writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
+			}
+			final JsonWriter.WriteObject[] writeProps;
+			final int attributesCount = paramTypes.length - contextCount;
+			if (contextCount == 1 && paramTypes.length == 1) {
+				return unregister(lazy, manifest, json, oldWriter, oldReader);
+			}
+			if (names != null) {
+				if (matchingFields.size() == attributesCount) {
+					for (int i = 0; i < paramTypes.length; i++) {
+						final Field f = matchingFields.get(names[i]);
+						if (f == null && json.context != null && json.context == defArgs[i]) continue;
+						if (f == null || !analyzeField(json, paramTypes[i], fields, f, raw, genericMappings)) {
+							return unregister(lazy, manifest, json, oldWriter, oldReader);
+						}
+					}
+					writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
+				} else {
+					for (int i = 0; i < paramTypes.length; i++) {
+						final Method m = matchingMethods.get(names[i]);
+						if (m == null && json.context != null && json.context == defArgs[i]) continue;
+						if (m == null || !analyzeMethod(m, json, paramTypes[i], names[i], methods, raw, genericMappings)) {
+							return unregister(lazy, manifest, json, oldWriter, oldReader);
+						}
+					}
+					writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
+				}
 			} else {
-				for (int i = 0; i < paramTypes.length; i++) {
-					final Method m = matchingMethods.get(names[i]);
-					if (m == null && json.context != null && json.context == defArgs[i]) continue;
-					if (m == null || !analyzeMethod(m, json, paramTypes[i], names[i], methods, raw, genericMappings)) {
-						return unregister(manifest, json, oldWriter, oldReader);
+				names = new String[typeIndex.size()];
+				if (matchingFields.size() == attributesCount) {
+					for (Type p : paramTypes) {
+						for (Map.Entry<String, Field> kv : matchingFields.entrySet()) {
+							final Field f = kv.getValue();
+							if (analyzeField(json, p, fields, f, raw, genericMappings)) {
+								matchingFields.remove(kv.getKey());
+								names[typeIndex.get(p)] = kv.getKey();
+								break;
+							}
+						}
 					}
+					if (fields.size() != attributesCount) {
+						return unregister(lazy, manifest, json, oldWriter, oldReader);
+					}
+					writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
+				} else {
+					for (Type p : paramTypes) {
+						for (Map.Entry<String, Method> kv : matchingMethods.entrySet()) {
+							final Method m = kv.getValue();
+							if (analyzeMethod(m, json, p, kv.getKey(), methods, raw, genericMappings)) {
+								matchingMethods.remove(kv.getKey());
+								names[typeIndex.get(p)] = kv.getKey();
+								break;
+							}
+						}
+					}
+					if (methods.size() != attributesCount) {
+						return unregister(lazy, manifest, json, oldWriter, oldReader);
+					}
+					writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
 				}
-				writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
 			}
-		} else {
-			names = new String[typeIndex.size()];
-			if (matchingFields.size() == attributesCount) {
-				for (Type p : paramTypes) {
-					for (Map.Entry<String, Field> kv : matchingFields.entrySet()) {
-						final Field f = kv.getValue();
-						if (analyzeField(json, p, fields, f, raw, genericMappings)) {
-							matchingFields.remove(kv.getKey());
-							names[typeIndex.get(p)] = kv.getKey();
-							break;
-						}
-					}
-				}
-				if (fields.size() != attributesCount) {
-					return unregister(manifest, json, oldWriter, oldReader);
-				}
-				writeProps = fields.values().toArray(new JsonWriter.WriteObject[0]);
-			} else {
-				for (Type p : paramTypes) {
-					for (Map.Entry<String, Method> kv : matchingMethods.entrySet()) {
-						final Method m = kv.getValue();
-						if (analyzeMethod(m, json, p, kv.getKey(), methods, raw, genericMappings)) {
-							matchingMethods.remove(kv.getKey());
-							names[typeIndex.get(p)] = kv.getKey();
-							break;
-						}
-					}
-				}
-				if (methods.size() != attributesCount) {
-					return unregister(manifest, json, oldWriter, oldReader);
-				}
-				writeProps = methods.values().toArray(new JsonWriter.WriteObject[0]);
+			final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[attributesCount];
+			int idx = 0;
+			for (int i = 0; i < paramTypes.length; i++) {
+				final Type concreteType = genericMappings.makeConcrete(paramTypes[i], raw);
+				if (json.context != null && defArgs[i] == json.context) continue;
+				readProps[idx++] = new DecodePropertyInfo<>(names[i], false, false, i, false, new WriteMember(json, concreteType, factory != null ? factory : ctor));
 			}
-		}
-		final DecodePropertyInfo<JsonReader.ReadObject>[] readProps = new DecodePropertyInfo[attributesCount];
-		int idx = 0;
-		for (int i = 0; i < paramTypes.length; i++) {
-			final Type concreteType = genericMappings.makeConcrete(paramTypes[i], raw);
-			if (json.context != null && defArgs[i] == json.context) continue;
-			readProps[idx++] = new DecodePropertyInfo<>(names[i], false, false, i, false, new WriteMember(json, concreteType, factory != null ? factory : ctor));
-		}
-		final Settings.Function<Object[], T> instanceFactory = factory != null
-				? new Settings.Function<Object[], T>() {
-					@Override
-					public T apply(@Nullable Object[] args) {
-						try {
-							return (T) factory.invoke(null, args);
-						} catch (Exception ex) {
-							throw new ConfigurationException("Unable to create an instance of " + raw);
+			final Settings.Function<Object[], T> instanceFactory = factory != null
+					? new Settings.Function<Object[], T>() {
+						@Override
+						public T apply(@Nullable Object[] args) {
+							try {
+								return (T) factory.invoke(null, args);
+							} catch (Exception ex) {
+								throw new ConfigurationException("Unable to create an instance of " + raw);
+							}
 						}
 					}
-				}
-				: new Settings.Function<Object[], T>() {
-					@Override
-					public T apply(@Nullable Object[] args) {
-						try {
-							return raw.cast(ctor.newInstance(args));
-						} catch (Exception ex) {
-							throw new ConfigurationException("Unable to create an instance of " + raw);
+					: new Settings.Function<Object[], T>() {
+						@Override
+						public T apply(@Nullable Object[] args) {
+							try {
+								return raw.cast(ctor.newInstance(args));
+							} catch (Exception ex) {
+								throw new ConfigurationException("Unable to create an instance of " + raw);
+							}
 						}
-					}
-				};
-		final ImmutableDescription<T> converter = new ImmutableDescription<>(
-				manifest,
-				defArgs,
-				instanceFactory,
-				writeProps,
-				readProps,
-				!json.omitDefaults && !json.omitNulls,
-				true);
-		json.registerWriter(manifest, converter);
-		json.registerReader(manifest, converter);
-		lazy.resolved = converter;
-		return converter;
+					};
+			final ImmutableDescription<T> converter = new ImmutableDescription<>(
+					manifest,
+					defArgs,
+					instanceFactory,
+					writeProps,
+					readProps,
+					!json.omitDefaults && !json.omitNulls,
+					true);
+			json.registerWriter(manifest, converter);
+			json.registerReader(manifest, converter);
+			lazy.resolve(converter);
+			return converter;
+		} catch (RuntimeException ex) {
+			unregister(lazy, manifest, json, oldWriter, oldReader);
+			throw ex;
+		}
 	}
 
 	static @Nullable <T> Constructor<?> findBestCtor(Class<?> raw, DslJson<T> json) {
@@ -367,7 +381,8 @@ public abstract class ImmutableAnalyzer {
 	}
 
 	@Nullable
-	private static <T> ImmutableDescription<T> unregister(Type manifest, DslJson<?> json, @Nullable JsonWriter.WriteObject oldWriter, @Nullable JsonReader.ReadObject oldReader) {
+	private static <T> ImmutableDescription<T> unregister(LazyImmutableDescription lazy, Type manifest, DslJson<?> json, @Nullable JsonWriter.WriteObject oldWriter, @Nullable JsonReader.ReadObject oldReader) {
+		lazy.release();
 		json.registerWriter(manifest, oldWriter);
 		json.registerReader(manifest, oldReader);
 		return null;
