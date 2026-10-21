@@ -33,7 +33,7 @@
 		<dependency>
 			<groupId>org.assertj</groupId>
 			<artifactId>assertj-core</artifactId>
-			<version>3.10.0</version>
+			<version>3.27.7</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -67,13 +67,14 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.3</version>
 				<configuration>
-					<compilerVersion>21</compilerVersion>
-					<source>21</source>
-					<target>21</target>
+					<compilerVersion>25</compilerVersion>
+					<source>25</source>
+					<target>25</target>
 					<useIncrementalCompilation>false</useIncrementalCompilation>
 					<compilerArguments>
 						<Adsljson.unknown>WARNING</Adsljson.unknown>
 					</compilerArguments>
+					<annotationProcessors>com.dslplatform.json.processor.CompiledJsonAnnotationProcessor</annotationProcessors>
 				</configuration>
 			</plugin>
 		</plugins>
