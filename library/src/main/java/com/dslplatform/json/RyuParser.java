@@ -18,23 +18,8 @@ final class RyuParser {
 	/** Largest n such that 5^n fits in a positive long. */
 	private static final int MAX_POW5_LONG = 27;
 
-
-	private static final ThreadLocal<long[]> SCRATCH = new ThreadLocal<long[]>() {
-		@Override
-		protected long[] initialValue() {
-			return new long[512];
-		}
-	};
-
-	private static final ThreadLocal<Parsed> PARSED = new ThreadLocal<Parsed>() {
-		@Override
-		protected Parsed initialValue() {
-			return new Parsed();
-		}
-	};
-
 	/** 5^n for n = 0..tableSize-1, little-endian base 2^64. Grown on demand. */
-	private static volatile Pow5Table POW5_TABLE = buildPow5Table(900);
+	private static Pow5Table POW5_TABLE = buildPow5Table(900);
 
 	/** 5^n for n = 0..MAX_POW5_LONG (single-word values). */
 	private static final long[] POW5_LONG = new long[MAX_POW5_LONG + 1];
@@ -44,6 +29,9 @@ final class RyuParser {
 			POW5_LONG[i] = POW5_TABLE.values[i][0];
 		}
 	}
+
+	private long[] scratch = new long[64];
+	private final Parsed parsed = new Parsed();
 
 	private static final class Pow5Table {
 		final long[][] values;
@@ -57,7 +45,7 @@ final class RyuParser {
 		}
 	}
 
-	private static synchronized void ensurePow5(final int n) {
+	private static void ensurePow5(final int n) {
 		if (n < POW5_TABLE.values.length) return;
 		final int newSize = Math.max(n + 1, POW5_TABLE.values.length * 2);
 		POW5_TABLE = buildPow5Table(newSize);
@@ -121,32 +109,30 @@ final class RyuParser {
 		}
 	}
 
-
-	static double parseDouble(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
+	double parseDouble(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
 		return toDouble(scan(reader, buf, start, end));
 	}
 
-	static float parseFloat(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
+	float parseFloat(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
 		return toFloat(scan(reader, buf, start, end));
 	}
 
-	static double parseQuotedDouble(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
+	double parseQuotedDouble(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
 		return toDouble(scan(reader, buf, start + 1, end - 1, start, end));
 	}
 
-	static float parseQuotedFloat(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
+	float parseQuotedFloat(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
 		return toFloat(scan(reader, buf, start + 1, end - 1, start, end));
 	}
 
-
-	private static Parsed scan(final JsonReader reader, final byte[] buf, final int start, final int end0) throws ParsingException {
+	private Parsed scan(final JsonReader reader, final byte[] buf, final int start, final int end0) throws ParsingException {
 		return scan(reader, buf, start, end0, start, end0);
 	}
 
-	private static Parsed scan(final JsonReader reader, final byte[] buf, final int start, final int end0, final int errStart, final int errEnd) throws ParsingException {
+	private Parsed scan(final JsonReader reader, final byte[] buf, final int start, final int end0, final int errStart, final int errEnd) throws ParsingException {
 		int end = end0;
 		while (end > start && isWs(buf[end - 1])) end--;
-		final Parsed p = PARSED.get();
+		Parsed p = parsed;
 		p.reset();
 		if (end == start) {
 			// no digits at all: empty or whitespace-only span
@@ -232,20 +218,20 @@ final class RyuParser {
 
 	/** Drop trailing zero words: promotion in addDigit is triggered by signed overflow, so
 	 * values in [2^63, 2^64) may carry a high word of zero. */
-	private static void trimMantissa(final Parsed p) {
+	private void trimMantissa(final Parsed p) {
 		if (p.bigWords > 1) {
-			final long[] s = scratch();
+			final long[] s = scratch;
 			while (p.bigWords > 1 && s[p.bigWords - 1] == 0) p.bigWords--;
 		}
 	}
 
 	/** M = M * 10 + ind, promoting to the big-word representation on overflow. */
-	private static void addDigit(final Parsed p, final int ind, long mLong, int bigWords) {
+	private void addDigit(final Parsed p, final int ind, long mLong, int bigWords) {
 		if (bigWords == 0) {
 			if (mLong <= (Long.MAX_VALUE - ind) / 10) {
 				p.mLong = mLong * 10 + ind;
 			} else {
-				final long[] s = ensureCapacity(scratch(), 2);
+				final long[] s = ensureCapacity(scratch, 2);
 				final long lo = mLong * 10;
 				long hi = mulHi(mLong, 10);
 				final long sum = lo + ind;
@@ -256,7 +242,7 @@ final class RyuParser {
 				p.mLong = 0;
 			}
 		} else {
-			final long[] s = ensureCapacity(scratch(), bigWords + 1);
+			final long[] s = ensureCapacity(scratch, bigWords + 1);
 			long carry = ind;
 			for (int w = 0; w < bigWords; w++) {
 				final long word = s[w];
@@ -277,8 +263,7 @@ final class RyuParser {
 		return (b >= 9 && b <= 13) || b == 32 || b == -96 || (b >= -31 && b <= -29);
 	}
 
-
-	private static double toDouble(final Parsed p) {
+	private double toDouble(final Parsed p) {
 		if (p.isZero()) return p.negative ? -0.0 : 0.0;
 		final int E = p.exp;
 		final int sig = p.sigDigits();
@@ -287,7 +272,7 @@ final class RyuParser {
 		if (E + sig <= -325) return p.negative ? -0.0 : 0.0;
 
 		final int nM = p.bigWords == 0 ? 1 : p.bigWords;
-		final long[] s0 = scratch();
+		final long[] s0 = scratch;
 		if (p.bigWords == 0) s0[0] = p.mLong;
 
 		final int aExp = E > 0 ? E : 0;
@@ -296,7 +281,7 @@ final class RyuParser {
 		final Pow5Table tab = POW5_TABLE;
 		final int n5max = Math.max(tab.words[aExp], tab.words[bExp]);
 		// pre-allocate scratch for the whole computation so references stay valid
-		final long[] s = ensureCapacity(scratch(), 5 * nM + 7 * n5max + 128);
+		final long[] s = ensureCapacity(scratch, 5 * nM + 7 * n5max + 128);
 
 		// ---- find e such that 2^e <= V < 2^(e+1) ----
 		final int blM = bitLength(s, 0, nM);
@@ -326,7 +311,7 @@ final class RyuParser {
 		return p.negative ? -result : result;
 	}
 
-	private static float toFloat(final Parsed p) {
+	private float toFloat(final Parsed p) {
 		if (p.isZero()) return p.negative ? -0f : 0f;
 		final int E = p.exp;
 		final int sig = p.sigDigits();
@@ -335,7 +320,7 @@ final class RyuParser {
 		if (E + sig <= -47) return p.negative ? -0f : 0f;
 
 		final int nM = p.bigWords == 0 ? 1 : p.bigWords;
-		final long[] s0 = scratch();
+		final long[] s0 = scratch;
 		if (p.bigWords == 0) s0[0] = p.mLong;
 
 		final int aExp = E > 0 ? E : 0;
@@ -344,7 +329,7 @@ final class RyuParser {
 		final Pow5Table tab = POW5_TABLE;
 		final int n5max = Math.max(tab.words[aExp], tab.words[bExp]);
 		// pre-allocate scratch for the whole computation so references stay valid
-		final long[] s = ensureCapacity(scratch(), 5 * nM + 7 * n5max + 128);
+		final long[] s = ensureCapacity(scratch, 5 * nM + 7 * n5max + 128);
 
 		// ---- find e such that 2^e <= V < 2^(e+1) ----
 		final int blM = bitLength(s, 0, nM);
@@ -374,7 +359,7 @@ final class RyuParser {
 	}
 
 	/** Is V = M * 10^E >= 2^k? (M >= 1, stored in s[0..nM)) */
-	private static boolean gePow2(final Parsed p, final long[] s, final int nM, final int k) {
+	private boolean gePow2(final Parsed p, final long[] s, final int nM, final int k) {
 		final int E = p.exp;
 		final int t = k - E; // V >= 2^k  <=>  M * 5^E >= 2^t
 		ensurePow5(Math.max(E, -E));
@@ -444,7 +429,7 @@ final class RyuParser {
 	 * Multi-precision evaluation of R = M * 5^E * 2^T, rounded to nearest with ties to even.
 	 * The quotient is known to be &lt; 2^maxBits (maxBits = 53/52 for double, 24/23 for float).
 	 */
-	private static long slowDivide(final long[] s, final int nM, final int T, final int aExp, final int bExp, final int maxBits) {
+	private long slowDivide(final long[] s, final int nM, final int T, final int aExp, final int bExp, final int maxBits) {
 		ensurePow5(Math.max(aExp, bExp));
 		final Pow5Table tab = POW5_TABLE;
 		// N = M * 5^aExp
@@ -499,18 +484,11 @@ final class RyuParser {
 		return q;
 	}
 
-
-	/** scratch buffer for the current thread. */
-	private static long[] scratch() {
-		return SCRATCH.get();
-	}
-
-	/** Grows the per-thread scratch to at least `needed` words and returns the (possibly new) array. */
-	private static long[] ensureCapacity(long[] cur, final int needed) {
+	private long[] ensureCapacity(long[] cur, final int needed) {
 		if (needed <= cur.length) return cur;
 		final long[] next = new long[Math.max(needed, cur.length * 2)];
 		System.arraycopy(cur, 0, next, 0, cur.length);
-		SCRATCH.set(next);
+		scratch = next;
 		return next;
 	}
 
@@ -533,8 +511,8 @@ final class RyuParser {
 	}
 
 	/** out = a * b at s[offOut..], returns word count. Regions must not overlap. */
-	private static int mul(final long[] a, final int offA, final int nA, final long[] b, final int nB, final int offOut) {
-		final long[] s = scratch();
+	private int mul(final long[] a, final int offA, final int nA, final long[] b, final int nB, final int offOut) {
+		final long[] s = scratch;
 		for (int i = 0; i < nA + nB; i++) s[offOut + i] = 0;
 		for (int i = 0; i < nA; i++) {
 			final long ai = a[offA + i];
@@ -559,8 +537,8 @@ final class RyuParser {
 	}
 
 	/** out = d * q at s[offOut..], returns word count. */
-	private static int mulLong(final long[] d, final int offD, final int nD, final long q, final int offOut) {
-		final long[] s = scratch();
+	private int mulLong(final long[] d, final int offD, final int nD, final long q, final int offOut) {
+		final long[] s = scratch;
 		if (q == 0) {
 			s[offOut] = 0;
 			return 1;
@@ -584,8 +562,8 @@ final class RyuParser {
 	}
 
 	/** out = a - b at s[offOut..] (a >= b), nA words written. */
-	private static void sub(final long[] a, final int offA, final int nA, final long[] b, final int offB, final int nB, final int offOut) {
-		final long[] s = scratch();
+	private void sub(final long[] a, final int offA, final int nA, final long[] b, final int offB, final int nB, final int offOut) {
+		final long[] s = scratch;
 		long borrow = 0;
 		for (int i = 0; i < nA; i++) {
 			final long ai = a[offA + i];
@@ -601,8 +579,8 @@ final class RyuParser {
 	}
 
 	/** out = a << bits at s[offOut..], returns word count. Regions must not overlap. */
-	private static int shiftLeft(final long[] a, final int offA, final int nA, final int bits, final int offOut) {
-		final long[] s = scratch();
+	private int shiftLeft(final long[] a, final int offA, final int nA, final int bits, final int offOut) {
+		final long[] s = scratch;
 		if (bits == 0) {
 			System.arraycopy(a, offA, s, offOut, nA);
 			return nA;
@@ -631,9 +609,9 @@ final class RyuParser {
 		final long p = al * bl;
 		final long u = ah * bl;
 		final long t = u + (p >>> 32);
-		final long k1 = Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+		final long k1 = Long.compareUnsigned(t, u) < 0 ? 4294967296L : 0L;
 		final long m = t + (al * bh);
-		final long k2 = Long.compareUnsigned(m, t) < 0 ? 1L : 0L;
-		return ah * bh + (m >>> 32) + ((k1 + k2) << 32);
+		final long k2 = Long.compareUnsigned(m, t) < 0 ? 4294967296L : 0L;
+		return ah * bh + (m >>> 32) + k1 + k2;
 	}
 }

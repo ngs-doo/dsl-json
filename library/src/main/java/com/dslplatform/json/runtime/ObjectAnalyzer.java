@@ -40,7 +40,7 @@ public abstract class ObjectAnalyzer {
 		private JsonWriter.WriteObject resolvedWriter;
 		private JsonReader.BindObject resolvedBinder;
 		private JsonReader.ReadObject resolvedReader;
-		volatile ObjectFormatDescription resolved;
+		private ObjectFormatDescription resolved;
 		private final CountDownLatch resolutionComplete = new CountDownLatch(1);
 
 		LazyObjectDescription(DslJson json, Type type) {

@@ -58,7 +58,7 @@ public abstract class ImmutableAnalyzer {
 		private final Type type;
 		private JsonWriter.WriteObject encoder;
 		private JsonReader.ReadObject decoder;
-		volatile ImmutableDescription resolved;
+		private ImmutableDescription resolved;
 		private final CountDownLatch resolutionComplete = new CountDownLatch(1);
 
 		LazyImmutableDescription(DslJson json, Type type) {

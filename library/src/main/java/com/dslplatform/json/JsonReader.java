@@ -59,6 +59,8 @@ public final class JsonReader<TContext> {
 	private final byte[] originalBuffer;
 	private final int originalBufferLenWithExtraSpace;
 
+	final RyuParser ryuParser = new RyuParser();
+
 	public enum ErrorInfo {
 		WITH_STACK_TRACE,
 		DESCRIPTION_AND_POSITION,
@@ -137,7 +139,6 @@ public final class JsonReader<TContext> {
 			buffer[length] = '\0';
 		}
 	}
-
 
 	/**
 	 * Will be removed. Exists only for backward compatibility

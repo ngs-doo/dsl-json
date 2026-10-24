@@ -17,7 +17,7 @@ public abstract class MixinAnalyzer {
 		private final DslJson json;
 		private final Type type;
 		private JsonWriter.WriteObject resolvedWriter;
-		volatile ObjectFormatDescription resolved;
+		private ObjectFormatDescription resolved;
 		private final CountDownLatch resolutionComplete = new CountDownLatch(1);
 
 		LazyMixinDescription(DslJson json, Type type) {

@@ -434,7 +434,7 @@ public abstract class NumberConverter {
 		if (end - start == 8 && equalsAscii(buf, start, "Infinity")) return Double.POSITIVE_INFINITY;
 		if (end - start == 9 && equalsAscii(buf, start, "-Infinity")) return Double.NEGATIVE_INFINITY;
 		checkMaxNumberDigits(reader, start, end);
-		return RyuParser.parseQuotedDouble(reader, buf, start - 1, end + 1);
+		return reader.ryuParser.parseQuotedDouble(reader, buf, start - 1, end + 1);
 	}
 
 	private static double parseDouble(final byte[] buf, final JsonReader reader, final int start, final int end) throws IOException {
@@ -443,7 +443,7 @@ public abstract class NumberConverter {
 			return parseDoubleGeneric(tmp.buffer, tmp.length, reader);
 		}
 		checkMaxNumberDigits(reader, start, end);
-		return RyuParser.parseDouble(reader, buf, start, end);
+		return reader.ryuParser.parseDouble(reader, buf, start, end);
 	}
 
 	private static double parseDoubleGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
@@ -534,7 +534,7 @@ public abstract class NumberConverter {
 		if (end - start == 8 && equalsAscii(buf, start, "Infinity")) return Float.POSITIVE_INFINITY;
 		if (end - start == 9 && equalsAscii(buf, start, "-Infinity")) return Float.NEGATIVE_INFINITY;
 		checkMaxNumberDigits(reader, start, end);
-		return RyuParser.parseQuotedFloat(reader, buf, start - 1, end + 1);
+		return reader.ryuParser.parseQuotedFloat(reader, buf, start - 1, end + 1);
 	}
 
 	private static float parseFloat(final byte[] buf, final JsonReader reader, final int start, final int end) throws IOException {
@@ -543,7 +543,7 @@ public abstract class NumberConverter {
 			return parseFloatGeneric(tmp.buffer, tmp.length, reader);
 		}
 		checkMaxNumberDigits(reader, start, end);
-		return RyuParser.parseFloat(reader, buf, start, end);
+		return reader.ryuParser.parseFloat(reader, buf, start, end);
 	}
 
 	private static boolean equalsAscii(final byte[] buf, final int start, final String s) {

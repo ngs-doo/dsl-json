@@ -196,7 +196,8 @@ public class NumbersTest {
 		final byte[] b = new byte[160];
 		final int len = copyAscii(s, b);
 		final double jdk = Double.parseDouble(s);
-		final double ours = RyuParser.parseDouble(null, b, 0, len);
+		RyuParser ryuParser = new RyuParser();
+		final double ours = ryuParser.parseDouble(null, b, 0, len);
 		Assert.assertEquals("parseDouble of " + s, Double.doubleToLongBits(jdk), Double.doubleToLongBits(ours));
 	}
 
@@ -204,7 +205,8 @@ public class NumbersTest {
 		final byte[] b = new byte[160];
 		final int len = copyAscii(s, b);
 		final float jdk = Float.parseFloat(s);
-		final float ours = RyuParser.parseFloat(null, b, 0, len);
+		RyuParser ryuParser = new RyuParser();
+		final float ours = ryuParser.parseFloat(null, b, 0, len);
 		Assert.assertEquals("parseFloat of " + s, Float.floatToIntBits(jdk), Float.floatToIntBits(ours));
 	}
 
