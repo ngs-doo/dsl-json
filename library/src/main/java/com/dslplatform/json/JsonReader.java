@@ -644,7 +644,7 @@ public final class JsonReader<TContext> {
 					_tmp = chars = Arrays.copyOf(chars, newSize);
 					_tmpLen = _tmp.length;
 				}
-				bc = buffer[currentIndex++];
+				bc = read();
 
 				switch (bc) {
 					case 'b':
@@ -667,10 +667,10 @@ public final class JsonReader<TContext> {
 					case '\\':
 						break;
 					case 'u':
-						bc = (hexToInt(buffer[currentIndex++]) << 12) +
-								(hexToInt(buffer[currentIndex++]) << 8) +
-								(hexToInt(buffer[currentIndex++]) << 4) +
-								hexToInt(buffer[currentIndex++]);
+						bc = (hexToInt(read()) << 12) +
+								(hexToInt(read()) << 8) +
+								(hexToInt(read()) << 4) +
+								hexToInt(read());
 						break;
 
 					default:
@@ -685,15 +685,15 @@ public final class JsonReader<TContext> {
 					_tmp = chars = Arrays.copyOf(chars, newSize);
 					_tmpLen = _tmp.length;
 				}
-				final int u2 = buffer[currentIndex++];
+				final int u2 = read();
 				if ((bc & 0xE0) == 0xC0) {
 					bc = ((bc & 0x1F) << 6) + (u2 & 0x3F);
 				} else {
-					final int u3 = buffer[currentIndex++];
+					final int u3 = read();
 					if ((bc & 0xF0) == 0xE0) {
 						bc = ((bc & 0x0F) << 12) + ((u2 & 0x3F) << 6) + (u3 & 0x3F);
 					} else {
-						final int u4 = buffer[currentIndex++];
+						final int u4 = read();
 						if ((bc & 0xF8) == 0xF0) {
 							bc = ((bc & 0x07) << 18) + ((u2 & 0x3F) << 12) + ((u3 & 0x3F) << 6) + (u4 & 0x3F);
 						} else {
@@ -729,7 +729,7 @@ public final class JsonReader<TContext> {
 		throw newParseErrorAt("JSON string was not closed with a double quote", 0);
 	}
 
-	private int hexToInt(final byte value) throws ParsingException {
+	private int hexToInt(final int value) throws ParsingException {
 		if (value >= '0' && value <= '9') return value - 0x30;
 		if (value >= 'A' && value <= 'F') return value - 0x37;
 		if (value >= 'a' && value <= 'f') return value - 0x57;
