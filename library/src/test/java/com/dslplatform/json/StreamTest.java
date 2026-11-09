@@ -66,21 +66,27 @@ public class StreamTest {
 
 	static class Obj implements JsonObject {
 
+		private static final byte[] X_OPEN = new byte[]{'{', '"', 'x', '"', ':'};
+		private static final byte[] Y_COMMA = new byte[]{',', '"', 'y', '"', ':'};
+		private static final byte[] Z_COMMA = new byte[]{',', '"', 'z', '"', ':'};
+		private static final byte[] TRUE_END = new byte[]{'t', 'r', 'u', 'e', '}'};
+		private static final byte[] FALSE_END = new byte[]{'f', 'a', 'l', 's', 'e', '}'};
+
 		public int x;
 		public double y;
 		public boolean z;
 
 		@Override
 		public void serialize(JsonWriter writer, boolean minimal) {
-			writer.writeAscii("{\"x\":");
+			writer.writeAscii(X_OPEN);
 			NumberConverter.serialize(x, writer);
-			writer.writeAscii(",\"y\":");
+			writer.writeAscii(Y_COMMA);
 			NumberConverter.serialize(y, writer);
-			writer.writeAscii(",\"z\":");
+			writer.writeAscii(Z_COMMA);
 			if (z) {
-				writer.writeAscii("true}");
+				writer.writeAscii(TRUE_END);
 			} else {
-				writer.writeAscii("false}");
+				writer.writeAscii(FALSE_END);
 			}
 		}
 
@@ -392,11 +398,12 @@ public class StreamTest {
 	}
 
 	public static class JsonPoint implements JsonObject {
+		private static final byte[] Y_OPEN = new byte[]{'{', '"', 'y', '"', ':'};
 
 		public double y;
 
 		public void serialize(final com.dslplatform.json.JsonWriter sw, final boolean minimal) {
-			sw.writeAscii("{\"y\":");
+			sw.writeAscii(Y_OPEN);
 			com.dslplatform.json.NumberConverter.serialize(y, sw);
 			sw.writeByte(com.dslplatform.json.JsonWriter.OBJECT_END);
 		}

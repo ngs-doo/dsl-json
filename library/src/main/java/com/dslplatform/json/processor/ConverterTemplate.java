@@ -651,12 +651,18 @@ class ConverterTemplate {
 	}
 
 	private void writeDiscriminator(final StructInfo si) throws IOException {
-		String name = si.deserializeName.isEmpty() ? si.binaryName.replace('$', '.') : si.deserializeName;
-		code.append("\t\t\t\twriter.writeAscii(\"\\\"").append(si.discriminator).append("\\\":\\\"").append(name).append("\\\"");
-		if (!si.attributes.isEmpty()) {
-			code.append(",");
+		code.append("\t\t\t\twriter.writeAscii(disc_);\n");
+	}
+
+	private static String charArrayBody(final String value) {
+		final StringBuilder sb = new StringBuilder(value.length() * 3);
+		for (int i = 0; i < value.length(); i++) {
+			if (i > 0) sb.append(", ");
+			final char c = value.charAt(i);
+			if (c == '\\' || c == '\'') sb.append('\\');
+			sb.append('\'').append(c).append('\'');
 		}
-		code.append("\");\n");
+		return sb.toString();
 	}
 
 	private void writeObject(final StructInfo si, final String className, List<AttributeInfo> sortedAttributes) throws IOException {
@@ -666,9 +672,18 @@ class ConverterTemplate {
 			String prefix = isFirst ? "" : ",";
 			isFirst = false;
 			String name = si.propertyName(attr);
-			code.append("\t\tprivate static final byte[] quoted_").append(attr.name).append(" = \"").append(prefix);
-			code.append("\\\"").append(name).append("\\\":\".getBytes(java.nio.charset.StandardCharsets.UTF_8);\n");
-			code.append("\t\tprivate static final byte[] name_").append(attr.name).append(" = \"").append(name).append("\".getBytes(java.nio.charset.StandardCharsets.UTF_8);\n");
+			code.append("\t\tprivate static final byte[] quoted_").append(attr.name).append(" = new byte[]{")
+				.append(charArrayBody(prefix + "\"" + name + "\":")).append("};\n");
+			code.append("\t\tprivate static final byte[] name_").append(attr.name).append(" = new byte[]{")
+				.append(charArrayBody(name)).append("};\n");
+		}
+		if (si.discriminator.length() > 0 && !si.attributes.containsKey(si.discriminator)) {
+			String name = si.deserializeName.isEmpty() ? si.binaryName.replace('$', '.') : si.deserializeName;
+			String disc = "\"" + si.discriminator + "\":\"" + name + "\"";
+			if (!si.attributes.isEmpty()) {
+				disc += ",";
+			}
+			code.append("\t\tprivate static final byte[] disc_ = new byte[]{").append(charArrayBody(disc)).append("};\n");
 		}
 		code.append("\t\tpublic final void write(final com.dslplatform.json.JsonWriter writer, final @com.dslplatform.json.Nullable ");
 		code.append(className).append(" instance) {\n");

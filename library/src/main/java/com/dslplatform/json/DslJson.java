@@ -2332,7 +2332,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 						writer.writeByte(JsonWriter.ARRAY_START);
 						writer.writeNull();
 						for (int i = 1; i < items.size(); i++) {
-							writer.writeAscii(",null");
+							writer.writeAscii(COMMA_NULL);
 						}
 						writer.writeByte(JsonWriter.ARRAY_END);
 					} else if (JsonObject.class.isAssignableFrom(baseType)) {
@@ -2696,7 +2696,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		}
 		if (container != null && container.isArray()) {
 			if (Array.getLength(value) == 0) {
-				writer.writeAscii("[]");
+				writer.writeAscii(EMPTY_ARRAY);
 				return true;
 			}
 			final Class<?> elementManifest = container.getComponentType();
@@ -2715,7 +2715,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		if (value instanceof Collection) {
 			final Collection items = (Collection) value;
 			if (items.isEmpty()) {
-				writer.writeAscii("[]");
+				writer.writeAscii(EMPTY_ARRAY);
 				return true;
 			}
 			Class<?> baseType = null;
@@ -2786,6 +2786,8 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 	}
 
 	private static final byte[] NULL = new byte[]{'n', 'u', 'l', 'l'};
+	private static final byte[] COMMA_NULL = new byte[]{',', 'n', 'u', 'l', 'l'};
+	private static final byte[] EMPTY_ARRAY = new byte[]{'[', ']'};
 
 	/**
 	 * Convenient serialize API.

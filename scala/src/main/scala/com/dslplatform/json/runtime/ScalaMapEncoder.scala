@@ -12,6 +12,9 @@ final class ScalaMapEncoder[K, V](
   require(valueEncoder ne null, "valueEncoder can't be null")
 
   private val EMPTY = Array[Byte]('{', '}')
+  private val NAN = Array[Byte]('N', 'a', 'N')
+  private val INFINITY = Array[Byte]('I', 'n', 'f', 'i', 'n', 'i', 't', 'y')
+  private val NEG_INFINITY = Array[Byte]('-', 'I', 'n', 'f', 'i', 'n', 'i', 't', 'y')
 
   override def write(writer: JsonWriter, value: scala.collection.Map[K, V]): Unit = {
     if (value eq null) writer.writeNull()
@@ -76,9 +79,9 @@ final class ScalaMapEncoder[K, V](
   }
 
   private def writeDouble(value: Double, writer: JsonWriter): Unit = {
-    if (value == Double.NaN) writer.writeAscii("NaN")
-    else if (value == Double.PositiveInfinity) writer.writeAscii("Infinity")
-    else if (value == Double.NegativeInfinity) writer.writeAscii("-Infinity")
+    if (value == Double.NaN) writer.writeAscii(NAN)
+    else if (value == Double.PositiveInfinity) writer.writeAscii(INFINITY)
+    else if (value == Double.NegativeInfinity) writer.writeAscii(NEG_INFINITY)
     else {
       writer.writeByte(JsonWriter.QUOTE)
       NumberConverter.serialize(value, writer)
@@ -87,9 +90,9 @@ final class ScalaMapEncoder[K, V](
   }
 
   private def writeFloat(value: Float, writer: JsonWriter): Unit = {
-    if (value == Float.NaN) writer.writeAscii("NaN")
-    else if (value == Float.PositiveInfinity) writer.writeAscii("Infinity")
-    else if (value == Float.NegativeInfinity) writer.writeAscii("-Infinity")
+    if (value == Float.NaN) writer.writeAscii(NAN)
+    else if (value == Float.PositiveInfinity) writer.writeAscii(INFINITY)
+    else if (value == Float.NegativeInfinity) writer.writeAscii(NEG_INFINITY)
     else {
       writer.writeByte(JsonWriter.QUOTE)
       NumberConverter.serialize(value, writer)

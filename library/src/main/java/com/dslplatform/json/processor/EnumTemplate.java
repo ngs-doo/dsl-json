@@ -45,7 +45,7 @@ class EnumTemplate {
 				code.append(writerName).append(".write(writer, ").append(external ? readValue : value).append(");\n");
 			}
 		} else if (isAllSimple(target)) {
-			code.append("{ writer.writeByte((byte)'\"'); writer.writeAscii(").append(readValue).append(".name()); writer.writeByte((byte)'\"'); }\n");
+			code.append("writer.writeString(").append(readValue).append(".name());\n");
 		} else {
 			code.append("writer.writeString(value.name());\n");
 		}

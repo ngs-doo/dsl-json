@@ -6,6 +6,8 @@ import java.util.Collection;
 
 public abstract class BinaryConverter {
 
+	private static final byte[] QUOTED_EMPTY = new byte[]{'"', '"'};
+
 	public static final JsonReader.ReadObject<byte[]> READER = new JsonReader.ReadObject<byte[]>() {
 		@Nullable
 		@Override
@@ -27,7 +29,7 @@ public abstract class BinaryConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value.length == 0) {
-			sw.writeAscii("\"\"");
+			sw.writeAscii(QUOTED_EMPTY);
 		} else {
 			sw.writeBinary(value);
 		}

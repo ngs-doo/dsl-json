@@ -130,18 +130,23 @@ public class GA0A0Lc   implements java.lang.Cloneable, java.io.Serializable, com
 		sw.writeByte(com.dslplatform.json.JsonWriter.OBJECT_END);
 	}
 
+	private static final byte[] URI_COLON = new byte[]{'"', 'U', 'R', 'I', '"', ':'};
+	private static final byte[] COMMA_ID_COLON = new byte[]{',', '"', 'I', 'D', '"', ':'};
+	private static final byte[] COMMA_GE_OPEN = new byte[]{',', '"', 'g', 'E', '0', 'A', '0', 'L', 'c', '"', ':', '{'};
+	private static final byte[] COMMA_GE_NULL = new byte[]{',', '"', 'g', 'E', '0', 'A', '0', 'L', 'c', '"', ':', 'n', 'u', 'l', 'l'};
+
 	static void __serializeJsonObjectMinimal(final GA0A0Lc self, com.dslplatform.json.JsonWriter sw, boolean hasWrittenProperty) {
 		
-		sw.writeAscii("\"URI\":");
+		sw.writeAscii(URI_COLON);
 			com.dslplatform.json.StringConverter.serializeShort(self.URI, sw);
 		
 			if (!(self.getID().getMostSignificantBits() == 0 && self.getID().getLeastSignificantBits() == 0)) {
-				sw.writeAscii(",\"ID\":", 6);
+				sw.writeAscii(COMMA_ID_COLON);
 				com.dslplatform.json.UUIDConverter.serialize(self.getID(), sw);
 			}
 		
 		if(self.gE0A0Lc != null) {
-			sw.writeAscii(",\"gE0A0Lc\":{", 12);
+			sw.writeAscii(COMMA_GE_OPEN);
 			
 					GE0A0Lc.__serializeJsonObjectMinimal(self.gE0A0Lc, sw, false);
 					sw.writeByte(com.dslplatform.json.JsonWriter.OBJECT_END);
@@ -150,21 +155,21 @@ public class GA0A0Lc   implements java.lang.Cloneable, java.io.Serializable, com
 
 	static void __serializeJsonObjectFull(final GA0A0Lc self, com.dslplatform.json.JsonWriter sw, boolean hasWrittenProperty) {
 		
-		sw.writeAscii("\"URI\":");
+		sw.writeAscii(URI_COLON);
 			com.dslplatform.json.StringConverter.serializeShort(self.URI, sw);
 		
 			
-			sw.writeAscii(",\"ID\":", 6);
+			sw.writeAscii(COMMA_ID_COLON);
 			com.dslplatform.json.UUIDConverter.serialize(self.getID(), sw);
 		
 		
 		if(self.gE0A0Lc != null) {
-			sw.writeAscii(",\"gE0A0Lc\":{", 12);
+			sw.writeAscii(COMMA_GE_OPEN);
 			
 					GE0A0Lc.__serializeJsonObjectFull(self.gE0A0Lc, sw, false);
 					sw.writeByte(com.dslplatform.json.JsonWriter.OBJECT_END);
 		} else {
-			sw.writeAscii(",\"gE0A0Lc\":null", 15);
+			sw.writeAscii(COMMA_GE_NULL);
 		}
 	}
 

@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 
 public abstract class CollectionAnalyzer {
+	private static final byte[] EMPTY_ARRAY = new byte[]{'[', ']'};
 
 	public static class Runtime {
 		public static final JsonReader.ReadObject<List<Object>> JSON_READER = new JsonReader.ReadObject<List<Object>>() {
@@ -24,7 +25,7 @@ public abstract class CollectionAnalyzer {
 				if (value == null) {
 					writer.writeNull();
 				} else if (value.isEmpty()) {
-					writer.writeAscii("[]");
+					writer.writeAscii(EMPTY_ARRAY);
 				} else if (value instanceof RandomAccess) {
 					writer.writeByte(JsonWriter.ARRAY_START);
 					writer.serializeObject(value.get(0));

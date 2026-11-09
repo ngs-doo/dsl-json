@@ -45,10 +45,13 @@ public class JsonObjectTest {
 		public JsonObjectReference(String x) {
 			this.x = x;
 		}
+		private static final byte[] X_OPEN = new byte[]{'{', '"', 'x', '"', ':'};
+		private static final byte[] OBJECT_END = new byte[]{'}'};
+
 		public void serialize(JsonWriter writer, boolean minimal) {
-			writer.writeAscii("{\"x\":");
+			writer.writeAscii(X_OPEN);
 			writer.writeString(x);
-			writer.writeAscii("}");
+			writer.writeAscii(OBJECT_END);
 		}
 
 		public static final JsonReader.ReadJsonObject<JsonObjectReference> JSON_READER = reader -> {
@@ -82,10 +85,13 @@ public class JsonObjectTest {
 		public JsonObjectReferenceKotlin(String x) {
 			this.x = x;
 		}
+		private static final byte[] X_OPEN = new byte[]{'{', '"', 'x', '"', ':'};
+		private static final byte[] OBJECT_END = new byte[]{'}'};
+
 		public void serialize(JsonWriter writer, boolean minimal) {
-			writer.writeAscii("{\"x\":");
+			writer.writeAscii(X_OPEN);
 			writer.writeString(x);
-			writer.writeAscii("}");
+			writer.writeAscii(OBJECT_END);
 		}
 
 		public static final Companion Companion = new Companion();

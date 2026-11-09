@@ -90,6 +90,11 @@ public final class JsonWriter {
 	 */
 	public static final byte ESCAPE = '\\';
 
+	private static final byte[] QUOTED_INFINITY = new byte[]{'"', 'I', 'n', 'f', 'i', 'n', 'i', 't', 'y', '"'};
+	private static final byte[] QUOTED_NEGATIVE_INFINITY = new byte[]{'"', '-', 'I', 'n', 'f', 'i', 'n', 'i', 't', 'y', '"'};
+	private static final byte[] QUOTED_NAN = new byte[]{'"', 'N', 'a', 'N', '"'};
+	private static final byte[] DOUBLE_ZERO = new byte[]{'0', '.', '0'};
+
 	private void enlargeOrFlush(final int size, final int padding) {
 		if (target != null) {
 			try {
@@ -466,13 +471,13 @@ public final class JsonWriter {
 
 	final void writeDouble(final double value) {
 		if (value == Double.POSITIVE_INFINITY) {
-			writeAscii("\"Infinity\"");
+			writeAscii(QUOTED_INFINITY);
 		} else if (value == Double.NEGATIVE_INFINITY) {
-			writeAscii("\"-Infinity\"");
+			writeAscii(QUOTED_NEGATIVE_INFINITY);
 		} else if (value != value) {
-			writeAscii("\"NaN\"");
+			writeAscii(QUOTED_NAN);
 		} else if (value == 0.0) {
-			writeAscii("0.0");
+			writeAscii(DOUBLE_ZERO);
 		} else {
 			if (position + 24 >= buffer.length) {
 				enlargeOrFlush(position, 24);
@@ -482,11 +487,11 @@ public final class JsonWriter {
 	}
 	final void writeFloat(final float value) {
 		if (value == Float.POSITIVE_INFINITY) {
-			writeAscii("\"Infinity\"");
+			writeAscii(QUOTED_INFINITY);
 		} else if (value == Float.NEGATIVE_INFINITY) {
-			writeAscii("\"-Infinity\"");
+			writeAscii(QUOTED_NEGATIVE_INFINITY);
 		} else if (value != value) {
-			writeAscii("\"NaN\"");
+			writeAscii(QUOTED_NAN);
 		} else {
 			if (position + 15 >= buffer.length) {
 				enlargeOrFlush(position, 15);
@@ -852,9 +857,9 @@ public final class JsonWriter {
 	public <T> void writeQuoted(final JsonWriter.WriteObject<T> keyWriter, final T key) {
 		if (key instanceof Double) {
 			final double value = (Double) key;
-			if (Double.isNaN(value)) writeAscii("\"NaN\"");
-			else if (value == Double.POSITIVE_INFINITY) writeAscii("\"Infinity\"");
-			else if (value == Double.NEGATIVE_INFINITY) writeAscii("\"-Infinity\"");
+			if (Double.isNaN(value)) writeAscii(QUOTED_NAN);
+			else if (value == Double.POSITIVE_INFINITY) writeAscii(QUOTED_INFINITY);
+			else if (value == Double.NEGATIVE_INFINITY) writeAscii(QUOTED_NEGATIVE_INFINITY);
 			else {
 				writeByte(QUOTE);
 				NumberConverter.serialize(value, this);
@@ -862,9 +867,9 @@ public final class JsonWriter {
 			}
 		} else if (key instanceof Float) {
 			final float value = (Float) key;
-			if (Float.isNaN(value)) writeAscii("\"NaN\"");
-			else if (value == Float.POSITIVE_INFINITY) writeAscii("\"Infinity\"");
-			else if (value == Float.NEGATIVE_INFINITY) writeAscii("\"-Infinity\"");
+			if (Float.isNaN(value)) writeAscii(QUOTED_NAN);
+			else if (value == Float.POSITIVE_INFINITY) writeAscii(QUOTED_INFINITY);
+			else if (value == Float.NEGATIVE_INFINITY) writeAscii(QUOTED_NEGATIVE_INFINITY);
 			else {
 				writeByte(QUOTE);
 				NumberConverter.serialize(value, this);

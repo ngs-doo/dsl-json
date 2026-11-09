@@ -11,11 +11,13 @@ data class DataClass(
 
 data class CustomObject(val text: String) : JsonObject {
     override fun serialize(writer: JsonWriter, minimal: Boolean) {
-        writer.writeAscii("{\"text\":")
+        writer.writeAscii(TEXT_OPEN)
         StringConverter.serialize(text, writer)
-        writer.writeAscii("}")
+        writer.writeAscii(OBJECT_END)
     }
     companion object {
+        private val TEXT_OPEN = byteArrayOf('{'.toByte(), '"'.toByte(), 't'.toByte(), 'e'.toByte(), 'x'.toByte(), 't'.toByte(), '"'.toByte(), ':'.toByte())
+        private val OBJECT_END = byteArrayOf('}'.toByte())
         val JSON_READER = object: JsonReader.ReadJsonObject<CustomObject?> {
             override fun deserialize(reader: JsonReader<Any>): CustomObject? {
                 reader.fillName()

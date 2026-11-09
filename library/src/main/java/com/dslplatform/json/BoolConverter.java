@@ -7,6 +7,12 @@ import java.util.Collection;
 
 public abstract class BoolConverter {
 
+	private static final byte[] TRUE = new byte[]{'t', 'r', 'u', 'e'};
+	private static final byte[] FALSE = new byte[]{'f', 'a', 'l', 's', 'e'};
+	private static final byte[] EMPTY_JSON_ARRAY = new byte[]{'[', ']'};
+	private static final byte[] COMMA_TRUE = new byte[]{',', 't', 'r', 'u', 'e'};
+	private static final byte[] COMMA_FALSE = new byte[]{',', 'f', 'a', 'l', 's', 'e'};
+
 	public final static boolean[] EMPTY_ARRAY = new boolean[0];
 
 	public static final JsonReader.ReadObject<Boolean> READER = reader -> deserialize(reader);
@@ -44,17 +50,17 @@ public abstract class BoolConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value) {
-			sw.writeAscii("true");
+			sw.writeAscii(TRUE);
 		} else {
-			sw.writeAscii("false");
+			sw.writeAscii(FALSE);
 		}
 	}
 
 	public static void serialize(final boolean value, final JsonWriter sw) {
 		if (value) {
-			sw.writeAscii("true");
+			sw.writeAscii(TRUE);
 		} else {
-			sw.writeAscii("false");
+			sw.writeAscii(FALSE);
 		}
 	}
 
@@ -62,12 +68,12 @@ public abstract class BoolConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value.length == 0) {
-			sw.writeAscii("[]");
+			sw.writeAscii(EMPTY_JSON_ARRAY);
 		} else {
 			sw.writeByte(JsonWriter.ARRAY_START);
-			sw.writeAscii(value[0] ? "true" : "false");
+			sw.writeAscii(value[0] ? TRUE : FALSE);
 			for(int i = 1; i < value.length; i++) {
-				sw.writeAscii(value[i] ? ",true" : ",false");
+				sw.writeAscii(value[i] ? COMMA_TRUE : COMMA_FALSE);
 			}
 			sw.writeByte(JsonWriter.ARRAY_END);
 		}

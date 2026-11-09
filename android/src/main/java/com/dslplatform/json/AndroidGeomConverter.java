@@ -9,6 +9,11 @@ import java.util.Collection;
 
 public abstract class AndroidGeomConverter {
 
+	private static final byte[] X_OPEN = new byte[]{'{', '"', 'X', '"', ':'};
+	private static final byte[] Y_COMMA = new byte[]{',', '"', 'Y', '"', ':'};
+	private static final byte[] WIDTH_COMMA = new byte[]{',', '"', 'W', 'i', 'd', 't', 'h', '"', ':'};
+	private static final byte[] HEIGHT_COMMA = new byte[]{',', '"', 'H', 'e', 'i', 'g', 'h', 't', '"', ':'};
+
 	public static final JsonReader.ReadObject<PointF> LOCATION_READER = new JsonReader.ReadObject<PointF>() {
 		@Nullable
 		@Override
@@ -51,9 +56,9 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static void serializeLocation(final PointF value, final JsonWriter sw) {
-		sw.writeAscii("{\"X\":");
+		sw.writeAscii(X_OPEN);
 		NumberConverter.serialize(value.x, sw);
-		sw.writeAscii(",\"Y\":");
+		sw.writeAscii(Y_COMMA);
 		NumberConverter.serialize(value.y, sw);
 		sw.writeByte(JsonWriter.OBJECT_END);
 	}
@@ -116,9 +121,9 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static void serializePoint(final Point value, final JsonWriter sw) {
-		sw.writeAscii("{\"X\":");
+		sw.writeAscii(X_OPEN);
 		NumberConverter.serialize(value.x, sw);
-		sw.writeAscii(",\"Y\":");
+		sw.writeAscii(Y_COMMA);
 		NumberConverter.serialize(value.y, sw);
 		sw.writeByte(JsonWriter.OBJECT_END);
 	}
@@ -182,13 +187,13 @@ public abstract class AndroidGeomConverter {
 	}
 
 	public static void serializeRectangle(final Rect value, final JsonWriter sw) {
-		sw.writeAscii("{\"X\":");
+		sw.writeAscii(X_OPEN);
 		NumberConverter.serialize(value.left, sw);
-		sw.writeAscii(",\"Y\":");
+		sw.writeAscii(Y_COMMA);
 		NumberConverter.serialize(value.top, sw);
-		sw.writeAscii(",\"Width\":");
+		sw.writeAscii(WIDTH_COMMA);
 		NumberConverter.serialize(value.width(), sw);
-		sw.writeAscii(",\"Height\":");
+		sw.writeAscii(HEIGHT_COMMA);
 		NumberConverter.serialize(value.height(), sw);
 		sw.writeByte(JsonWriter.OBJECT_END);
 	}

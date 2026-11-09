@@ -33,6 +33,7 @@ public abstract class NumberConverter {
 		return b == ' ' || b == '\t' || b == '\n' || b == '\r';
 	}
 
+	private static final byte[] EMPTY_ARRAY = new byte[]{'[', ']'};
 	private static final double FAST_DOUBLE_FAILED = Double.NaN;
 
 	private static final float FAST_FLOAT_FAILED = Float.NaN;
@@ -402,7 +403,7 @@ public abstract class NumberConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value.length == 0) {
-			sw.writeAscii("[]");
+			sw.writeAscii(EMPTY_ARRAY);
 		} else {
 			sw.writeByte(JsonWriter.ARRAY_START);
 			serialize(value[0], sw);
@@ -701,7 +702,7 @@ public abstract class NumberConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value.length == 0) {
-			sw.writeAscii("[]");
+			sw.writeAscii(EMPTY_ARRAY);
 		} else {
 			sw.writeByte(JsonWriter.ARRAY_START);
 			serialize(value[0], sw);
@@ -854,7 +855,7 @@ public abstract class NumberConverter {
 		if (values == null) {
 			sw.writeNull();
 		} else if (values.length == 0) {
-			sw.writeAscii("[]");
+			sw.writeAscii(EMPTY_ARRAY);
 		} else {
 			final byte[] buf = sw.ensureCapacity(values.length * 11 + 2);
 			int position = sw.size();
@@ -873,7 +874,7 @@ public abstract class NumberConverter {
 		if (value == null) {
 			sw.writeNull();
 		} else if (value.length == 0) {
-			sw.writeAscii("[]");
+			sw.writeAscii(EMPTY_ARRAY);
 		} else {
 			sw.writeByte(JsonWriter.ARRAY_START);
 			serialize(value[0], sw);
@@ -1322,7 +1323,7 @@ public abstract class NumberConverter {
 		if (values == null) {
 			sw.writeNull();
 		} else if (values.length == 0) {
-			sw.writeAscii("[]");
+			sw.writeAscii(EMPTY_ARRAY);
 		} else {
 			final byte[] buf = sw.ensureCapacity(values.length * 21 + 2);
 			int position = sw.size();

@@ -133,14 +133,20 @@ public class GE0A0Lc   implements java.lang.Cloneable, java.io.Serializable, com
 		sw.writeByte(com.dslplatform.json.JsonWriter.OBJECT_END);
 	}
 
+	private static final byte[] URI_COLON = new byte[]{'"', 'U', 'R', 'I', '"', ':'};
+	private static final byte[] COMMA_P_OPEN = new byte[]{',', '"', 'p', '0', 'A', '0', 'L', 'c', '"', ':', '['};
+	private static final byte[] COMMA_P_EMPTY = new byte[]{',', '"', 'p', '0', 'A', '0', 'L', 'c', '"', ':', '[', ']'};
+	private static final byte[] COMMA_ID_COLON = new byte[]{',', '"', 'G', 'A', '0', 'A', '0', 'L', 'c', 'I', 'D', '"', ':'};
+	private static final byte[] COMMA_P_NULL = new byte[]{',', '"', 'p', '0', 'A', '0', 'L', 'c', '"', ':', 'n', 'u', 'l', 'l'};
+
 	static void __serializeJsonObjectMinimal(final GE0A0Lc self, com.dslplatform.json.JsonWriter sw, boolean hasWrittenProperty) {
 		
-		sw.writeAscii("\"URI\":");
+		sw.writeAscii(URI_COLON);
 			com.dslplatform.json.StringConverter.serializeShort(self.URI, sw);
 		
 		final java.awt.geom.Point2D[] _tmp_p0A0Lc_ = self.p0A0Lc;
 		if(_tmp_p0A0Lc_ != null && _tmp_p0A0Lc_.length != 0) {
-			sw.writeAscii(",\"p0A0Lc\":[", 11);
+			sw.writeAscii(COMMA_P_OPEN);
 			com.dslplatform.json.JavaGeomConverter.serializeLocationNullable(_tmp_p0A0Lc_[0], sw);
 			for(int i = 1; i < _tmp_p0A0Lc_.length; i++) {
 				sw.writeByte(com.dslplatform.json.JsonWriter.COMMA);
@@ -148,22 +154,22 @@ public class GE0A0Lc   implements java.lang.Cloneable, java.io.Serializable, com
 			}
 			sw.writeByte(com.dslplatform.json.JsonWriter.ARRAY_END);
 		}
-		else if(self.p0A0Lc != null) sw.writeAscii(",\"p0A0Lc\":[]", 12);
+		else if(self.p0A0Lc != null) sw.writeAscii(COMMA_P_EMPTY);
 		
 			if (!(self.getGA0A0LcID().getMostSignificantBits() == 0 && self.getGA0A0LcID().getLeastSignificantBits() == 0)) {
-				sw.writeAscii(",\"GA0A0LcID\":", 13);
+				sw.writeAscii(COMMA_ID_COLON);
 				com.dslplatform.json.UUIDConverter.serialize(self.getGA0A0LcID(), sw);
 			}
 	}
 
 	static void __serializeJsonObjectFull(final GE0A0Lc self, com.dslplatform.json.JsonWriter sw, boolean hasWrittenProperty) {
 		
-		sw.writeAscii("\"URI\":");
+		sw.writeAscii(URI_COLON);
 			com.dslplatform.json.StringConverter.serializeShort(self.URI, sw);
 		
 		final java.awt.geom.Point2D[] _tmp_p0A0Lc_ = self.p0A0Lc;
 		if(_tmp_p0A0Lc_ != null && _tmp_p0A0Lc_.length != 0) {
-			sw.writeAscii(",\"p0A0Lc\":[", 11);
+			sw.writeAscii(COMMA_P_OPEN);
 			com.dslplatform.json.JavaGeomConverter.serializeLocationNullable(_tmp_p0A0Lc_[0], sw);
 			for(int i = 1; i < _tmp_p0A0Lc_.length; i++) {
 				sw.writeByte(com.dslplatform.json.JsonWriter.COMMA);
@@ -171,11 +177,11 @@ public class GE0A0Lc   implements java.lang.Cloneable, java.io.Serializable, com
 			}
 			sw.writeByte(com.dslplatform.json.JsonWriter.ARRAY_END);
 		}
-		else if(self.p0A0Lc != null) sw.writeAscii(",\"p0A0Lc\":[]", 12);
-		else sw.writeAscii(",\"p0A0Lc\":null", 14);
+		else if(self.p0A0Lc != null) sw.writeAscii(COMMA_P_EMPTY);
+		else sw.writeAscii(COMMA_P_NULL);
 		
 			
-			sw.writeAscii(",\"GA0A0LcID\":", 13);
+			sw.writeAscii(COMMA_ID_COLON);
 			com.dslplatform.json.UUIDConverter.serialize(self.getGA0A0LcID(), sw);
 	}
 

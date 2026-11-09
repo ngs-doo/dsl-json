@@ -9,6 +9,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 public abstract class ArrayAnalyzer {
+	private static final byte[] EMPTY_ARRAY = new byte[]{'[', ']'};
 
 	public static class Runtime {
 		public static final JsonReader.ReadObject<Object[]> JSON_READER = new JsonReader.ReadObject<Object[]>() {
@@ -24,7 +25,7 @@ public abstract class ArrayAnalyzer {
 				if (value == null) {
 					writer.writeNull();
 				} else if (value.length == 0) {
-					writer.writeAscii("[]");
+					writer.writeAscii(EMPTY_ARRAY);
 				} else {
 					writer.writeByte(JsonWriter.ARRAY_START);
 					writer.serializeObject(value[0]);

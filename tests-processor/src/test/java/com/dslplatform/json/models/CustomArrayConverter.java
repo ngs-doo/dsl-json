@@ -17,9 +17,11 @@ public class CustomArrayConverter {
 				return new ArrayList<Integer>();
 			}
 		};
+		private static final byte[] EMPTY_ARRAY = new byte[]{'[', ']'};
+
 		public static final JsonWriter.WriteObject<ArrayList<Integer>> JSON_WRITER = new JsonWriter.WriteObject<ArrayList<Integer>>() {
 			public void write(JsonWriter writer, @Nullable ArrayList<Integer> value) {
-				writer.writeAscii("[]");
+				writer.writeAscii(EMPTY_ARRAY);
 			}
 		};
 	}
