@@ -29,32 +29,35 @@ public abstract class NumberConverter {
 		return (d & 0xF) * 10 + (d >> 8);
 	}
 
-	private static boolean isJsonWhitespace(final byte b) {
-		return b == ' ' || b == '\t' || b == '\n' || b == '\r';
-	}
-
 	private static final byte[] EMPTY_ARRAY = new byte[]{'[', ']'};
-	private static final double FAST_DOUBLE_FAILED = Double.NaN;
 
-	private static final float FAST_FLOAT_FAILED = Float.NaN;
-
-	// exact in float for j <= 10 (5^j < 2^24)
-	private final static float[] POW_10F = { 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f, 1e10f };
+	/** Number of decimal digits of v, for v >= 1. */
+	static int decimalLength(final long v) {
+		if (v >= 1000000000000000000L) return 19;
+		if (v >= 100000000000000000L) return 18;
+		if (v >= 10000000000000000L) return 17;
+		if (v >= 1000000000000000L) return 16;
+		if (v >= 100000000000000L) return 15;
+		if (v >= 10000000000000L) return 14;
+		if (v >= 1000000000000L) return 13;
+		if (v >= 100000000000L) return 12;
+		if (v >= 10000000000L) return 11;
+		if (v >= 1000000000L) return 10;
+		if (v >= 100000000L) return 9;
+		if (v >= 10000000L) return 8;
+		if (v >= 1000000L) return 7;
+		if (v >= 100000L) return 6;
+		if (v >= 10000L) return 5;
+		if (v >= 1000L) return 4;
+		if (v >= 100L) return 3;
+		if (v >= 10L) return 2;
+		return 1;
+	}
 
 	private static final int INT_MAX_DIV_100 = Integer.MAX_VALUE / 100;
 	private static final int INT_MIN_DIV_100 = Integer.MIN_VALUE / 100;
 	private static final long LONG_MAX_DIV_100 = Long.MAX_VALUE / 100;
 	private static final long LONG_MIN_DIV_100 = Long.MIN_VALUE / 100;
-	private static final int INT_MAX_DIV_10 = Integer.MAX_VALUE / 10;
-	private final static double[] POW_10 = {
-			1e1,  1e2,  1e3,  1e4,  1e5, 1e6, 1e7, 1e8,  1e9,
-			1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
-			1e20, 1e21, 1e22, 1e23, 1e24, 1e25, 1e26, 1e27, 1e28, 1e29,
-			1e30, 1e31, 1e32, 1e33, 1e34, 1e35, 1e36, 1e37, 1e38, 1e39,
-			1e40, 1e41, 1e42, 1e43, 1e44, 1e45, 1e46, 1e47, 1e48, 1e49,
-			1e50, 1e51, 1e52, 1e53, 1e54, 1e55, 1e56, 1e57, 1e58, 1e59,
-			1e60, 1e61, 1e62, 1e63, 1e64, 1e65
-	};
 
 	public static final JsonReader.ReadObject<Double> DOUBLE_READER = new JsonReader.ReadObject<Double>() {
 		@Nullable
@@ -470,176 +473,7 @@ public abstract class NumberConverter {
 			return parseDoubleGeneric(tmp.buffer, tmp.length, reader);
 		}
 		checkMaxNumberDigits(reader, start, end);
-		final double fast = tryParseDoubleFast(buf, start, end);
-		if (!Double.isNaN(fast)) return fast;
 		return reader.ryuParser.parseDouble(reader, buf, start, end);
-	}
-
-	/**
-	 * Fast path for short doubles: parses the mantissa into a long and scales it with a precomputed
-	 * power of 10. Only used when the result is provably correctly rounded - mantissa below 2^53 and
-	 * final scale within +/-22, so both operands of the single IEEE multiply/divide are exactly
-	 * representable and the operation rounds the exact decimal value once, matching RyuParser output.
-	 * Returns {@link #FAST_DOUBLE_FAILED} for numbers that do not qualify or are invalid (caller falls back).
-	 */
-	private static double tryParseDoubleFast(final byte[] buf, final int start, final int end) {
-		int i = start;
-		int e = end;
-		while (e > i && isJsonWhitespace(buf[e - 1])) e--;
-		if (e == i) return FAST_DOUBLE_FAILED;
-		boolean negative = false;
-		final byte first = buf[i];
-		if (first == '-') {
-			negative = true;
-			i++;
-		} else if (first < '0' || first > '9') {
-			return FAST_DOUBLE_FAILED; // '+', letters etc. -> RyuParser reports the proper error
-		}
-		long m = 0;
-		int digits = 0;
-		while (i < e) {
-			final int d = buf[i] - '0';
-			if (d < 0 || d > 9) break;
-			if (digits == 0 && d == 0 && i + 1 < e && buf[i + 1] >= '0' && buf[i + 1] <= '9') {
-				return FAST_DOUBLE_FAILED; // leading zero -> RyuParser throws
-			}
-			m = m * 10 + d;
-			digits++;
-			i++;
-			if (digits == 18) return FAST_DOUBLE_FAILED; // mantissa already beyond what a double can hold exactly
-		}
-		if (digits == 0) return FAST_DOUBLE_FAILED;
-		int scale = 0;
-		if (i < e && buf[i] == '.') {
-			i++;
-			while (i < e) {
-				final int d = buf[i] - '0';
-				if (d < 0 || d > 9) break;
-				m = m * 10 + d;
-				digits++;
-				scale++;
-				i++;
-				if (digits == 18) return FAST_DOUBLE_FAILED; // mantissa already beyond what a double can hold exactly
-			}
-			if (scale == 0) return FAST_DOUBLE_FAILED; // number ends with a dot -> RyuParser throws
-		}
-		int exp = 0;
-		if (i < e && (buf[i] == 'e' || buf[i] == 'E')) {
-			i++;
-			boolean expNeg = false;
-			if (i < e && (buf[i] == '-' || buf[i] == '+')) {
-				expNeg = buf[i] == '-';
-				i++;
-			}
-			boolean expDigit = false;
-			while (i < e) {
-				final int d = buf[i] - '0';
-				if (d < 0 || d > 9) return FAST_DOUBLE_FAILED; // invalid exponent char -> RyuParser throws
-				if (exp > INT_MAX_DIV_10) return FAST_DOUBLE_FAILED;
-				exp = exp * 10 + d;
-				expDigit = true;
-				i++;
-			}
-			if (!expDigit) return FAST_DOUBLE_FAILED; // "1e" without digits -> RyuParser throws
-			if (expNeg) exp = -exp;
-		}
-		if (i != e) return FAST_DOUBLE_FAILED; // trailing garbage -> RyuParser throws
-		if (m >= (1L << 53)) return FAST_DOUBLE_FAILED;
-		final int k = exp - scale;
-		if (k < -22 || k > 22) return FAST_DOUBLE_FAILED;
-		double result;
-		if (k == 0) {
-			result = m;
-		} else if (k > 0) {
-			result = m * POW_10[k - 1];
-		} else {
-			result = m / POW_10[-k - 1];
-		}
-		return negative ? -result : result;
-	}
-
-	/**
-	 * Fast path for short floats: parses the mantissa into a long and scales it with a precomputed
-	 * power of 10 in float arithmetic. Only used when the result is provably correctly rounded -
-	 * mantissa below 2^24 and final scale within +/-10, so both operands of the single IEEE
-	 * multiply/divide are exactly representable as float and the operation rounds the exact decimal
-	 * value once, matching RyuParser output. Returns {@link #FAST_FLOAT_FAILED} otherwise.
-	 */
-	private static float tryParseFloatFast(final byte[] buf, final int start, final int end) {
-		int i = start;
-		int e = end;
-		while (e > i && isJsonWhitespace(buf[e - 1])) e--;
-		if (e == i) return FAST_FLOAT_FAILED;
-		boolean negative = false;
-		final byte first = buf[i];
-		if (first == '-') {
-			negative = true;
-			i++;
-		} else if (first < '0' || first > '9') {
-			return FAST_FLOAT_FAILED; // '+', letters etc. -> RyuParser reports the proper error
-		}
-		long m = 0;
-		int digits = 0;
-		while (i < e) {
-			final int d = buf[i] - '0';
-			if (d < 0 || d > 9) break;
-			if (digits == 0 && d == 0 && i + 1 < e && buf[i + 1] >= '0' && buf[i + 1] <= '9') {
-				return FAST_FLOAT_FAILED; // leading zero -> RyuParser throws
-			}
-			m = m * 10 + d;
-			digits++;
-			i++;
-			if (digits == 9) return FAST_FLOAT_FAILED; // mantissa already beyond what a float can hold exactly
-		}
-		if (digits == 0) return FAST_FLOAT_FAILED;
-		int scale = 0;
-		if (i < e && buf[i] == '.') {
-			i++;
-			while (i < e) {
-				final int d = buf[i] - '0';
-				if (d < 0 || d > 9) break;
-				m = m * 10 + d;
-				digits++;
-				scale++;
-				i++;
-				if (digits == 9) return FAST_FLOAT_FAILED; // mantissa already beyond what a float can hold exactly
-			}
-			if (scale == 0) return FAST_FLOAT_FAILED; // number ends with a dot -> RyuParser throws
-		}
-		int exp = 0;
-		if (i < e && (buf[i] == 'e' || buf[i] == 'E')) {
-			i++;
-			boolean expNeg = false;
-			if (i < e && (buf[i] == '-' || buf[i] == '+')) {
-				expNeg = buf[i] == '-';
-				i++;
-			}
-			boolean expDigit = false;
-			while (i < e) {
-				final int d = buf[i] - '0';
-				if (d < 0 || d > 9) return FAST_FLOAT_FAILED; // invalid exponent char -> RyuParser throws
-				if (exp > INT_MAX_DIV_10) return FAST_FLOAT_FAILED;
-				exp = exp * 10 + d;
-				expDigit = true;
-				i++;
-			}
-			if (!expDigit) return FAST_FLOAT_FAILED; // "1e" without digits -> RyuParser throws
-			if (expNeg) exp = -exp;
-		}
-		if (i != e) return FAST_FLOAT_FAILED; // trailing garbage -> RyuParser throws
-		if (m >= (1L << 24)) return FAST_FLOAT_FAILED;
-		final int k = exp - scale;
-		if (k < -10 || k > 10) return FAST_FLOAT_FAILED;
-		float f = (float) m;
-		float result;
-		if (k == 0) {
-			result = f;
-		} else if (k > 0) {
-			result = f * POW_10F[k - 1];
-		} else {
-			result = f / POW_10F[-k - 1];
-		}
-		return negative ? -result : result;
 	}
 
 	private static double parseDoubleGeneric(final char[] buf, final int len, final JsonReader reader) throws IOException {
@@ -739,8 +573,6 @@ public abstract class NumberConverter {
 			return parseFloatGeneric(tmp.buffer, tmp.length, reader);
 		}
 		checkMaxNumberDigits(reader, start, end);
-		final float fast = tryParseFloatFast(buf, start, end);
-		if (!Float.isNaN(fast)) return fast;
 		return reader.ryuParser.parseFloat(reader, buf, start, end);
 	}
 

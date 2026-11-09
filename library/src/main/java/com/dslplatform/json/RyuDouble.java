@@ -157,7 +157,7 @@ final class RyuDouble {
     //
     // Above, we moved the decimal dot all the way to the right, so now we need to count digits to
     // figure out the correct exponent for scientific notation.
-    final int vplength = decimalLength(dp);
+    final int vplength = NumberConverter.decimalLength(dp);
     int exp = e10 + vplength - 1;
 
     // Double.toString semantics requires using scientific notation if and only if outside this range.
@@ -291,28 +291,6 @@ final class RyuDouble {
 
   private static int pow5bits(int e) {
     return ((e * 1217359) >>> 19) + 1;
-  }
-
-  private static int decimalLength(long v) {
-    if (v >= 1000000000000000000L) return 19;
-    if (v >= 100000000000000000L) return 18;
-    if (v >= 10000000000000000L) return 17;
-    if (v >= 1000000000000000L) return 16;
-    if (v >= 100000000000000L) return 15;
-    if (v >= 10000000000000L) return 14;
-    if (v >= 1000000000000L) return 13;
-    if (v >= 100000000000L) return 12;
-    if (v >= 10000000000L) return 11;
-    if (v >= 1000000000L) return 10;
-    if (v >= 100000000L) return 9;
-    if (v >= 10000000L) return 8;
-    if (v >= 1000000L) return 7;
-    if (v >= 100000L) return 6;
-    if (v >= 10000L) return 5;
-    if (v >= 1000L) return 4;
-    if (v >= 100L) return 3;
-    if (v >= 10L) return 2;
-    return 1;
   }
 
   private static boolean multipleOfPowerOf5(long value, int q) {

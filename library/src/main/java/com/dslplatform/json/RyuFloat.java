@@ -154,7 +154,7 @@ final class RyuFloat {
     //
     // Above, we moved the decimal dot all the way to the right, so now we need to count digits to
     // figure out the correct exponent for scientific notation.
-    int dplength = decimalLength(dp);
+    int dplength = NumberConverter.decimalLength(dp);
     int exp = e10 + dplength - 1;
 
     // Float.toString semantics requires using scientific notation if and only if outside this range.
@@ -312,16 +312,4 @@ final class RyuFloat {
     return (bits0 + (bits1 >> POW5_INV_HALF_BITCOUNT)) >> (j - POW5_INV_HALF_BITCOUNT);
   }
 
-  private static int decimalLength(int v) {
-    if (v >= 1000000000L) return 10;
-    if (v >= 100000000L) return 9;
-    if (v >= 10000000L) return 8;
-    if (v >= 1000000L) return 7;
-    if (v >= 100000L) return 6;
-    if (v >= 10000L) return 5;
-    if (v >= 1000L) return 4;
-    if (v >= 100L) return 3;
-    if (v >= 10L) return 2;
-    return 1;
-  }
 }

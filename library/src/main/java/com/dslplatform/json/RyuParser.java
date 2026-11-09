@@ -30,6 +30,19 @@ final class RyuParser {
 		}
 	}
 
+	// exact in float for j <= 10 (5^j < 2^24); double powers of ten stay exact up to 1e22 (5^22 < 2^53)
+	private static final float[] POW_10F = { 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f, 1e10f };
+
+	private static final double[] POW_10 = {
+			1e1,  1e2,  1e3,  1e4,  1e5, 1e6, 1e7, 1e8,  1e9,
+			1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
+			1e20, 1e21, 1e22, 1e23, 1e24, 1e25, 1e26, 1e27, 1e28, 1e29,
+			1e30, 1e31, 1e32, 1e33, 1e34, 1e35, 1e36, 1e37, 1e38, 1e39,
+			1e40, 1e41, 1e42, 1e43, 1e44, 1e45, 1e46, 1e47, 1e48, 1e49,
+			1e50, 1e51, 1e52, 1e53, 1e54, 1e55, 1e56, 1e57, 1e58, 1e59,
+			1e60, 1e61, 1e62, 1e63, 1e64, 1e65
+	};
+
 	private long[] scratch = new long[64];
 	private final Parsed parsed = new Parsed();
 
@@ -91,22 +104,6 @@ final class RyuParser {
 		int exp;         // decimal exponent E = exponentPart - fractionDigitCount
 		boolean negative;
 
-		void reset() {
-			mLong = 0;
-			bigWords = 0;
-			totalDigits = 0;
-			firstNonZero = -1;
-			exp = 0;
-			negative = false;
-		}
-
-		boolean isZero() {
-			return firstNonZero < 0;
-		}
-
-		int sigDigits() {
-			return totalDigits - firstNonZero;
-		}
 	}
 
 	double parseDouble(final JsonReader reader, final byte[] buf, final int start, final int end) throws ParsingException {
@@ -133,7 +130,8 @@ final class RyuParser {
 		int end = end0;
 		while (end > start && isWs(buf[end - 1])) end--;
 		Parsed p = parsed;
-		p.reset();
+		// every other Parsed field is overwritten before use on the success path
+		p.negative = false;
 		if (end == start) {
 			// no digits at all: empty or whitespace-only span
 			NumberConverter.numberException(reader, errStart, errEnd, end0 != start ? "Unknown digit" : "Digit not found", end0 != start ? ' ' : null);
@@ -148,8 +146,11 @@ final class RyuParser {
 		if (end == i) NumberConverter.numberException(reader, errStart, errEnd, "Digit not found", null);
 		long mLong = 0;
 		int bigWords = 0;
-		boolean leadingZero = false;
+		int totalDigits = 0;
+		int firstNonZero = -1;
 		final int digitsStart = i;
+		// determined by the first integer digit alone; "Digit not found" throws before it is read otherwise
+		final boolean leadingZero = buf[digitsStart] == '0';
 		byte ch = ' ';
 		// ---- integer part ----
 		for (; i < end; i++) {
@@ -160,10 +161,36 @@ final class RyuParser {
 				if (leadingZero && i > digitsStart + 1) NumberConverter.numberException(reader, errStart, errEnd, "Leading zero is not allowed", null);
 				NumberConverter.numberException(reader, errStart, errEnd, "Unknown digit", (char) ch);
 			}
-			if (p.totalDigits == 0 && ind == 0) leadingZero = true;
-			addDigit(p, ind, mLong, bigWords);
-			mLong = p.mLong;
-			bigWords = p.bigWords;
+			if (bigWords == 0) {
+				if (mLong <= (Long.MAX_VALUE - ind) / 10) {
+					mLong = mLong * 10 + ind;
+				} else {
+					final long[] s = ensureCapacity(scratch, 2);
+					final long lo = mLong * 10;
+					long hi = mulHi(mLong, 10);
+					final long sum = lo + ind;
+					if (Long.compareUnsigned(sum, lo) < 0) hi++;
+					s[0] = sum;
+					s[1] = hi; // mLong > Long.MAX_VALUE / 10 => hi >= 1
+					bigWords = 2;
+					// mLong holds the value of all digits so far and is >= 10^17 here, so its decimal digit count pins down firstNonZero
+					firstNonZero = totalDigits - NumberConverter.decimalLength(mLong);
+					mLong = 0;
+				}
+			} else {
+				final long[] s = ensureCapacity(scratch, bigWords + 1);
+				long carry = ind;
+				for (int w = 0; w < bigWords; w++) {
+					final long word = s[w];
+					final long lo = word * 10;
+					final long hi = mulHi(word, 10);
+					final long sum = lo + carry;
+					s[w] = sum;
+					carry = hi + (Long.compareUnsigned(sum, lo) < 0 ? 1L : 0L);
+				}
+				if (carry != 0) s[bigWords++] = carry;
+			}
+			totalDigits++;
 		}
 		if (i == digitsStart) NumberConverter.numberException(reader, errStart, errEnd, "Digit not found", null);
 		if (leadingZero && ch != '.' && i > digitsStart + 1) NumberConverter.numberException(reader, errStart, errEnd, "Leading zero is not allowed", null);
@@ -180,9 +207,36 @@ final class RyuParser {
 					if (leadingZero && i > digitsStart + 1) NumberConverter.numberException(reader, errStart, errEnd, "Leading zero is not allowed", null);
 					NumberConverter.numberException(reader, errStart, errEnd, "Unknown digit", (char) ch);
 				}
-				addDigit(p, ind, mLong, bigWords);
-				mLong = p.mLong;
-				bigWords = p.bigWords;
+				if (bigWords == 0) {
+					if (mLong <= (Long.MAX_VALUE - ind) / 10) {
+						mLong = mLong * 10 + ind;
+					} else {
+						final long[] s = ensureCapacity(scratch, 2);
+						final long lo = mLong * 10;
+						long hi = mulHi(mLong, 10);
+						final long sum = lo + ind;
+						if (Long.compareUnsigned(sum, lo) < 0) hi++;
+						s[0] = sum;
+						s[1] = hi; // mLong > Long.MAX_VALUE / 10 => hi >= 1
+						bigWords = 2;
+						// mLong holds the value of all digits so far and is >= 10^17 here, so its decimal digit count pins down firstNonZero
+						firstNonZero = totalDigits - NumberConverter.decimalLength(mLong);
+						mLong = 0;
+					}
+				} else {
+					final long[] s = ensureCapacity(scratch, bigWords + 1);
+					long carry = ind;
+					for (int w = 0; w < bigWords; w++) {
+						final long word = s[w];
+						final long lo = word * 10;
+						final long hi = mulHi(word, 10);
+						final long sum = lo + carry;
+						s[w] = sum;
+						carry = hi + (Long.compareUnsigned(sum, lo) < 0 ? 1L : 0L);
+					}
+					if (carry != 0) s[bigWords++] = carry;
+				}
+				totalDigits++;
 				fracCount++;
 			}
 		}
@@ -212,11 +266,15 @@ final class RyuParser {
 		} else {
 			p.exp = -fracCount;
 		}
+		p.mLong = mLong;
+		p.bigWords = bigWords;
+		p.totalDigits = totalDigits;
+		p.firstNonZero = firstNonZero;
 		trimMantissa(p);
 		return p;
 	}
 
-	/** Drop trailing zero words: promotion in addDigit is triggered by signed overflow, so
+	/** Drop trailing zero words: promotion during digit accumulation is triggered by signed overflow, so
 	 * values in [2^63, 2^64) may carry a high word of zero. */
 	private void trimMantissa(final Parsed p) {
 		if (p.bigWords > 1) {
@@ -225,48 +283,25 @@ final class RyuParser {
 		}
 	}
 
-	/** M = M * 10 + ind, promoting to the big-word representation on overflow. */
-	private void addDigit(final Parsed p, final int ind, long mLong, int bigWords) {
-		if (bigWords == 0) {
-			if (mLong <= (Long.MAX_VALUE - ind) / 10) {
-				p.mLong = mLong * 10 + ind;
-			} else {
-				final long[] s = ensureCapacity(scratch, 2);
-				final long lo = mLong * 10;
-				long hi = mulHi(mLong, 10);
-				final long sum = lo + ind;
-				if (Long.compareUnsigned(sum, lo) < 0) hi++;
-				s[0] = sum;
-				s[1] = hi; // mLong > Long.MAX_VALUE / 10 => hi >= 1
-				p.bigWords = 2;
-				p.mLong = 0;
-			}
-		} else {
-			final long[] s = ensureCapacity(scratch, bigWords + 1);
-			long carry = ind;
-			for (int w = 0; w < bigWords; w++) {
-				final long word = s[w];
-				final long lo = word * 10;
-				final long hi = mulHi(word, 10);
-				final long sum = lo + carry;
-				s[w] = sum;
-				carry = hi + (Long.compareUnsigned(sum, lo) < 0 ? 1L : 0L);
-			}
-			if (carry != 0) s[bigWords++] = carry;
-			p.bigWords = bigWords;
-		}
-		p.totalDigits++;
-		if (p.firstNonZero < 0 && ind != 0) p.firstNonZero = p.totalDigits - 1;
-	}
+
 
 	private static boolean isWs(final byte b) {
 		return (b >= 9 && b <= 13) || b == 32 || b == -96 || (b >= -31 && b <= -29);
 	}
 
 	private double toDouble(final Parsed p) {
-		if (p.isZero()) return p.negative ? -0.0 : 0.0;
+		// bigWords > 0 implies a non-zero mantissa, so zero is exactly mLong == 0 in long mode
+		if (p.bigWords == 0 && p.mLong == 0) return p.negative ? -0.0 : 0.0;
 		final int E = p.exp;
-		final int sig = p.sigDigits();
+		// V = M * 10^E with M < 2^53 and |E| <= 22: both operands are exactly representable, so the
+		// single IEEE op below rounds the exact decimal value once - the same result as the full
+		// pow5 boundary computation, without it
+		if (p.bigWords == 0 && p.mLong < (1L << 53) && E >= -22 && E <= 22) {
+			final double result = E == 0 ? p.mLong : (E > 0 ? p.mLong * POW_10[E - 1] : p.mLong / POW_10[-E - 1]);
+			return p.negative ? -result : result;
+		}
+		// firstNonZero is only tracked from overflow promotion on, so derive the digit count for long-mode mantissas
+		final int sig = p.bigWords == 0 ? NumberConverter.decimalLength(p.mLong) : p.totalDigits - p.firstNonZero;
 		// range exits: V = M * 10^E with M having `sig` significant digits, M >= 1
 		if (E + sig - 1 >= 309) return p.negative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 		if (E + sig <= -325) return p.negative ? -0.0 : 0.0;
@@ -312,9 +347,17 @@ final class RyuParser {
 	}
 
 	private float toFloat(final Parsed p) {
-		if (p.isZero()) return p.negative ? -0f : 0f;
+		// bigWords > 0 implies a non-zero mantissa, so zero is exactly mLong == 0 in long mode
+		if (p.bigWords == 0 && p.mLong == 0) return p.negative ? -0f : 0f;
 		final int E = p.exp;
-		final int sig = p.sigDigits();
+		// same single-rounded-op exit as toDouble, float-tight: M < 2^24 and |E| <= 10
+		if (p.bigWords == 0 && p.mLong < (1L << 24) && E >= -10 && E <= 10) {
+			final float f = (float) p.mLong;
+			final float result = E == 0 ? f : (E > 0 ? f * POW_10F[E - 1] : f / POW_10F[-E - 1]);
+			return p.negative ? -result : result;
+		}
+		// firstNonZero is only tracked from overflow promotion on, so derive the digit count for long-mode mantissas
+		final int sig = p.bigWords == 0 ? NumberConverter.decimalLength(p.mLong) : p.totalDigits - p.firstNonZero;
 		// range exits: V = M * 10^E with M having `sig` significant digits, M >= 1
 		if (E + sig - 1 >= 39) return p.negative ? Float.NEGATIVE_INFINITY : Float.POSITIVE_INFINITY;
 		if (E + sig <= -47) return p.negative ? -0f : 0f;
@@ -416,6 +459,35 @@ final class RyuParser {
 		return divRound(N, pow5b << sh);
 	}
 
+	/** Approximate big number s[off..off+n) as a double (n <= 16); relative error < 2^-51. */
+	private static double approx(final long[] s, final int off, final int n) {
+		final long w = s[off + n - 1];
+		final double dw = (double) (w >>> 1) + ((w & 1L) != 0 ? 0.5 : 0.0); // w/2, relative error <= 2^-54
+		if (n == 1) return dw * 2.0;
+		final long v = s[off + n - 2];
+		final double dv = (double) (v >>> 1) + ((v & 1L) != 0 ? 0.5 : 0.0);
+		final int k = (n - 1) << 6;
+		return Math.scalb(dw, k + 1) + Math.scalb(dv, k - 63);
+	}
+
+	/** @return the estimate q corrected to exactly floor(A / D), or -1 if more than 32 corrections were needed. */
+	private long correctQuotient(final long[] s, final int offD, final int nD, final int offA, final int nA, long q, final int offT) {
+		int guard = 0;
+		for (;;) {
+			final int nT = mulLong(s, offD, nD, q, offT);
+			if (cmp(s, offT, nT, s, offA, nA) <= 0) break;
+			if (++guard > 32) return -1;
+			q--;
+		}
+		for (;;) {
+			final int nT = mulLong(s, offD, nD, q + 1, offT);
+			if (cmp(s, offT, nT, s, offA, nA) > 0) break;
+			if (++guard > 32) return -1;
+			q++;
+		}
+		return q;
+	}
+
 	/** A / D with round-to-nearest-even, both in [0, 2^63). */
 	private static long divRound(final long A, final long D) {
 		final long q = A / D;
@@ -467,12 +539,21 @@ final class RyuParser {
 		final int off2R = offT + nD + 1;
 		ensureCapacity(s, off2R + nA + 1);
 
-		// q = floor(A / D) by binary search with bignum multiply+compare
-		long q = 0;
-		for (int bit = maxBits - 1; bit >= 0; bit--) {
-			final long mid = q | (1L << bit);
-			final int nT = mulLong(s, offD, nD, mid, offT);
-			if (cmp(s, offT, nT, s, offA, nA) <= 0) q = mid;
+		// q = floor(A / D); A/D < 2^maxBits. Seed from a double estimate (relative error < 2^-51,
+		// so off by only a few ulp) and correct with exact bignum steps; binary search if the
+		// estimate is unusable or fails to converge quickly.
+		long q = -1;
+		if (nA <= 16 && nD <= 16) {
+			final double ratio = approx(s, offA, nA) / approx(s, offD, nD);
+			if (ratio >= 0 && ratio < (double) (1L << maxBits) * 2.0) q = correctQuotient(s, offD, nD, offA, nA, (long) ratio, offT);
+		}
+		if (q < 0) {
+			q = 0;
+			for (int bit = maxBits - 1; bit >= 0; bit--) {
+				final long mid = q | (1L << bit);
+				final int nT = mulLong(s, offD, nD, mid, offT);
+				if (cmp(s, offT, nT, s, offA, nA) <= 0) q = mid;
+			}
 		}
 		// rem = A - q*D
 		final int nT2 = mulLong(s, offD, nD, q, offT);
