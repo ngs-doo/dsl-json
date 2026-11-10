@@ -21,7 +21,7 @@ lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
   organization := "com.dslplatform",
   name := baseDirectory.value.getName,
   scalaVersion := crossScalaVersions.value.head,
-  crossScalaVersions := Seq("2.13.15"),
+  crossScalaVersions := Seq("2.13.18"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",
@@ -56,7 +56,11 @@ val publishSettings = Seq(
     ("Implementation-Vendor", "New Generation Software Ltd.")
   )),
 
-  publishTo := Some(if (isSnapshot.value) Opts.resolver.sonatypeSnapshots else Opts.resolver.sonatypeStaging),
+  publishTo := {
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
+  },
   publishArtifact in Test := false,
   publishMavenStyle := true,
   pomIncludeRepository := { _ => false },

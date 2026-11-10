@@ -1,4 +1,4 @@
-scalaVersion := "2.12.12"
+scalaVersion := "2.12.21"
 
 scalacOptions ++= Seq(
   "-deprecation",

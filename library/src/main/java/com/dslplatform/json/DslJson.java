@@ -131,7 +131,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		private boolean omitDefaults;
 		private boolean omitNulls;
 		private boolean allowArrayFormat;
-		private StringCache keyCache = new SimpleStringCache();
+		private StringCache keyCache;
 		private StringCache valuesCache;
 		private int fromServiceLoader;
 		private JsonReader.ErrorInfo errorInfo = JsonReader.ErrorInfo.WITH_STACK_TRACE;
@@ -559,12 +559,13 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 
 	/**
 	 * Simplistic string cache implementation.
-	 * It uses a fixed String[] structure in which it caches string value based on it's hash.
+	 * It uses a fixed String[] structure in which it caches string value based on FVN-1a hash.
 	 * Eg, hash &amp; mask provide index into the structure. Different string with same hash will overwrite the previous one.
 	 */
 	public static class SimpleStringCache implements StringCache {
 
 		private final int mask;
+		private final long[] hashes;
 		private final String[] cache;
 
 		/**
@@ -580,6 +581,7 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 				size *= 2;
 			}
 			mask = size - 1;
+			hashes = new long[size];
 			cache = new String[size];
 		}
 
@@ -594,23 +596,25 @@ public class DslJson<TContext> implements UnknownSerializer, TypeLookup {
 		 */
 		@Override
 		public String get(char[] chars, int len) {
-			long hash = 0x811c9dc5;
+			long hash = 0xcbf29ce484222325L;
 			for (int i = 0; i < len; i++) {
-				hash ^= (byte) chars[i];
-				hash *= 0x1000193;
+				hash ^= chars[i];
+				hash *= 0x100000001b3L;
 			}
 			final int index = (int) hash & mask;
 			final String value = cache[index];
-			if (value == null) return createAndPut(index, chars, len);
-			if (value.length() != len) return createAndPut(index, chars, len);
-			for (int i = 0; i < value.length(); i++) {
-				if (value.charAt(i) != chars[i]) return createAndPut(index, chars, len);
+			if (value != null && hashes[index] == hash && value.length() == len) {
+				for (int i = 0; i < len; i++) {
+					if (value.charAt(i) != chars[i]) return createAndPut(index, hash, chars, len);
+				}
+				return value;
 			}
-			return value;
+			return createAndPut(index, hash, chars, len);
 		}
 
-		private String createAndPut(int index, char[] chars, int len) {
+		private String createAndPut(int index, long hash, char[] chars, int len) {
 			final String value = new String(chars, 0, len);
+			hashes[index] = hash;
 			cache[index] = value;
 			return value;
 		}
