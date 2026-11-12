@@ -1,7 +1,7 @@
 DSL-JSON library
 ================
 
-Fastest JVM (Java/Android/Scala/Kotlin) JSON library with advanced compile-time databinding support.
+Fast JVM (Java/Android/Scala/Kotlin) JSON library with advanced compile-time databinding support.
 
 Java JSON library designed for performance. Originally built for invasive software composition with DSL Platform compiler.
 
@@ -10,7 +10,7 @@ Java JSON library designed for performance. Originally built for invasive softwa
 ## Distinguishing features
 
  * works on existing POJO classes via annotation processor
- * performance - faster than any other Java JSON library. On par with fastest binary JVM codecs
+ * performance - among the fastest Java JSON library. On par with the fastest binary JVM codecs
  * works on byte level - deserialization can work on byte[] or InputStream. It doesn't need intermediate char representation
  * extensibility - support for custom types, custom analyzers, annotation processor extensions...
  * streaming support - large JSON lists support streaming with minimal memory usage
@@ -25,7 +25,6 @@ Java JSON library designed for performance. Originally built for invasive softwa
  * customizable runtime overheads - works in reflection mode or annotation processor mode. Annotation based POJOs are prepared at compile time
  * support for other library annotations - Jackson and JsonB annotations will be used and compile time analysis can be extended in various ways
  * Scala types support - Scala collections, primitives and boxed primitives work without any extra annotations or configuration
- * Kotlin support - annotation processor can be used from Kotlin. NonNull annotation is supported
  * JsonB support - high level support for JsonB String and Stream API. Only minimal support for configuration
  * compatible with [DSL Platform](DSL.md)
 
@@ -67,7 +66,7 @@ To use annotation processor it is sufficient to just reference the library:
     <dependency>
       <groupId>com.dslplatform</groupId>
       <artifactId>dsl-json</artifactId>
-      <version>2.0.2</version>
+      <version>2.1.0</version>
     </dependency>
 
 For use in Android, Gradle can be configured with:
@@ -79,8 +78,8 @@ For use in Android, Gradle can be configured with:
       }
     }
     dependencies {
-      compile 'com.dslplatform:dsl-json:2.0.2'
-      annotationProcessor 'com.dslplatform:dsl-json:2.0.2'
+      compile 'com.dslplatform:dsl-json:2.1.0'
+      annotationProcessor 'com.dslplatform:dsl-json:2.1.0'
       provided 'javax.json.bind:javax.json.bind-api:1.0'
     }
 
@@ -227,6 +226,8 @@ Runtime analysis works by lazy type resolution from registered converters, eg:
     private final DslJson.Settings settings = runtime.Settings.withRuntime().includeServiceLoader();
     private final DslJson<Object> json = new DslJson<Object>(settings);
 
+Note that runtime analysis uses reflection. If you run on Java 9+ modules and your model classes live in a named module, their package must be exported or opened to `com.dslplatform.json` - see the JPMS entry in [FAQ](#faq).
+
 ## Best practices
 
 ### Reusing reader/writer.
@@ -319,20 +320,7 @@ To avoid some Java/Scala conversion issues it's best to use Scala specific API v
 
 For SBT dependency can be added as:
 
-    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "2.0.2"
-
-### Kotlin support
-
-Kotlin has excellent Java interoperability, so annotation processor can be used as-is.
-When used with Gradle, configuration can be done via:
-
-    plugins {
-      kotlin("kapt") version "1.8.0"
-    }
-    dependencies {
-      implementation("com.dslplatform:dsl-json:2.0.2")
-      kapt("com.dslplatform:dsl-json:2.0.2")
-    }
+    libraryDependencies += "com.dslplatform" %% "dsl-json-scala" % "2.1.0"
 
 ## FAQ
 
@@ -347,6 +335,9 @@ When used with Gradle, configuration can be done via:
 
  ***Q***: I get compilation error when annotation processor runs. What can I do?  
  ***A***: Common error is missing dependency on Java 9+ for annotation marker. You can add such dependency on configure compiler arguments to exclude it via `dsljson.generatedmarker`. Otherwise, it's best to inspect the generated code, look if there is some configuration error, like referencing class without sufficient visibility. If there is nothing wrong with the setup, there might be a bug with the DSL-JSON annotation processor in which case it would be helpful to provide a minimal reproducible
+
+ ***Q***: How do I use DSL-JSON with Java 9 modules (JPMS)?  
+ ***A***: The jar declares automatic module name `com.dslplatform.json`, so just add `requires com.dslplatform.json;` to your `module-info.java`. Nothing else is needed and the library remains fully usable from classpath on Java 8+. If you use runtime analysis and your model classes live in a named module, their package must be visible to DSL-JSON: add `exports my.models to com.dslplatform.json;` to your `module-info.java`, or start the app with `--add-exports my.module/my.models=com.dslplatform.json`. No flags are needed when your app or DSL-JSON runs from classpath, and `@CompiledJson` needs none of this since generated code accesses members directly.
 
  ***Q***: Can you please help me out with...?  
  ***A***: There is only so many hours in a day. You can support the library by asking for [support contract](mailto:rikard@ngs.hr?subject=DSL-JSON) with your company.

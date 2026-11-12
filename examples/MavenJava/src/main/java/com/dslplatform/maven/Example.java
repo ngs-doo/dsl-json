@@ -76,7 +76,6 @@ public class Example {
 			int x();
 		}
 
-		@CompiledJson(name = "custom-name")//by default class name will be used for $type attribute
 		public static class WithCustomCtor implements Interface {
 			private int x;
 			private int y;
@@ -86,7 +85,7 @@ public class Example {
 				this.y = x;
 			}
 
-			@CompiledJson
+			@CompiledJson(name = "custom-name")//by default class name will be used for $type attribute
 			public WithCustomCtor(int x, int y) {
 				this.x = x;
 				this.y = y;
@@ -193,6 +192,10 @@ public class Example {
 			} else {
 				writer.writeString(value.toString());
 			}
+		}
+		private static LocalTime defaultValue = LocalTime.of(0, 0);
+		public static LocalTime jsonDefault() {
+			return defaultValue;
 		}
 	}
 
